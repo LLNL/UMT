@@ -1,0 +1,2 @@
+#!/bin/bash -x
+xlf95_r -WF,-DLINUX,-DLinux,-Dmpi,-DMPI,-DUSE_MPI,-DOMPI_SKIP_MPICXX  -I/gpfs/ess2fs0/walkup/openmpi-1.8.8/include -I./include -g -O3 -qarch=pwr8 -qtune=pwr8 -qpic -qhot=novector -qsimd=auto -qlist -qsource  -c snac/snswp3d.F90 -o snac/snswp3d.o
