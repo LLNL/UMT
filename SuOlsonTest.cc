@@ -23,6 +23,10 @@
 void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>& myPartList,
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
 
+extern"C" {
+void pgf90_compiled();
+}
+
 using namespace Geometry;
 using std::cout;
 using std::endl;
