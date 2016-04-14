@@ -39,6 +39,11 @@ int main(int argc, char* argv[])
     int Npolar=8, Nazimu=4;
     int quadType=2;
     std::string theVersionNumber = "1.0";
+
+    // pgi provided work around for maxloc bug:
+    // call pgf90_compiled in main.
+    pgf90_compiled();
+
     
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&myRank);
