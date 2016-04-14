@@ -7,7 +7,7 @@
 #include "transport/TetonInterface/Teton.hh"
 #include "geom/CMI/MeshBase.hh"
 #include "mpi.h"
-#include "omp.h"
+//#include "omp.h"
 
 // #ifdef BGP
 #if 0
@@ -55,8 +55,10 @@ int main(int argc, char* argv[])
             cout<<" Executing UMT2013 Number of ranks ="<<numProcs<<endl;
 #pragma omp parallel
 {
-	    int myTID = omp_get_thread_num();
-	    int numThreads = omp_get_num_threads();
+  int myTID = 0;
+  int numThreads = 1;
+  //	    int myTID = omp_get_thread_num();
+  //	    int numThreads = omp_get_num_threads();
             if (myTID == 0) 
             {
                  cout<<" and number of OMP threads  ="<< numThreads <<endl;

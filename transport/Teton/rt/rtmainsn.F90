@@ -130,6 +130,9 @@
 
    call SweepScheduler
 
+   return !DA stop after sweep scheduler for debug
+
+
 !  Initialize Absorption Rate
 
    call getAbsorptionRate(Phi) 

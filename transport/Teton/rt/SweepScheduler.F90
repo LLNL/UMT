@@ -64,6 +64,9 @@
      QuadSet => getQuadrature(Quad, iset)
      NumBin  =  QuadSet% NumBin
 
+
+     print *, "Allocating..."
+
 !  Allocate temporaries
 
      allocate( depend(NumBin) )
@@ -72,6 +75,8 @@
      allocate( temp(NumBin) )
      allocate( buffer(NumBin,nShared) )
      allocate( BinOffSet(NumBin) )
+
+     print *, "Done allocating"
 
 !  Tally message size by angle bin
 
@@ -115,7 +120,10 @@
      enddo ReflectingBoundary
 
      imax      = maxloc( depend(1:NumBin) )
+     print *, depend(1:NumBin)
+     print *, "imax = ", imax
      maxdepend = depend(imax(1))
+     print *, "depend(imax(1)) = ", maxdepend
      ndone     = 0 
 
      do while (maxdepend > 0)
@@ -128,92 +136,94 @@
        maxdepend = depend(imax(1))
      enddo
 
-     temp(:) = Order(:)
+     ! temp(:) = Order(:)
 
-     do i=1,ndone
-       Order(NumBin-i+1) = temp(i)
-     enddo
+     ! do i=1,ndone
+     !   Order(NumBin-i+1) = temp(i)
+     ! enddo
 
 
 
-     if (Size% decomp_s == 'off') then
+!      if (Size% decomp_s == 'off') then
  
-       do i=1,NumBin-ndone
-         imax            = maxloc( depend(1:NumBin) )
-         Order(i)        = imax(1)
-         depend(imax(1)) = -999
-       enddo
+!        do i=1,NumBin-ndone
+!          imax            = maxloc( depend(1:NumBin) )
+!          Order(i)        = imax(1)
+!          depend(imax(1)) = -999
+!        enddo
 
-     elseif (Size% decomp_s == 'on') then
+!      elseif (Size% decomp_s == 'on') then
 
-!  Sort remaining bins from largest message to smallest
+! !  Sort remaining bins from largest message to smallest
 
-!  Post Receives
+! !  Post Receives
 
-       do ishared=1,nShared
-         Bdy      => getShared(RadBoundary, ishared)
-         neighbor =  getNeighborID(Bdy) 
-         nsend    =  NumBin 
+!        do ishared=1,nShared
+!          Bdy      => getShared(RadBoundary, ishared)
+!          neighbor =  getNeighborID(Bdy) 
+!          nsend    =  NumBin 
 
-         call MPI_Irecv(buffer(1,ishared), nsend, MPI_INTEGER, &
-                        neighbor, 500, MPI_COMM_WORLD,         &
-                        request(2*ishared), ierr)
-       enddo
+!          call MPI_Irecv(buffer(1,ishared), nsend, MPI_INTEGER, &
+!                         neighbor, 500, MPI_COMM_WORLD,         &
+!                         request(2*ishared), ierr)
+!        enddo
 
-!  Sort
+! !  Sort
 
-       imax = maxloc( BinTally(1:NumBin) )
+!        imax = maxloc( BinTally(1:NumBin) )
 
-       nleft = NumBin - ndone
-       do i=nleft,1,-1
-         Order(i)          = imax(1)
-         BinTally(imax(1)) = -999 
-         imax              = maxloc( BinTally(1:NumBin) )
-       enddo
+!        nleft = NumBin - ndone
+!        do i=nleft,1,-1
+!          Order(i)          = imax(1)
+!          BinTally(imax(1)) = -999 
+!          imax              = maxloc( BinTally(1:NumBin) )
+!        enddo
 
-!  Send my order to all neighbors
+! !  Send my order to all neighbors
 
-       do ishared=1,nShared
-         Bdy      => getShared(RadBoundary, ishared)
-         neighbor =  getNeighborID(Bdy)
-         nsend    =  NumBin 
+!        do ishared=1,nShared
+!          Bdy      => getShared(RadBoundary, ishared)
+!          neighbor =  getNeighborID(Bdy)
+!          nsend    =  NumBin 
 
-         call MPI_Isend(Order, nsend, MPI_INTEGER,      &
-                        neighbor, 500, MPI_COMM_WORLD,  &
-                        request(2*ishared-1), ierr)
+!          call MPI_Isend(Order, nsend, MPI_INTEGER,      &
+!                         neighbor, 500, MPI_COMM_WORLD,  &
+!                         request(2*ishared-1), ierr)
 
-         call MPI_Wait(request(2*ishared-1), status, ierr)
-       enddo
+!          call MPI_Wait(request(2*ishared-1), status, ierr)
+!        enddo
 
-       call MPI_Barrier(MPI_COMM_WORLD, ierr)
+!        call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
 
-       do ishared=1,nShared
-         call MPI_Wait(request(2*ishared), status, ierr)
-         do i=1,NumBin
-           QuadSet% RecvOrder0(i,ishared) = buffer(i,ishared)
-           QuadSet% RecvOrder(i,ishared)  = buffer(i,ishared)
-         enddo
-       enddo
+!        do ishared=1,nShared
+!          call MPI_Wait(request(2*ishared), status, ierr)
+!          do i=1,NumBin
+!            QuadSet% RecvOrder0(i,ishared) = buffer(i,ishared)
+!            QuadSet% RecvOrder(i,ishared)  = buffer(i,ishared)
+!          enddo
+!        enddo
 
-     endif
+!      endif
 
-     BinOffSet(1) = 0
-     do bin=2,NumBin
-       BinOffSet(bin) = BinOffSet(bin-1) + QuadSet% NangBinList(bin-1)
-     enddo
+!      BinOffSet(1) = 0
+!      do bin=2,NumBin
+!        BinOffSet(bin) = BinOffSet(bin-1) + QuadSet% NangBinList(bin-1)
+!      enddo
 
-     do i=1,NumBin
-       bin                    = Order(i)
-       NangBin                = QuadSet% NangBinList(bin)
-!!$       write(6,222) my_node, i, bin, NangBin
-!!$ 222   format("my_node = ",i2," i = ",i2," bin = ",i2," NangBin = ",i2)
-       QuadSet% SendOrder0(i) = bin
-       QuadSet% SendOrder(i)  = bin
-       do ia=1,NangBin
-         QuadSet% AngleOrder(ia,bin) = BinOffSet(bin) + ia
-       enddo
-     enddo
+!      do i=1,NumBin
+!        bin                    = Order(i)
+!        NangBin                = QuadSet% NangBinList(bin)
+! !!$       write(6,222) my_node, i, bin, NangBin
+! !!$ 222   format("my_node = ",i2," i = ",i2," bin = ",i2," NangBin = ",i2)
+!        QuadSet% SendOrder0(i) = bin
+!        QuadSet% SendOrder(i)  = bin
+!        do ia=1,NangBin
+!          QuadSet% AngleOrder(ia,bin) = BinOffSet(bin) + ia
+!        enddo
+!      enddo
+
+print *, "About to release"
 
 !  Release Temporaries
      deallocate( depend )
@@ -225,7 +235,7 @@
 
    enddo AngleSetLoop
 
-
+print *, "Released"
 
    return
    end subroutine SweepScheduler 
