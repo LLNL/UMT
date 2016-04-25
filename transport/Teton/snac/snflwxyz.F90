@@ -15,7 +15,7 @@
 
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
-
+   use snswp3d_mod
    use kind_mod
    use constant_mod
    use Size_mod
