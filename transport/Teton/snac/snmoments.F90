@@ -4,7 +4,7 @@
 !   SNMOMENTS - This routine, called by SNFLWRZA and SNFLWXYZ          *
 !               calculates the required spherical harmonic moments     *
 !               [phic] of the angular flux [psic]. It uses the array   *
-!               ynm(n,m), whose definition is:                         *
+!               ynm(n,m), whose definition is:                         * 
 !                                                                      *
 !               ynm(n,m) = real part of (l,k)th spherical harmonic,    *
 !                          evaluated at the mth direction, where       *
@@ -43,7 +43,7 @@
 
 !  Local
 
-   integer    :: ic, ig, Angle, Groups, ncornr
+   integer    :: c0, ic, ig, Angle, Groups, ncornr
 
    real(adqt) :: quadwt 
 
@@ -54,13 +54,15 @@
 
    Phi(:,:) = zero
 
-   AngleLoop: do Angle=1,QuadSet%NumAngles
+   do c0=1,ncornr,512
+
+    AngleLoop: do Angle=1,QuadSet%NumAngles
 
      quadwt = QuadSet% Weight(Angle)
 
      if (quadwt /= zero) then
 
-       do ic=1,ncornr
+       do ic=c0,min(ncornr,c0+511) ! cache blocking
          do ig=1,Groups
            Phi(ig,ic) = Phi(ig,ic) + quadwt*psic(ig,ic,Angle)
          enddo
@@ -68,10 +70,51 @@
 
      endif
 
-   enddo AngleLoop
+    enddo AngleLoop
 
+   enddo
  
    return
    end subroutine snmoments
 
+!!!!!! Device version of the same thing
+
+
+   subroutine snmomentsD(psiccache, PHI, weight, angleorder, angles)
+
+   use kind_mod
+   use constant_mod
+   use Quadrature_mod
+   use Size_mod
+   use cudafor
+
+   implicit none
+
+!  Arguments
+
+   integer, intent(in) :: angles
+
+   real(adqt), device, intent(in)  :: psiccache(QuadSet%Groups,Size%ncornr,angles) 
+   real(adqt), device, intent(out) :: Phi(QuadSet%NumMoments*QuadSet%Groups,Size%ncornr)
+   real(adqt), device, intent(in)  :: weight(QuadSet%NumAngles)
+   integer, device, intent(in)  :: angleorder(angles)
+
+!  Local
+
+   integer    :: ic, ig, Groups, ncornr, istat
+
+!  Add this angles contribution to the flux moments
+
+   Groups = QuadSet% Groups
+   ncornr = Size% ncornr
+
+   !$cuf kernel do(2) <<< (*,*), (16,16) >>>
+   do ic=1,ncornr
+     do ig=1,Groups
+       Phi(ig,ic) = Phi(ig,ic) + SUM(weight(angleorder(:))*psiccache(ig,ic,:))
+     enddo
+   enddo
+ 
+   return
+   end subroutine snmomentsD
 

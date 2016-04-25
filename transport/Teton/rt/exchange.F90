@@ -18,7 +18,7 @@
 
    implicit none
 
-!  Include 1
+!  Include MPI 
 
    include 'mpif.h'
 
@@ -84,7 +84,7 @@
            message = 0 
            nsend0  = 0
 
-!  Loop over exiting angle, boundary element pairs for this communicator
+!  Loop over exiting angle, boundary element pairs for this communicator 
 
            do ia=1,NangBin
              Angle = QuadSet% AngleOrder(ia,bin)

@@ -99,7 +99,6 @@ SOURCES=mods/BoundaryList_mod.F90 \
         snac/fixZone.F90 \
         snac/getDownStreamData.F90 \
         snac/sccsearch.F90 \
-        snac/snflwxyz.F90 \
         snac/snmoments.F90 \
         snac/snmref.F90 \
         snac/snneed.F90 \
@@ -107,6 +106,7 @@ SOURCES=mods/BoundaryList_mod.F90 \
         snac/snpnmset.F90 \
         snac/snreflect.F90 \
         snac/snswp3d.F90 \
+        snac/snflwxyz.F90 \
         snac/snynmset.F90
 
 OBJECTS = ${patsubst %.F90,%.o,$(SOURCES)}

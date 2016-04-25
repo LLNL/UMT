@@ -7,7 +7,7 @@
 #include "transport/TetonInterface/Teton.hh"
 #include "geom/CMI/MeshBase.hh"
 #include "mpi.h"
-//#include "omp.h"
+#include "omp.h"
 
 // #ifdef BGP
 #if 0
@@ -22,10 +22,6 @@
 
 void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>& myPartList,
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
-
-extern"C" {
-void pgf90_compiled();
-}
 
 using namespace Geometry;
 using std::cout;
@@ -43,11 +39,6 @@ int main(int argc, char* argv[])
     int Npolar=8, Nazimu=4;
     int quadType=2;
     std::string theVersionNumber = "1.0";
-
-    // pgi provided work around for maxloc bug:
-    // call pgf90_compiled in main.
-    pgf90_compiled();
-
     
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&myRank);
@@ -64,10 +55,8 @@ int main(int argc, char* argv[])
             cout<<" Executing UMT2013 Number of ranks ="<<numProcs<<endl;
 #pragma omp parallel
 {
-  int myTID = 0;
-  int numThreads = 1;
-  //	    int myTID = omp_get_thread_num();
-  //	    int numThreads = omp_get_num_threads();
+	    int myTID = omp_get_thread_num();
+	    int numThreads = omp_get_num_threads();
             if (myTID == 0) 
             {
                  cout<<" and number of OMP threads  ="<< numThreads <<endl;
@@ -194,8 +183,6 @@ int main(int argc, char* argv[])
     int numFluxes = myTetonObject.psir.size();
     int cumulativeIterationCount= 0;
     double cumulativeWorkTime = 0.0;
-
-    MPI_Pcontrol(0,"summary_start"); // YKT
     
     if(myRank == 0)
         cout<<" Starting time advance..."<<endl;
@@ -217,8 +204,6 @@ int main(int argc, char* argv[])
     }
     if( myRank == 0 )
         cout<<" SuOlson Test version "<<theVersionNumber<<" completed at time= "<<time<<"  goalTime= "<<goalTime<<endl;
-
-    MPI_Pcontrol(0,"summary_stop"); // YKT
 
     checkAnalyticAnswer(goalTime,myMesh,myPartList);     
 

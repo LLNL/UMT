@@ -1,4 +1,4 @@
-! Boundary Module:  Contains data structures for boundary fluxes
+! Boundary Module:  Contains data structures for boundary fluxes 
 
 module Boundary_mod 
 
@@ -20,13 +20,13 @@ module Boundary_mod
                                                                                  
   type, public :: Boundary 
 
-     integer              :: NumBdyElem        ! number of boundary elements
+     integer              :: NumBdyElem        ! number of boundary elements 
      integer              :: BdyElem1          ! index of first boundary element
-     integer              :: ProfileID         ! source profile ID
+     integer              :: ProfileID         ! source profile ID 
      integer              :: NeighborID        ! shared process ID
      integer              :: EditID            ! edit ID
 
-     character(len=8)     :: Type              ! boundary type
+     character(len=8)     :: Type              ! boundary type 
 
      integer, pointer     :: BdyToC(:)         ! BdyToC(NumBdyElem)
 
@@ -172,7 +172,7 @@ contains
                                                                                                   
     integer, intent(in)            :: Groups 
 
-!   Allocate space
+!   Allocate space 
                                                                                                   
 !    allocate( self % Psi(Groups,self% NumBdyElem) )
 
@@ -331,7 +331,7 @@ contains
 !=======================================================================
   function Boundary_getNumBdyElem(self) result(NumBdyElem)
 
-!    Returns the number of boundary elements
+!    Returns the number of boundary elements 
 
 !    variable declarations
      implicit none
@@ -371,7 +371,7 @@ contains
 !=======================================================================
   function Boundary_getProf(self) result(ProfileID)
                                                                                                     
-!    Returns the profile ID
+!    Returns the profile ID 
                                                                                                     
 !    variable declarations
      implicit none
@@ -431,7 +431,7 @@ contains
 !=======================================================================
   function Boundary_getType(self) result(Type)
 
-!    Returns the type
+!    Returns the type 
                                                                                                  
 !    variable declarations
      implicit none

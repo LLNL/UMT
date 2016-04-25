@@ -80,12 +80,12 @@
 !  Most of the time, we'll have reflection in one of the directions
 !  of the coordinate system.  The component of OMEGA that changes sign
 !  corresponds to the component of the normal to the side (or face)
-!  that is non-zero ( e.g. if Area(1).ne.0 then we have reflection in
+!  that is non-zero ( e.g. if Area(1).ne.0 then we have reflection in 
 !  mu=omega(1)  ).  First we check for the component that changes
 !  sign ( omega(idim) ), and then we check to see that the other
 !  components are unchanged.
 
-!  90 degree reflection - First check to see that all
+!  90 degree reflection - First check to see that all 
 !  components but one are "zero"
 
    AreaMag = zero 
@@ -293,7 +293,7 @@
 
 ! If the dot product of the direction of interest (Minc) and an
 ! exact reflected direction is close to one (i.e. the angle between
-! the two vectors is close to zero) it's weight will be very large.
+! the two vectors is close to zero) it's weight will be very large. 
 
          dotWW = min( DOT_PRODUCT( omega_inc(:),omega_refl(:,ia) ), one )
          eps   = one - dotWW + tol

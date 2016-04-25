@@ -70,7 +70,7 @@
      b0       =  getFirstBdyElement(Bdy) - 1
      n        =  (iedit-1)*groups
 
-!  Compute (unit normal) dot (omega)*area and incident/exiting currents
+!  Compute (unit normal) dot (omega)*area and incident/exiting currents 
 
      AngleLoop1: do ia=1,nangles
 

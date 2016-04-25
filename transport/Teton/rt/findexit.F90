@@ -39,7 +39,7 @@
 
    implicit none
 
-!  Include 1
+!  Include MPI
 
    include 'mpif.h'
 
@@ -106,9 +106,9 @@
 
        call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
-!  Loop over all shared boundary elements and decide
-!  which angles are exiting and which are incident on
-!  shared surfaces (we only need to check the unique
+!  Loop over all shared boundary elements and decide  
+!  which angles are exiting and which are incident on 
+!  shared surfaces (we only need to check the unique 
 !  angle set).  Each process on a shared surface computes
 !  dot products for half of the boundary elements and then
 !  the results are exchanged.
@@ -174,7 +174,7 @@
      enddo CommunicatorLoop1
 
 
-!  Now create the lists of incident and exiting boundary elements
+!  Now create the lists of incident and exiting boundary elements 
 !  for each angle in the quadrature set
 
      angle0 = 0 

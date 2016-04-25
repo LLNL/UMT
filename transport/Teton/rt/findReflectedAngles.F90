@@ -44,7 +44,7 @@
    nReflecting = getNumberOfReflecting(RadBoundary)
    NumQuadSets = getNumQuadSets(Quad)
 
-!  Check if all reflecting faces are in the same plane
+!  Check if all reflecting faces are in the same plane 
 
    ReflectingLoop: do i=1,nReflecting
 

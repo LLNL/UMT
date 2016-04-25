@@ -199,8 +199,8 @@ contains
   function ProfileList_getProf(self,ProfileID) result(iProfile)
 
 !    Return a pointer to a profile
-!      ProfileID   profile ID number
-!      iProfile    pointer to the profile
+!      ProfileID   profile ID number 
+!      iProfile    pointer to the profile 
 
 !    variable declarations
      implicit none
@@ -220,7 +220,7 @@ contains
 !-----------------------------------------------------------------------
   function ProfileList_getNumProfiles(self) result(NumProfiles)
                                                                                                    
-!    Return a the number of profiles
+!    Return a the number of profiles 
 
 !    variable declarations
      implicit none

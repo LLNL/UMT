@@ -1,4 +1,4 @@
-! Profile Module:  Contains data structures that describe source profiles
+! Profile Module:  Contains data structures that describe source profiles 
 
 module Profile_mod 
 
@@ -12,8 +12,8 @@ module Profile_mod
                                                                                  
   type, public :: Profile 
 
-     integer              :: NumTimes          ! number of profile times
-     integer              :: NumValues         ! number of profile values
+     integer              :: NumTimes          ! number of profile times 
+     integer              :: NumValues         ! number of profile values 
      integer              :: NumInterpValues   ! number of interpolated values
 
      real(adqt)           :: Multiplier        ! profile multiplier

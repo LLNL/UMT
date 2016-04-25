@@ -1,4 +1,4 @@
-! BoundaryList Module:  Contains attributes for problem boundaries
+! BoundaryList Module:  Contains attributes for problem boundaries 
 
 module BoundaryList_mod
 
@@ -18,7 +18,7 @@ module BoundaryList_mod
   type, public :: BoundaryList
 
      integer                 :: NumBoundary        ! number of total boundaries
-     integer                 :: NumReflecting      ! number of reflecting boundaries
+     integer                 :: NumReflecting      ! number of reflecting boundaries 
      integer                 :: NumVacuum          ! number of vacuum boundaries
      integer                 :: NumSource          ! number of source boundaries
      integer                 :: NumShared          ! number of shared boundaries
@@ -196,7 +196,7 @@ contains
 !=======================================================================
   function BoundaryList_getReflBdy(self,BdyID) result(iBoundary)
                                                                                                     
-!    Return a pointer to a boundary definition
+!    Return a pointer to a boundary definition 
 
 !    variable declarations
      implicit none
@@ -304,7 +304,7 @@ contains
 !=======================================================================
   function BoundaryList_getNumRefl(self) result(NumReflecting)
                                                                                                     
-!    Return the number of reflecting boundaries
+!    Return the number of reflecting boundaries 
                                                                                                     
 !    variable declarations
      implicit none
@@ -395,7 +395,7 @@ contains
 
     integer :: i
 
-!    do i=1,self % NumBoundary
+!    do i=1,self % NumBoundary 
 !      deallocate( self % iBoundary(i) )
 !    enddo
 

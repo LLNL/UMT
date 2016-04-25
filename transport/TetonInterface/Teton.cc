@@ -22,6 +22,8 @@ using std::endl;
 extern "C"
 {
 
+    #define cudaFuncCachePreferL1 2
+    extern int cudaDeviceSetCacheConfig(int);
 
 #if !defined LINUX && !defined BGP
     extern void *
@@ -822,6 +824,8 @@ Teton<Mesh>::linkKull(Teton<Mesh>::MeshType &M,
         }
     }
     
+    cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
 // Allocate persistant arrays
     resize();
 

@@ -1,7 +1,7 @@
 !***********************************************************************
 !                        Version 0:  02/02, MKN                        *
 !                                                                      *
-!   CINTERFACE  -   Wrapper for modules that can be called from C++    *
+!   CINTERFACE  -   Wrapper for modules that can be called from C++    * 
 !                   used to get IterControls pointer                   *
 !                                                                      *
 !***********************************************************************
@@ -17,7 +17,7 @@
 
    implicit none
 
-!  Construct Material Module
+!  Construct Material Module 
 
    allocate (Mat)
 

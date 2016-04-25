@@ -2,7 +2,7 @@
 !                         Version 0: 04/06 PFN                         *
 !                                                                      *
 !    SetMaterialModule -  Called from Teton.cc to associate pointers   *
-!                         in the MaterialModule with memory allocated  *
+!                         in the MaterialModule with memory allocated  *   
 !                         in C++.                                      *
 !                                                                      *
 !    Input:   Size  - structure containing mesh parameters             *
@@ -33,7 +33,7 @@
    real(adqt), target, intent(in) :: tez(Size%nzones)
    real(adqt), target, intent(in) :: tec(Size%ncornr)
 
-!  Material Properties
+!  Material Properties 
 
    Mat%siga    => siga 
    Mat%sigs    => sigs 

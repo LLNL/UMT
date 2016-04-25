@@ -60,7 +60,7 @@
                                                                                                  
 !         do ig=1,ngr
 !           sumrad     = sumrad     + Phi(ig,c0+c)
-!           sumSigsPhi = sumSigsPhi + Phi(ig,c0+c)*Mat%sigs(ig,zone)
+!           sumSigsPhi = sumSigsPhi + Phi(ig,c0+c)*Mat%sigs(ig,zone) 
 !         enddo
 
 !        trad = sqrt( sqrt( max(sumrad/ac,tr4min) ) )

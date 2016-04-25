@@ -24,6 +24,32 @@ subroutine assert(bool,routine,line,message)
 
 !-----------------------------------------------------------------------
 
+#ifdef ASSERT
+
+   if ( .not. bool ) then
+
+!     if the assertion is not true, then issue an error message...
+
+      select case(line)
+      case (1:9)
+         write(nout,501) message,routine,line
+      case (10:99)
+         write(nout,502) message,routine,line
+      case (100:999)
+         write(nout,503) message,routine,line
+      case (1000:9999)
+         write(nout,504) message,routine,line
+      case default
+         write(nout,505) message,routine,line
+      end select
+
+!     ...and die a horrible death
+
+      call exit(1)
+
+   endif
+
+#endif
 
 !-----------------------------------------------------------------------
 ! format statements

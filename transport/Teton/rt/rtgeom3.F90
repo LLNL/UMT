@@ -66,7 +66,7 @@
 !  Compute Vectors from edge-center to point (TEL), face-center to
 !  point (TFL) and zone-center to point (TZL).  These are used
 !  to compute outward normals on corner faces.  The corner-face
-!  area is the sum of two half-side areas.
+!  area is the sum of two half-side areas. 
 
    Geom%volc(:) = zero
 

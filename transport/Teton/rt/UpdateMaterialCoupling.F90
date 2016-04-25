@@ -1,7 +1,7 @@
 !***********************************************************************
 !                        Version 1:  04/2008, PFN                      *
 !                                                                      *
-!   UpdateMaterialCoupling:                                            *
+!   UpdateMaterialCoupling:                                            * 
 !                                                                      *
 !   Calculates electron temperature and energy change. Updates         *
 !   sources and GTA opacities.                                         *
@@ -74,7 +74,7 @@
 !          etac(ic)   = sigdbdt/(Rho*Cve + sigdbdt)
 !        enddo
 !
-!      endif
+!      endif 
 
    ZoneLoop: do zone=1,Size%nzones
 

@@ -13,16 +13,19 @@
 !                                                                      *
 !***********************************************************************
 
+#define BATCHSIZE 32
+
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
-   use snswp3d_mod
+   use, intrinsic :: iso_c_binding
    use kind_mod
    use constant_mod
    use Size_mod
    use Quadrature_mod
+   use snswp3d_mod
+   use cudafor
 
 #include "assert.h"
-!  Assertion checking include file for TETON
 
    implicit none
    include 'mpif.h'
@@ -37,18 +40,28 @@
 
 !  Local
 
-   integer          :: Angle, mm, thnum, n_cpuL
+   integer          :: Angle, mm,mm1,mm2,anglebatch, n_cpuL
    integer          :: Groups, fluxIter, ishared
-   integer          :: binSend, binRecv, NangBin
+   integer          :: binSend, binRecv, NangBin, istat
 
    logical (kind=1) :: FluxConverged
 
    real(adqt)       :: maxFluxError
    real(adqt)       :: startOMPLoopTime, endOMPLoopTime, theOMPLoopTime
 
-!  Function
+   type(C_DEVPTR)                    :: d_phi_p
+   real(adqt), dimension(:,:), device, allocatable :: d_phi(:,:)
+
+   real(adqt), device :: psiccache(QuadSet%Groups,Size%ncornr,BATCHSIZE)
+   type(C_PTR) :: cptr
+   type(C_DEVPTR) :: dptr
 
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
+
+!  Function
+
+   istat = cudaHostGetDevicePointer(d_phi_p, C_LOC(phi(1,1)), 0)
+   call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
 
 !  Set number of threads
 
@@ -56,8 +69,8 @@
    n_cpuL = OMP_GET_MAX_THREADS()
    theOMPLoopTime=0.0
 
-   
-    
+   require(n_cpuL>0,   "Invalid Thread Count")
+   require(n_cpuL<=32, "Invalid Thread Count") 
 
 !  Mesh Constants
 
@@ -83,44 +96,76 @@
 
      fluxIter = fluxIter + 1
 
+     if (ipath == 'sweep') then
+       phi(:,:) = zero
+     endif
+
+!    Loop over angles, solving for each in turn:
+     startOMPLoopTime = MPI_WTIME()
+
      AngleBin: do binRecv=1,QuadSet% NumBin
        binSend = QuadSet% SendOrder(binRecv)
        NangBin = QuadSet% NangBinList(binSend)
        
 !
 
-!    Loop over angles, solving for each in turn:
-     startOMPLoopTime = MPI_WTIME()
+       AngleLoop: do mm1=1,NangBin,BATCHSIZE
 
-!
-!$OMP PARALLEL DO  PRIVATE(Angle,mm,thnum)
-       AngleLoop: do mm=1,NangBin
+         mm2=min(mm1+BATCHSIZE-1,NangBin)
+         anglebatch=mm2-mm1+1
 
-         Angle = QuadSet% AngleOrder(mm,binSend)
-!        thnum = 1
-         thnum = OMP_GET_THREAD_NUM() + 1 
+         !for other bins, will begin staging in the data at the end of prev
+         !iteration of the loop
+         if (binRecv == 1) then
+           do mm=mm1,mm2
+             istat=cudaMemcpyAsync(psiccache(1,1,mm-mm1+1),                 &
+                                   psi(1,1,QuadSet%AngleOrder(mm,binSend)), &
+                                   QuadSet%Groups*Size%ncornr, 0)
+           enddo
+         endif
 
 !        Set angular fluxes for reflected angles
 
-         call snreflect(Angle, PSIB)
+         do mm=mm1,mm2
+           call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
+         enddo
 
-!        Sweep the mesh, calculating PSI for each corner; the
-!        boundary flux array PSIB is also updated here.
+!        Sweep the mesh, calculating PSI for each corner; the 
+!        boundary flux array PSIB is also updated here. 
 !        Mesh cycles are fixed automatically.
 
-         call snswp3d(Groups, Angle,                                   &
-                      QuadSet%next(1,Angle),QuadSet%nextZ(1,Angle),    &
-                      PSI(1,1,Angle),PSIB(1,1,Angle))
+         call snswp3d(anglebatch, QuadSet%AngleOrder(mm1,binSend), &
+                      QuadSet%d_AngleOrder(mm1,binSend),           &
+                      QuadSet%d_next,QuadSet%d_nextZ,              &
+                      QuadSet%d_passZstart, psi, psiccache, psib)
+
+         if (ipath == 'sweep') then
+           call snmomentsD(psiccache, d_phi, QuadSet%d_Weight,     &
+                           QuadSet%d_AngleOrder(mm1,binSend),      &
+                           anglebatch) ! GPU version, one slice at a time
+         endif
+
+         if (binRecv < QuadSet% NumBin) then
+           ! pre-stage data for next angle bin while exchange is happening
+           do mm=mm1,mm2
+             istat=cudaMemcpyAsync(psiccache(1,1,mm-mm1+1),        &
+                                   psi(1,1,QuadSet%AngleOrder(mm,QuadSet%SendOrder(binRecv+1))), &
+                                   QuadSet%Groups*Size%ncornr, 0)
+           enddo
+         endif
 
        enddo AngleLoop
-     endOMPLoopTime = MPI_WTIME()
-     theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
 !      Exchange Boundary Fluxes
 
        call exchange(PSIB, binSend, binRecv) 
 
+
      enddo AngleBin
+
+     istat = cudaDeviceSynchronize()
+     endOMPLoopTime = MPI_WTIME()
+     theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
      if (ipath == 'sweep') then
        call setIncidentFlux(psib)
@@ -138,10 +183,9 @@
 
    enddo FluxIteration
 
-!  Update the scaler flux
+!  Update the scaler flux 
 
    if (ipath == 'sweep') then
-     call snmoments(psi, PHI)
      call restoreCommOrder(QuadSet)
    endif
 

@@ -19,6 +19,7 @@
    use Quadrature_mod
    use BoundaryList_mod
    use Boundary_mod
+   use cudafor
 
    implicit none
 
@@ -26,7 +27,7 @@
 
    integer    :: nBoundary, nBdyElem, b0
 
-   integer    :: i,ii,ia,ib,ic,iz
+   integer    :: i,ii,ia,ib,ic,iz,istat
    integer    :: ncornr,nbelem,ndim,nExit
    integer    :: NumQuadSets
 
@@ -47,7 +48,7 @@
 
    allocate( ListExit(2,nbelem) )
 
-!  Build NEXT for all angle sets
+!  Build NEXT for all angle sets 
 
    AngleSetLoop: do i=1,NumQuadSets
 
@@ -64,6 +65,16 @@
        call snnext(ia) 
 
      enddo OMPAngleLoop
+
+     !!! synchronous, but easy syntax
+     !QuadSet%d_next = QuadSet%next
+     !QuadSet%d_nextZ = QuadSet%nextZ
+     !QuadSet%d_passZstart = QuadSet%passZstart
+
+     !!! asynchronous version
+     istat = cudaMemcpyAsync(QuadSet%d_next, QuadSet%next, (Size%ncornr+1)*QuadSet%NumAngles, 0)
+     istat = cudaMemcpyAsync(QuadSet%d_nextZ, QuadSet%nextZ,Size%nzones*QuadSet%NumAngles, 0)
+     istat = cudaMemcpyAsync(QuadSet%d_passZstart, QuadSet%passZstart, Size%nzones*QuadSet%NumAngles, 0)
 
      AngleLoop: do ia=1,QuadSet% NumAngles
 

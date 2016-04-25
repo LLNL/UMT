@@ -50,7 +50,7 @@
    real(adqt) :: derad,demat,desrc,desrcMat,desrcRad,dehyd,deradinc,deradesc,decheck
    real(adqt) :: erad,emat,eextsrc,eradinct,eradesct,echeck,eradEOC,edep
 
-!  Parameters
+!  Parameters 
 
    nzones = Size%nzones
    ngr    = Size%ngr
@@ -67,7 +67,7 @@
 !  Compute zone-average radiation and electron temperatures,
 !  end-of-cycle radiation energy and energy change due to
 !  external radiation sources (desrcRad)
-!  "Phi" has units of energy/area/time
+!  "Phi" has units of energy/area/time 
 
    eradEOC  = zero
    desrcRad = zero

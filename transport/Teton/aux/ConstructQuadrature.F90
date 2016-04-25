@@ -1,7 +1,7 @@
 !***********************************************************************
 !                        Version 0:  02/02, MKN                        *
 !                                                                      *
-!   CINTERFACE  -   Wrapper for modules that can be called from C++    *
+!   CINTERFACE  -   Wrapper for modules that can be called from C++    * 
 !                   used to get IterControls pointer                   *
 !                                                                      *
 !***********************************************************************
@@ -20,7 +20,7 @@
 !  Arguments
 
 
-!  CQuadrature is really a pointer to Quadrature in C++
+!  CQuadrature is really a pointer to Quadrature in C++ 
 
    integer,    intent(in)    :: ngr
    integer,    intent(in)    :: QuadDef(6,ngr+1)
@@ -29,11 +29,11 @@
 
    integer :: ig, NumQuadSets, type, type_set, norder, norder_set
 
-!  Construct the Quadrature Module
+!  Construct the Quadrature Module 
 
    allocate (Quad)
 
-!  Find the number of angle sets
+!  Find the number of angle sets 
 
    NumQuadSets =  0 
    type_set    = -1 

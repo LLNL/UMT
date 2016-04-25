@@ -1,8 +1,8 @@
 !***********************************************************************
 !                        Version 0:  03/08, PFN                        *
 !                                                                      *
-!   ConstructBoundary - Constructor for external and shared            *
-!                       boundaries (called from C++).                  *
+!   ConstructBoundary - Constructor for external and shared            * 
+!                       boundaries (called from C++).                  * 
 !                                                                      *
 !***********************************************************************
 
@@ -25,7 +25,7 @@
    integer, intent(in)          :: NumSource
    integer, intent(in)          :: NumShared
 
-!  Construct the Boundary Module
+!  Construct the Boundary Module 
 
    allocate (RadBoundary)
    call construct(RadBoundary,  NumReflecting, &

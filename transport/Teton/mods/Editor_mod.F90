@@ -1,4 +1,4 @@
-! Editor Module:  Contains various problem edits
+! Editor Module:  Contains various problem edits 
                                                                                  
 module Editor_mod 
 
@@ -43,17 +43,17 @@ module Editor_mod
      real(adqt)          :: EnergyCheck        ! Global Energy check or error
 
 !    Per Cycle Edits
-     real(adqt)          :: DeltaEnergyRad     ! Change in radiation energy
+     real(adqt)          :: DeltaEnergyRad     ! Change in radiation energy 
      real(adqt)          :: DeltaEnergyMat     ! Change in material energy
-     real(adqt)          :: DeltaEnergyInc     ! Change in incident energy
-     real(adqt)          :: DeltaEnergyEsc     ! Change in escaping energy
+     real(adqt)          :: DeltaEnergyInc     ! Change in incident energy 
+     real(adqt)          :: DeltaEnergyEsc     ! Change in escaping energy 
      real(adqt)          :: DeltaEnergyExtSrc  ! Change in external source energy
      real(adqt)          :: DeltaEnergyHydWork ! Change in energy due to hydrodynamic work
      real(adqt)          :: DeltaEnergyCheck   ! Energy error this cycle
      real(adqt)          :: EnergyRadBOC       ! Beginning of cycle radiation energy
      real(adqt)          :: EnergyRadEOC       ! End of cycle radiation energy
 
-     real(adqt), pointer :: RadEnergyEscRate(:)  ! RadEnergyEscRate(ngr*(nbedit+1))
+     real(adqt), pointer :: RadEnergyEscRate(:)  ! RadEnergyEscRate(ngr*(nbedit+1)) 
      real(adqt), pointer :: RadEnergyIncRate(:)  ! RadEnergyIncRate(ngr*(nbedit+1))
      real(adqt), pointer :: RadEnergyEscape(:)   ! RadEnergyEscape(ngr*(nbedit+1))
      real(adqt), pointer :: RadEnergyIncident(:) ! RadEnergyIncident(ngr*(nbedit+1))
@@ -420,7 +420,7 @@ contains
 !=======================================================================
   function Editor_get_TrMaxZone(self) result(TrMaxZone)
 
-!    Return the zone with maximum radiation temperature (TrMaxZone)
+!    Return the zone with maximum radiation temperature (TrMaxZone)  
 
 !    variable declarations
      implicit none

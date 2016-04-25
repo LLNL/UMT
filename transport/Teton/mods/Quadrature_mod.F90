@@ -1,10 +1,11 @@
-! Quadrature Module:  Contains data structures describing angular quadrature
+! Quadrature Module:  Contains data structures describing angular quadrature 
 
 module Quadrature_mod 
 
   use kind_mod
   use constant_mod
   use Communicator_mod
+  use cudafor
 
   private
 
@@ -23,10 +24,10 @@ module Quadrature_mod
   type, public :: Quadrature 
 
      integer              :: QuadID            ! quadrature ID
-     integer              :: Groups            ! number of energy groups
-     integer              :: NumAngles         ! number of angles
+     integer              :: Groups            ! number of energy groups 
+     integer              :: NumAngles         ! number of angles 
      integer              :: NumMoments        ! number of angular moments
-     integer              :: Order             ! quadrature order
+     integer              :: Order             ! quadrature order 
      integer              :: NPolar            ! number of polar angles
      integer              :: NAzimuthal        ! number of azimuthal angles
      integer              :: PolarAxis         ! polar axis (1,2 or 3)
@@ -37,8 +38,10 @@ module Quadrature_mod
      logical(kind=1), pointer  :: FinishingDirection(:)
 
      real(adqt), pointer  :: Gnu(:)            ! energy group boundaries
-     real(adqt), pointer  :: Omega(:,:)        ! direction cosines
-     real(adqt), pointer  :: Weight(:)         ! quadrature weights
+     real(adqt), pinned, allocatable :: Omega(:,:)        ! direction cosines 
+     real(adqt), device, allocatable :: d_Omega(:,:)        ! direction cosines 
+     real(adqt), pinned, allocatable :: Weight(:)         ! quadrature weights 
+     real(adqt), device, allocatable :: d_Weight(:)         ! quadrature weights 
 
 !    Spherical Harmonics
      real(adqt), pointer  :: Ynm(:,:)          ! Ynm(NumMoments,NumAngles)
@@ -57,10 +60,15 @@ module Quadrature_mod
      integer             :: NangBin            ! maximun number of angles per bin
 
      integer,    pointer :: NangBinList(:)     ! NangBinList(NumBin)
-     integer,    pointer :: AngleToBin(:)      ! AngleToBin(NumAngles)
-     integer,    pointer :: next(:,:)          ! next(ncornr+1,NumAngles)
-     integer,    pointer :: nextZ(:,:)         ! nextZ(nzones,NumAngles)
-     integer,    pointer :: AngleOrder(:,:)    ! AngleOrder(NangBin,NumBin)
+     integer,    pointer :: AngleToBin(:)      ! AngleToBin(NumAngles) 
+     integer,    pinned, allocatable :: next(:,:)          ! next(ncornr+1,NumAngles)
+     integer,    pinned, allocatable :: nextZ(:,:)         ! nextZ(nzones,NumAngles)
+     integer,    pinned, allocatable :: passZstart(:,:)    ! passZstart(nzones,NumAngles) ! actually don't need this much, but being conservative
+     integer,    pinned, allocatable :: AngleOrder(:,:)    ! AngleOrder(NangBin,NumBin)
+     integer,    device, allocatable :: d_next(:,:)        ! next(ncornr+1,NumAngles)
+     integer,    device, allocatable :: d_nextZ(:,:)       ! nextZ(nzones,NumAngles)
+     integer,    device, allocatable :: d_passZstart(:,:)    ! passZstart(nzones,NumAngles) ! actually don't need this much, but being conservative
+     integer,    device, allocatable :: d_AngleOrder(:,:)    ! AngleOrder(NangBin,NumBin)
      integer,    pointer :: RecvOrder0(:,:)    ! RecvOrder0(ncomm,NumBin)
      integer,    pointer :: SendOrder0(:)      ! SendOrder0(NumBin)
      integer,    pointer :: RecvOrder(:,:)     ! RecvOrder(ncomm,NumBin)
@@ -182,7 +190,9 @@ contains
     allocate( self % StartingDirection(self % NumAngles) )
     allocate( self % FinishingDirection(self % NumAngles) )
     allocate( self % Omega(Ndim,self % NumAngles) )
+    allocate( self % d_Omega(Ndim,self % NumAngles) )
     allocate( self % Weight(self % NumAngles) )
+    allocate( self % d_Weight(self % NumAngles) )
     allocate( self % Ynm(self % NumMoments,self % NumAngles) )
     allocate( self % Pnm(self % NumMoments,self % NumAngles) )
 
@@ -222,7 +232,12 @@ contains
       allocate( self% AngleToBin(self% NumAngles) )
       allocate( self% next(Size%ncornr+1,self % NumAngles) )
       allocate( self% nextZ(Size%nzones,self % NumAngles) )
+      allocate( self% passZstart(Size%nzones,self % NumAngles) )
       allocate( self% AngleOrder(self% NangBin,self% NumBin) )
+      allocate( self% d_next(Size%ncornr+1,self % NumAngles) )
+      allocate( self% d_nextZ(Size%nzones,self % NumAngles) )
+      allocate( self% d_passZstart(Size%nzones,self % NumAngles) )
+      allocate( self% d_AngleOrder(self% NangBin,self% NumBin) )
       allocate( self% RecvOrder0(self% NumBin,Size% ncomm) )
       allocate( self% SendOrder0(self% NumBin) )
       allocate( self% RecvOrder(self% NumBin,Size% ncomm) )
@@ -342,7 +357,9 @@ contains
     deallocate( self % StartingDirection )
     deallocate( self % FinishingDirection )
     deallocate( self % Omega )
+    deallocate( self % d_Omega )
     deallocate( self % Weight )
+    deallocate( self % d_Weight )
     deallocate( self % Ynm )
     deallocate( self % Pnm )
 
@@ -352,7 +369,12 @@ contains
       deallocate( self% AngleToBin )
       deallocate( self% next )
       deallocate( self% nextZ )
+      deallocate( self% passZstart )
       deallocate( self% AngleOrder )
+      deallocate( self% d_next )
+      deallocate( self% d_nextZ )
+      deallocate( self% d_passZstart )
+      deallocate( self% d_AngleOrder )
       deallocate( self% RecvOrder0 )
       deallocate( self% SendOrder0 )
       deallocate( self% RecvOrder )
@@ -445,7 +467,7 @@ contains
   end subroutine Quadrature_ctorExit
 
 !=======================================================================
-! restore Communication order
+! restore Communication order 
 !=======================================================================
   subroutine Quadrature_resCommOrd(self)
                                                                                                   

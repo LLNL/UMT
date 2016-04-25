@@ -37,7 +37,7 @@
    real(adqt) :: factor, VolFrac
 
 !***********************************************************************
-!  Update Radiation Energy Density                                     *
+!  Update Radiation Energy Density                                     * 
 !***********************************************************************
  
    ngr                   = Size%ngr

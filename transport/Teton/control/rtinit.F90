@@ -77,7 +77,7 @@
      nCorner = Z% nCorner
      c0      = Z% c0
 
-!  T4 has units of energy/area/time
+!  T4 has units of energy/area/time 
 
      temp = Mat%trz(zone)
      t4   = speed_light*rad_constant*temp*temp*temp*temp

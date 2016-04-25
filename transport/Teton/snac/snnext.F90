@@ -30,7 +30,7 @@
                  MeshCycles,ncornr,maxcf,nzones
 
    integer    :: hotZone,distance1,distanceMin,zone
-   integer    :: ii,index,cID,corner1,zone1,ndoneZ,c,c0,nCorner
+   integer    :: ii,index,cID,corner1,zone1,ndoneZ,c,c0,nCorner,maxpass,p
 
    integer    :: need(Size%maxCorner)
    integer    :: DownStreamC(Size%maxcf,Size%maxCorner)
@@ -49,6 +49,11 @@
    integer, allocatable :: listZone(:)
    integer, allocatable :: zoneSeed(:)
    integer, allocatable :: list_in_zone(:)
+   integer, allocatable :: nextZoffset(:)
+   integer, allocatable :: nextZsorted(:)
+   integer, allocatable :: nextsorted(:)
+   integer, allocatable :: ndoneCZ(:)
+   integer, allocatable :: Zpass(:)
 
    logical (kind=1), allocatable :: doneZ(:)
 
@@ -68,9 +73,17 @@
    allocate( zoneSeed(nzones) )
    allocate( list_in_zone(Size% maxCorner) )
    allocate( doneZ(nzones+1) )
+   allocate( nextZoffset(nzones) )
+   allocate( nextZsorted(nzones) )
+   allocate( nextsorted(ncornr) )
+   allocate( ndoneCZ(nzones) )
+   allocate( Zpass(nzones) )
 
    doneZ(:)        = .FALSE.
    doneZ(nzones+1) = .TRUE.
+
+   Zpass(:) = 1
+   maxpass = 0
 
 !  Build NEED array by computing Outward_Normal dot Omega(m)
 
@@ -84,7 +97,7 @@
 
    QuadSet% totcycles = QuadSet% totcycles + MeshCycles
 
-!  Create the "next" array.
+!  Create the "next" array. 
 
    nextseed = 1
    ndone    = 0
@@ -92,11 +105,11 @@
    nextZone = 0
    lastZone = 0
    newZone  = zoneSeed(1)
-
+   ndoneCZ(:) = 0
 
    OuterIteration: do
 
-!  Work to complete the zone
+!  Work to complete the zone 
 
      zone = newZone
 
@@ -124,6 +137,7 @@
 
      nnext                    = 0
      ndoneZ                   = ndoneZ + 1
+     ndoneCZ(zone)            = ndone
      QuadSet% nextZ(ndoneZ,m) = zone
      doneZ(zone)              = .TRUE.
      doneC(:)                 = .FALSE.
@@ -137,7 +151,7 @@
 
 !  Decrement the NEED array for corners on exiting faces
 
-!  Exit "EZ" faces
+!  Exit "EZ" faces 
 
        do i=1,nDSC(c)
 
@@ -176,7 +190,7 @@
 
 !  Loop over the down-stream zones for the zone just added
 !  to the nextZ list, decrementing the needZ array for these
-!  neighboring zones
+!  neighboring zones 
 
      do i=1,nDSZ(zone)
 
@@ -185,6 +199,11 @@
        if ( .not. doneZ(Zexit) ) then
 
          needZ(Zexit) = needZ(Zexit) - 1
+
+         if (Zpass(Zexit) <= Zpass(zone)) then
+           Zpass(Zexit) = Zpass(zone) + 1
+           maxpass = max(maxpass, Zpass(Zexit))
+         endif
 
          if (needZ(Zexit) == 0) then
            lastZone           = lastZone + 1
@@ -204,7 +223,7 @@
 
 !    1. Pick the next zone in "listZone"
 !    2. Pick the next seed in "zoneSeed"
-!    3. Break a cycle to create a new zone seed
+!    3. Break a cycle to create a new zone seed 
 
      ndone = ndone + nnext
 
@@ -268,13 +287,7 @@
 
    enddo OuterIteration
 
-
-!  Set the extra element of NEXT to 1 (in the sweep routines we
-!  need to reference the ncornr+1 entry, but it is not used)
-
-   QuadSet% next(ncornr+1,m) = 1
- 
-!  Final error check
+!  Error check
 
    if (ndone /= ncornr) then
      call f90fatal("Wrong number of corners in SNNEXT!")
@@ -284,8 +297,71 @@
      call f90fatal("Wrong number of zones in SNNEXT!")
    endif
 
+
+!  Using the Zpass(:) values calculated above based on the order
+!  of zones selected for QuadSet%nextZ(:), re-sort the nextZ values
+!  so that it gives a series of contiguous batches of zones that can
+!  be processed independently.  Uses a stable counting sort-by-key
+
+   if (maxpass+1 >= nzones) then
+     call f90fatal("Too many passes in SNNEXT!")
+   endif
+
+   QuadSet% passZstart(:,m) = 0
+   QuadSet% passZstart(1,m) = 1
+
+   do i=1,nzones
+     zone = QuadSet% nextZ(i,m)
+     p = Zpass(zone)
+     nextZoffset(zone) = QuadSet% passZstart(p+1,m)
+     QuadSet% passZstart(p+1,m) = QuadSet% passZstart(p+1,m) + 1
+   enddo
+
+   !write (*,*) "---------------------------"
+   !write (*,*) "Angle:", m, "Passes: ", maxpass, "Zones: ", nzones
+   !write (*,*) "pass:", 1, "start:",QuadSet% passZstart(1,m) ,"count:",QuadSet% passZstart(2,m)
+   do p=2,maxpass+1
+     QuadSet% passZstart(p,m) = QuadSet% passZstart(p,m) + QuadSet% passZstart(p-1,m)
+     !if (p <= maxpass) then
+     !  write (*,*) "pass:", p, "start:",QuadSet% passZstart(p,m), "count:",QuadSet% passZstart(p+1,m)
+     !endif
+   enddo
+
+   do i=1,nzones
+     zone = QuadSet% nextZ(i,m)
+     p    = Zpass(zone)
+     nextZsorted(QuadSet% passZstart(p,m)+nextZoffset(zone)) = zone
+   enddo
+   QuadSet% nextZ(:,m) = nextZsorted(:)
+
+   ndone = 0
+   do i=1,nzones
+     zone    = QuadSet% nextZ(i,m)
+     Z       => getZoneData(Geom, zone)
+     nCorner = Z% nCorner
+     nextsorted(ndone+1:ndone+nCorner) = QuadSet%next(ndoneCZ(zone)+1:ndoneCZ(zone)+nCorner,m)
+     ndone = ndone + nCorner
+   enddo
+   QuadSet% next(:,m) = nextsorted(:)
+ 
+!  Final error check
+
+   if (ndone /= ncornr) then
+     call f90fatal("Wrong number of corners in SNNEXT after sort!")
+   endif
+
+!  Set the extra element of NEXT to 1 (in the sweep routines we
+!  need to reference the ncornr+1 entry, but it is not used)
+
+   QuadSet% next(ncornr+1,m) = 1
+
 !  Release memory
 
+   deallocate( Zpass )
+   deallocate( ndoneCZ )
+   deallocate( nextsorted )
+   deallocate( nextZsorted )
+   deallocate( nextZoffset )
    deallocate( DownStreamZ )
    deallocate( nDSZ )
    deallocate( needZ )

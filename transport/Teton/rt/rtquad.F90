@@ -23,6 +23,7 @@
    use kind_mod
    use constant_mod
    use Quadrature_mod
+   use cudafor
 
    implicit none
 
@@ -41,7 +42,7 @@
 
    character(len=8) :: TypeName
 
-!  Select the appropriate quadrature based on geometry
+!  Select the appropriate quadrature based on geometry 
 
    NumAngles = self% NumAngles
    TypeName  = self% TypeName
@@ -62,6 +63,8 @@
        endif
 
    end select
+
+   self%d_omega = self%omega
  
 !  Make sure that quadrature weights are normalized correctly
 
@@ -85,6 +88,8 @@
    do ia=1,NumAngles
      self% weight(ia) = fac*self% weight(ia)
    enddo
+
+   self%d_weight = self%weight
 
 !  Identify starting and finishing directions
 

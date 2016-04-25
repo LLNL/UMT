@@ -1,4 +1,4 @@
-! Material Module:  material properties
+! Material Module:  material properties 
                                                                                  
 module Material_mod
                                                                                  
@@ -12,9 +12,9 @@ module Material_mod
                                                                                  
   type, public :: Material
 
-     real(adqt), pointer :: siga(:,:)            ! siga(ngr,nzones)
+     real(adqt), pointer :: siga(:,:)            ! siga(ngr,nzones) 
      real(adqt), pointer :: sigs(:,:)            ! sigs(ngr,nzones)
-     real(adqt), pointer :: cve(:)               ! cve(nzones)
+     real(adqt), pointer :: cve(:)               ! cve(nzones) 
      real(adqt), pointer :: rho(:)               ! rho(nzones)
      real(adqt), pointer :: SMatEff(:)           ! SMatEff(nzones)
      real(adqt), pointer :: qext(:,:)            ! qext(ngr,ncornr)
@@ -64,17 +64,17 @@ contains
 
 !!$    allocate( self % siga(Size%ngr,Size%nzones) )
 !!$    allocate( self % sigs(Size%ngr,Size%nzones) )
-!!$    allocate( self % cve(Size%nzones) )
+!!$    allocate( self % cve(Size%nzones) ) 
 !!$    allocate( self % rho(Size%nzones) )
 !!$    allocate( self % SMatEff(Size%nzones) )
     allocate( self % qext(Size%ngr,Size%ncornr) )
-!!$    allocate( self % denez(Size%nzones) )
+!!$    allocate( self % denez(Size%nzones) ) 
 !!$    allocate( self % trz(Size%nzones) )
 !!$    allocate( self % tez(Size%nzones) )
     allocate( self % trzn(Size%nzones) )
     allocate( self % tezn(Size%nzones) )
     allocate( self % denec(Size%ncornr) )
-!!$    allocate( self % tec(Size%ncornr) )
+!!$    allocate( self % tec(Size%ncornr) ) 
 
     allocate( self % decompton(Size%ncornr) )
     allocate( self % etac(Size%ncornr) )

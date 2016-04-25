@@ -24,7 +24,7 @@
 
 /*--------------------------------------------------------------------------*/
 
-#if (defined __IBMCPP__) || (defined __IBMC__)
+#if (defined AIX) || (defined __blrts__) || (defined BGQ)
 # define F77_ID(x_, x, X)  x
 # define FCDTOCP(x)      ((char *) x)
 # define CPTOFCD(x, len) (x)

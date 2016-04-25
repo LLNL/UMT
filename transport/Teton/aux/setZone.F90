@@ -26,7 +26,7 @@
    integer,    intent(in)    :: Connect(3,Size%maxcf,Size%maxCorner)
    integer,    intent(in)    :: nfpc(Size%ncornr)
 
-!  Local
+!  Local 
 
    integer :: nCorner, ncfaces
 

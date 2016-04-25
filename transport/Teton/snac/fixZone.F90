@@ -29,7 +29,7 @@
    integer    :: c, c0, nCorner
 
 !  If we cannot start or complete a zone, pick the corner with the smallest
-!  value of need and the largest number of downstream neighbors
+!  value of need and the largest number of downstream neighbors 
 
    minNeed  = 100
    maxDSC   = 0

@@ -1,8 +1,8 @@
 !***********************************************************************
 !                        Version 0:  02/02, MKN                        *
 !                                                                      *
-!   ConstructProfile - Constructor for source profiles called          *
-!                      from C++.                                       *
+!   ConstructProfile - Constructor for source profiles called          * 
+!                      from C++.                                       * 
 !                                                                      *
 !***********************************************************************
 
@@ -21,7 +21,7 @@
 
    integer, intent(in)          :: maxprof
 
-!  Construct the Source Profile Module
+!  Construct the Source Profile Module 
 
    allocate (SourceProfiles)
    call construct(SourceProfiles, maxprof)

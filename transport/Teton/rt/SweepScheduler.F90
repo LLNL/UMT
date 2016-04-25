@@ -20,10 +20,11 @@
    use Quadrature_mod
    use BoundaryList_mod
    use Boundary_mod
+   use cudafor
 
    implicit none
 
-!  Include 1
+!  Include MPI
 
    include 'mpif.h'
 
@@ -36,7 +37,7 @@
               ierr, nleft, my_node
 
    integer :: NumQuadSets, NumBin, NangBin, nShared, nReflecting
-   integer :: angle, mRef
+   integer :: angle, mRef, istat
    integer :: n
 
    integer, dimension (1) :: imax
@@ -214,6 +215,9 @@
          QuadSet% AngleOrder(ia,bin) = BinOffSet(bin) + ia
        enddo
      enddo
+
+     istat = cudaMemcpyAsync(QuadSet%d_AngleOrder, QuadSet%AngleOrder, QuadSet%NangBin*NumBin, 0)
+
 
 !  Release Temporaries
      deallocate( depend )

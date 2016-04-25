@@ -127,7 +127,7 @@
 
          icfp   = Z%Connect(1,id,c)
 
-         if( icfp > 0 ) then  ! external boundary faces will have icfp = 0
+         if( icfp > 0 ) then  ! external boundary faces will have icfp = 0 
             zonefp = Geom% CToZone(icfp)
             face   = Geom% CToFace(id,ic)
 

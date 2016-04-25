@@ -49,7 +49,7 @@
 
    real(adqt) :: amu,aeta,axi,awgt
 
-!  Angular weights sum to pi/2 in each octant
+!  Angular weights sum to pi/2 in each octant 
 
    halfpi = half*pi
 

@@ -32,7 +32,7 @@
 
    real(adqt) :: sumrad 
 
-!  Calculate the total energy absorption rate density
+!  Calculate the total energy absorption rate density 
 
    ZoneLoop: do zone=1,Size%nzones
                                                                                                  

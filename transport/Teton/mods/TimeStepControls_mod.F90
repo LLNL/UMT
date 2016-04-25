@@ -1,4 +1,4 @@
-! Time Step Control Module:  Contains controls and edits for the time step
+! Time Step Control Module:  Contains controls and edits for the time step 
                                                                                  
 module TimeStepControls_mod 
 
@@ -37,13 +37,13 @@ module TimeStepControls_mod
      real(adqt)       :: Tr4Threshold      ! Tr4 Threshold for time step control
 
      real(adqt)       :: RadTime           ! Current radiation time
-     real(adqt)       :: MaxChangeTe       ! Max allowed change in Te per cycle
+     real(adqt)       :: MaxChangeTe       ! Max allowed change in Te per cycle 
      real(adqt)       :: MaxChangeTi       ! Max allowed change in Ti per cycle
      real(adqt)       :: MaxChangeTr4      ! Max allowed change in Tr**4 per cycle
      real(adqt)       :: MinTimeStep       ! Minimum allowed time step
      real(adqt)       :: MaxTimeStep       ! Maximum allowed time step
 
-     character(len=8) :: DtConstraint      ! What's controlling the time step
+     character(len=8) :: DtConstraint      ! What's controlling the time step 
 
   end type TimeStepControls 
 
@@ -339,7 +339,7 @@ contains
 !=======================================================================
   function TimeStepControls_get_RadTime(self) result(RadTime)
 
-!    Return the current radiation time (RadTime)
+!    Return the current radiation time (RadTime)  
 
 !    variable declarations
      implicit none
@@ -548,7 +548,7 @@ contains
 !=======================================================================
   function TimeStepControls_get_ZoneMaxChangeTr4(self) result(ZoneMaxChangeTr4)
                                                                                        
-!    Return the zone with the maximum observed fractional
+!    Return the zone with the maximum observed fractional 
 !    change in Tr4 (ZoneMaxChangeTr4)
                                                                                        
 !    variable declarations

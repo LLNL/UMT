@@ -32,7 +32,7 @@
    integer    :: NumAngles, NumMoments, NPolar, NAzimuthal, PolarAxis
    real(adqt) :: GrpBnds(Size%ngr+1)
 
-!  Find the number of angle sets and the number of groups in them
+!  Find the number of angle sets and the number of groups in them 
 
    QuadID     = 1 
    Type_set   = QuadDef(1,1) 
@@ -51,7 +51,7 @@
          Type  = QuadDef(1,ignext)
          Order = QuadDef(2,ignext)
       else
-!  This forces the last set to be completed
+         !  This forces the last set to be completed
          Type  = 0 
          Order = 0 
       endif

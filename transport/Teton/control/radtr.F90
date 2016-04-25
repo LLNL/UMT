@@ -12,6 +12,7 @@
 
 !  Include
 
+   use, intrinsic :: iso_c_binding
    use kind_mod
    use Size_mod
    use Material_mod
@@ -21,6 +22,7 @@
    use ZoneData_mod
    use constant_mod
    use radconstant_mod
+   use cudafor
 
    implicit none
 
@@ -34,13 +36,22 @@
 
 !  Local
 
-   integer    :: zone
+   integer    :: zone, istat
 
    real(adqt) :: dtrad
 
-!  Allocate Memory
+!  Allocate Memory 
 
    call constructPsiInc(SourceProfiles)
+
+!***********************************************************************
+!     UPDATE DEVICE ZONE DATA (once only)                              *
+!***********************************************************************
+
+   if (Geom%d_ZData_uptodate == .false.) then
+     istat = cudaMemcpyAsync(C_DEVLOC(Geom%d_ZData), C_LOC(Geom%ZData), sizeof(Geom%ZData), 0)
+     Geom%d_ZData_uptodate = .true.
+   endif
 
 !***********************************************************************
 !     ADD TIME-ABSORPTION TO THE TOTAL CROSS SECTION ARRAY             *
@@ -81,7 +92,7 @@
 
 !***********************************************************************
 !     SAVE ZONE AVERAGE TEMPERATURES FOR TIME STEP CALCULATION         *
-!***********************************************************************
+!*********************************************************************** 
 
    call advanceRT(dtrad, PSIR, PHI)
 
@@ -95,7 +106,7 @@
 !     ENERGY UPDATE                                                    *
 !***********************************************************************
          
-! call newenergy
+   ! call newenergy
    call rtave(Mat%denec, Mat%DENEZ)
 
 !***********************************************************************

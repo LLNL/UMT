@@ -30,11 +30,11 @@
 
    real(adqt), target, intent(in) :: px(Size%ndim,Size%npnts)
 
-!  Local
+!  Local 
 
    integer :: i, ib, nBoundary, nBdyElem, b0
 
-!  Constants
+!  Constants 
 
    nBoundary = getNumberOfBoundaries(RadBoundary)
 

@@ -19,6 +19,7 @@
    use Geometry_mod
    use Quadrature_mod
    use ZoneData_mod
+   use cudafor
 
    implicit none
 
@@ -48,6 +49,10 @@
        Z% STotal(:,c) = Mat%SFixed(:,c0+c) + Size%wtiso*Mat%sigs(:,zone)*Phi(:,c0+c)
      enddo
    enddo
+
+!  Update device-memory SoA copies of zone data
+
+   call setZones_SoA(Geom%d_ZDataSoA, Geom%d_ZData)
 
 !  Follow particles through the mesh:
 

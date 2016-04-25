@@ -10,56 +10,69 @@
 !   Output:                                                            *
 !                                                                      *
 !***********************************************************************
-module snswp3d_mod
 
-contains
+! number of zones that will be processed in parallel from each batch
+#define NZONEPAR 16
 
+   module snswp3d_mod
+     use kind_mod
+     use constant_mod
+     use Quadrature_mod
+     use ZoneData_mod
+     use cudafor
 
-   subroutine snswp3d(Groups, Angle,         &
-                      next, nextZ, PSIC, PSIB)
+   contains
 
-   use kind_mod
-   use constant_mod
-   use Size_mod
-   use Geometry_mod
-   use Quadrature_mod
-   use Material_mod
-   use ZoneData_mod
-
+   attributes(global) &
+   subroutine sweep(Groups, NumAngles, anglebatch, ncornr, nzones, nbelem, &
+                    maxcf, maxCorner, passZstart, Angles, omega, &
+                    ZData, ZDataSoA, next, nextZ, psic, psiccache, psib)
    implicit none
 
 !  Arguments
 
-   integer,    intent(in)    :: Groups, Angle 
+   integer,    value, intent(in)     :: Groups, NumAngles, anglebatch, ncornr, &
+                                        nzones, nbelem, maxcf, maxCorner
 
-   integer,    intent(in)    :: next(Size%ncornr+1)
-   integer,    intent(in)    :: nextZ(Size%nzones)
+   integer,    device, intent(in)    :: passZstart(nzones,NumAngles)
+   integer,    device, intent(in)    :: Angles(anglebatch)
+   real(adqt), device, intent(in)    :: omega(3,NumAngles)
 
-   real(adqt), intent(inout) :: psic(Groups,Size%ncornr),       &
-                                psib(Groups,Size%nbelem)
+   type(ZoneData),     device, intent(in) :: ZData(nzones)
+   type(ZoneData_SoA), device, intent(in) :: ZDataSoA
+ 
+   integer,    device, intent(in)    :: next(ncornr+1,NumAngles)
+   integer,    device, intent(in)    :: nextZ(nzones,NumAngles)
+
+   real(adqt), device, intent(out) :: psic(Groups,ncornr,NumAngles)
+   real(adqt), device, intent(inout) :: psiccache(Groups,ncornr,anglebatch)
+   real(adqt), device, intent(inout) :: psib(Groups,nbelem,NumAngles)
 
 !  Local Variables
 
-   integer    :: i, ib, ic, icfp, icface, ifp, ig, k, nxez
-   integer    :: nzones, zone, c, c0, cez, ii, ndone
-   integer    :: nCorner, nCFaces
+   integer    :: Angle, i, ib, ic, icfp, icface, id, ifp, ig, k, nxez
+   integer    :: zone, c, cez, ii, mm, ndone
+   integer    :: p, ndoneZ, passZcount
+   integer    :: nCorner, nCFaces, c0
 
-   integer    :: ez_exit(Size%maxcf)
+   !!FIXME: sizes are hardcoded at present due to a CUDA Fortran limitation
+   real(adqt), shared :: Volume(8,NZONEPAR) ! (maxCorner)
+   real(adqt), shared :: A_fp(3,3,NZONEPAR) ! (ndim,maxcf)
+   real(adqt), shared :: A_ez(3,3,NZONEPAR) ! (ndim,maxcf)
+   integer,    shared :: Connect(3,3,NZONEPAR) ! (3,maxcf)
 
-   real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, area_inv
+   integer    :: ez_exit(3) ! (maxcf)
+
+   real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
    real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
+   real(adqt) :: Sigt, SigtInv
 
-   real(adqt) :: omega(3)
-   real(adqt) :: psi_opp(Groups)
-   real(adqt) :: SigtVol(Groups,Size% maxCorner)
-   real(adqt) :: src(Groups,Size% maxCorner)
-   real(adqt) :: Q(Groups,Size% maxCorner)
-   real(adqt) :: afpm(Size%maxcf)
-   real(adqt) :: coefpsic(Size%maxcf)
-   real(adqt) :: psifp(Groups,Size%maxcf)
-   real(adqt) :: tpsic(Groups,Size% maxCorner)
-
-
+   real(adqt) :: src(8)      ! (maxCorner)
+   real(adqt) :: Q(8)        ! (maxCorner)
+   real(adqt) :: afpm(3)     ! (maxcf)
+   real(adqt) :: coefpsic(3) ! (maxcf)
+   real(adqt) :: psifp(3)    ! (maxCorner)
+   real(adqt) :: tpsic(8)    ! (maxCorner)
 
 !  Constants
 
@@ -67,66 +80,71 @@ contains
    parameter (fouralpha4=5.82d0)
 
 
+   ig = threadIdx%x
+   mm = blockIdx%z
+   Angle = Angles(mm)
 
-   nzones    = Size%nzones
+   p = 0
+   ndoneZ = 0
+   PassLoop: do while (ndoneZ < nzones)
+    p = p + 1
+    passZcount = passZstart(p+1,Angle) - passZstart(p,Angle)
 
-   omega(:) = QuadSet% omega(:,Angle)
+    ZoneLoop: do ii=threadIdx%y,passZcount,blockDim%y
 
-!  Loop through all of the corners using the NEXT list
-
-   ndone = 0
-
-   ZoneLoop: do ii=1,nzones
+     !!FIXME: simplifying assumption that all zones have same nCorner values
+     !! (they're all 8 from what we've seen). If this isn't true in general,
+     !! just convert this into a table lookup
+     ndone = (ndoneZ+ii-1) * maxCorner
  
-     zone = nextZ(ii)
+     zone = nextZ(ndoneZ+ii,Angle)
 
-     Z    => getZoneData(Geom, zone)
-
-     nCorner   = Z% nCorner
-     nCFaces   = Z% nCFaces
-     c0        = Z% c0 
+     nCorner = ZData(zone)% nCorner
+     nCFaces = ZData(zone)% nCFaces
+     c0      = ZData(zone)% c0
+     Sigt    = ZDataSoA%Sigt(ig,zone)
+     SigtInv = one/Sigt
 
 !  Contributions from volume terms
 
      do c=1,nCorner
-       do ig=1,Groups
-         source        = Z%STotal(ig,c) + Z%STime(ig,c,Angle)
-         Q(ig,c)       = Z%SigtInv(ig)*source 
-         src(ig,c)     = Z%Volume(c) *source
-         SigtVol(ig,c) = Z%Sigt(ig)*Z%Volume(c)
-       enddo
+       source     = ZDataSoA%STotal(ig,c,zone) + ZData(zone)%STime(ig,c,Angle)
+       Q(c)       = SigtInv*source 
+       src(c)     = ZDataSoA%Volume(c,zone)*source
      enddo
 
      CornerLoop: do i=1,nCorner
 
-       ic      = next(ndone+i)
+       ic      = next(ndone+i,Angle)
        c       = ic - c0
 
-!  Calculate Area_CornerFace dot Omega to determine the
-!  contributions from incident fluxes across external
+       sigv    = Sigt*ZDataSoA%Volume(c,zone)
+
+!  Calculate Area_CornerFace dot Omega to determine the 
+!  contributions from incident fluxes across external 
 !  corner faces (FP faces)
 
        sumArea = zero
  
        do icface=1,ncfaces
 
-         afpm(icface) = omega(1)*Z%A_fp(1,icface,c) + &
-                        omega(2)*Z%A_fp(2,icface,c) + &
-                        omega(3)*Z%A_fp(3,icface,c)
+         afpm(icface) = omega(1,Angle)*ZDataSoA%A_fp(1,icface,c,zone) + &
+                        omega(2,Angle)*ZDataSoA%A_fp(2,icface,c,zone) + &
+                        omega(3,Angle)*ZDataSoA%A_fp(3,icface,c,zone)
 
-         icfp    = Z%Connect(1,icface,c)
-         ib      = Z%Connect(2,icface,c)
+         icfp    = ZDataSoA%Connect(1,icface,c,zone)
+         ib      = ZDataSoA%Connect(2,icface,c,zone)
                                                                                                    
          if ( afpm(icface) >= zero ) then
            sumArea = sumArea + afpm(icface)
          else
            if (icfp == 0) then
-             psifp(:,icface) = psib(:,ib)
+             psifp(icface) = psib(ig,ib,Angle)
            else
-             psifp(:,icface) = psic(:,icfp)
+             psifp(icface) = psiccache(ig,icfp,mm)
            endif
 
-           src(:,c)  = src(:,c) - afpm(icface)*psifp(:,icface)
+           src(c) = src(c) - afpm(icface)*psifp(icface)
          endif
        enddo
 
@@ -136,16 +154,16 @@ contains
 
        do icface=1,nCFaces
 
-         aez = omega(1)*Z%A_ez(1,icface,c) + &
-               omega(2)*Z%A_ez(2,icface,c) + &
-               omega(3)*Z%A_ez(3,icface,c) 
+         aez = omega(1,Angle)*ZDataSoA%A_ez(1,icface,c,zone) + &
+               omega(2,Angle)*ZDataSoA%A_ez(2,icface,c,zone) + &
+               omega(3,Angle)*ZDataSoA%A_ez(3,icface,c,zone) 
 
          if (aez > zero ) then
 
            sumArea        = sumArea + aez
            area_opp       = zero
            nxez           = nxez + 1
-           cez            = Z%Connect(3,icface,c)
+           cez            = ZDataSoA%Connect(3,icface,c,zone)
            ez_exit(nxez)  = cez
            coefpsic(nxez) = aez
 
@@ -155,26 +173,24 @@ contains
 
              if ( afpm(ifp) < zero ) then
                area_opp   = -afpm(ifp)
-               psi_opp(:) =  psifp(:,ifp)
+               psi_opp    =  psifp(ifp)
              endif
 
            else
 
              ifp        = icface
              area_opp   = zero
-             psi_opp(:) = zero
+             psi_opp    = zero
 
              do k=1,nCFaces-2
                ifp = mod(ifp,nCFaces) + 1
                if ( afpm(ifp) < zero ) then
                  area_opp   = area_opp   - afpm(ifp)
-                 psi_opp(:) = psi_opp(:) - afpm(ifp)*psifp(:,ifp)
+                 psi_opp    = psi_opp    - afpm(ifp)*psifp(ifp)
                endif
              enddo
 
-             area_inv = one/area_opp
-
-             psi_opp(:) = psi_opp(:)*area_inv
+             psi_opp = psi_opp/area_opp
 
            endif
 
@@ -182,11 +198,7 @@ contains
 
              aez2 = aez*aez
 
-             do ig=1,Groups
-  
-               sigv         = SigtVol(ig,c)
                sigv2        = sigv*sigv
- 
                gnum         = aez2*( fouralpha*sigv2 +              &
                               aez*(four*sigv + three*aez) )
 
@@ -194,20 +206,16 @@ contains
                             ( gnum + four*sigv2*sigv2 + aez*sigv*(six*sigv2 + &
                               two*aez*(two*sigv + aez)) ) 
 
-               sez          = gtau*sigv*( psi_opp(ig) - Q(ig,c) ) +   &
-                              half*aez*(one - gtau)*( Q(ig,c) - Q(ig,cez) )
-               src(ig,c)    = src(ig,c)   + sez
-               src(ig,cez)  = src(ig,cez) - sez
-
-             enddo
+               sez          = gtau*sigv*( psi_opp - Q(c) ) +   &
+                              half*aez*(one - gtau)*( Q(c) - Q(cez) )
+               src(c)       = src(c)   + sez
+               src(cez)     = src(cez) - sez
 
            else
 
-             do ig=1,Groups
-               sez          = half*aez*( Q(ig,c) - Q(ig,cez) )
-               src(ig,c)    = src(ig,c)   + sez
-               src(ig,cez)  = src(ig,cez) - sez
-             enddo
+               sez          = half*aez*( Q(c) - Q(cez) )
+               src(c)       = src(c)   + sez
+               src(cez)     = src(cez) - sez
 
            endif TestOppositeFace
 
@@ -217,7 +225,7 @@ contains
 
 !  Corner angular flux
 
-       tpsic(:,c) = src(:,c)/(sumArea + SigtVol(:,c))
+       tpsic(c) = src(c)/(sumArea + sigv)
 
 !  Calculate the angular flux exiting all "FP" surfaces
 !  and the current exiting all "EZ" surfaces.
@@ -226,38 +234,133 @@ contains
 !  Zone Interior or "EZ" Faces
 
        do icface=1,nxez
-         cez        = ez_exit(icface)
-         src(:,cez) = src(:,cez) + coefpsic(icface)*tpsic(:,c)
+         cez      = ez_exit(icface)
+         src(cez) = src(cez) + coefpsic(icface)*tpsic(c)
        enddo
 
      enddo CornerLoop
 
-     ndone = ndone + nCorner
-
-!  Copy temporary flux array into the global one
+!  Copy temporary flux into the global array
 
      do c=1,nCorner
-       psic(:,c0+c) = tpsic(:,c)
+       psiccache(ig,c0+c,mm) = tpsic(c)
+       psic(ig,c0+c,Angle) = tpsic(c)
      enddo
-                                                                                                
-   enddo ZoneLoop
+
+    enddo ZoneLoop
+
+    ndoneZ = ndoneZ + passZcount
+
+    call syncthreads
+
+   enddo PassLoop
+
+   end subroutine sweep
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! Caller
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+   subroutine snswp3d(anglebatch, Angles, d_Angles,  &
+                      next, nextZ, passZstart, PSIC, psiccache, PSIB)
+
+
+   use kind_mod
+   use constant_mod
+   use Size_mod
+   use Geometry_mod
+   use Quadrature_mod
+   use Material_mod
+   use ZoneData_mod
+   use cudafor
+
+   implicit none
+
+!  Arguments
+
+   integer,    intent(in)    :: anglebatch
+
+   integer,    intent(in) :: Angles(anglebatch)
+   integer,    device, intent(in) :: d_Angles(anglebatch)
+   integer,    device, intent(in) :: next(Size%ncornr+1,QuadSet%NumAngles)
+   integer,    device, intent(in) :: nextZ(Size%nzones,QuadSet%NumAngles)
+   integer,    device, intent(in) :: passZstart(Size%nzones,QuadSet%NumAngles)
+
+   real(adqt), intent(inout) :: psic(QuadSet%Groups,Size%ncornr,QuadSet%NumAngles)
+   real(adqt), device, intent(inout) :: psiccache(QuadSet%Groups,Size%ncornr,anglebatch)
+
+   real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
+
+!  Local Variables
+
+   integer    :: mm, Angle,istat,i,ib,ic
+
+   type(dim3) :: threads,blocks
+
+   type(C_DEVPTR)                    :: d_psib_p
+   type(C_DEVPTR)                    :: d_psic_p
+   real(adqt), dimension(:,:,:), device, allocatable :: d_psib(:,:,:)
+   real(adqt), dimension(:,:,:), device, allocatable :: d_psic(:,:,:)
+
+#ifdef PROFILING_ON
+   integer profiler(2) / 0, 0 /
+   save profiler
+#endif
+
+
+#ifdef PROFILING_ON
+   call TAU_PROFILE_TIMER(profiler, 'snswp3d')
+   call TAU_PROFILE_START(profiler)
+#endif
+
+   istat = cudaHostGetDevicePointer(d_psib_p, C_LOC(psib(1,1,1)), 0)
+   istat = cudaHostGetDevicePointer(d_psic_p, C_LOC(psic(1,1,1)), 0)
+   call c_f_pointer(d_psib_p, d_psib, [QuadSet%Groups,Size%nbelem,QuadSet%NumAngles] )
+   call c_f_pointer(d_psic_p, d_psic, [QuadSet%Groups,Size%ncornr,QuadSet%NumAngles] )
+
+
+!  Loop through all of the corners using the NEXT list
+
+   threads=dim3(QuadSet%Groups,NZONEPAR,1)
+   blocks=dim3(1,1,anglebatch)
+
+   call sweep<<<blocks,threads>>>(QuadSet%Groups, QuadSet%NumAngles,       &
+                                  anglebatch, Size%ncornr, Size%nzones,    &
+                                  Size%nbelem, Size%maxcf, Size%maxCorner, &
+                                  passZstart, d_Angles, QuadSet%d_omega,   &
+                                  Geom%d_ZData, Geom%d_ZDataSoA,           &
+                                  next, nextZ, d_psic, psiccache, d_psib)
+
+   istat = cudaDeviceSynchronize()
+   if (istat /= 0) then
+      write(*,*) "CUDA sync API error:",istat
+      stop
+   endif
 
 !  Set exiting boundary fluxes
+
+  do mm=1,anglebatch
+   Angle = Angles(mm)
 
    ExitBdy => getExitList(QuadSet, Angle)
 
    do i=1,ExitBdy% nExit
      ib = ExitBdy% ListExit(1,i)
      ic = ExitBdy% ListExit(2,i)
-     psib(:,ib) = psic(:,ic)
+     psib(:,ib,Angle) = psic(:,ic,Angle)
    enddo
 
+  enddo
 
-
-
+#ifdef PROFILING_ON
+   call TAU_PROFILE_STOP(profiler)
+#endif
 
 
    return
    end subroutine snswp3d
- end module snswp3d_mod
 
+   end module snswp3d_mod

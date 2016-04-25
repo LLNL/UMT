@@ -11,6 +11,7 @@
 
    subroutine rtmainsn(dtrad, PSIR, PHI, angleLoopTime)
 
+   use, intrinsic :: iso_c_binding
    use kind_mod
    use iter_control_list_mod
    use iter_control_mod
@@ -20,6 +21,7 @@
    use Quadrature_mod
    use constant_mod
    use radconstant_mod
+   use cudafor
 
    implicit none
 
@@ -34,7 +36,7 @@
 
    integer    :: NumSnSets
 
-   integer    :: noutrt, ninrt, intensityIter, izero
+   integer    :: noutrt, ninrt, intensityIter, izero, istat
    integer    :: nbelem, ngr, nangSN
    integer    :: set, NumQuadSets, NumBin
 
@@ -44,15 +46,21 @@
  
 !  Photon Intensities on the problem boundary
 
-   real(adqt), allocatable :: psib(:,:,:)
+   real(adqt), pinned, allocatable, save :: psib(:,:,:)
 
-
+#ifdef PROFILING_ON
+   integer profiler(2) / 0, 0 /
+   save profiler
+#endif
 
 !  Constants:
 
    parameter (izero=0)
 
-
+#ifdef PROFILING_ON
+   call TAU_PROFILE_TIMER(profiler, 'rtmainsn')
+   call TAU_PROFILE_START(profiler)
+#endif
 
 !  Set some scalars used for dimensioning
 
@@ -87,13 +95,18 @@
  
 !  Photon Intensities on the problem boundary
 
-   allocate( psib(ngr,nbelem,nangSN) )
+   if (.not. allocated(psib) ) then
+     allocate( psib(ngr,nbelem,nangSN) )
+
+     istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
+     istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
+   endif
 
 !***********************************************************************
 !     SWEEP ORDER                                                      *
 !***********************************************************************
  
-!  Find reflected angles on all reflecting boundaries
+!  Find reflected angles on all reflecting boundaries 
 
    call findReflectedAngles
 
@@ -253,9 +266,12 @@
 !     RELEASE MEMORY                                                   *
 !***********************************************************************
  
-!  Photon Intensities on thr problem boundary
+!  Photon Intensities on the problem boundary
 
-   deallocate( psib )
+   !! These are saved and reused across calls
+   !deallocate( psib )
+   !istat = cudaHostUnregister(C_LOC(psir(1,1,1)))
+   !istat = cudaHostUnregister(C_LOC(phi(1,1)))
  
 !  Structures for communicating boundary fluxes and sweeps
 
@@ -267,7 +283,9 @@
    enddo
 
 
-
+#ifdef PROFILING_ON
+   call TAU_PROFILE_STOP(profiler)
+#endif
 
    return
    end subroutine rtmainsn

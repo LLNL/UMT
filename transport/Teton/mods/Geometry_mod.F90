@@ -4,6 +4,7 @@ module Geometry_mod
 
   use kind_mod
   use ZoneData_mod
+  use cudafor
 
   private
 
@@ -30,6 +31,11 @@ module Geometry_mod
      integer, pointer :: nfpc(:)              ! nfpc(ncornr)
 
      type(ZoneData), pointer :: ZData(:)      ! zone data pointers
+     type(ZoneData), device, allocatable :: d_ZData(:)
+     type(ZoneData_SoA), allocatable :: ZDataSoA
+     type(ZoneData_SoA), device, allocatable :: d_ZDataSoA
+
+     logical :: d_ZData_uptodate
 
   end type Geometry
 
@@ -55,6 +61,7 @@ contains
 
   subroutine Geometry_ctor(self)
 
+    use, intrinsic :: iso_c_binding
     use Size_mod
 
     implicit none
@@ -62,6 +69,10 @@ contains
 !   Passed variables
 
     type(Geometry),  intent(inout) :: self
+
+!   Local variables
+
+    integer :: istat
 
 !!$    allocate( self % px(Size%ndim,Size%npnts) )
     allocate( self % volc(Size%ncornr) )
@@ -86,7 +97,15 @@ contains
 !   Pointers
 
     allocate( self % ZData(Size%nzones) )
+    allocate( self % d_ZData(Size%nzones) )
+    allocate( self % ZDataSoA )
+    allocate( self % d_ZDataSoA )
 
+    istat = cudaHostRegister(C_LOC(self%ZData(1)), sizeof(self%ZData), cudaHostRegisterMapped)
+
+    call constructZones_SoA(self % ZDataSoA)
+    istat = cudaMemcpyAsync(C_DEVLOC(self%d_ZDataSoA), C_LOC(self%ZDataSoA), sizeof(self%ZDataSoA), 0)
+    self % d_ZData_uptodate = .false.
 
     return
                                                                                              
@@ -112,13 +131,14 @@ contains
      return
  
   end function Geometry_getZone
-                                                                                             
+
 !=======================================================================
 ! destruct interface
 !=======================================================================
 
   subroutine Geometry_dtor(self)
 
+    use, intrinsic :: iso_c_binding
     use Size_mod
 
     implicit none
@@ -127,6 +147,11 @@ contains
 
     type(Geometry),  intent(inout) :: self
 
+!   Locals
+
+    integer :: istat
+
+!   Function
 
 !!$    deallocate( self % px )
     deallocate( self % volc )
@@ -148,6 +173,17 @@ contains
     deallocate( self % ZoneToSrc )
     deallocate( self % nfpc )
 
+!   Pointers
+
+    !! should probably deallocate these here; not doing so
+    !! because self%ZData was not deallocated in original code
+
+    !istat = cudaHostUnregister(C_LOC(self % ZData(1)))
+    !deallocate( self % ZData )
+    !deallocate( self % d_ZData )
+    !destructZones_SoA(self%ZDataSoA)
+    !deallocate( self % ZDataSoA )
+    !deallocate( self % d_ZDataSoA )
 
     return
 

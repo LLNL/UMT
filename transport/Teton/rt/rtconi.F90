@@ -11,7 +11,7 @@
 !                                                                      *
 !   Local:   relerr - relative errors                                  *
 !                                                                      *
-!***********************************************************************
+!*********************************************************************** 
    subroutine rtconi(maxEnergyDensityError, Phi)
 
    use kind_mod
@@ -61,7 +61,7 @@
 
    intensityControl => getIterationControl(IterControls,"intensity")
 
-!  Find the zone-average energy density
+!  Find the zone-average energy density 
 
    do zone=1,nzones
      Z => getZoneData(Geom, zone)
@@ -93,7 +93,7 @@
 
 !  Compute relative errors in the total energy density in
 !  a zone; eliminate zones from consideration if their zonal
-!  energy is less than a threshold
+!  energy is less than a threshold 
 
    zoneMaxError          = 0
    maxEnergyDensityError = zero
