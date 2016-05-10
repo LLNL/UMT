@@ -34,8 +34,6 @@
 
 !  Local
 
-   integer, dimension(1) :: zoneEnergyMax 
-
    integer    :: my_node, ig, zoneMaxError, nodeID, nzones
    integer    :: c, c0, nCorner, zone, ngr, bdyTest
 
@@ -84,8 +82,7 @@
 
 !  Find an energy threshold for convergence tests
 
-   zoneEnergyMax  = maxloc( EnergyDensity(:) )
-   EnergyMax      = EnergyDensity(zoneEnergyMax(1))
+   EnergyMax = maxval( EnergyDensity(:) )
 
    call MPIAllReduceT(EnergyMax, "max", MPI_COMM_WORLD)
 

@@ -132,12 +132,12 @@
 
    ZoneLoop2: do zone=1,nzones
 
+     PhiAve  = zero
+!$omp parallel private(nCorner,c0,volumeRatio,sumRad) reduction(+:PhiAve)
      Z       => getZoneData(Geom, zone)
-
      nCorner = Z% nCorner
      c0      = Z% c0
-     PhiAve  = zero
-
+!$omp do
      do c=1,nCorner
        volumeRatio = Z% VolumeOld(c)/Z% Volume(c)
        Phi(:,c0+c) = Phi(:,c0+c)*volumeRatio
@@ -154,6 +154,7 @@
        PhiAve = PhiAve + Z% Volume(c)*sumRad
 
      enddo
+!$omp end parallel
 
      eradBOC = eradBOC + PhiAve
      PhiAve  = PhiAve/(Z% VolumeZone*rad_constant*speed_light)

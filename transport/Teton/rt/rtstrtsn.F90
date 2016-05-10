@@ -33,6 +33,8 @@
 
    integer    :: ia, ic, ig, ncornr, nzones, ngr
    integer    :: c, c0, nCorner, zone
+   integer :: tid, nth, iabeg, iaend
+   integer, external :: omp_get_thread_num, omp_get_num_threads
 
    real(adqt) :: tau, sum, quadwt
 
@@ -47,16 +49,21 @@
 !  source using the old time-step intensity
 
    if (Size%itimsrc == 'exact') then
+!$omp parallel private(nCorner,c0,tid,nth,iabeg,iaend)
+     tid = omp_get_thread_num()
+     nth = omp_get_num_threads()
+     call omp_block_partition(tid,nth,1,Size%nangSN,iabeg,iaend)
      ZoneLoop: do zone=1,nzones
        Z => getZoneData(Geom, zone)
        nCorner = Z% nCorner
-       c0      = Z% c0 
-       do ia=1,Size%nangSN
+       c0      = Z% c0
+       do ia = iabeg, iaend  !YKT  was : ia=1,Size%nangSN
          do c=1,nCorner
            Z% STime(:,c,ia) = tau*psir(:,c0+c,ia)
          enddo
        enddo
      enddo ZoneLoop
+!$omp end parallel
    else
      do zone=1,nzones
        Z => getZoneData(Geom, zone)
@@ -102,3 +109,25 @@
    return
    end subroutine rtstrtsn
  
+! block partition do-loop indices i1 to i2 
+! for worker : myrank = 0, ..., nranks - 1
+! using a method that is as balanced as possible
+
+subroutine omp_block_partition(myrank, nranks, i1, i2, ibeg, iend)
+  implicit none
+  integer, intent(in) :: myrank, nranks, i1, i2
+  integer, intent(out) :: ibeg, iend
+  integer nwork, chunk, extra, ntcut  !local variables
+  nwork = i2 - i1 + 1
+  chunk = nwork/nranks
+  extra = nwork - nranks*chunk
+  ntcut = nranks - extra
+  if (myrank .lt. ntcut) then
+    ibeg = i1 + myrank*chunk
+    iend = ibeg + chunk - 1
+  else
+    ibeg = i1 + ntcut*chunk + (myrank - ntcut)*(chunk + 1)
+    iend = ibeg + chunk
+  end if
+  if (iend .gt. i2) iend = i2
+end

@@ -46,6 +46,8 @@
    real(adqt)       :: maxFluxError
    real(adqt)       :: startOMPLoopTime, endOMPLoopTime, theOMPLoopTime
 
+   integer angles, nbelem, ncornr, NumBin, myrank, info
+
 !  Function
 
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
@@ -63,6 +65,14 @@
 
    Groups = QuadSet%Groups
 
+   angles = QuadSet%NumAngles
+   nbelem = Size%nbelem
+   ncornr = Size%ncornr
+   NangBin = maxval(QuadSet%NangBinList(:))
+   NumBin = QuadSet%NumBin
+   call mpi_comm_rank(mpi_comm_world, myrank, info)
+
+   if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
 !  Loop over angle bins
 
    if (ipath == 'sweep') then

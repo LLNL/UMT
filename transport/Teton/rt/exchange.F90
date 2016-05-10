@@ -18,7 +18,7 @@
 
    implicit none
 
-!  Include 1
+!  Include MPI
 
    include 'mpif.h'
 
@@ -33,7 +33,8 @@
    integer    :: Angle,i,ia,ib,ig,ishared,message,ncomm,ngroups,  &
                  ierr,bin,mybin,nsend,nsend0,nrecv,nrecv0,NangBin 
 
-   integer    :: binSend1, binSend2, binRecv1, binRecv2
+   integer    :: binSend1, binSend2, binRecv1, binRecv2, MaxNangBin
+   integer, allocatable :: message_base(:)
 
    integer    :: status(MPI_STATUS_SIZE,2)
 
@@ -60,10 +61,15 @@
       binRecv2 = QuadSet% NumBin
    endif
 
+
+   MaxNangBin = maxval(QuadSet%NangBinList(:))
+   allocate(message_base(MaxNangBin))
+
 !  Exchange boundary information with neighbors
 !  Loop over the number of angle bins (in most cases this is 1)
 
    DecompTest: if (Size% decomp_s == 'on') then
+
 
      time1 = MPI_Wtime()
 
@@ -81,11 +87,19 @@
 
          if (Comm% lensend > 0) then
 
-           message = 0 
+! YKT: precompute message_base for each ia
+           message = 0
+           do ia = 1, NangBin
+             nsend = Comm% nsend(ia)
+             message_base(ia) = message
+             message = message + nsend*ngroups
+           end do
+
            nsend0  = 0
 
 !  Loop over exiting angle, boundary element pairs for this communicator
 
+!$omp parallel do private(Angle,nsend,ib,message) reduction(+:nsend0)
            do ia=1,NangBin
              Angle = QuadSet% AngleOrder(ia,bin)
              nsend = Comm% nsend(ia)
@@ -93,12 +107,11 @@
              do i=1,nsend
 
                ib = Comm% ListSend(nsend0+i)
+               message = message_base(ia) + (i - 1)*ngroups
 
                do ig=1,ngroups
                  Comm% psibsend(message+ig) = psib(ig,ib,Angle)
                enddo
-
-               message = message + ngroups
 
              enddo
              nsend0 = nsend0 + nsend
@@ -116,15 +129,15 @@
 
 !  Make sure all sends are complete
 
-     do bin=binSend1,binSend2
-       do ishared=1,ncomm
-         Comm => getMessage(QuadSet, bin, ishared)
-
-         if (Comm% lensend > 0) then
-           call MPI_Wait(Comm% irequest(1), status, ierr)
-         endif
-       enddo
-     enddo
+!    do bin=binSend1,binSend2
+!      do ishared=1,ncomm
+!        Comm => getMessage(QuadSet, bin, ishared)
+!
+!        if (Comm% lensend > 0) then
+!          call MPI_Wait(Comm% irequest(1), status, ierr)
+!        endif
+!      enddo
+!    enddo
 
 !  Process data we receive
 
@@ -143,11 +156,19 @@
 
            call MPI_Wait(Comm% irequest(2), status, ierr)
 
-           message = 0 
+! YKT: precompute message_base for each ia
+           message = 0
+           do ia = 1, NangBin
+             nrecv = Comm% nrecv(ia)
+             message_base(ia) = message
+             message = message + nrecv*ngroups
+           end do
+
            nrecv0  = 0
 
 !  Loop over boundary elements that are incident for this communicator
 
+!$omp parallel do private(Angle,nrecv,ib,message) reduction(+:nrecv0)
            do ia=1,NangBin
              Angle = QuadSet% AngleOrder(ia,mybin)
              nrecv = Comm% nrecv(ia)
@@ -155,12 +176,11 @@
              do i=1,nrecv
 
                ib = Comm% ListRecv(nrecv0+i)
+               message = message_base(ia) + (i - 1)*ngroups
 
                do ig=1,ngroups
                  psib(ig,ib,Angle) = Comm% psibrecv(message+ig)
                enddo
-
-               message = message + ngroups
 
              enddo
              nrecv0 = nrecv0 + nrecv
@@ -175,6 +195,16 @@
      enddo ReceiveLoop
 
 
+     do bin=binSend1,binSend2
+       do ishared=1,ncomm
+         Comm => getMessage(QuadSet, bin, ishared)
+
+         if (Comm% lensend > 0) then
+           call MPI_Wait(Comm% irequest(1), status, ierr)
+         endif
+       enddo
+     enddo
+
      time2 = MPI_Wtime()
      dtime = (time2 - time1)/60.d0
 
@@ -182,7 +212,7 @@
 
    endif DecompTest
 
-
+   deallocate(message_base)
 
    return
    end subroutine exchange
