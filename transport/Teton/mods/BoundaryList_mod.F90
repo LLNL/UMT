@@ -31,7 +31,7 @@ module BoundaryList_mod
 
   end type BoundaryList
 
-  type(BoundaryList), pointer, public :: RadBoundary
+  type(BoundaryList), allocatable, public :: RadBoundary ! didn't really need to be pointer
 
 
   interface construct
