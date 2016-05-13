@@ -15,7 +15,8 @@ module Boundary_mod
          getReflectedAngle
 
   type, public :: ReflectedAngle
-     integer,    pointer  :: ReflAngle(:)      ! list of angle IDs
+     !integer,    pointer  :: ReflAngle(:)      ! list of angle IDs
+     integer,    allocatable  :: ReflAngle(:)      ! list of angle IDs
   end type ReflectedAngle
                                                                                  
   type, public :: Boundary 
