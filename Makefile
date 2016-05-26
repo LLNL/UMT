@@ -134,15 +134,15 @@ all: subdirs libInfrastructure.$(LIB_EXT) libTetonUtils.$(LIB_EXT) TetonTest.o
 
 
 libInfrastructure.$(LIB_EXT):$(INFRASTRUCTURE_OBJECTS)
-	ar rcs $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)
 
 libTetonUtils.$(LIB_EXT):$(UTILS_OBJECTS)
-	ar rcs $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_TetonUtils_EXTRAS)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBPATH) $(PLATFORM_TetonUtils_EXTRAS)
 
 
 # SuOlsonTest target only for internal testing purposes
 SuOlsonTest:SuOlsonTest.o transport part communication libInfrastructure.$(LIB_EXT) libTetonUtils.$(LIB_EXT) 
-	$(LINK) $(LINKFLAGS) $< -o $@ $(LIBPATH) $(EXE_LIBS) $(EXE_LIBS2)
+	$(LINK) $(LINKFLAGS) $< -o $@ $(LIBPATH) $(EXE_LIBS)
 
 SUBDIRS = geom communication part transport utilities
 
