@@ -13,7 +13,7 @@
 !                                                                      *
 !***********************************************************************
 
-#define BATCHSIZE 32
+#define BATCHSIZE 30
 
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 

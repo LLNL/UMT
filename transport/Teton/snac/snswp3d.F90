@@ -324,7 +324,8 @@
 
 !  Loop through all of the corners using the NEXT list
 
-   threads=dim3(QuadSet%Groups,NZONEPAR,1)
+   ! groups*NZONEPAR must be .le. 1024 on K80 hardware
+   threads=dim3(QuadSet%Groups,NZONEPAR,1) 
    blocks=dim3(1,1,anglebatch)
 
    call sweep<<<blocks,threads>>>(QuadSet%Groups, QuadSet%NumAngles,       &
