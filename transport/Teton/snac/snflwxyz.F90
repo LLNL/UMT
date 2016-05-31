@@ -26,6 +26,7 @@
    use cudafor
 
 #include "assert.h"
+!  Assertion checking include file for TETON
 
    implicit none
    include 'mpif.h'
@@ -40,7 +41,7 @@
 
 !  Local
 
-   integer          :: Angle, mm,mm1,mm2,anglebatch, n_cpuL
+   integer          :: Angle, mm,mm1,mm2,anglebatch, n_cpuL, thnum
    integer          :: Groups, fluxIter, ishared
    integer          :: binSend, binRecv, NangBin, istat
 
@@ -57,6 +58,7 @@
    type(C_DEVPTR) :: dptr
 
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
+   integer angles, nbelem, ncornr, NumBin, myrank, info
 
 !  Function
 
@@ -76,6 +78,14 @@
 
    Groups = QuadSet%Groups
 
+   angles = QuadSet%NumAngles
+   nbelem = Size%nbelem
+   ncornr = Size%ncornr
+   NangBin = maxval(QuadSet%NangBinList(:))
+   NumBin = QuadSet%NumBin
+   call mpi_comm_rank(mpi_comm_world, myrank, info)
+
+   if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
 !  Loop over angle bins
 
    if (ipath == 'sweep') then
@@ -109,6 +119,11 @@
        
 !
 
+
+       
+
+!
+!$OMP PARALLEL DO  PRIVATE(mm1,mm2,anglebatch,thnum)
        AngleLoop: do mm1=1,NangBin,BATCHSIZE
 
          mm2=min(mm1+BATCHSIZE-1,NangBin)
@@ -123,6 +138,9 @@
                                    QuadSet%Groups*Size%ncornr, 0)
            enddo
          endif
+
+         thnum = 1
+!         thnum = OMP_GET_THREAD_NUM() + 1 
 
 !        Set angular fluxes for reflected angles
 
@@ -159,7 +177,6 @@
 !      Exchange Boundary Fluxes
 
        call exchange(PSIB, binSend, binRecv) 
-
 
      enddo AngleBin
 

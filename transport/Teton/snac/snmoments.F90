@@ -4,7 +4,7 @@
 !   SNMOMENTS - This routine, called by SNFLWRZA and SNFLWXYZ          *
 !               calculates the required spherical harmonic moments     *
 !               [phic] of the angular flux [psic]. It uses the array   *
-!               ynm(n,m), whose definition is:                         * 
+!               ynm(n,m), whose definition is:                         *
 !                                                                      *
 !               ynm(n,m) = real part of (l,k)th spherical harmonic,    *
 !                          evaluated at the mth direction, where       *
@@ -43,7 +43,9 @@
 
 !  Local
 
-   integer    :: c0, ic, ig, Angle, Groups, ncornr
+   integer    :: ic, ig, Angle, Groups, ncornr
+   integer :: tid,nth,icbeg,icend
+   integer, external :: omp_get_thread_num, omp_get_num_threads
 
    real(adqt) :: quadwt 
 
@@ -54,15 +56,20 @@
 
    Phi(:,:) = zero
 
-   do c0=1,ncornr,512
+!$omp parallel private(quadwt,tid,nth,icbeg,icend)
+   tid = omp_get_thread_num()
+   nth = omp_get_num_threads()
+   !do c0=1,ncornr,512 ! cache blocking loop
+   !call omp_block_partition(tid,nth,c0,min(ncornr,c0+511),icbeg,icend)
+   call omp_block_partition(tid,nth,1,ncornr,icbeg,icend)
 
-    AngleLoop: do Angle=1,QuadSet%NumAngles
+   AngleLoop: do Angle=1,QuadSet%NumAngles
 
      quadwt = QuadSet% Weight(Angle)
 
      if (quadwt /= zero) then
 
-       do ic=c0,min(ncornr,c0+511) ! cache blocking
+       do ic = icbeg, icend     ! YKT, was :  ic=1,ncornr
          do ig=1,Groups
            Phi(ig,ic) = Phi(ig,ic) + quadwt*psic(ig,ic,Angle)
          enddo
@@ -70,9 +77,10 @@
 
      endif
 
-    enddo AngleLoop
+   enddo AngleLoop
 
-   enddo
+   !enddo
+!$omp end parallel
  
    return
    end subroutine snmoments

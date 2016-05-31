@@ -1,6 +1,8 @@
 module mpif90_mod
 
 #include "assert.h"
+!  Assertion checking include file for TETON
+
 use kind_mod
 use mpi_param_mod
 
@@ -18,7 +20,135 @@ use mpi_param_mod
 
 private
 
-#include "mpif90.if"
+!=======================================================================
+!                       Version 1.0: 03/99, MRZ
+!-----------------------------------------------------------------------
+! MPI Interface File
+!   This defines the interface to the MPI class.
+!
+!-----------------------------------------------------------------------
+! v1.0: Original implementation
+!=======================================================================
+
+
+! public interfaces
+  public MPIAllReduceT, MPIBarrierT, MPICommRank, MPICommSize, &
+         MPIFinalize, MPIGather, MPIInit, &
+         getMPIRankT, getMPISizeT
+
+!=======================================================================
+! MPIAllReduceT(buffer, op, comm)
+!
+!   Performs an MPI reduction on all nodes in the communicator.
+!-----------------------------------------------------------------------
+!   buffer   data buffer (integer or double precision)
+!               input:  data to be reduced
+!              output:  reduced data
+!   op       reduction operation
+!              "prod"...product reduction
+!               "sum"...sum reduction
+!               "min"...minimization reduction
+!               "max"...maximization reduction
+!   comm     MPI communicator
+!=======================================================================
+  interface MPIAllReduceT
+    module procedure mpi_MPIAllReduceT_r, &
+                     mpi_MPIAllReduceT_r_, &
+                     mpi_MPIAllReduceT_i, &
+                     mpi_MPIAllReduceT_i_
+  end interface
+
+!=======================================================================
+! MPIBarrier(comm)
+!
+!   Performs an MPI barrier on all nodes in the communicator
+!-----------------------------------------------------------------------
+!   comm   MPI communicator
+!=======================================================================
+  interface MPIBarrierT
+    module procedure mpi_MPIBarrierT
+  end interface
+
+!=======================================================================
+! MPICommRank(comm, rank)
+!
+!   Returns the rank of the calling process in the communicator
+!-----------------------------------------------------------------------
+!   comm   MPI communicator
+!   rank   processor rank
+!=======================================================================
+  interface MPICommRank
+    module procedure mpi_MPICommRank
+  end interface
+
+!=======================================================================
+! MPICommSize(comm, size)
+!
+!   Returns the size of the group associated with the communicator
+!-----------------------------------------------------------------------
+!   comm     MPI communicator
+!   size     group size
+!=======================================================================
+  interface MPICommSize
+    module procedure mpi_MPICommSize
+  end interface
+
+!=======================================================================
+! MPIFinalize()
+!
+!   Performs an MPI finalize operation
+!=======================================================================
+  interface MPIFinalize
+    module procedure mpi_MPIFinalize
+  end interface
+
+!=======================================================================
+! MPIGather(sendBuf, recBuf, root, comm)
+!
+!   Performs an MPI gather operation
+!-----------------------------------------------------------------------
+!   sendBuf  send buffer (double precision)
+!   recvBuf  receive buffer (double precision)
+!   root     node to which gather is performed
+!   comm     MPI communicator
+!=======================================================================
+  interface MPIGather
+    module procedure mpi_MPIGather_r_, &
+                     mpi_MPIGather_r__
+  end interface
+
+!=======================================================================
+! MPIInit()
+!
+!   Performs an MPI initialization
+!=======================================================================
+  interface MPIInit
+    module procedure mpi_MPIInit
+  end interface
+
+!=======================================================================
+! getMPIRank(comm)
+!
+!   Returns the rank of the calling process in the communicator
+!-----------------------------------------------------------------------
+!   comm        MPI communicator
+!   getMPIRank  processor rank
+!=======================================================================
+  interface getMPIRankT
+    module procedure mpi_getMPIRankT
+  end interface
+
+!=======================================================================
+! getMPISize(comm)
+!
+!   Returns the size of the group associated with the communicator
+!-----------------------------------------------------------------------
+!   comm        MPI communicator
+!   getMPISize  group size
+!=======================================================================
+  interface getMPISizeT
+    module procedure mpi_getMPISizeT
+  end interface
 
 contains
 
@@ -52,9 +182,9 @@ contains
                                    (/"min ","max ","prod","sum "/)
 
 !    assertions
-     require(any(mpiOp==mpiOps(:)), "Invalid MPI Reduction Operation")
+     
 
-#ifdef MPI
+
      
 !      copy the send buffer into temporary storage
        sendBuf = recvBuf
@@ -82,7 +212,7 @@ contains
           call f90fatal("MPI Reduction Failed")
        endif
 
-#endif
+
 
      return
   end subroutine mpi_MPIAllReduceT_r
@@ -114,9 +244,9 @@ contains
                                    (/"min ","max ","prod","sum "/)
 
 !    assertions
-     require(any(mpiOp==mpiOps(:)), "Invalid MPI Reduction Operation")
+     
 
-#ifdef MPI
+
 
 !      allocate memory for the send buffer
        allocate(sendBuf(size(recvBuf)))
@@ -150,7 +280,7 @@ contains
 !      free memory
        deallocate(sendBuf, stat=alloc_stat)
 
-#endif
+
 
 
      return
@@ -183,9 +313,9 @@ contains
                                    (/"min ","max ","prod","sum "/)
 
 !    assertions
-     require(any(mpiOp==mpiOps(:)), "Invalid MPI Reduction Operation")
+     
 
-#ifdef MPI
+
 
 !      copy the send buffer into temporary storage
        sendBuf = recvBuf
@@ -213,7 +343,7 @@ contains
           call f90fatal("MPI Reduction Failed")
        endif
 
-#endif
+
 
      return
   end subroutine mpi_MPIAllReduceT_i
@@ -245,9 +375,9 @@ contains
                                    (/"min ","max ","prod","sum "/)
 
 !    assertions
-     require(any(mpiOp==mpiOps(:)), "Invalid MPI Reduction Operation")
+     
 
-#ifdef MPI
+
 
 !      allocate memory for the send buffer
        allocate(sendBuf(size(recvBuf)))
@@ -281,7 +411,7 @@ contains
 !      free memory
        deallocate(sendBuf, stat=alloc_stat)
 
-#endif
+
 
 
      return
@@ -305,13 +435,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Barrier
      call MPI_Barrier(comm, ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Barrier Failed")
      endif
-#endif
+
 
      return
   end subroutine mpi_MPIBarrierT
@@ -337,15 +467,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Communicator Rank
      call MPI_Comm_rank(comm, rank, ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Barrier Failed")
      endif
-#else
-     rank = 0
-#endif
+
 
      return
   end subroutine mpi_MPICommRank
@@ -371,15 +499,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Communicator Size
      call MPI_Comm_size(comm, commSize, ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Barrier Failed")
      endif
-#else
-     commSize = 1
-#endif
+
 
      return
   end subroutine mpi_MPICommSize
@@ -398,13 +524,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Finalize
      call MPI_Finalize(ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Finalize Failed")
      endif
-#endif
+
 
      return
   end subroutine mpi_MPIFinalize
@@ -437,15 +563,15 @@ contains
      integer    :: commSize, myNode, sendCount, recvCount, ierror
      real(long) :: recvBufDum(1,1)
 
-#ifdef MPI
+
 !    determine size and rank
      commSize = getMPISizeT(comm)
      myNode = getMPIRankT(comm)
 
 !    assertions
      if (myNode == gatherNode) then
-        require(size(recvBuf,1)==size(sendBuf,1), "Invalid MPI Gather")
-        require(size(recvBuf,2)==commSize, "Invalid MPI Gather")
+        
+        
      endif
 
 !    MPI Barrier before performing the gather
@@ -476,7 +602,7 @@ contains
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Reduction Failed")
      endif
-#endif
+
 
      return
   end subroutine mpi_MPIGather_r_
@@ -506,16 +632,16 @@ contains
      integer    :: commSize, myNode, sendCount, recvCount, ierror
      real(long) :: recvBufDum(1,1,1)
 
-#ifdef MPI
+
 !    determine size and rank
      commSize = getMPISizeT(comm)
      myNode = getMPIRankT(comm)
 
 !    assertions
      if (myNode == gatherNode) then
-        require(size(recvBuf,1)==size(sendBuf,1), "Invalid MPI Gather")
-        require(size(recvBuf,2)==size(sendBuf,2), "Invalid MPI Gather")
-        require(size(recvBuf,3)==commSize, "Invalid MPI Gather")
+        
+        
+        
      endif
 
 !    MPI Barrier before performing the gather
@@ -536,7 +662,7 @@ contains
 !       on non-gather nodes, the receiver buffer is dereferenced due
 !       to a Fortran90 copy-in/copy-out operation.  To avoid
 !       dereferencing a null pointer, pass a dummy (allocated) receive
-!       buffer, which MPI ignores.
+!       buffer, which 1 ignores.
 
         call MPI_Gather(sendBuf, sendCount, MPI_REAL8, &
                         recvBufDum, recvCount, MPI_REAL8, &
@@ -546,7 +672,7 @@ contains
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Reduction Failed")
      endif
-#endif
+
 
      return
   end subroutine mpi_MPIGather_r__
@@ -565,13 +691,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Init
      call MPI_Init(ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Init Failed")
      endif
-#endif
+
 
      return
   end subroutine mpi_MPIInit
@@ -598,15 +724,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Communicator Rank
      call MPI_Comm_rank(comm, MPIrank, ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Barrier Failed")
      endif
-#else
-     MPIRank = 0
-#endif
+
 
      return
   end function mpi_getMPIRankT
@@ -632,15 +756,13 @@ contains
 !    local variables
      integer :: ierror
 
-#ifdef MPI
+
 !    MPI Communicator Size
      call MPI_Comm_size(comm, MPISize, ierror)
      if (ierror /= MPI_SUCCESS) then
         call f90fatal("MPI Barrier Failed")
      endif
-#else
-     MPISize = 1
-#endif
+
 
      return
   end function mpi_getMPISizeT

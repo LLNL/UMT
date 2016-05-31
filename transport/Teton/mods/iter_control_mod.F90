@@ -1,6 +1,7 @@
 module iter_control_mod
 
 #include "assert.h"
+!  Assertion checking include file for TETON
       use kind_mod
       use constant_mod
       use io_mod
@@ -14,7 +15,7 @@ module iter_control_mod
 ! epsilonPoint    pointwise relative error convergence criterion
 ! maxIter         maximum number of iterations
 ! nIter           number of iterations to reach convergence
-! nTotIter        total number of iterations over 
+! nTotIter        total number of iterations over
 ! zoneOfMax       zone number of maximum relative pointwise error
 !-----------------------------------------------------------------------
 ! v1.0: Original implementation
@@ -193,14 +194,14 @@ contains
      endif
 
 !    assertions
-     ensure(self%epsilonPoint>zero, "Invalid iter control ctor")
-     ensure(self%localError>zero, "Invalid iter control ctor")
-     ensure(self%globalError>zero, "Invalid iter control ctor")
-     ensure(self%maxIter>zero, "Invalid iter control ctor")
-     ensure(self%nIter>=zero, "Invalid iter control ctor")
-     ensure(self%nTotIter>=zero, "Invalid iter control ctor")
-     ensure(self%zoneOfMax>=zero, "Invalid iter control ctor")
-     ensure(self%processOfMax>=zero, "Invalid iter control ctor")
+     
+     
+     
+     
+     
+     
+     
+     
 
      return
   end subroutine iter_control_ctor
@@ -255,8 +256,8 @@ contains
      self % nTotIter = 0
 
 !    assertions
-     ensure(self%nIter==0, "Invalid iter control reset")
-     ensure(self%nTotIter==0, "Invalid iter control reset")
+     
+     
 
      return
   end subroutine iter_control_reset_nIter
@@ -278,15 +279,15 @@ contains
      integer,           intent(in)    :: nIter
 
 !    assertions
-     require(nIter>=0, "Invalid number of iterations")
+     
 
 !    reset the number of iterations
      self % nIter = nIter
      self % nTotIter = self % nTotIter + nIter
 
 !    assertions
-     ensure(self%nIter>=0, "Invalid number of iterations")
-     ensure(self%nTotIter>=0, "Invalid number of iterations")
+     
+     
 
      return
   end subroutine iter_control_set_nIter
@@ -308,13 +309,13 @@ contains
      integer,           intent(in)    :: zoneOfMax 
                                                                                       
 !    assertions
-     require(zoneOfMax>=0, "Invalid zone number")
+     
                                                                                       
-!    reset the zone with maximum relative error 
+!    reset the zone with maximum relative error
      self % zoneOfMax = zoneOfMax 
                                                                                       
 !    assertions
-     ensure(self%zoneOfMax>0, "Invalid zone number")
+     
                                                                                       
      return
   end subroutine iter_control_set_zoneOfMax
@@ -336,13 +337,13 @@ contains
      integer,           intent(in)    :: processOfMax
  
 !    assertions
-     require(processOfMax>=0, "Invalid process number")
+     
  
 !    reset the process with maximum relative error
      self % processOfMax = processOfMax
  
 !    assertions
-     ensure(self%processOfMax>=0, "Invalid process number")
+     
  
      return
   end subroutine iter_control_set_processOfMax
@@ -364,13 +365,13 @@ contains
      real(adqt),        intent(in)    :: localError
    
 !    assertions
-     require(localError>=0, "Invalid local error")
+     
    
 !    reset local maximum relative error
      self % localError = localError 
    
 !    assertions
-     ensure(self%localError>=0, "Invalid local error")
+     
    
      return
   end subroutine iter_control_set_localError
@@ -392,13 +393,13 @@ contains
      real(adqt),        intent(in)    :: globalError
    
 !    assertions
-     require(globalError>=0, "Invalid global error")
+     
    
 !    reset global maximum relative error
      self % globalError = globalError
    
 !    assertions
-     ensure(self%globalError>=0, "Invalid global error")
+     
    
      return
   end subroutine iter_control_set_globalError
@@ -450,7 +451,7 @@ contains
      epsilonPoint = self % epsilonPoint
 
 !    assertions
-     ensure(epsilonPoint==self%epsilonPoint, "Invalid data access")
+     
 
      return
   end function iter_control_get_epsilonPoint
@@ -471,7 +472,7 @@ contains
     maxIter = self%maxIter
 
 !   assertions
-    ensure(maxIter==self%maxIter, "Invalid data access")
+    
 
     return
   end function iter_control_get_maxIter
@@ -492,7 +493,7 @@ contains
     nIter = self%nIter
 
 !   assertions
-    ensure(nIter==self%nIter, "Invalid data access")
+    
 
     return
   end function iter_control_get_nIter
@@ -513,7 +514,7 @@ contains
     nTotIter = self%nTotIter
 
 !   assertions
-    ensure(nTotIter==self%nTotIter, "Invalid data access")
+    
 
     return
   end function iter_control_get_nTotIter
@@ -534,7 +535,7 @@ contains
     zoneOfMax = self%zoneOfMax
 
 !   assertions
-    ensure(zoneOfMax==self%zoneOfMax, "Invalid data access")
+    
 
     return
   end function iter_control_get_zoneOfMax
@@ -555,7 +556,7 @@ contains
     processOfMax = self%processOfMax
                                                                                        
 !   assertions
-    ensure(processOfMax==self%processOfMax, "Invalid data access")
+    
                                                                                        
     return
   end function iter_control_get_processOfMax
@@ -576,7 +577,7 @@ contains
     localError = self%localError
                                                                                        
 !   assertions
-    ensure(localError==self%localError, "Invalid data access")
+    
                                                                                        
     return
   end function iter_control_get_localError
@@ -597,7 +598,7 @@ contains
     globalError = self%globalError
                            
 !   assertions
-    ensure(globalError==self%globalError, "Invalid data access")
+    
                                  
     return
   end function iter_control_get_globalError

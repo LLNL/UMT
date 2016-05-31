@@ -22,7 +22,7 @@
 
    implicit none
 
-!  Include MPI   
+!  Include MPI
 
    include 'mpif.h'
 

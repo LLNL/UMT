@@ -71,7 +71,7 @@
      allocate( BinTally(NumBin) )
      allocate( Order(NumBin) )
      allocate( temp(NumBin) )
-     allocate( buffer(NumBin,nShared) )
+     if (nShared > 0) allocate( buffer(NumBin,nShared) )
      allocate( BinOffSet(NumBin) )
 
 !  Tally message size by angle bin
@@ -124,8 +124,7 @@
        Order(ndone)      = imax(1)
        BinTally(imax(1)) = -999 
        depend(imax(1))   = -999 
-
-       imax      = maxloc( depend(1:NumBin) )
+       imax   = maxloc( depend(1:NumBin) )
        maxdepend = depend(imax(1))
      enddo
 
@@ -169,7 +168,7 @@
        do i=nleft,1,-1
          Order(i)          = imax(1)
          BinTally(imax(1)) = -999 
-         imax              = maxloc( BinTally(1:NumBin) )
+         imax    = maxloc( BinTally(1:NumBin) )
        enddo
 
 !  Send my order to all neighbors
@@ -224,7 +223,7 @@
      deallocate( BinTally )
      deallocate( Order )
      deallocate( temp )
-     deallocate( buffer )
+     if (nShared > 0) deallocate( buffer )
      deallocate( BinOffSet )
 
    enddo AngleSetLoop
@@ -233,4 +232,3 @@
 
    return
    end subroutine SweepScheduler 
-

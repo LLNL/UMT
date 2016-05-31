@@ -29,4 +29,6 @@ module mpi_param_mod
 
 #endif
 
+! MPI is enabled: include the system-dependent MPI include file
+
 end module mpi_param_mod

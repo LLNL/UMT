@@ -1,0 +1,9 @@
+*.o
+*.a
+*.d
+*.mod
+slurm*
+*~
+dump.out
+*.so
+SuOlsonTest

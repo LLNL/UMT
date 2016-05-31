@@ -87,6 +87,9 @@
      SMatEff    = Mat%SMatEff(zone)
      Siga(:)    = Mat%siga(:,zone)
 
+!YKT: add OpenMP
+!$omp parallel do private(ic,iter,tecOld,temp,t3,t4,tempInv,gnukt,x,ex,dbex,frac,Planck, &
+!$omp &  sum,dBdT,Chi,Eta,one_Eta,EmissionRate,NetEmisAbsRate,deltaE,error,echeck,srcmat)
      CornerLoop: do c=1,nCorner
 
        ic   = c0 + c
