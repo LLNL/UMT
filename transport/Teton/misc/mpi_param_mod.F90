@@ -15,19 +15,9 @@ module mpi_param_mod
 
   public
 
-#ifdef MPI
 ! MPI is enabled: include the system-dependent MPI include file
 
-#include <mpif.h>
-
-#else
-! MPI is disabled: required variable declarations to satisfy remaining
-! stub routines
-
-  integer, parameter, public :: MPI_COMM_WORLD=0
-  integer, parameter, public :: MPI_STATUS_SIZE=1
-
-#endif
+#include 'mpif.h
 
 ! MPI is enabled: include the system-dependent MPI include file
 
