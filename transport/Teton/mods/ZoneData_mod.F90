@@ -230,7 +230,9 @@ contains
 
 !   Function
 
-    threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),16,1)
+    !threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),16,1)
+    threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),4,1)
+    print *,"threads.x = ",  max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf)
     blocks  = dim3(1,(Size%nzones+threads%y-1)/threads%y,1)
 
     call ZoneData_SoA_init_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &

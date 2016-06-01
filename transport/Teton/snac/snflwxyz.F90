@@ -113,17 +113,12 @@
 !    Loop over angles, solving for each in turn:
      startOMPLoopTime = MPI_WTIME()
 
+!!!$OMP PARALLEL DO  PRIVATE(binRecv,binSend,NangBin,mm1,mm2,anglebatch,thnum)
      AngleBin: do binRecv=1,QuadSet% NumBin
        binSend = QuadSet% SendOrder(binRecv)
        NangBin = QuadSet% NangBinList(binSend)
        
-!
-
-
-       
-
-!
-!$OMP PARALLEL DO  PRIVATE(mm1,mm2,anglebatch,thnum)
+       ! loop over batches within the angle bin
        AngleLoop: do mm1=1,NangBin,BATCHSIZE
 
          mm2=min(mm1+BATCHSIZE-1,NangBin)
@@ -138,9 +133,6 @@
                                    QuadSet%Groups*Size%ncornr, 0)
            enddo
          endif
-
-         thnum = 1
-!         thnum = OMP_GET_THREAD_NUM() + 1 
 
 !        Set angular fluxes for reflected angles
 
