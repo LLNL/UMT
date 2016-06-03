@@ -32,7 +32,7 @@ module Geometry_mod
 
      type(ZoneData), pointer :: ZData(:)      ! zone data pointers
      type(ZoneData), device, allocatable :: d_ZData(:)
-     type(ZoneData_SoA), allocatable :: ZDataSoA
+     type(ZoneData_SoA), allocatable :: ZDataSoA ! is this host version really needed?
      type(ZoneData_SoA), device, allocatable :: d_ZDataSoA
 
      logical :: d_ZData_uptodate
@@ -101,8 +101,10 @@ contains
     allocate( self % ZDataSoA )
     allocate( self % d_ZDataSoA )
 
+	! Pin the array pointed to by ZData:
     istat = cudaHostRegister(C_LOC(self%ZData(1)), sizeof(self%ZData), cudaHostRegisterMapped)
 
+	! is host version of ZDataSoA really needed?
     call constructZones_SoA(self % ZDataSoA)
     istat = cudaMemcpyAsync(C_DEVLOC(self%d_ZDataSoA), C_LOC(self%ZDataSoA), sizeof(self%ZDataSoA), 0)
     self % d_ZData_uptodate = .false.
@@ -131,7 +133,7 @@ contains
      return
  
   end function Geometry_getZone
-
+                                                                                             
 !=======================================================================
 ! destruct interface
 !=======================================================================
@@ -151,7 +153,6 @@ contains
 
     integer :: istat
 
-!   Function
 
 !!$    deallocate( self % px )
     deallocate( self % volc )
