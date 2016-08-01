@@ -97,12 +97,18 @@
 
    if (.not. allocated(psib) ) then
      allocate( psib(ngr,nbelem,nangSN) )
+     print *, "size of psib: ", sizeof(psib)
 
      print *, "pinning psir"
-     istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
-     print *, LOC(psir(1,1,1))
-     if(istat .ne. 0) print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
-     !, cudaGetErrorString(istat)
+     !istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
+     istat = cudaHostRegister(C_LOC(psir(1,1,1)), Size%ngr*Size%ncornr*Size%nangSN*int8(8), cudaHostRegisterMapped)
+     print *, "size of psir: ", sizeof(psir)
+     print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
+     print *, "Correct size should be :", Size%ngr*Size%ncornr*Size%nangSN*int8(8)
+     if(istat .ne. 0) then
+        print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
+        !print *, cudaGetErrorString(istat)
+     endif
 
 
 

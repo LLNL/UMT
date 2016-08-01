@@ -14,7 +14,7 @@
 ! number of zones that will be processed in parallel from each batch
 #define NZONEPAR 2
 ! number of threads available for groups (must be >= groups)
-#define THREADX 256
+#define THREADX 192
 
 module snswp3d_mod
   use kind_mod
@@ -378,7 +378,7 @@ contains
                 if(ig>Groups .or. c0+c > ncornr .or. Angle > NumAngles) then
                    print *, "ig, c0, c, Angle", ig, c0, c, Angle
                 endif
-                !psic(ig,c0+c,Angle) = tpsic(c)
+                psic(ig,c0+c,Angle) = tpsic(c)
                 !psic(ig,c0+c,Angle) = tpsic(c)
              enddo
 
@@ -457,13 +457,13 @@ contains
    call c_f_pointer(d_psib_p, d_psib, [QuadSet%Groups,Size%nbelem,QuadSet%NumAngles] )
    call c_f_pointer(d_psic_p, d_psic, [QuadSet%Groups,Size%ncornr,QuadSet%NumAngles] )
 
-   print *, "[QuadSet%Groups,Size%ncornr,QuadSet%NumAngles]"
-   print *, QuadSet%Groups,Size%ncornr,QuadSet%NumAngles
+   !print *, "[QuadSet%Groups,Size%ncornr,QuadSet%NumAngles]"
+   !print *, QuadSet%Groups,Size%ncornr,QuadSet%NumAngles
 
-   print *, LOC(psic(1,1,1))
+   !print *, LOC(psic(1,1,1))
 
-   d_psic(1,1,1) = 1
-   print *, QuadSet%NumAngles/8
+   !d_psic(1,1,1) = 1
+   !print *, QuadSet%NumAngles/8
 
 !  Loop through all of the corners using the NEXT list
 
@@ -472,7 +472,7 @@ contains
    threads=dim3(THREADX,1,NZONEPAR) 
    blocks=dim3(1,1,anglebatch)
 
-   call test<<<blocks,threads>>>(QuadSet%Groups, QuadSet%NumAngles,       &
+   call sweep<<<blocks,threads>>>(QuadSet%Groups, QuadSet%NumAngles,       &
                                   anglebatch, Size%ncornr, Size%nzones,    &
                                   Size%nbelem, Size%maxcf, Size%maxCorner, &
                                   passZstart, d_Angles, QuadSet%d_omega,   &
