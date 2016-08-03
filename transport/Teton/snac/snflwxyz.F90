@@ -13,7 +13,7 @@
 !                                                                      *
 !***********************************************************************
 
-#define BATCHSIZE 30
+#define BATCHSIZE 90
 
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
@@ -85,7 +85,8 @@
    NumBin = QuadSet%NumBin
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
-   if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
+   !if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
+
 !  Loop over angle bins
 
    if (ipath == 'sweep') then

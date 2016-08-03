@@ -12,7 +12,7 @@
 !***********************************************************************
 
 ! number of zones that will be processed in parallel from each batch
-#define NZONEPAR 2
+#define NZONEPAR 4
 ! number of threads available for groups (must be >= groups)
 #define THREADX 192
 
@@ -24,130 +24,6 @@ module snswp3d_mod
   use cudafor
 
 contains
-
-  attributes(global) subroutine test(Groups, NumAngles, anglebatch, &
-       ncornr, nzones, nbelem, &
-       maxcf, maxCorner, passZstart, Angles, omega, &
-       ZData, ZDataSoA, next, nextZ, psic, psiccache, psib)
-    implicit none
-
-    !  Arguments
-
-    integer,    value, intent(in)     :: Groups, NumAngles, anglebatch, ncornr, &
-         nzones, nbelem, maxcf, maxCorner
-
-    integer,    device, intent(in)    :: passZstart(nzones,NumAngles)
-    integer,    device, intent(in)    :: Angles(anglebatch)
-    real(adqt), device, intent(in)    :: omega(3,NumAngles)
-
-    type(ZoneData),     device, intent(in) :: ZData(nzones)
-    type(ZoneData_SoA), device, intent(in) :: ZDataSoA
-
-    integer,    device, intent(in)    :: next(ncornr+1,NumAngles)
-    integer,    device, intent(in)    :: nextZ(nzones,NumAngles)
-
-    real(adqt), device, intent(out) :: psic(Groups,ncornr,NumAngles)
-    real(adqt), device, intent(inout) :: psiccache(Groups,ncornr,anglebatch)
-    real(adqt), device, intent(inout) :: psib(Groups,nbelem,NumAngles)
-
-    !  Local Variables
-
-    integer    :: Angle, i, ib, ic, icfp, icface, id, ifp, ig, k, nxez
-    integer    :: zone, c, cez, ii, mm, ndone
-    integer    :: p, ndoneZ, passZcount
-    integer    :: nCorner, nCFaces, c0
-
-    !!FIXME: sizes are hardcoded at present due to a CUDA Fortran limitation
-    real(adqt), shared :: Volume(8,NZONEPAR) ! (maxCorner)
-    real(adqt), shared :: A_fp(3,3,NZONEPAR) ! (ndim,maxcf)
-    real(adqt), shared :: A_ez(3,3,NZONEPAR) ! (ndim,maxcf)
-    integer,    shared :: Connect(3,3,NZONEPAR) ! (3,maxcf)
-
-    integer    :: ez_exit(3) ! (maxcf)
-
-    real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
-    real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
-    real(adqt) :: Sigt, SigtInv
-
-    real(adqt) :: src(8)      ! (maxCorner)
-    real(adqt) :: Q(8)        ! (maxCorner)
-    real(adqt) :: afpm(3)     ! (maxcf)
-    real(adqt) :: coefpsic(3) ! (maxcf)
-    real(adqt) :: psifp(3)    ! (maxCorner)
-    real(adqt) :: tpsic(8)    ! (maxCorner)
-
-    !  Constants
-
-    parameter (fouralpha=1.82d0)
-    parameter (fouralpha4=5.82d0)
-
-
-    ig = threadIdx%x
-    mm = blockIdx%z
-    Angle = Angles(mm)
-
-    p = 0
-    ndoneZ = 0
-    PassLoop: do while (ndoneZ < nzones)
-       p = p + 1
-       passZcount = passZstart(p+1,Angle) - passZstart(p,Angle)
-       
-       !if(ig .le. Groups) then
-          ZoneLoop: do ii=threadIdx%z,passZcount,blockDim%z
-
-             !!FIXME: simplifying assumption that all zones have same nCorner values
-             !! (they're all 8 from what we've seen). If this isn't true in general,
-             !! just convert this into a table lookup
-             ndone = (ndoneZ+ii-1) * maxCorner
-
-             zone = nextZ(ndoneZ+ii,Angle)
-
-             nCorner = ZData(zone)% nCorner
-             nCFaces = ZData(zone)% nCFaces
-             c0      = ZData(zone)% c0
-             Sigt    = ZDataSoA%Sigt(ig,zone)
-             SigtInv = one/Sigt !need to thread?
-
-             !  Contributions from volume terms
-
-             do c=1,nCorner
-                !do ig= threadIdx%x, Groups, blockDim%x
-                source     = ZDataSoA%STotal(ig,c,zone) + ZData(zone)%STime(ig,c,Angle)
-                !enddo
-                Q(c)       = SigtInv*source 
-                src(c)     = ZDataSoA%Volume(c,zone)*source
-             enddo
-
-
-             !  Copy temporary flux into the global array
-
-             !print *, "ig, c0, Angle", ig, c0, Angle
-             do c=1,nCorner
-                psiccache(ig,c0+c,mm) = c
-                if(ig>Groups .or. c0+c > ncornr .or. Angle > NumAngles) then
-                   print *, "ig, c0, c, Angle", ig, c0, c, Angle
-                endif
-                if(ig .le. 0 .or. c0+c .le. 0 .or. Angle .le. 0) then
-                   print *, "ig, c0, c, Angle", ig, c0, c, Angle
-                endif
-                !print *, NumAngles/16
-                psic(Groups,ncornr,85) = c
-                !psic(ig,c0+c,Angle) = tpsic(c)
-             enddo
-
-          enddo ZoneLoop
-       !endif ! ig .le. groups
-
-       ndoneZ = ndoneZ + passZcount
-
-       call syncthreads
-
-    enddo PassLoop
-
-  end subroutine test
-
-
-
 
 
   attributes(global) subroutine sweep(Groups, NumAngles, anglebatch, &
@@ -375,9 +251,9 @@ contains
              !print *, "ig, c0, Angle", ig, c0, Angle
              do c=1,nCorner
                 psiccache(ig,c0+c,mm) = tpsic(c)
-                if(ig>Groups .or. c0+c > ncornr .or. Angle > NumAngles) then
-                   print *, "ig, c0, c, Angle", ig, c0, c, Angle
-                endif
+                !if(ig>Groups .or. c0+c > ncornr .or. Angle > NumAngles) then
+                !   print *, "ig, c0, c, Angle", ig, c0, c, Angle
+                !endif
                 psic(ig,c0+c,Angle) = tpsic(c)
                 !psic(ig,c0+c,Angle) = tpsic(c)
              enddo
@@ -392,6 +268,47 @@ contains
     enddo PassLoop
 
   end subroutine sweep
+
+
+  subroutine setExitFlux(  anglebatch, Angles, psic, psib)
+   
+    use kind_mod
+   use constant_mod
+   use Size_mod
+   use Geometry_mod
+   use Quadrature_mod
+   
+    implicit none
+
+   integer,    intent(in)    :: anglebatch
+
+   integer,    intent(in) :: Angles(anglebatch)
+
+   real(adqt), intent(inout) :: psic(QuadSet%Groups,Size%ncornr,QuadSet%NumAngles)
+
+   real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
+
+   integer :: mm, Angle, i, ib, ic
+
+
+!  Set exiting boundary fluxes
+
+  do mm=1,anglebatch
+   Angle = Angles(mm)
+
+   ExitBdy => getExitList(QuadSet, Angle)
+
+   do i=1,ExitBdy% nExit
+     ib = ExitBdy% ListExit(1,i)
+     ic = ExitBdy% ListExit(2,i)
+     psib(:,ib,Angle) = psic(:,ic,Angle)
+   enddo
+
+  enddo
+
+end subroutine setExitFlux
+
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -485,20 +402,7 @@ contains
       stop
    endif
 
-!  Set exiting boundary fluxes
-
-  do mm=1,anglebatch
-   Angle = Angles(mm)
-
-   ExitBdy => getExitList(QuadSet, Angle)
-
-   do i=1,ExitBdy% nExit
-     ib = ExitBdy% ListExit(1,i)
-     ic = ExitBdy% ListExit(2,i)
-     psib(:,ib,Angle) = psic(:,ic,Angle)
-   enddo
-
-  enddo
+   call setExitFlux(anglebatch, Angles, psic, psib)
 
 #ifdef PROFILING_ON
    call TAU_PROFILE_STOP(profiler)
