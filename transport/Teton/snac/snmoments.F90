@@ -88,7 +88,7 @@
 !!!!!! Device version of the same thing
 
 
-   subroutine snmomentsD(psiccache, PHI, weight, angleorder, angles)
+   subroutine snmomentsD(psiccache, PHI, weight, angleorder, angles, streamid)
 
    use kind_mod
    use constant_mod
@@ -107,6 +107,8 @@
    real(adqt), device, intent(in)  :: weight(QuadSet%NumAngles)
    integer, device, intent(in)  :: angleorder(angles)
 
+   integer(kind=cuda_stream_kind), intent(in) :: streamid
+
 !  Local
 
    integer    :: ic, ig, Groups, ncornr, istat
@@ -116,7 +118,7 @@
    Groups = QuadSet% Groups
    ncornr = Size% ncornr
 
-   !$cuf kernel do(2) <<< (*,*), (16,16) >>>
+   !$cuf kernel do(2) <<< (*,*), (16,16), stream=streamid >>>
    do ic=1,ncornr
      do ig=1,Groups
        Phi(ig,ic) = Phi(ig,ic) + SUM(weight(angleorder(:))*psiccache(ig,ic,:))

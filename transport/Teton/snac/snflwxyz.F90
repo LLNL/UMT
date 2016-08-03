@@ -41,6 +41,11 @@
 
 !  Local
 
+   integer, parameter :: nStreams = 8
+   integer(kind=cuda_stream_kind) :: stream(nStreams)
+   integer :: i
+   
+
    integer          :: Angle, mm,mm1,mm2,anglebatch, n_cpuL, thnum
    integer          :: Groups, fluxIter, ishared
    integer          :: binSend, binRecv, NangBin, istat
@@ -53,7 +58,7 @@
    type(C_DEVPTR)                    :: d_phi_p
    real(adqt), dimension(:,:), device, allocatable :: d_phi(:,:)
 
-   real(adqt), device :: psiccache(QuadSet%Groups,Size%ncornr,BATCHSIZE)
+   real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE)
    type(C_PTR) :: cptr
    type(C_DEVPTR) :: dptr
 
@@ -62,8 +67,12 @@
 
 !  Function
 
+   ! This sets up to allow zero copy use of phi directly on the device:
+   ! Get a device pointer for phi, put it to d_phi_p
    istat = cudaHostGetDevicePointer(d_phi_p, C_LOC(phi(1,1)), 0)
+   ! Translate that C pointer to the fortran array with given dimensions
    call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
+   
 
 !  Set number of threads
 
@@ -86,6 +95,11 @@
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
    !if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
+
+   do i = 1, nStreams
+      istat = cudaStreamCreate(stream(i))
+   enddo
+
 
 !  Loop over angle bins
 
@@ -119,6 +133,7 @@
        binSend = QuadSet% SendOrder(binRecv)
        NangBin = QuadSet% NangBinList(binSend)
        
+       
        ! loop over batches within the angle bin
        AngleLoop: do mm1=1,NangBin,BATCHSIZE
 
@@ -129,9 +144,9 @@
          !iteration of the loop
          if (binRecv == 1) then
            do mm=mm1,mm2
-             istat=cudaMemcpyAsync(psiccache(1,1,mm-mm1+1),                 &
+             istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),                 &
                                    psi(1,1,QuadSet%AngleOrder(mm,binSend)), &
-                                   QuadSet%Groups*Size%ncornr, 0)
+                                   QuadSet%Groups*Size%ncornr, stream(binRecv) )
            enddo
          endif
 
@@ -148,22 +163,35 @@
          call snswp3d(anglebatch, QuadSet%AngleOrder(mm1,binSend), &
                       QuadSet%d_AngleOrder(mm1,binSend),           &
                       QuadSet%d_next,QuadSet%d_nextZ,              &
-                      QuadSet%d_passZstart, psi, psiccache, psib)
+                      QuadSet%d_passZstart, psi, d_psi, psib, stream(binRecv))
 
          if (ipath == 'sweep') then
-           call snmomentsD(psiccache, d_phi, QuadSet%d_Weight,     &
+           call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
                            QuadSet%d_AngleOrder(mm1,binSend),      &
-                           anglebatch) ! GPU version, one slice at a time
+                           anglebatch, stream(binRecv)) ! GPU version, one slice at a time
          endif
+
+
+         ! synchronize to be sure psi is updated on host.
+         istat = cudaStreamSynchronize(stream(binRecv) )
+         !istat = cudaDeviceSynchronize()
+         if (istat /= 0) then
+            write(*,*) "CUDA stream sync API error:",istat
+            stop
+         endif
+
+         call setExitFlux(anglebatch, QuadSet%AngleOrder(mm1,binSend), psi, psib)
+
 
          if (binRecv < QuadSet% NumBin) then
            ! pre-stage data for next angle bin while exchange is happening
            do mm=mm1,mm2
-             istat=cudaMemcpyAsync(psiccache(1,1,mm-mm1+1),        &
+             istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),        &
                                    psi(1,1,QuadSet%AngleOrder(mm,QuadSet%SendOrder(binRecv+1))), &
-                                   QuadSet%Groups*Size%ncornr, 0)
+                                   QuadSet%Groups*Size%ncornr, stream(binRecv+1) )
            enddo
          endif
+
 
        enddo AngleLoop
 

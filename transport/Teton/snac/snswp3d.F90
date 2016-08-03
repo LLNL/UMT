@@ -318,7 +318,7 @@ end subroutine setExitFlux
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    subroutine snswp3d(anglebatch, Angles, d_Angles,  &
-                      next, nextZ, passZstart, PSIC, psiccache, PSIB)
+                      next, nextZ, passZstart, PSIC, psiccache, PSIB, streamid)
 
 
    use kind_mod
@@ -346,6 +346,8 @@ end subroutine setExitFlux
    real(adqt), device, intent(inout) :: psiccache(QuadSet%Groups,Size%ncornr,anglebatch)
 
    real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
+
+   integer(kind=cuda_stream_kind), intent(in) :: streamid
 
 !  Local Variables
 
@@ -389,20 +391,13 @@ end subroutine setExitFlux
    threads=dim3(THREADX,1,NZONEPAR) 
    blocks=dim3(1,1,anglebatch)
 
-   call sweep<<<blocks,threads>>>(QuadSet%Groups, QuadSet%NumAngles,       &
+   call sweep<<<blocks,threads,0,streamid>>>(QuadSet%Groups, QuadSet%NumAngles,       &
                                   anglebatch, Size%ncornr, Size%nzones,    &
                                   Size%nbelem, Size%maxcf, Size%maxCorner, &
                                   passZstart, d_Angles, QuadSet%d_omega,   &
                                   Geom%d_ZData, Geom%d_ZDataSoA,           &
                                   next, nextZ, d_psic, psiccache, d_psib)
 
-   istat = cudaDeviceSynchronize()
-   if (istat /= 0) then
-      write(*,*) "CUDA sync API error:",istat
-      stop
-   endif
-
-   call setExitFlux(anglebatch, Angles, psic, psib)
 
 #ifdef PROFILING_ON
    call TAU_PROFILE_STOP(profiler)
