@@ -13,7 +13,8 @@
 !                                                                      *
 !***********************************************************************
 
-#define BATCHSIZE 90
+! if batches are not currently size of bins, data is staged wrong.
+#define BATCHSIZE 30
 
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
