@@ -12,7 +12,7 @@
 !***********************************************************************
 
 ! number of zones that will be processed in parallel from each batch
-#define NZONEPAR 4
+#define NZONEPAR 5
 ! number of threads available for groups (must be >= groups)
 #define THREADX 192
 
@@ -316,7 +316,7 @@ contains
 
     real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
     real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
-    real(adqt) :: SigtInv
+    
 
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
@@ -359,9 +359,9 @@ contains
              !enddo
 
              !  Contributions from volume terms
-
+             do ig= threadIdx%x, Groups, blockDim%x 
              do c=1,nCorner
-                do ig= threadIdx%x, Groups, blockDim%x 
+                
                    source     = ZDataSoA%STotal(ig,c,zone) + ZData(zone)%STime(ig,c,Angle)
                    Q(c)       = source/ZDataSoA%Sigt(ig,zone) 
                    src(c)     = ZDataSoA%Volume(c,zone)*source
@@ -517,7 +517,6 @@ contains
              enddo
 
           enddo ZoneLoop
-       !endif ! ig .le. groups
 
        ndoneZ = ndoneZ + passZcount
 
