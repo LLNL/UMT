@@ -316,7 +316,7 @@ contains
 
     real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
     real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
-    real(adqt) :: Sigt, SigtInv
+    real(adqt) :: SigtInv
 
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
@@ -353,13 +353,15 @@ contains
              nCorner = ZData(zone)% nCorner
              nCFaces = ZData(zone)% nCFaces
              c0      = ZData(zone)% c0
-             Sigt    = ZDataSoA%Sigt(ig,zone)
-             SigtInv = one/Sigt !need to thread?
+
+             do ig= threadIdx%x, Groups, blockDim%x 
+                SigtInv = one/ZDataSoA%Sigt(ig,zone)!Sigt !need to thread?
+             enddo
 
              !  Contributions from volume terms
 
              do c=1,nCorner
-                do ig= threadIdx%x, Groups, blockDim%x
+                do ig= threadIdx%x, Groups, blockDim%x 
                    source     = ZDataSoA%STotal(ig,c,zone) + ZData(zone)%STime(ig,c,Angle)
                 enddo
                 Q(c)       = SigtInv*source 
@@ -372,8 +374,9 @@ contains
 
                 ic      = next(ndone+i,Angle)
                 c       = ic - c0
-
-                sigv    = Sigt*ZDataSoA%Volume(c,zone)
+                do ig= threadIdx%x, Groups, blockDim%x 
+                   sigv    = ZDataSoA%Sigt(ig,zone)*ZDataSoA%Volume(c,zone)
+                enddo
 
                 !  Calculate Area_CornerFace dot Omega to determine the 
                 !  contributions from incident fluxes across external 
@@ -393,12 +396,16 @@ contains
                    if ( afpm(icface) >= zero ) then
                       sumArea = sumArea + afpm(icface)
                    else
+                      
                       if (icfp == 0) then
-                         psifp(icface) = psib(ig,ib,Angle)
+                         do ig= threadIdx%x, Groups, blockDim%x 
+                            psifp(icface) = psib(ig,ib,Angle)
+                         enddo
                       else
-                         psifp(icface) = psiccache(ig,icfp,mm)
+                         do ig= threadIdx%x, Groups, blockDim%x 
+                            psifp(icface) = psiccache(ig,icfp,mm)
+                         enddo
                       endif
-
                       src(c) = src(c) - afpm(icface)*psifp(icface)
                    endif
                 enddo
@@ -499,12 +506,14 @@ contains
 
              !print *, "ig, c0, Angle", ig, c0, Angle
              do c=1,nCorner
-                psiccache(ig,c0+c,mm) = tpsic(c)
+                do ig= threadIdx%x, Groups, blockDim%x 
+                   psiccache(ig,c0+c,mm) = tpsic(c)
                 !if(ig>Groups .or. c0+c > ncornr .or. Angle > NumAngles) then
                 !   print *, "ig, c0, c, Angle", ig, c0, c, Angle
                 !endif
-                psic(ig,c0+c,Angle) = tpsic(c)
-                !psic(ig,c0+c,Angle) = tpsic(c)
+                   ! zero copy off of GPU. 
+                   psic(ig,c0+c,Angle) = tpsic(c)
+                enddo
              enddo
 
           enddo ZoneLoop
