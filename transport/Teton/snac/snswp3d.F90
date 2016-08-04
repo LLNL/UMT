@@ -354,18 +354,18 @@ contains
              nCFaces = ZData(zone)% nCFaces
              c0      = ZData(zone)% c0
 
-             do ig= threadIdx%x, Groups, blockDim%x 
-                SigtInv = one/ZDataSoA%Sigt(ig,zone)!Sigt !need to thread?
-             enddo
+             !do ig= threadIdx%x, Groups, blockDim%x 
+             !   SigtInv = one/ZDataSoA%Sigt(ig,zone)!Sigt !need to thread?
+             !enddo
 
              !  Contributions from volume terms
 
              do c=1,nCorner
                 do ig= threadIdx%x, Groups, blockDim%x 
                    source     = ZDataSoA%STotal(ig,c,zone) + ZData(zone)%STime(ig,c,Angle)
+                   Q(c)       = source/ZDataSoA%Sigt(ig,zone) 
+                   src(c)     = ZDataSoA%Volume(c,zone)*source
                 enddo
-                Q(c)       = SigtInv*source 
-                src(c)     = ZDataSoA%Volume(c,zone)*source
              enddo
 
 
