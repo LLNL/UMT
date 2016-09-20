@@ -102,7 +102,7 @@
      enddo
 
 !  Loop over all angles in group
-
+!$omp parallel do schedule(static)
      do ia=1,nangles
        do c=1,nCorner
          psir(:,c0+c,ia) = max(wtiso*planck(:),floor)

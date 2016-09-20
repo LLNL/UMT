@@ -10,10 +10,6 @@
 !   Output:                                                            *
 !                                                                      *
 !***********************************************************************
-module snswp3d_mod
-
-contains
-
 
    subroutine snswp3d(Groups, Angle,         &
                       next, nextZ, PSIC, PSIB)
@@ -259,5 +255,5 @@ contains
 
    return
    end subroutine snswp3d
- end module snswp3d_mod
+
 

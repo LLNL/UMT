@@ -43,7 +43,6 @@ snac/snmoments.o : \
         mods/Size_mod.o\
         mods/Quadrature_mod.o
 snac/snflwxyz.o : \
-	snac/snswp3d.o\
         mods/constant_mod.o\
         mods/kind_mod.o\
         mods/Size_mod.o\

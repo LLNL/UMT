@@ -95,11 +95,15 @@
  
 !  Find reflected angles on all reflecting boundaries
 
+   call timer_beg('reflect')
    call findReflectedAngles
+   call timer_end('reflect')
 
 !  Calculate ordering for grid sweeps
 
+   call timer_beg('rtorder')
    call rtorder 
+   call timer_end('rtorder')
 
 !***********************************************************************
 !     INITIALIZE COMMUNICATION                                         *
@@ -116,11 +120,15 @@
 !  Save various quantities from previous time step and calculate
 !  the time-dependent source
 
+   call timer_beg('rtstrtsn')
    call rtstrtsn(psir, Phi, PSIB)
+   call timer_end('rtstrtsn')
 
 !  Energy Change due to Compton scattering
 
+   call timer_beg('compton')
    call rtcompton(Phi) 
+   call timer_end('compton')
 
 !***********************************************************************
 !     EXCHANGE BOUNDARY FLUXES                                         *
@@ -128,13 +136,19 @@
 
 !  Establish angle order for transport sweeps
 
+   call timer_beg('scheduler')
    call SweepScheduler
+   call timer_end('scheduler')
 
 !  Initialize Absorption Rate
 
+   call timer_beg('absorbrate')
    call getAbsorptionRate(Phi) 
+   call timer_end('absorbrate')
 
+   call timer_beg('material')
    call UpdateMaterialCoupling(dtrad)
+   call timer_end('material')
 
 !***********************************************************************
 !     BEGIN IMPLICIT ELECTRON/RADIATION COUPLING ITERATION (OUTER)     *
@@ -167,10 +181,14 @@
 
 !  Sweep all angles in all groups in this "batch"
  
+         call timer_beg('exch')
          call InitExchange
          call exchange(PSIB, izero, izero)
+         call timer_end('exch')
 
+         call timer_beg('rswpmd')
          call rswpmd(PSIB, PSIR, PHI, angleLoopTime)
+         call timer_end('rswpmd')
 
        enddo GroupSetLoop
  
@@ -182,13 +200,17 @@
 
        Mat%AbsorptionRateOld(:) = Mat%AbsorptionRate(:)
 
+       call timer_beg('absorbrate')
        call getAbsorptionRate(Phi)
+       call timer_end('absorbrate')
 
 !***********************************************************************
 !     CHECK CONVERGENCE OF SCALAR INTENSITIES                          *
 !***********************************************************************
 
+       call timer_beg('rtconi')
        call rtconi(maxEnergyDensityError, Phi)
+       call timer_end('rtconi')
  
        if (maxEnergyDensityError < getEpsilonPoint(intensityControl) .or. &
            intensityIter >= getMaxNumberOfIterations(intensityControl)) then
@@ -207,11 +229,15 @@
  
 !  Calculate new electron temperature and energy change
  
+     call timer_beg('material')
      call UpdateMaterialCoupling(dtrad)
+     call timer_end('material')
 
 !  Check convergence of electron temperature
  
+     call timer_beg('rtconv')
      call rtconv(maxTempError) 
+     call timer_end('rtconv')
 
      if ((maxTempError <  getEpsilonPoint(temperatureControl) .and.  &
           maxEnergyDensityError <  getEpsilonPoint(intensityControl))  .or.   &
@@ -247,7 +273,9 @@
 !     BOUNDARY EDITS                                                   *
 !***********************************************************************
 
+   call timer_beg('bdyedt')
    call bdyedt(psib)
+   call timer_end('bdyedt')
 
 !***********************************************************************
 !     RELEASE MEMORY                                                   *

@@ -18,7 +18,7 @@ deps: MeshBase.d ZoneBase.d CornerBase.d FaceBase.d SideBase.d
 -include SideBase.d
 
 clean:
-	rm -f *.o *.pdb *.inst.*
+	rm -f *.d *.o *.pdb *.inst.*
 
 veryclean: clean
 	rm -f *.d

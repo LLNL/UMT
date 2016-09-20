@@ -92,7 +92,9 @@
            do ia = 1, NangBin
              nsend = Comm% nsend(ia)
              message_base(ia) = message
-             message = message + nsend*ngroups
+             do i = 1, nsend
+                message = message + ngroups
+             end do
            end do
 
            nsend0  = 0
@@ -129,15 +131,15 @@
 
 !  Make sure all sends are complete
 
-!    do bin=binSend1,binSend2
-!      do ishared=1,ncomm
-!        Comm => getMessage(QuadSet, bin, ishared)
-!
-!        if (Comm% lensend > 0) then
-!          call MPI_Wait(Comm% irequest(1), status, ierr)
-!        endif
-!      enddo
-!    enddo
+     do bin=binSend1,binSend2
+       do ishared=1,ncomm
+         Comm => getMessage(QuadSet, bin, ishared)
+ 
+         if (Comm% lensend > 0) then
+           call MPI_Wait(Comm% irequest(1), status, ierr)
+         endif
+       enddo
+     enddo
 
 !  Process data we receive
 
@@ -161,14 +163,16 @@
            do ia = 1, NangBin
              nrecv = Comm% nrecv(ia)
              message_base(ia) = message
-             message = message + nrecv*ngroups
+             do i = 1, nrecv
+                message = message + ngroups
+             end do
            end do
 
            nrecv0  = 0
 
 !  Loop over boundary elements that are incident for this communicator
 
-!$omp parallel do private(Angle,nrecv,ib,message) reduction(+:nrecv0)
+!$omp parallel do private(Angle,nrecv,ib,message) reduction(+:nrecv0) 
            do ia=1,NangBin
              Angle = QuadSet% AngleOrder(ia,mybin)
              nrecv = Comm% nrecv(ia)
@@ -193,17 +197,6 @@
 !  End loop over shared surfaces
 
      enddo ReceiveLoop
-
-
-     do bin=binSend1,binSend2
-       do ishared=1,ncomm
-         Comm => getMessage(QuadSet, bin, ishared)
-
-         if (Comm% lensend > 0) then
-           call MPI_Wait(Comm% irequest(1), status, ierr)
-         endif
-       enddo
-     enddo
 
      time2 = MPI_Wtime()
      dtime = (time2 - time1)/60.d0
