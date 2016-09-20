@@ -16,6 +16,7 @@
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
 
+   use snswp3d_mod
    use kind_mod
    use constant_mod
    use Size_mod
@@ -95,7 +96,6 @@
 !    Loop over angles, solving for each in turn:
      startOMPLoopTime = MPI_WTIME()
      call timer_beg('_angleloop')
-     call hpm_start("sweep")
 !
 !$OMP PARALLEL DO PRIVATE(Angle) schedule(static,1)
        AngleLoop: do mm=1,NangBin
@@ -115,7 +115,7 @@
                       PSI(1,1,Angle),PSIB(1,1,Angle))
 
        enddo AngleLoop
-     call hpm_stop("sweep")
+     
      call timer_end('_angleloop')
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
