@@ -7,7 +7,7 @@
 #include "transport/TetonInterface/Teton.hh"
 #include "geom/CMI/MeshBase.hh"
 #include "mpi.h"
-//#include "omp.h"
+#include "omp.h"
 
 // #ifdef BGP
 #if 0
@@ -20,12 +20,19 @@
 #include "TAU.h"
 #endif
 
+extern "C" void bindthreads(void);
+extern "C" void summary_start(void);
+extern "C" void summary_stop(void);
+extern "C" void trace_start(void);
+extern "C" void trace_stop(void);
+extern "C" void HPM_Prof_start(void);
+extern "C" void HPM_Prof_stop(void);
+extern "C" void Timer_beg(const char *);
+extern "C" void Timer_end(const char *);
+extern "C" void Timer_print(void);
+
 void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>& myPartList,
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
-
-extern"C" {
-void pgf90_compiled();
-}
 
 using namespace Geometry;
 using std::cout;
@@ -43,16 +50,11 @@ int main(int argc, char* argv[])
     int Npolar=8, Nazimu=4;
     int quadType=2;
     std::string theVersionNumber = "1.0";
-
-    // pgi provided work around for maxloc bug:
-    // call pgf90_compiled in main.
-    pgf90_compiled();
-
     
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&myRank);
     MPI_Comm_size(MPI_COMM_WORLD,&numProcs);
-    
+    bindthreads(); // YKT optional binding utility
     if( argc <2 )
     {
         if(myRank == 0)
@@ -61,13 +63,11 @@ int main(int argc, char* argv[])
     }    
     if(myRank == 0)
     {
-            cout<<" Executing UMT2013 Number of ranks ="<<numProcs<<endl;
+            cout<<" Executing UMT2015 Number of ranks ="<<numProcs<<endl;
 #pragma omp parallel
 {
-  int myTID = 0;
-  int numThreads = 1;
-  //	    int myTID = omp_get_thread_num();
-  //	    int numThreads = omp_get_num_threads();
+	    int myTID = omp_get_thread_num();
+	    int numThreads = omp_get_num_threads();
             if (myTID == 0) 
             {
                  cout<<" and number of OMP threads  ="<< numThreads <<endl;
@@ -180,23 +180,24 @@ int main(int argc, char* argv[])
         cout<<"    done."<<endl;
     
     double goalTime = 0.000334;
-//     double goalTime = 0.0000334;
+//  double goalTime = 0.0000100;
 
     double time;
     double dt= newDT(myTetonObject);
     int numZones = myMesh.getNumberOfOwnedZones();
     int totMeshZones=0;
     
-//     cout<<" SMS index for task "<<myRank<<":("<<sms_i<<","<<sms_j<<","<<sms_k<<").  num zones ="<<numZones<<endl;
+    cout<<" SMS index for task "<<myRank<<":("<<sms_i<<","<<sms_j<<","<<sms_k<<").  num zones ="<<numZones<<endl;
 
     MPI_Reduce(&numZones,&totMeshZones,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
     
     int numFluxes = myTetonObject.psir.size();
     int cumulativeIterationCount= 0;
     double cumulativeWorkTime = 0.0;
-
-    MPI_Pcontrol(0,"summary_start"); // YKT
-    
+//  trace_start();
+    Timer_beg("work");
+    summary_start(); // YKT
+//  HPM_Prof_start();
     if(myRank == 0)
         cout<<" Starting time advance..."<<endl;
     for(time=0;time<goalTime; time+= dt)
@@ -217,9 +218,12 @@ int main(int argc, char* argv[])
     }
     if( myRank == 0 )
         cout<<" SuOlson Test version "<<theVersionNumber<<" completed at time= "<<time<<"  goalTime= "<<goalTime<<endl;
-
-    MPI_Pcontrol(0,"summary_stop"); // YKT
-
+//  HPM_Prof_stop();
+    summary_stop(); // YKT
+    Timer_end("work");
+    Timer_print();
+    fflush(stdout);
+//  trace_stop();
     checkAnalyticAnswer(goalTime,myMesh,myPartList);     
 
     cumulativeWorkTime/=1.0e6;  // microseconds -> seconds
@@ -229,6 +233,9 @@ int main(int argc, char* argv[])
             static_cast<double>(myTetonObject.nangsn) * 
             static_cast<double>(totMeshZones) * 
             8.0;   
+        cout<<"ngroups = "<<myTetonObject.ngr<<endl;
+        cout<<"nangsn = "<<myTetonObject.nangsn<<endl;
+        cout<<"tot zones = "<<totMeshZones<<endl;
         cout<<"numUnknowns = "<<numUnknowns<<endl;
         
         dumpLineout(myMesh, myTetonObject,"dump.out");

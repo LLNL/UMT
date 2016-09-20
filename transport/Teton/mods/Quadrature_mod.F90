@@ -213,7 +213,7 @@ contains
     elseif (Ndim == 3) then
 !     self% NumBin  = self% NumAngles
 !     self% NangBin = 1
-       self% NumBin    = 8 
+       self% NumBin    = 8
        self% NangBin   = self% NumAngles/self% NumBin
     endif
 

@@ -133,11 +133,19 @@ all: subdirs libInfrastructure.$(LIB_EXT) libTetonUtils.$(LIB_EXT) TetonTest.o
 
 
 
+ifeq ($(STATIC_LINK),on)
+libInfrastructure.$(LIB_EXT):$(INFRASTRUCTURE_OBJECTS)
+	$(LD) $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)
+
+libTetonUtils.$(LIB_EXT):$(UTILS_OBJECTS)
+	$(LD) $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_TetonUtils_EXTRAS)
+else
 libInfrastructure.$(LIB_EXT):$(INFRASTRUCTURE_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)
 
 libTetonUtils.$(LIB_EXT):$(UTILS_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBPATH) $(PLATFORM_TetonUtils_EXTRAS)
+endif
 
 
 # SuOlsonTest target only for internal testing purposes

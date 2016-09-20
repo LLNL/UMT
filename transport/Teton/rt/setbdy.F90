@@ -32,6 +32,9 @@
    integer :: nReflecting, nVacuum, nSource, nShared 
    integer :: nBdyElem, b0, b1, b2, profID
 
+   integer :: tid, nth, iabeg, iaend
+   integer, external :: omp_get_thread_num, omp_get_num_threads
+
 !  Constants
 
    nangSN      = Size%nangSN
@@ -88,6 +91,10 @@
 
 !  Shared
                                                                                                     
+!$omp parallel private(tid, nth, iabeg, iaend, nBdyElem, b0, ic)
+   tid = omp_get_thread_num()
+   nth = omp_get_num_threads()
+   call omp_block_partition(tid, nth, 1, nangSN, iabeg, iaend)
    do i=1,nShared
      Bdy      => getShared(RadBoundary, i)
      nBdyElem =  getNumberOfBdyElements(Bdy)
@@ -95,13 +102,12 @@
 
      do ib=1,nBdyElem
        ic = Bdy% BdyToC(ib)
-       do ia=1,nangSN
+       do ia=iabeg, iaend  ! YKT was : 1,nangSN
          psib(:,b0+ib,ia) = psir(:,ic,ia)
        enddo
      enddo
    enddo
-
-
+!$omp end parallel
 
    return
    end subroutine setbdy

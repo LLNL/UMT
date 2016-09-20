@@ -15,7 +15,7 @@
 
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
-   use snswp3d_mod
+
    use kind_mod
    use constant_mod
    use Size_mod
@@ -37,7 +37,7 @@
 
 !  Local
 
-   integer          :: Angle, mm, thnum, n_cpuL
+   integer          :: Angle, mm
    integer          :: Groups, fluxIter, ishared
    integer          :: binSend, binRecv, NangBin
 
@@ -48,18 +48,7 @@
 
    integer angles, nbelem, ncornr, NumBin, myrank, info
 
-!  Function
-
-   integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
-
-!  Set number of threads
-
-!  n_cpuL = 1
-   n_cpuL = OMP_GET_MAX_THREADS()
    theOMPLoopTime=0.0
-
-   
-    
 
 !  Mesh Constants
 
@@ -72,11 +61,12 @@
    NumBin = QuadSet%NumBin
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
-   if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
 !  Loop over angle bins
 
    if (ipath == 'sweep') then
+     call timer_beg('_setflux')
      call setIncidentFlux(psib)
+     call timer_end('_setflux')
    endif
                                                                                          
    FluxConverged = .FALSE.
@@ -89,7 +79,10 @@
 
 !    Post receives for all data
                                                                                                   
+     if (myrank .eq. 0) write(0,*) 'YKT: NumBin, fluxIter = ', QuadSet% NumBin, fluxIter
+     call timer_beg('_initexch')
      call InitExchange
+     call timer_end('_initexch')
 
      fluxIter = fluxIter + 1
 
@@ -101,14 +94,13 @@
 
 !    Loop over angles, solving for each in turn:
      startOMPLoopTime = MPI_WTIME()
-
+     call timer_beg('_angleloop')
+     call hpm_start("sweep")
 !
-!$OMP PARALLEL DO  PRIVATE(Angle,mm,thnum)
+!$OMP PARALLEL DO PRIVATE(Angle) schedule(static,1)
        AngleLoop: do mm=1,NangBin
 
          Angle = QuadSet% AngleOrder(mm,binSend)
-!        thnum = 1
-         thnum = OMP_GET_THREAD_NUM() + 1 
 
 !        Set angular fluxes for reflected angles
 
@@ -123,17 +115,23 @@
                       PSI(1,1,Angle),PSIB(1,1,Angle))
 
        enddo AngleLoop
+     call hpm_stop("sweep")
+     call timer_end('_angleloop')
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
 !      Exchange Boundary Fluxes
 
+       call timer_beg('_exch')
        call exchange(PSIB, binSend, binRecv) 
+       call timer_end('_exch')
 
      enddo AngleBin
 
      if (ipath == 'sweep') then
+       call timer_beg('_setflux')
        call setIncidentFlux(psib)
+       call timer_end('_setflux')
        call testFluxConv(FluxConverged, fluxIter, maxFluxError)
      else
        FluxConverged = .TRUE.
@@ -151,7 +149,9 @@
 !  Update the scaler flux
 
    if (ipath == 'sweep') then
+     call timer_beg('_snmoments')
      call snmoments(psi, PHI)
+     call timer_end('_snmoments')
      call restoreCommOrder(QuadSet)
    endif
 
