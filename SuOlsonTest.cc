@@ -35,7 +35,7 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
 
 extern"C" {
-void pgf90_compiled();
+//void pgf90_compiled();
 }
 using namespace Geometry;
 using std::cout;
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     std::string theVersionNumber = "1.0";
     // pgi provided work around for maxloc bug:
     // call pgf90_compiled in main.
-    pgf90_compiled();
+    //pgf90_compiled();
     
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&myRank);

@@ -111,8 +111,8 @@
 !        Mesh cycles are fixed automatically.
 
          call snswp3d(Groups, Angle,                                   &
-                      QuadSet%next(1,Angle),QuadSet%nextZ(1,Angle),    &
-                      PSI(1,1,Angle),PSIB(1,1,Angle))
+                      QuadSet%next(:,Angle),QuadSet%nextZ(:,Angle),    &
+                      PSI(:,:,Angle),PSIB(:,:,Angle))
 
        enddo AngleLoop
      
