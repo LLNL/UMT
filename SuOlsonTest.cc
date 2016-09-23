@@ -20,8 +20,22 @@
 #include "TAU.h"
 #endif
 
+extern "C" void bindthreads(void);
+extern "C" void summary_start(void);
+extern "C" void summary_stop(void);
+extern "C" void trace_start(void);
+extern "C" void trace_stop(void);
+extern "C" void HPM_Prof_start(void);
+extern "C" void HPM_Prof_stop(void);
+extern "C" void Timer_beg(const char *);
+extern "C" void Timer_end(const char *);
+extern "C" void Timer_print(void);
 void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>& myPartList,
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
+
+extern"C" {
+//void pgf90_compiled();
+}
 
 using namespace Geometry;
 using std::cout;
@@ -39,11 +53,17 @@ int main(int argc, char* argv[])
     int Npolar=8, Nazimu=4;
     int quadType=2;
     std::string theVersionNumber = "1.0";
+
+    // pgi provided work around for maxloc bug:
+    // call pgf90_compiled in main.
+    //pgf90_compiled();
+
     
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&myRank);
     MPI_Comm_size(MPI_COMM_WORLD,&numProcs);
     
+    //bindthreads(); // YKT optional binding utility
     if( argc <2 )
     {
         if(myRank == 0)
@@ -52,7 +72,7 @@ int main(int argc, char* argv[])
     }    
     if(myRank == 0)
     {
-            cout<<" Executing UMT2013 Number of ranks ="<<numProcs<<endl;
+            cout<<" Executing UMT2015 Number of ranks ="<<numProcs<<endl;
 #pragma omp parallel
 {
 	    int myTID = omp_get_thread_num();
@@ -183,6 +203,11 @@ int main(int argc, char* argv[])
     int numFluxes = myTetonObject.psir.size();
     int cumulativeIterationCount= 0;
     double cumulativeWorkTime = 0.0;
+
+//  trace_start();
+    Timer_beg("work");
+    //summary_start(); // YKT
+//  HPM_Prof_start();
     
     if(myRank == 0)
         cout<<" Starting time advance..."<<endl;
@@ -205,6 +230,13 @@ int main(int argc, char* argv[])
     if( myRank == 0 )
         cout<<" SuOlson Test version "<<theVersionNumber<<" completed at time= "<<time<<"  goalTime= "<<goalTime<<endl;
 
+//  HPM_Prof_stop();
+    //summary_stop(); // YKT
+    Timer_end("work");
+    Timer_print();
+    fflush(stdout);
+//  trace_stop();
+
     checkAnalyticAnswer(goalTime,myMesh,myPartList);     
 
     cumulativeWorkTime/=1.0e6;  // microseconds -> seconds
@@ -214,6 +246,9 @@ int main(int argc, char* argv[])
             static_cast<double>(myTetonObject.nangsn) * 
             static_cast<double>(totMeshZones) * 
             8.0;   
+        cout<<"ngroups = "<<myTetonObject.ngr<<endl;
+        cout<<"nangsn = "<<myTetonObject.nangsn<<endl;
+        cout<<"tot zones = "<<totMeshZones<<endl;
         cout<<"numUnknowns = "<<numUnknowns<<endl;
         
         dumpLineout(myMesh, myTetonObject,"dump.out");

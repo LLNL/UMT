@@ -65,6 +65,7 @@
      Size%tau = zero
    endif
 
+!$omp parallel do
    do zone=1,Size%nzones
      Z => getZoneData(Geom, zone)
 
@@ -94,7 +95,9 @@
 !     SAVE ZONE AVERAGE TEMPERATURES FOR TIME STEP CALCULATION         *
 !*********************************************************************** 
 
+   call timer_beg('advanceRT')
    call advanceRT(dtrad, PSIR, PHI)
+   call timer_end('advanceRT')
 
 !***********************************************************************
 !     RADIATION TRANSPORT MODULE                                       *

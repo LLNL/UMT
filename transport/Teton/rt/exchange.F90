@@ -92,7 +92,9 @@
            do ia = 1, NangBin
              nsend = Comm% nsend(ia)
              message_base(ia) = message
-             message = message + nsend*ngroups
+             do i = 1, nsend
+                message = message + ngroups
+             end do
            end do
 
            nsend0  = 0
@@ -132,7 +134,7 @@
      do bin=binSend1,binSend2
        do ishared=1,ncomm
          Comm => getMessage(QuadSet, bin, ishared)
-
+ 
          if (Comm% lensend > 0) then
            call MPI_Wait(Comm% irequest(1), status, ierr)
          endif
@@ -161,7 +163,9 @@
            do ia = 1, NangBin
              nrecv = Comm% nrecv(ia)
              message_base(ia) = message
-             message = message + nrecv*ngroups
+             do i = 1, nrecv
+                message = message + ngroups
+             end do
            end do
 
            nrecv0  = 0
@@ -194,16 +198,6 @@
 
      enddo ReceiveLoop
 
-
-     do bin=binSend1,binSend2
-       do ishared=1,ncomm
-         Comm => getMessage(QuadSet, bin, ishared)
-
-         if (Comm% lensend > 0) then
-           call MPI_Wait(Comm% irequest(1), status, ierr)
-         endif
-       enddo
-     enddo
 
      time2 = MPI_Wtime()
      dtime = (time2 - time1)/60.d0

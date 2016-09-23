@@ -1,0 +1,122 @@
+CWD             = $(shell pwd)
+
+USE_FAKE_CMG    = off
+OPT             = on
+DEBUG           = off
+USE_HPM         = off
+USE_GPROF       = off
+USE_TAU         = off
+USE_TAU_PDT     = off
+USE_OPENMP      = on
+STATIC_LINK     = off
+CFLAGS_CMG      = 
+
+ifeq ($(USE_FAKE_CMG),on)
+  CFLAGS_CMG    += -DCMG_FAKE 
+else
+  LIBS 		+=
+endif
+
+#------------------------------------------------ IBM ----------------------------------------------------------
+CFLAGS_CMG     += 
+
+#OPENMPC_FLAGS    = -qsmp=omp
+OPENMPC_FLAGS    = 
+OPENMPF_FLAGS    = -mp
+#OPENMPF_FLAGS    = 
+#FLIBS           = -L/opt/ibm/xlf/15.1.3/lib -lxlf90_r -lxlfmath -lxl \
+#	           -Wl,-rpath=/opt/ibm/lib /gpfs/ess2fs0/walkup/mpitrace/openmpi/nounderscore/libmpihpm_c.so
+
+FLIBS = -L/opt/pgi/linuxpower/16.9/lib -L/usr/local/cuda-8.0/lib64 /gpfs/ess2fs0/walkup/codes/timers/libtimers.a -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
+       -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass -lmass_simdp8 \
+       -lcudapgi -lcudafor -lcudart
+
+CPPFLAGS += -DLINUX -DLinux -DUSE_MPI -DOMPI_SKIP_MPICXX $(GPROF_FLAGS)
+CPPFFLAGS = -DLINUX,-DLinux,-Dmpi,-DMPI,-DUSE_MPI,-DOMPI_SKIP_MPICXX $(OPENMPF_FLAGS)
+
+# MPI Definitions
+MPI_INC_PATH    = -I/gpfs/ess2fs0/walkup/openmpi-1.8.8/include
+
+MPI_LIB_PATH    = 
+MPI_LIBS        = -lmpi_mpifh
+
+LIBS 	       += $(MPI_LIBS) 
+LIBPATH 	= 
+INCPATH 	= $(MPI_INC_PATH) 
+
+CXX		= mpicxx
+CC		= mpicc
+F90             = pgf90
+FPP             = pgf90
+
+#F90FLAGS_OPT    =  -Mcuda=cc3+,nordc,maxregcount:64,ptxinfo -O2 -Kpic $(OPENMPF_FLAGS)
+F90FLAGS_OPT    =  -g -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -fast -O2 -Kpic $(OPENMPF_FLAGS)
+#F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
+CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
+CFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
+
+
+
+LD              = $(CXX)
+LIB_EXT         = so
+LDFLAGS         =  -shared -fpic
+
+LINK            = $(CXX)
+LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/16.9/lib:/usr/local/cuda-8.0/lib64 \
+		
+
+#
+# These PLATFORM_*_EXTRAS flags are to add additional paths/libs for building 
+# libInfrastructure.so, libTetonUtils.so and _TetonTest.so
+#
+# If linker generally needs lib paths..
+#PLATFORM_LIBPATH_EXTRAS = -L/usr/local/tools/icc-11.1.073/lib/intel64/
+PLATFORM_LIBPATH_EXTRAS = 
+
+# Extra lib paths / libs for libInfrastructure.[a,so]
+PLATFORM_Infrastructure_EXTRAS = $(OPENMPC_FLAGS) $(MPI_LIB_PATH) $(MPI_LIBS)
+
+# Extra lib paths / libs for libTetonUtils.[a,so]
+PLATFORM_TetonUtils_EXTRAS = 
+
+# Extra lib paths / libs for SuOlsonTest
+PLATFORM_EXE_EXTRAS = $(OPENMPC_FLAGS) -L../CMG_CLEAN/src -Wl,-rpath,$(CWD)/../CMG_CLEAN/src \
+	-L../cmg2Kull/sources -Wl,-rpath,$(CWD)/../cmg2Kull/sources\
+	-L../Teton -Wl,-rpath,$(CWD)/../Teton 
+
+# Extra lib paths / libs for _TetonTest.so
+PLATFORM_TetonTest_EXTRAS = $(OPENMPC_FLAGS) $(MPI_LIB_PATH) -L$(CWD)/../CMG_CLEAN/src -Wl,-rpath,$(CWD)/../CMG_CLEAN/src \
+	-L$(CWD)/../cmg2Kull/sources -Wl,-rpath,$(CWD)/../cmg2Kull/sources \
+	-L$(CWD)/../Teton -Wl,-rpath,$(CWD)/../Teton \
+	-L$(CWD)/../Install/lib -Wl,-rpath,$(CWD)/../Install/lib \
+	-lm -lpthread -lutil -ldl $(FLIBS)
+
+%.o: %.F90
+	$(F90) $(CPPFFLAGS) $(F90FLAGS) -c $*.F90 -o $@
+
+#------------------------------------------------ END ----------------------------------------------------------
+
+
+CXXFLAGS = $(CFLAGS_CMG) $(INCPATH)
+CFLAGS = $(CFLAGS_CMG) $(INCPATH)
+F90FLAGS = $(INCPATH)
+
+ifeq ($(OPT),on)
+  CXXFLAGS += $(CXXFLAGS_OPT) 
+  CFLAGS += $(CFLAGS_OPT) 
+  F90FLAGS += $(F90FLAGS_OPT) 
+endif
+
+ifeq ($(DEBUG),on)
+  CXXFLAGS += $(CXXFLAGS_DEBUG) 
+  CFLAGS += $(CFLAGS_DEBUG) 
+  F90FLAGS += $(F90FLAGS_DEBUG) 
+endif
+
+%.o : %.cc
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+
+%.d: %.cc
+	g++ -c $(CFLAGS_CMG) $(CPPFLAGS) $(INCPATH) $< -MM -MF $@
+
+

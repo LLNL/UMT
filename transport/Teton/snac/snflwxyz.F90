@@ -15,7 +15,6 @@
 
 ! if batches are not currently size of bins, data is staged wrong.
 #define BATCHSIZE 90
-
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime)
 
    use, intrinsic :: iso_c_binding
@@ -47,7 +46,7 @@
    integer :: i
    
 
-   integer          :: Angle, mm,mm1,mm2,anglebatch, n_cpuL, thnum
+   integer          :: Angle, mm,mm1,mm2,anglebatch
    integer          :: Groups, fluxIter, ishared
    integer          :: binSend, binRecv, NangBin, istat
 
@@ -75,14 +74,10 @@
    call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
    
 
-!  Set number of threads
-
-!  n_cpuL = 1
-   n_cpuL = OMP_GET_MAX_THREADS()
    theOMPLoopTime=0.0
 
-   require(n_cpuL>0,   "Invalid Thread Count")
-   require(n_cpuL<=32, "Invalid Thread Count") 
+   
+    
 
 !  Mesh Constants
 
@@ -100,12 +95,12 @@
    do i = 1, nStreams
       istat = cudaStreamCreate(stream(i))
    enddo
-
-
 !  Loop over angle bins
 
    if (ipath == 'sweep') then
+     call timer_beg('_setflux')
      call setIncidentFlux(psib)
+     call timer_end('_setflux')
    endif
                                                                                          
    FluxConverged = .FALSE.
@@ -118,7 +113,10 @@
 
 !    Post receives for all data
                                                                                                   
+     
+     call timer_beg('_initexch')
      call InitExchange
+     call timer_end('_initexch')
 
      fluxIter = fluxIter + 1
 
@@ -129,12 +127,13 @@
 !    Loop over angles, solving for each in turn:
      startOMPLoopTime = MPI_WTIME()
 
-!!!$OMP PARALLEL DO  PRIVATE(binRecv,binSend,NangBin,mm1,mm2,anglebatch,thnum)
+     
      AngleBin: do binRecv=1,QuadSet% NumBin
        binSend = QuadSet% SendOrder(binRecv)
        NangBin = QuadSet% NangBinList(binSend)
        
-       
+
+       call timer_beg('_angleloop')
        ! loop over batches within the angle bin
        AngleLoop: do mm1=1,NangBin,BATCHSIZE
 
@@ -157,8 +156,8 @@
            call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
          enddo
 
-!        Sweep the mesh, calculating PSI for each corner; the 
-!        boundary flux array PSIB is also updated here. 
+!        Sweep the mesh, calculating PSI for each corner; the
+!        boundary flux array PSIB is also updated here.
 !        Mesh cycles are fixed automatically.
 
          call snswp3d(anglebatch, QuadSet%AngleOrder(mm1,binSend), &
@@ -167,9 +166,11 @@
                       QuadSet%d_passZstart, psi, d_psi, psib, stream(binRecv))
 
          if (ipath == 'sweep') then
+     call timer_beg('__snmoments')
            call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
                            QuadSet%d_AngleOrder(mm1,binSend),      &
                            anglebatch, stream(binRecv)) ! GPU version, one slice at a time
+     call timer_end('__snmoments')
          endif
 
 
@@ -195,19 +196,25 @@
 
 
        enddo AngleLoop
+	 call timer_end('_angleloop')
+     endOMPLoopTime = MPI_WTIME()
+     theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
 !      Exchange Boundary Fluxes
 
+       call timer_beg('_exch')
        call exchange(PSIB, binSend, binRecv) 
+       call timer_end('_exch')
 
      enddo AngleBin
 
      istat = cudaDeviceSynchronize()
-     endOMPLoopTime = MPI_WTIME()
-     theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
+
 
      if (ipath == 'sweep') then
+       call timer_beg('_setflux')
        call setIncidentFlux(psib)
+       call timer_end('_setflux')
        call testFluxConv(FluxConverged, fluxIter, maxFluxError)
      else
        FluxConverged = .TRUE.
@@ -222,7 +229,7 @@
 
    enddo FluxIteration
 
-!  Update the scaler flux 
+!  Update the scaler flux
 
    if (ipath == 'sweep') then
      call restoreCommOrder(QuadSet)
