@@ -232,7 +232,10 @@ contains
 
     !threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),16,1)
     threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),4,1)
-    print *,"threads.x = ",  max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf)
+    ! Number of threads as implemented will not give correct results when > 1024
+    if (max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf) .GT. 1024) then
+       print *,"ERROR: requested threads.x = ",  max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf)
+    endif
     blocks  = dim3(1,(Size%nzones+threads%y-1)/threads%y,1)
 
     call ZoneData_SoA_init_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &

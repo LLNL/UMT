@@ -65,6 +65,8 @@
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer angles, nbelem, ncornr, NumBin, myrank, info
 
+   integer :: devnum
+
 !  Function
 
    ! This sets up to allow zero copy use of phi directly on the device:
@@ -89,6 +91,11 @@
    NangBin = maxval(QuadSet%NangBinList(:))
    NumBin = QuadSet%NumBin
    call mpi_comm_rank(mpi_comm_world, myrank, info)
+   
+   ! Double check the rank and divice mapping:
+   !istat = cudaGetDevice(devnum)
+   !write(0,*) 'Rank = ', myrank, 'gpu device = ', devnum, 'istat = ', istat
+
 
    !if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
 

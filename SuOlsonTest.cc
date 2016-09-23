@@ -8,6 +8,8 @@
 #include "geom/CMI/MeshBase.hh"
 #include "mpi.h"
 #include "omp.h"
+#include "cuda_runtime.h"
+#define NUMGPUS 4
 
 // #ifdef BGP
 #if 0
@@ -70,19 +72,31 @@ int main(int argc, char* argv[])
             cout<<" Must input mesh file name on input line."<<endl;
         exit(1);
     }    
-    if(myRank == 0)
-    {
-            cout<<" Executing UMT2015 Number of ranks ="<<numProcs<<endl;
+
+    int numDevices;
+    cudaError_t istat;
+    istat = cudaGetDeviceCount(&numDevices);
+    cout<<"myRank = "<< myRank <<"numDevices"<<numDevices<<"istat = "<<istat<<endl;
+    istat = cudaSetDevice(myRank%numDevices);
+    cout<<"myRank = "<<myRank <<" istat = "<<istat<<endl;
 #pragma omp parallel
-{
-	    int myTID = omp_get_thread_num();
-	    int numThreads = omp_get_num_threads();
-            if (myTID == 0) 
-            {
-                 cout<<" and number of OMP threads  ="<< numThreads <<endl;
-            }
-}
+    {
+      int myTID = omp_get_thread_num();
+      int numThreads = omp_get_num_threads();
+      if(myTID == 0) {
+	cout<<"myRank = "<<myRank<<" tried setting gpu device to "<<myRank%numDevices<<endl;
+	if(myRank == 0) {
+	  cout<<" Executing UMT2015 Number of ranks ="<<numProcs<<endl;
+	  cout<<" and number of OMP threads  ="<< numThreads <<endl;
+	}
+      }
     }
+
+    int devnum;
+    istat = cudaGetDevice(&devnum);
+    cout<<" myrank = "<<myRank<<"GPU number = "<<devnum<<"istat ="<<istat<<endl;
+    printf("Error: %s\n", cudaGetErrorString(istat));
+
 
     if( argc >= 3 )
     {
