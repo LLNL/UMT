@@ -65,7 +65,7 @@
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer angles, nbelem, ncornr, NumBin, myrank, info
 
-   integer :: devnum
+   integer :: devnum, cacheconfig
 
 !  Function
 
@@ -78,7 +78,7 @@
 
    theOMPLoopTime=0.0
 
-   
+
     
 
 !  Mesh Constants
@@ -98,6 +98,20 @@
 
 
    !if (myrank .eq. 0) write(0,*) ' groups, ncornr, nbelem, angles, NangBin, NumBin = ', groups, ncornr, nbelem, angles, NangBin, NumBin
+
+   ! Set the Cache configuration for the GPU (use more L1, less shared)
+   istat = cudaDeviceGetCacheConfig(cacheconfig)
+   print *, cacheconfig
+   if (cacheconfig .eq. cudaFuncCachePreferShared) then
+      print *, "L1 set for shared memory usage"
+   elseif (cacheconfig .eq. cudaFuncCachePreferL1) then
+      print *, "L1 set for hardware caching (prefer L1)."
+   else
+      print *, "other L1 configuration present."
+   endif
+
+   cacheconfig = cudaFuncCachePreferL1
+   istat = cudaDeviceSetCacheConfig(cacheconfig)
 
    do i = 1, nStreams
       istat = cudaStreamCreate(stream(i))
@@ -147,20 +161,22 @@
          mm2=min(mm1+BATCHSIZE-1,NangBin)
          anglebatch=mm2-mm1+1
 
-         !for other bins, will begin staging in the data at the end of prev
-         !iteration of the loop
+         !Stage batches of (psi,psib,phi) into GPU
          if (binRecv == 1) then
-           do mm=mm1,mm2
-             istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),                 &
-                                   psi(1,1,QuadSet%AngleOrder(mm,binSend)), &
-                                   QuadSet%Groups*Size%ncornr, stream(binRecv) )
-           enddo
+            !for other bins, will begin staging in the data at the end of prev
+            !iteration of the loop
+
+            ! move d_psi, which holds BATCHSIZE angles of psi
+            istat=cudaMemcpyAsync(d_psi(1,1,1),                 &
+                                   psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                                   QuadSet%Groups*Size%ncornr*mm2, stream(binRecv) )
+
          endif
 
 !        Set angular fluxes for reflected angles
 
          do mm=mm1,mm2
-           call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
+            call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
          enddo
 
 !        Sweep the mesh, calculating PSI for each corner; the
@@ -170,18 +186,25 @@
          call snswp3d(anglebatch, QuadSet%AngleOrder(mm1,binSend), &
                       QuadSet%d_AngleOrder(mm1,binSend),           &
                       QuadSet%d_next,QuadSet%d_nextZ,              &
-                      QuadSet%d_passZstart, psi, d_psi, psib, stream(binRecv))
+                      QuadSet%d_passZstart, d_psi, psib, stream(binRecv))
+
+
+         ! update psi on the host:
+         istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+              d_psi(1,1,1), &
+              QuadSet%Groups*Size%ncornr*mm2, stream(binRecv) )
 
          if (ipath == 'sweep') then
-     call timer_beg('__snmoments')
-           call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
+            call timer_beg('__snmoments')
+            ! snmoments only reads d_psi, produces d_phi
+            call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
                            QuadSet%d_AngleOrder(mm1,binSend),      &
                            anglebatch, stream(binRecv)) ! GPU version, one slice at a time
-     call timer_end('__snmoments')
+            call timer_end('__snmoments')
          endif
 
-
-         ! synchronize to be sure psi is updated on host.
+         
+         ! synchronize to be sure psi is updated on host. (Later should sync to StreamEvent)
          istat = cudaStreamSynchronize(stream(binRecv) )
          !istat = cudaDeviceSynchronize()
          if (istat /= 0) then
@@ -194,18 +217,16 @@
 
          if (binRecv < QuadSet% NumBin) then
            ! pre-stage data for next angle bin while exchange is happening
-           do mm=mm1,mm2
-             istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),        &
-                                   psi(1,1,QuadSet%AngleOrder(mm,QuadSet%SendOrder(binRecv+1))), &
-                                   QuadSet%Groups*Size%ncornr, stream(binRecv+1) )
-           enddo
+             istat=cudaMemcpyAsync(d_psi(1,1,1),        &
+                                   psi(1,1,QuadSet%AngleOrder(mm1,QuadSet%SendOrder(binRecv+1))), &
+                                   QuadSet%Groups*Size%ncornr*mm2, stream(binRecv+1) )
          endif
 
 
        enddo AngleLoop
-	 call timer_end('_angleloop')
-     endOMPLoopTime = MPI_WTIME()
-     theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
+       call timer_end('_angleloop')
+       endOMPLoopTime = MPI_WTIME()
+       theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
 !      Exchange Boundary Fluxes
 
