@@ -1,0 +1,537 @@
+make -C geom
+make[1]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom'
+make -C CMI
+make[2]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom/CMI'
+make[2]: Nothing to be done for `all'.
+make[2]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom/CMI'
+make -C Field
+make[2]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom/Field'
+make[2]: Nothing to be done for `all'.
+make[2]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom/Field'
+make -C Region
+make[2]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom/Region'
+make[2]: Nothing to be done for `all'.
+make[2]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom/Region'
+make[1]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/geom'
+make -C transport
+make[1]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport'
+make -C Teton
+make[2]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton'
+make[2]: Nothing to be done for `all'.
+make[2]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton'
+make -C TetonInterface
+make[2]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/TetonInterface'
+make[2]: Nothing to be done for `all'.
+make[2]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/TetonInterface'
+make[1]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport'
+make -C part
+make[1]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/part'
+make[1]: Nothing to be done for `all'.
+make[1]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/part'
+make -C communication
+make[1]: Entering directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/communication'
+make[1]: Nothing to be done for `all'.
+make[1]: Leaving directory `/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/communication'
+mpicxx   -I/gpfs/ess2fs0/walkup/openmpi-1.8.8/include -I. -I../cmg2Kull/sources -I../CMG_CLEAN/src -I/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/utilities -g -O3 -qarch=pwr8 -qtune=pwr8 -qpic -qsmp=omp  SuOlsonTest.o -o SuOlsonTest   -L../CMG_CLEAN/src -L../cmg2Kull/sources -L../Teton   -lInfrastructure -lTetonUtils -lc2k -lcmgp /gpfs/ess2fs0/walkup/codes/bind/xl/bindthreads_smp.o /gpfs/ess2fs0/walkup/codes/timers/libtimers.a /gpfs/ess2fs0/walkup/mpitrace/openmpi/nounderscore/libmpihpm_c_smp.so -L/gpfs/ess2fs0/walkup/ibmcmp/xlf/latest/opt/ibm/xlf/15.1.5/lib -lxlf90_r -lxlfmath -lxl -Wl,-rpath=/opt/ibm/lib   -lmpi_mpifh  
+../Teton/libInfrastructure.a(TetonInst.o): In function `Teton<Geometry::MeshBase>::linkKull(Geometry::MeshBase&, std::vector<TetonFreq, std::allocator<TetonFreq> > const&, std::vector<TetonBoundary<Geometry::MeshBase>, std::allocator<TetonBoundary<Geometry::MeshBase> > >&, std::vector<TetonVolumeSource, std::allocator<TetonVolumeSource> >&)':
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/./transport/TetonInterface/Teton.cc:827: undefined reference to `cudaDeviceSetCacheConfig'
+../Teton/libInfrastructure.a(radtr.o): In function `radtr_':
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/control/radtr.F90:104: undefined reference to `rtmainsn_'
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/control/radtr.F90:53: undefined reference to `cudaMemcpyAsync'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x158): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x204): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x230): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x25c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x2c8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x3f4): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x450): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD__xlfN8geometryC1':
+(.text+0x484): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `_xlfN8zonedataD1scalar':
+mods/Geometry_mod.F90:(.text+0x7d8): undefined reference to `cudaFree'
+mods/Geometry_mod.F90:(.text+0x844): undefined reference to `cudaFree'
+mods/Geometry_mod.F90:(.text+0x850): undefined reference to `cudaFree'
+mods/Geometry_mod.F90:(.text+0x85c): undefined reference to `cudaFree'
+mods/Geometry_mod.F90:(.text+0x868): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Geometry_mod.o):mods/Geometry_mod.F90:(.text+0x880): more undefined references to `cudaFree' follow
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1738): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x17d0): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x17f0): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x182c): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1864): undefined reference to `cudaHostRegister'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x188c): undefined reference to `cudaMemcpyAsync'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x18d8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x194c): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1970): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x19c4): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1af8): undefined reference to `__xlcuf_h2d_a2s_copy'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1b14): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1b38): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1b84): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__geometry_mod_NMOD_geometry_ctor':
+(.text+0x1ba4): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__cudaUnregisterBinaryUtil':
+/usr/local/cuda-7.5/include/crt/host_runtime.h:238: undefined reference to `__cudaUnregisterFatBinary'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__nv_init_managed_rt_with_module':
+/usr/local/cuda-7.5/include/crt/host_runtime.h:243: undefined reference to `__cudaInitModule'
+../Teton/libInfrastructure.a(Geometry_mod.o): In function `__sti____cudaRegisterAll_16_Geometry_mod_F90_geometry_mod':
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/Geometry_mod.fatbinreg.h:22: undefined reference to `__cudaRegisterLinkedBinary_16_Geometry_mod_F90_geometry_mod'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x434): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x698): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1044): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1118): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x11ec): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o):(.text+0x12c0): more undefined references to `__xlcuf_cudaMemcpy' follow
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1338): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1394): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x13c4): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x14b4): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1510): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1540): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1630): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x168c): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x16bc): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x17ac): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1808): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1838): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1c08): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x1c84): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2138): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2170): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2628): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2660): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2b18): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2b50): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2c30): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2c8c): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2cbc): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2db8): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2df0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2ebc): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2f18): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x2f48): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x3418): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD__xlfN10quadratureC1':
+(.text+0x3450): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `_xlfN10quadratureD1scalar':
+mods/Quadrature_mod.F90:(.text+0x3888): undefined reference to `cudaFree'
+mods/Quadrature_mod.F90:(.text+0x38f4): undefined reference to `cudaFree'
+mods/Quadrature_mod.F90:(.text+0x3900): undefined reference to `cudaFree'
+mods/Quadrature_mod.F90:(.text+0x390c): undefined reference to `cudaFree'
+mods/Quadrature_mod.F90:(.text+0x3918): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o):mods/Quadrature_mod.F90:(.text+0x3924): more undefined references to `cudaFree' follow
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_setcommord':
+(.text+0x3e68): undefined reference to `f90fatal'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_setcommord':
+(.text+0x3f7c): undefined reference to `f90fatal'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_setcommord':
+(.text+0x4088): undefined reference to `f90fatal'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_setcommord':
+(.text+0x4154): undefined reference to `f90fatal'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_setcommord':
+(.text+0x41a8): undefined reference to `f90fatal'
+../Teton/libInfrastructure.a(Quadrature_mod.o):(.text+0x42f8): more undefined references to `f90fatal' follow
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x59c0): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x5a38): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x5c14): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x5c5c): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x5ca4): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o):(.text+0x5cec): more undefined references to `cudaGetSymbolAddress' follow
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6614): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6640): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6690): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x66f4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6720): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6770): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x67d4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6800): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6850): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x68b4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x68e0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6930): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6984): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x69d8): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6a2c): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6a80): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6c44): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6c70): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6cc0): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6d14): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6d78): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6da4): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6df4): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_dtor':
+(.text+0x6e48): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x7230): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x72e4): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x76ac): undefined reference to `rtquad'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x76c4): undefined reference to `snynmset'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x76d8): undefined reference to `snpnmset'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x8954): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x89c4): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x8a2c): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x8ab4): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9318): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9354): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x93b4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x93dc): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x94ac): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x94d8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x952c): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9554): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9624): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9680): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9700): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9728): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x97f8): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x984c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x98c4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x98ec): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x99b4): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9a2c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9a94): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9b0c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9b84): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9c08): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9c90): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0x9d08): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa160): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa19c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa200): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa228): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa2f8): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa374): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa3e4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa418): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa474): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa49c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa56c): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__quadrature_mod_NMOD_quadrature_ctor':
+(.text+0xa5e8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__cudaUnregisterBinaryUtil':
+/usr/local/cuda-7.5/include/crt/host_runtime.h:238: undefined reference to `__cudaUnregisterFatBinary'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__nv_init_managed_rt_with_module':
+/usr/local/cuda-7.5/include/crt/host_runtime.h:243: undefined reference to `__cudaInitModule'
+../Teton/libInfrastructure.a(Quadrature_mod.o): In function `__sti____cudaRegisterAll_18_Quadrature_mod_F90_quadrature_mod':
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/Quadrature_mod.fatbinreg.h:22: undefined reference to `__cudaRegisterLinkedBinary_18_Quadrature_mod_F90_quadrature_mod'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__xlcuf_register_1_16_ZoneData_mod_F90_zonedata_mod':
+(.text+0x64): undefined reference to `__cudaRegisterFunction'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x26c8): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x2748): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x2fa4): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x2fe0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x3ca4): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x3ce0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x48e4): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x4920): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x4dfc): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x4e38): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x4fd0): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x500c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x50f8): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN8zonedataC1':
+(.text+0x5134): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `_xlfN8zonedataD1scalar':
+mods/ZoneData_mod.F90:(.text+0x5478): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x54e8): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x54f4): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x5500): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x550c): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(ZoneData_mod.o):mods/ZoneData_mod.F90:(.text+0x5524): more undefined references to `cudaFree' follow
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x56e0): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x57b4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x58cc): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5a38): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5ba4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o):(.text+0x5d10): more undefined references to `__xlcuf_cudaMemcpy' follow
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5d78): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5dd4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5e08): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5f18): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5f74): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x5fa8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x60b8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x6114): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x6148): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x6258): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x62b4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x62e8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x63ec): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x6448): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x647c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x6570): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x65cc): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD__xlfN12zonedata_soaC1':
+(.text+0x6600): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `_xlfN12zonedata_soaD1scalar':
+mods/ZoneData_mod.F90:(.text+0x6910): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x699c): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x69b0): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x69c4): undefined reference to `cudaFree'
+mods/ZoneData_mod.F90:(.text+0x69d8): undefined reference to `cudaFree'
+../Teton/libInfrastructure.a(ZoneData_mod.o):mods/ZoneData_mod.F90:(.text+0x69ec): more undefined references to `cudaFree' follow
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_init':
+(.text+0x6b54): undefined reference to `__xlcuf_cudaforGetDefaultStream'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_init':
+(.text+0x6bc4): undefined reference to `cudaLaunchKernel'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_init':
+(.text+0x6c18): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x6d9c): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x6e40): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x6f24): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x6ff8): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x70cc): undefined reference to `cudaGetSymbolAddress'
+../Teton/libInfrastructure.a(ZoneData_mod.o):(.text+0x71b4): more undefined references to `cudaGetSymbolAddress' follow
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x71d4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7220): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x72b4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x72e0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x73d8): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7428): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x74b4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x74e0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x75d4): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7630): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x76c4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x76f0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x77cc): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x784c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x78f0): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x791c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x79fc): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7a5c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7ae4): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7b10): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7c10): undefined reference to `__xlcuf_cudaMemcpy'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7c54): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7cdc): undefined reference to `cudaMalloc'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_soa_ctor':
+(.text+0x7d08): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8794): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8828): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x88a0): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8930): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x89a4): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8a30): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8af0): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8b90): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8bd8): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8cb0): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8d70): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8e48): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8f50): undefined reference to `cudaMallocHost'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__zonedata_mod_NMOD_zonedata_ctor':
+(.text+0x8f8c): undefined reference to `cudaGetErrorString'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__cudaUnregisterBinaryUtil':
+/usr/local/cuda-7.5/include/crt/host_runtime.h:238: undefined reference to `__cudaUnregisterFatBinary'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__nv_init_managed_rt_with_module':
+/usr/local/cuda-7.5/include/crt/host_runtime.h:243: undefined reference to `__cudaInitModule'
+../Teton/libInfrastructure.a(ZoneData_mod.o): In function `__sti____cudaRegisterAll_16_ZoneData_mod_F90_zonedata_mod':
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/ZoneData_mod.fatbinreg.h:22: undefined reference to `__cudaRegisterLinkedBinary_16_ZoneData_mod_F90_zonedata_mod'
+../Teton/libInfrastructure.a(advanceRT.o): In function `advancert_':
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/control/advanceRT.F90:93: undefined reference to `snmoments_'
+/gpfs/ess2fs0/dappelh/APEX/umt2015-apex/Teton/transport/Teton/control/advanceRT.F90:93: undefined reference to `snmoments_'
+make: *** [SuOlsonTest] Error 1

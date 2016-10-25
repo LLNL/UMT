@@ -1,0 +1,619 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+100	snac/snnext.F90	/^ 100 format('zone ',i6,' has already been done and is down stream of ',i6)$/;"	l	subroutine:snnext	file:
+500	misc/f90advise.F90	/^500 format(\/1x,"The following advise message has occurred:"\/3x,a)$/;"	l	subroutine:f90advise	file:
+500	misc/f90fatal.F90	/^500 format(\/1x,"The following fatal error has occurred:"\/3x,a)$/;"	l	subroutine:f90fatal	file:
+501	misc/assert.F90	/^501 format(\/1x,"Assertion failed: '",a,"' in file `",a,"' at line ",i1)$/;"	l	subroutine:assert	file:
+502	misc/assert.F90	/^502 format(\/1x,"Assertion failed: '",a,"' in file `",a,"' at line ",i2)$/;"	l	subroutine:assert	file:
+503	misc/assert.F90	/^503 format(\/1x,"Assertion failed: '",a,"' in file `",a,"' at line ",i3)$/;"	l	subroutine:assert	file:
+504	misc/assert.F90	/^504 format(\/1x,"Assertion failed: '",a,"' in file `",a,"' at line ",i4)$/;"	l	subroutine:assert	file:
+505	misc/assert.F90	/^505 format(\/1x,"Assertion failed: '",a,"' in file `",a,"' at line ",i8)$/;"	l	subroutine:assert	file:
+A_bdy	mods/Boundary_mod.F90	/^     real(adqt), pointer  :: A_bdy(/;"	k	type:Boundary
+AbsorptionRate	mods/Material_mod.F90	/^     real(adqt), pointer :: AbsorptionRate(/;"	k	type:Material
+AbsorptionRateOld	mods/Material_mod.F90	/^     real(adqt), pointer :: AbsorptionRateOld(/;"	k	type:Material
+Adweta	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Adweta(/;"	k	type:Quadrature
+Alpha	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Alpha(/;"	k	type:Quadrature
+AngleOrder	mods/Quadrature_mod.F90	/^     integer,    pointer :: AngleOrder(/;"	k	type:Quadrature
+AngleToBin	mods/Quadrature_mod.F90	/^     integer,    pointer :: AngleToBin(/;"	k	type:Quadrature
+Bdy	mods/Boundary_mod.F90	/^  type(Boundary), pointer, public :: Bdy$/;"	v	module:Boundary_mod
+BdyElem1	mods/Boundary_mod.F90	/^     integer              :: BdyElem1 /;"	k	type:Boundary
+BdyToC	mods/Boundary_mod.F90	/^     integer, pointer     :: BdyToC(/;"	k	type:Boundary
+Boundary	mods/Boundary_mod.F90	/^  type, public :: Boundary /;"	t	module:Boundary_mod
+BoundaryList	mods/BoundaryList_mod.F90	/^  type, public :: BoundaryList$/;"	t	module:BoundaryList_mod
+BoundaryList_ctor	mods/BoundaryList_mod.F90	/^  subroutine BoundaryList_ctor(/;"	s	module:BoundaryList_mod
+BoundaryList_dtor	mods/BoundaryList_mod.F90	/^  subroutine BoundaryList_dtor(/;"	s	module:BoundaryList_mod
+BoundaryList_getBdy	mods/BoundaryList_mod.F90	/^  function BoundaryList_getBdy(/;"	f	module:BoundaryList_mod
+BoundaryList_getNum	mods/BoundaryList_mod.F90	/^  function BoundaryList_getNum(/;"	f	module:BoundaryList_mod
+BoundaryList_getNumRefl	mods/BoundaryList_mod.F90	/^  function BoundaryList_getNumRefl(/;"	f	module:BoundaryList_mod
+BoundaryList_getNumShared	mods/BoundaryList_mod.F90	/^  function BoundaryList_getNumShared(/;"	f	module:BoundaryList_mod
+BoundaryList_getNumSrc	mods/BoundaryList_mod.F90	/^  function BoundaryList_getNumSrc(/;"	f	module:BoundaryList_mod
+BoundaryList_getNumVac	mods/BoundaryList_mod.F90	/^  function BoundaryList_getNumVac(/;"	f	module:BoundaryList_mod
+BoundaryList_getReflBdy	mods/BoundaryList_mod.F90	/^  function BoundaryList_getReflBdy(/;"	f	module:BoundaryList_mod
+BoundaryList_getSharBdy	mods/BoundaryList_mod.F90	/^  function BoundaryList_getSharBdy(/;"	f	module:BoundaryList_mod
+BoundaryList_getSrcBdy	mods/BoundaryList_mod.F90	/^  function BoundaryList_getSrcBdy(/;"	f	module:BoundaryList_mod
+BoundaryList_getVacBdy	mods/BoundaryList_mod.F90	/^  function BoundaryList_getVacBdy(/;"	f	module:BoundaryList_mod
+BoundaryList_mod	mods/BoundaryList_mod.F90	/^module BoundaryList_mod$/;"	m
+BoundaryList_set	mods/BoundaryList_mod.F90	/^  subroutine BoundaryList_set(/;"	s	module:BoundaryList_mod
+Boundary_ctor	mods/Boundary_mod.F90	/^  subroutine Boundary_ctor(/;"	s	module:Boundary_mod
+Boundary_ctorRef	mods/Boundary_mod.F90	/^  subroutine Boundary_ctorRef(/;"	s	module:Boundary_mod
+Boundary_ctor_flux	mods/Boundary_mod.F90	/^  subroutine Boundary_ctor_flux(/;"	s	module:Boundary_mod
+Boundary_dtorRef	mods/Boundary_mod.F90	/^  subroutine Boundary_dtorRef(/;"	s	module:Boundary_mod
+Boundary_dtor_flux	mods/Boundary_mod.F90	/^  subroutine Boundary_dtor_flux(/;"	s	module:Boundary_mod
+Boundary_getEdit	mods/Boundary_mod.F90	/^  function Boundary_getEdit(/;"	f	module:Boundary_mod
+Boundary_getFirstBE	mods/Boundary_mod.F90	/^  function Boundary_getFirstBE(/;"	f	module:Boundary_mod
+Boundary_getNeigh	mods/Boundary_mod.F90	/^  function Boundary_getNeigh(/;"	f	module:Boundary_mod
+Boundary_getNumBdyElem	mods/Boundary_mod.F90	/^  function Boundary_getNumBdyElem(/;"	f	module:Boundary_mod
+Boundary_getProf	mods/Boundary_mod.F90	/^  function Boundary_getProf(/;"	f	module:Boundary_mod
+Boundary_getRef	mods/Boundary_mod.F90	/^  function Boundary_getRef(/;"	f	module:Boundary_mod
+Boundary_getType	mods/Boundary_mod.F90	/^  function Boundary_getType(/;"	f	module:Boundary_mod
+Boundary_mod	mods/Boundary_mod.F90	/^module Boundary_mod /;"	m
+Boundary_setRef	mods/Boundary_mod.F90	/^  subroutine Boundary_setRef(/;"	s	module:Boundary_mod
+CToFace	mods/Geometry_mod.F90	/^     integer, pointer :: CToFace(/;"	k	type:Geometry
+CToPoint	mods/Geometry_mod.F90	/^     integer, pointer :: CToPoint(/;"	k	type:Geometry
+CToZone	mods/Geometry_mod.F90	/^     integer, pointer :: CToZone(/;"	k	type:Geometry
+Comm	include/Global.h	/^} Comm;$/;"	t	typeref:struct:__anon2
+Comm	include/Global1.h	/^} Comm;$/;"	t	typeref:struct:__anon1
+Comm	mods/Communicator_mod.F90	/^  type(Commu/;"	v	module:Communicator_mod
+CommTimeCycle	mods/Size_mod.F90	/^     real(adqt)       :: CommTimeCycle$/;"	k	type:MeshSize
+CommTimeTotal	mods/Size_mod.F90	/^     real(adqt)       :: CommTimeTotal$/;"	k	type:MeshSize
+Communicator	mods/Communicator_mod.F90	/^  type, public :: Communicator /;"	t	module:Communicator_mod
+Communicator_ctor_buffer	mods/Communicator_mod.F90	/^  subroutine Communicator_ctor_buffer(/;"	s	module:Communicator_mod
+Communicator_dtor	mods/Communicator_mod.F90	/^  subroutine Communicator_dtor(/;"	s	module:Communicator_mod
+Communicator_mod	mods/Communicator_mod.F90	/^module Communicator_mod /;"	m
+ConstructBoundary	aux/ConstructBoundary.F90	/^   subroutine ConstructBoundary(/;"	s
+ConstructDtControls	aux/ConstructDtControls.F90	/^   subroutine ConstructDtControls(/;"	s
+ConstructEditor	aux/ConstructEditor.F90	/^   subroutine ConstructEditor$/;"	s
+ConstructGeometry	aux/ConstructGeometry.F90	/^   subroutine ConstructGeometry$/;"	s
+ConstructIterControls	aux/ConstructIterControls.F90	/^   subroutine ConstructIterControls(/;"	s
+ConstructMaterial	aux/ConstructMaterial.F90	/^   subroutine ConstructMaterial$/;"	s
+ConstructProfile	aux/ConstructProfile.F90	/^   subroutine ConstructProfile(/;"	s
+ConstructQuadrature	aux/ConstructQuadrature.F90	/^   subroutine ConstructQuadrature(/;"	s
+ConstructSize	aux/ConstructSize.F90	/^   subroutine ConstructSize(/;"	s
+ControlProcess	mods/TimeStepControls_mod.F90	/^     integer          :: ControlProcess /;"	k	type:TimeStepControls
+Converged	mods/Quadrature_mod.F90	/^     logical(kind=1), pointer  :: Converged(/;"	k	type:Quadrature
+DEBUG_OUT	include/Global.h	1;"	d
+DEBUG_OUT	include/Global1.h	1;"	d
+DUMMY_ZONE	include/Global.h	4;"	d
+DUMMY_ZONE	include/Global1.h	4;"	d
+DeltaEnergyCheck	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyCheck /;"	k	type:Editor
+DeltaEnergyEsc	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyEsc /;"	k	type:Editor
+DeltaEnergyExtSrc	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyExtSrc /;"	k	type:Editor
+DeltaEnergyHydWork	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyHydWork /;"	k	type:Editor
+DeltaEnergyInc	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyInc /;"	k	type:Editor
+DeltaEnergyMat	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyMat /;"	k	type:Editor
+DeltaEnergyRad	mods/Editor_mod.F90	/^     real(adqt)          :: DeltaEnergyRad /;"	k	type:Editor
+DtConstraint	mods/TimeStepControls_mod.F90	/^     character(len=8) :: DtConstraint /;"	k	type:TimeStepControls
+DtControls	mods/TimeStepControls_mod.F90	/^  type(TimeStepControls), pointer, public :: DtControls$/;"	v	module:TimeStepControls_mod
+EditID	mods/Boundary_mod.F90	/^     integer              :: EditID /;"	k	type:Boundary
+Editor	mods/Editor_mod.F90	/^  type, public :: Editor /;"	t	module:Editor_mod
+Editor_ctor	mods/Editor_mod.F90	/^  subroutine Editor_ctor(/;"	s	module:Editor_mod
+Editor_dtor	mods/Editor_mod.F90	/^  subroutine Editor_dtor(/;"	s	module:Editor_mod
+Editor_get_DeltaEnergyCheck	mods/Editor_mod.F90	/^  function Editor_get_DeltaEnergyCheck(/;"	f	module:Editor_mod
+Editor_get_DeltaEnergyEsc	mods/Editor_mod.F90	/^  function Editor_get_DeltaEnergyEsc(/;"	f	module:Editor_mod
+Editor_get_DeltaEnergyExtSrc	mods/Editor_mod.F90	/^  function Editor_get_DeltaEnergyExtSrc(/;"	f	module:Editor_mod
+Editor_get_DeltaEnergyInc	mods/Editor_mod.F90	/^  function Editor_get_DeltaEnergyInc(/;"	f	module:Editor_mod
+Editor_get_DeltaEnergyMat	mods/Editor_mod.F90	/^  function Editor_get_DeltaEnergyMat(/;"	f	module:Editor_mod
+Editor_get_DeltaEnergyRad	mods/Editor_mod.F90	/^  function Editor_get_DeltaEnergyRad(/;"	f	module:Editor_mod
+Editor_get_EnergyCheck	mods/Editor_mod.F90	/^  function Editor_get_EnergyCheck(/;"	f	module:Editor_mod
+Editor_get_EnergyEscaped	mods/Editor_mod.F90	/^  function Editor_get_EnergyEscaped(/;"	f	module:Editor_mod
+Editor_get_EnergyExtSources	mods/Editor_mod.F90	/^  function Editor_get_EnergyExtSources(/;"	f	module:Editor_mod
+Editor_get_EnergyIncident	mods/Editor_mod.F90	/^  function Editor_get_EnergyIncident(/;"	f	module:Editor_mod
+Editor_get_EnergyMaterial	mods/Editor_mod.F90	/^  function Editor_get_EnergyMaterial(/;"	f	module:Editor_mod
+Editor_get_EnergyRadiation	mods/Editor_mod.F90	/^  function Editor_get_EnergyRadiation(/;"	f	module:Editor_mod
+Editor_get_TeMax	mods/Editor_mod.F90	/^  function Editor_get_TeMax(/;"	f	module:Editor_mod
+Editor_get_TeMaxNode	mods/Editor_mod.F90	/^  function Editor_get_TeMaxNode(/;"	f	module:Editor_mod
+Editor_get_TeMaxZone	mods/Editor_mod.F90	/^  function Editor_get_TeMaxZone(/;"	f	module:Editor_mod
+Editor_get_TiMax	mods/Editor_mod.F90	/^  function Editor_get_TiMax(/;"	f	module:Editor_mod
+Editor_get_TiMaxNode	mods/Editor_mod.F90	/^  function Editor_get_TiMaxNode(/;"	f	module:Editor_mod
+Editor_get_TiMaxZone	mods/Editor_mod.F90	/^  function Editor_get_TiMaxZone(/;"	f	module:Editor_mod
+Editor_get_TrMax	mods/Editor_mod.F90	/^  function Editor_get_TrMax(/;"	f	module:Editor_mod
+Editor_get_TrMaxNode	mods/Editor_mod.F90	/^  function Editor_get_TrMaxNode(/;"	f	module:Editor_mod
+Editor_get_TrMaxZone	mods/Editor_mod.F90	/^  function Editor_get_TrMaxZone(/;"	f	module:Editor_mod
+Editor_mod	mods/Editor_mod.F90	/^module Editor_mod /;"	m
+Editor_set	mods/Editor_mod.F90	/^  subroutine Editor_set(/;"	s	module:Editor_mod
+EnergyCheck	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyCheck /;"	k	type:Editor
+EnergyDensityOld	mods/ZoneData_mod.F90	/^     real(adqt)           :: EnergyDensityOld /;"	k	type:ZoneData
+EnergyEscaped	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyEscaped /;"	k	type:Editor
+EnergyExtSources	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyExtSources /;"	k	type:Editor
+EnergyIncident	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyIncident /;"	k	type:Editor
+EnergyMaterial	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyMaterial /;"	k	type:Editor
+EnergyRadBOC	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyRadBOC /;"	k	type:Editor
+EnergyRadEOC	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyRadEOC /;"	k	type:Editor
+EnergyRadiation	mods/Editor_mod.F90	/^     real(adqt)          :: EnergyRadiation /;"	k	type:Editor
+Exit	mods/Quadrature_mod.F90	/^  type, public :: Exit$/;"	t	module:Quadrature_mod
+ExitBdy	mods/Quadrature_mod.F90	/^  type(Exit),       pointer, public :: ExitBdy$/;"	v	module:Quadrature_mod
+Falpha	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Falpha(/;"	k	type:Quadrature
+FinishingDirection	mods/Quadrature_mod.F90	/^     logical(kind=1), pointer  :: FinishingDirection(/;"	k	type:Quadrature
+Flux	mods/Quadrature_mod.F90	/^     real(adqt), pointer :: Flux(/;"	k	type:Quadrature
+GaussLegendreLobattoWgts	snac/GaussLegendreLobattoWgts.F90	/^   subroutine GaussLegendreLobattoWgts(/;"	s
+Geom	mods/Geometry_mod.F90	/^  type(Geome/;"	v	module:Geometry_mod
+Geometry	mods/Geometry_mod.F90	/^  type, public :: Geometry /;"	t	module:Geometry_mod
+Geometry_ctor	mods/Geometry_mod.F90	/^  subroutine Geometry_ctor(/;"	s	module:Geometry_mod
+Geometry_dtor	mods/Geometry_mod.F90	/^  subroutine Geometry_dtor(/;"	s	module:Geometry_mod
+Geometry_getZone	mods/Geometry_mod.F90	/^  function Geometry_getZone(/;"	f	module:Geometry_mod
+Geometry_mod	mods/Geometry_mod.F90	/^module Geometry_mod /;"	m
+Gnu	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Gnu(/;"	k	type:Quadrature
+Groups	mods/Quadrature_mod.F90	/^     integer              :: Groups /;"	k	type:Quadrature
+IncFlux	mods/Quadrature_mod.F90	/^     real(adqt), pointer :: IncFlux(/;"	k	type:Quadrature
+IncFluxOld	mods/Quadrature_mod.F90	/^     real(adqt), pointer :: IncFluxOld(/;"	k	type:Quadrature
+InitExchange	rt/InitExchange.F90	/^   subroutine InitExchange$/;"	s
+InterpValues	mods/Profile_mod.F90	/^     real(adqt), pointer  :: InterpValues(/;"	k	type:Profile
+IterControl	mods/iter_control_mod.F90	/^  type, public :: IterControl$/;"	t	module:iter_control_mod
+IterControlList	mods/iter_control_list_mod.F90	/^  type, public :: IterControlList$/;"	t	module:iter_control_list_mod
+IterControls	mods/iter_control_list_mod.F90	/^  type(IterControlList), pointer, public :: IterControls$/;"	v	module:iter_control_list_mod
+IterFraction	mods/TimeStepControls_mod.F90	/^                                   IterFraction=/;"	v	module:TimeStepControls_mod
+Jacobi	snac/Jacobi.F90	/^   subroutine Jacobi(/;"	s
+JacobiLobattoPts	snac/JacobiLobattoPts.F90	/^   subroutine JacobiLobattoPts(/;"	s
+KULLITE_HH	include/KULLLITE.h	3;"	d
+ListExit	mods/Quadrature_mod.F90	/^     integer,    pointer :: ListExit(/;"	k	type:Exit
+ListRecv	mods/Communicator_mod.F90	/^     integer,    pointer :: ListRecv(/;"	k	type:Communicator
+ListSend	mods/Communicator_mod.F90	/^     integer,    pointer :: ListSend(/;"	k	type:Communicator
+Location	mods/Profile_mod.F90	/^     character(len=8)     :: Location /;"	k	type:Profile
+Mat	mods/Material_mod.F90	/^  type(Mate/;"	v	module:Material_mod
+Material	mods/Material_mod.F90	/^  type, public :: Material$/;"	t	module:Material_mod
+Material_ctor	mods/Material_mod.F90	/^  subroutine Material_ctor(/;"	s	module:Material_mod
+Material_dtor	mods/Material_mod.F90	/^  subroutine Material_dtor(/;"	s	module:Material_mod
+Material_mod	mods/Material_mod.F90	/^module Material_mod$/;"	m
+MaxChangeTe	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxChangeTe /;"	k	type:TimeStepControls
+MaxChangeTi	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxChangeTi /;"	k	type:TimeStepControls
+MaxChangeTr4	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxChangeTr4 /;"	k	type:TimeStepControls
+MaxFracChangeTe	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxFracChangeTe /;"	k	type:TimeStepControls
+MaxFracChangeTi	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxFracChangeTi /;"	k	type:TimeStepControls
+MaxFracChangeTr4	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxFracChangeTr4 /;"	k	type:TimeStepControls
+MaxProfiles	mods/ProfileList_mod.F90	/^     integer                :: MaxProfiles /;"	k	type:ProfileList
+MaxTimeStep	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MaxTimeStep /;"	k	type:TimeStepControls
+MeshSize	mods/Size_mod.F90	/^  type, public :: MeshSize$/;"	t	module:Size_mod
+MinTimeStep	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: MinTimeStep /;"	k	type:TimeStepControls
+Multiplier	mods/Profile_mod.F90	/^     real(adqt)           :: Multiplier /;"	k	type:Profile
+NAzimuthal	mods/Quadrature_mod.F90	/^     integer              :: NAzimuthal /;"	k	type:Quadrature
+NOSHAPESMAX	include/Global.h	2;"	d
+NOSHAPESMAX	include/Global1.h	2;"	d
+NPolar	mods/Quadrature_mod.F90	/^     integer              :: NPolar /;"	k	type:Quadrature
+NangBin	mods/Quadrature_mod.F90	/^     integer             :: NangBin /;"	k	type:Quadrature
+NangBinList	mods/Quadrature_mod.F90	/^     integer,    pointer :: NangBinList(/;"	k	type:Quadrature
+NeighborID	mods/Boundary_mod.F90	/^     integer              :: NeighborID /;"	k	type:Boundary
+NumAngles	mods/Quadrature_mod.F90	/^     integer              :: NumAngles /;"	k	type:Quadrature
+NumBdyElem	mods/Boundary_mod.F90	/^     integer              :: NumBdyElem /;"	k	type:Boundary
+NumBin	mods/Quadrature_mod.F90	/^     integer             :: NumBin /;"	k	type:Quadrature
+NumBin0	mods/Quadrature_mod.F90	/^     integer             :: NumBin0 /;"	k	type:Quadrature
+NumBoundary	mods/BoundaryList_mod.F90	/^     integer                 :: NumBoundary /;"	k	type:BoundaryList
+NumInterpValues	mods/Profile_mod.F90	/^     integer              :: NumInterpValues /;"	k	type:Profile
+NumMoments	mods/Quadrature_mod.F90	/^     integer              :: NumMoments /;"	k	type:Quadrature
+NumProfiles	mods/ProfileList_mod.F90	/^     integer                :: NumProfiles /;"	k	type:ProfileList
+NumQuadSets	mods/QuadratureList_mod.F90	/^     integer                     :: NumQuadSets /;"	k	type:QuadratureList
+NumReflecting	mods/BoundaryList_mod.F90	/^     integer                 :: NumReflecting /;"	k	type:BoundaryList
+NumShared	mods/BoundaryList_mod.F90	/^     integer                 :: NumShared /;"	k	type:BoundaryList
+NumSnSets	mods/QuadratureList_mod.F90	/^     integer                     :: NumSnSets /;"	k	type:QuadratureList
+NumSource	mods/BoundaryList_mod.F90	/^     integer                 :: NumSource /;"	k	type:BoundaryList
+NumTimes	mods/Profile_mod.F90	/^     integer              :: NumTimes /;"	k	type:Profile
+NumVacuum	mods/BoundaryList_mod.F90	/^     integer                 :: NumVacuum /;"	k	type:BoundaryList
+NumValues	mods/Profile_mod.F90	/^     integer              :: NumValues /;"	k	type:Profile
+OBJECTS	Makefile	/^OBJECTS = ${patsubst %.F90,%.o,$(SOURCES)}$/;"	m
+Omega	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Omega(/;"	k	type:Quadrature
+Order	mods/Quadrature_mod.F90	/^     integer              :: Order /;"	k	type:Quadrature
+Pnm	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Pnm(/;"	k	type:Quadrature
+PolarAxis	mods/Quadrature_mod.F90	/^     integer              :: PolarAxis /;"	k	type:Quadrature
+ProfID	mods/Profile_mod.F90	/^  type(Profile), pointer, public :: ProfID$/;"	v	module:Profile_mod
+Profile	mods/Profile_mod.F90	/^  type, public :: Profile /;"	t	module:Profile_mod
+ProfileID	mods/Boundary_mod.F90	/^     integer              :: ProfileID /;"	k	type:Boundary
+ProfileList	mods/ProfileList_mod.F90	/^  type, public :: ProfileList$/;"	t	module:ProfileList_mod
+ProfileList_ctor	mods/ProfileList_mod.F90	/^  subroutine ProfileList_ctor(/;"	s	module:ProfileList_mod
+ProfileList_ctorPsiInc	mods/ProfileList_mod.F90	/^  subroutine ProfileList_ctorPsiInc(/;"	s	module:ProfileList_mod
+ProfileList_dtor	mods/ProfileList_mod.F90	/^  subroutine ProfileList_dtor(/;"	s	module:ProfileList_mod
+ProfileList_dtorPsiInc	mods/ProfileList_mod.F90	/^  subroutine ProfileList_dtorPsiInc(/;"	s	module:ProfileList_mod
+ProfileList_getNumProfiles	mods/ProfileList_mod.F90	/^  function ProfileList_getNumProfiles(/;"	f	module:ProfileList_mod
+ProfileList_getProf	mods/ProfileList_mod.F90	/^  function ProfileList_getProf(/;"	f	module:ProfileList_mod
+ProfileList_mod	mods/ProfileList_mod.F90	/^module ProfileList_mod$/;"	m
+ProfileList_set	mods/ProfileList_mod.F90	/^  subroutine ProfileList_set(/;"	s	module:ProfileList_mod
+Profile_ctor	mods/Profile_mod.F90	/^  subroutine Profile_ctor(/;"	s	module:Profile_mod
+Profile_dtor	mods/Profile_mod.F90	/^  subroutine Profile_dtor(/;"	s	module:Profile_mod
+Profile_mod	mods/Profile_mod.F90	/^module Profile_mod /;"	m
+Psi	mods/Boundary_mod.F90	/^     real(adqt), pointer  :: Psi(/;"	k	type:Boundary
+Psi_Inc	mods/ProfileList_mod.F90	/^     real(adqt), pointer    :: Psi_Inc(/;"	k	type:ProfileList
+PtrShared	mods/BoundaryList_mod.F90	/^     integer                 :: PtrShared /;"	k	type:BoundaryList
+PtrSrc	mods/BoundaryList_mod.F90	/^     integer                 :: PtrSrc /;"	k	type:BoundaryList
+PtrVac	mods/BoundaryList_mod.F90	/^     integer                 :: PtrVac /;"	k	type:BoundaryList
+Quad	mods/QuadratureList_mod.F90	/^  type(Quadr/;"	v	module:QuadratureList_mod
+QuadID	mods/Quadrature_mod.F90	/^     integer              :: QuadID /;"	k	type:Quadrature
+QuadSet	mods/Quadrature_mod.F90	/^  type(Quadrature), pointer, public :: QuadSet$/;"	v	module:Quadrature_mod
+Quadrature	mods/Quadrature_mod.F90	/^  type, public :: Quadrature /;"	t	module:Quadrature_mod
+QuadratureData_mod	mods/QuadratureData_mod.F90	/^   module QuadratureData_mod /;"	m
+QuadratureList	mods/QuadratureList_mod.F90	/^  type, public :: QuadratureList$/;"	t	module:QuadratureList_mod
+QuadratureList_ctor	mods/QuadratureList_mod.F90	/^  subroutine QuadratureList_ctor(/;"	s	module:QuadratureList_mod
+QuadratureList_dtor	mods/QuadratureList_mod.F90	/^  subroutine QuadratureList_dtor(/;"	s	module:QuadratureList_mod
+QuadratureList_getEnergyGroups	mods/QuadratureList_mod.F90	/^  function QuadratureList_getEnergyGroups(/;"	f	module:QuadratureList_mod
+QuadratureList_getGTAQuad	mods/QuadratureList_mod.F90	/^  function QuadratureList_getGTAQuad(/;"	f	module:QuadratureList_mod
+QuadratureList_getNumQuadSets	mods/QuadratureList_mod.F90	/^  function QuadratureList_getNumQuadSets(/;"	f	module:QuadratureList_mod
+QuadratureList_getNumSnSets	mods/QuadratureList_mod.F90	/^  function QuadratureList_getNumSnSets(/;"	f	module:QuadratureList_mod
+QuadratureList_getQuad	mods/QuadratureList_mod.F90	/^  function QuadratureList_getQuad(/;"	f	module:QuadratureList_mod
+QuadratureList_mod	mods/QuadratureList_mod.F90	/^module QuadratureList_mod$/;"	m
+QuadratureList_set	mods/QuadratureList_mod.F90	/^  subroutine QuadratureList_set(/;"	s	module:QuadratureList_mod
+Quadrature_ctor	mods/Quadrature_mod.F90	/^  subroutine Quadrature_ctor(/;"	s	module:Quadrature_mod
+Quadrature_ctorExit	mods/Quadrature_mod.F90	/^  subroutine Quadrature_ctorExit(/;"	s	module:Quadrature_mod
+Quadrature_dtor	mods/Quadrature_mod.F90	/^  subroutine Quadrature_dtor(/;"	s	module:Quadrature_mod
+Quadrature_dtorComm	mods/Quadrature_mod.F90	/^  subroutine Quadrature_dtorComm(/;"	s	module:Quadrature_mod
+Quadrature_dtorExit	mods/Quadrature_mod.F90	/^  subroutine Quadrature_dtorExit(/;"	s	module:Quadrature_mod
+Quadrature_getComm	mods/Quadrature_mod.F90	/^  function Quadrature_getComm(/;"	f	module:Quadrature_mod
+Quadrature_getExit	mods/Quadrature_mod.F90	/^  function Quadrature_getExit(/;"	f	module:Quadrature_mod
+Quadrature_mod	mods/Quadrature_mod.F90	/^module Quadrature_mod /;"	m
+Quadrature_resCommOrd	mods/Quadrature_mod.F90	/^  subroutine Quadrature_resCommOrd(/;"	s	module:Quadrature_mod
+Quadrature_setCommOrd	mods/Quadrature_mod.F90	/^  subroutine Quadrature_setCommOrd(/;"	s	module:Quadrature_mod
+RadBoundary	mods/BoundaryList_mod.F90	/^  type(BoundaryList), pointer, public :: RadBoundary$/;"	v	module:BoundaryList_mod
+RadEdit	mods/Editor_mod.F90	/^  type(Editor), pointer, public :: RadEdit$/;"	v	module:Editor_mod
+RadEnergyEscRate	mods/Editor_mod.F90	/^     real(adqt), pointer :: RadEnergyEscRate(/;"	k	type:Editor
+RadEnergyEscape	mods/Editor_mod.F90	/^     real(adqt), pointer :: RadEnergyEscape(/;"	k	type:Editor
+RadEnergyIncRate	mods/Editor_mod.F90	/^     real(adqt), pointer :: RadEnergyIncRate(/;"	k	type:Editor
+RadEnergyIncident	mods/Editor_mod.F90	/^     real(adqt), pointer :: RadEnergyIncident(/;"	k	type:Editor
+RadMoments	control/RadMoments.F90	/^   subroutine RadMoments(/;"	s
+RadTime	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: RadTime /;"	k	type:TimeStepControls
+RadTimeStep	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: RadTimeStep /;"	k	type:TimeStepControls
+Radius	mods/Boundary_mod.F90	/^     real(adqt), pointer  :: Radius(/;"	k	type:Boundary
+RecTimeStep	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: RecTimeStep /;"	k	type:TimeStepControls
+RecvOrder	mods/Quadrature_mod.F90	/^     integer,    pointer :: RecvOrder(/;"	k	type:Quadrature
+RecvOrder0	mods/Quadrature_mod.F90	/^     integer,    pointer :: RecvOrder0(/;"	k	type:Quadrature
+ReflAngle	mods/Boundary_mod.F90	/^     integer,    pointer  :: ReflAngle(/;"	k	type:ReflectedAngle
+ReflectedAngle	mods/Boundary_mod.F90	/^  type, public :: ReflectedAngle$/;"	t	module:Boundary_mod
+ResetSize	aux/ResetSize.F90	/^   subroutine ResetSize(/;"	s
+SFixed	mods/Material_mod.F90	/^     real(adqt), pointer :: SFixed(/;"	k	type:Material
+SMatEff	mods/Material_mod.F90	/^     real(adqt), pointer :: SMatEff(/;"	k	type:Material
+SOURCES	Makefile	/^SOURCES=mods\/BoundaryList_mod.F90 \\$/;"	m
+SendOrder	mods/Quadrature_mod.F90	/^     integer,    pointer :: SendOrder(/;"	k	type:Quadrature
+SendOrder0	mods/Quadrature_mod.F90	/^     integer,    pointer :: SendOrder0(/;"	k	type:Quadrature
+Shape	mods/Profile_mod.F90	/^     character(len=8)     :: Shape /;"	k	type:Profile
+Size	mods/Size_mod.F90	/^  type(MeshSize)/;"	v	module:Size_mod
+Size_ctor	mods/Size_mod.F90	/^  subroutine Size_ctor(/;"	s	module:Size_mod
+Size_mod	mods/Size_mod.F90	/^module Size_mod /;"	m
+SourceProfiles	mods/ProfileList_mod.F90	/^  type(ProfileList), pointer, public :: SourceProfiles$/;"	v	module:ProfileList_mod
+StartingDirection	mods/Quadrature_mod.F90	/^     logical(kind=1), pointer  :: StartingDirection(/;"	k	type:Quadrature
+Status	mods/Profile_mod.F90	/^     character(len=8)     :: Status /;"	k	type:Profile
+SweepScheduler	rt/SweepScheduler.F90	/^   subroutine SweepScheduler$/;"	s
+TagList	include/TagList.h	/^typedef struct TagList_S TagList;$/;"	t	typeref:struct:TagList_S
+TagList_S	include/TagList.h	/^struct TagList_S { $/;"	s
+Tau	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Tau(/;"	k	type:Quadrature
+TeMax	mods/Editor_mod.F90	/^     real(adqt)          :: TeMax /;"	k	type:Editor
+TeMaxNode	mods/Editor_mod.F90	/^     integer             :: TeMaxNode /;"	k	type:Editor
+TeMaxZone	mods/Editor_mod.F90	/^     integer, dimension (1) :: TeMaxZone /;"	k	type:Editor
+TempFraction	mods/TimeStepControls_mod.F90	/^  real(adqt), parameter, public :: TempFraction=/;"	v	module:TimeStepControls_mod
+TiMax	mods/Editor_mod.F90	/^     real(adqt)          :: TiMax /;"	k	type:Editor
+TiMaxNode	mods/Editor_mod.F90	/^     integer             :: TiMaxNode /;"	k	type:Editor
+TiMaxZone	mods/Editor_mod.F90	/^     integer, dimension (1) :: TiMaxZone /;"	k	type:Editor
+TimeStepControls	mods/TimeStepControls_mod.F90	/^  type, public :: TimeStepControls /;"	t	module:TimeStepControls_mod
+TimeStepControls_ctor	mods/TimeStepControls_mod.F90	/^  subroutine TimeStepControls_ctor(/;"	s	module:TimeStepControls_mod
+TimeStepControls_dtor	mods/TimeStepControls_mod.F90	/^  subroutine TimeStepControls_dtor(/;"	s	module:TimeStepControls_mod
+TimeStepControls_get_ControlProcess	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_ControlProcess(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_DtConstraint	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_DtConstraint(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxChangeTe	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxChangeTe(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxChangeTi	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxChangeTi(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxChangeTr4	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxChangeTr4(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxFracChangeTe	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxFracChangeTe(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxFracChangeTi	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxFracChangeTi(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxFracChangeTr4	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxFracChangeTr4(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MaxTimeStep	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MaxTimeStep(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_MinTimeStep	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_MinTimeStep(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_RadTime	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_RadTime(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_RadTimeStep	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_RadTimeStep(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_RecTimeStep	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_RecTimeStep(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_ZoneMaxChangeTe	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_ZoneMaxChangeTe(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_ZoneMaxChangeTi	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_ZoneMaxChangeTi(/;"	f	module:TimeStepControls_mod
+TimeStepControls_get_ZoneMaxChangeTr4	mods/TimeStepControls_mod.F90	/^  function TimeStepControls_get_ZoneMaxChangeTr4(/;"	f	module:TimeStepControls_mod
+TimeStepControls_mod	mods/TimeStepControls_mod.F90	/^module TimeStepControls_mod /;"	m
+TimeStepControls_set	mods/TimeStepControls_mod.F90	/^  subroutine TimeStepControls_set(/;"	s	module:TimeStepControls_mod
+Times	mods/Profile_mod.F90	/^     real(adqt), pointer  :: Times(/;"	k	type:Profile
+Tr4Threshold	mods/TimeStepControls_mod.F90	/^     real(adqt)       :: Tr4Threshold /;"	k	type:TimeStepControls
+TrMax	mods/Editor_mod.F90	/^     real(adqt)          :: TrMax /;"	k	type:Editor
+TrMaxNode	mods/Editor_mod.F90	/^     integer             :: TrMaxNode /;"	k	type:Editor
+TrMaxZone	mods/Editor_mod.F90	/^     integer, dimension (1) :: TrMaxZone /;"	k	type:Editor
+Type	mods/Boundary_mod.F90	/^     character(len=8)     :: Type /;"	k	type:Boundary
+Type	mods/Profile_mod.F90	/^     character(len=8)     :: Type /;"	k	type:Profile
+TypeName	mods/Quadrature_mod.F90	/^     character(len=8)     :: TypeName /;"	k	type:Quadrature
+UpdateMaterialCoupling	rt/UpdateMaterialCoupling.F90	/^   subroutine UpdateMaterialCoupling(/;"	s
+Values	mods/Profile_mod.F90	/^     real(adqt), pointer  :: Values(/;"	k	type:Profile
+VolumeZone	mods/ZoneData_mod.F90	/^     real(adqt)           :: VolumeZone /;"	k	type:ZoneData
+Weight	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Weight(/;"	k	type:Quadrature
+Ynm	mods/Quadrature_mod.F90	/^     real(adqt), pointer  :: Ynm(/;"	k	type:Quadrature
+Z	mods/ZoneData_mod.F90	/^  type(Zo/;"	v	module:ZoneData_mod
+ZData	mods/Geometry_mod.F90	/^     type(ZoneData), pointer :: ZData(/;"	k	type:Geometry
+ZNODESMAX	include/Global.h	3;"	d
+ZNODESMAX	include/Global1.h	3;"	d
+ZoneData	mods/ZoneData_mod.F90	/^  type, public :: ZoneData /;"	t	module:ZoneData_mod
+ZoneData_ctor	mods/ZoneData_mod.F90	/^  subroutine ZoneData_ctor(/;"	s	module:ZoneData_mod
+ZoneData_mod	mods/ZoneData_mod.F90	/^module ZoneData_mod /;"	m
+ZoneMaxChangeTe	mods/TimeStepControls_mod.F90	/^     integer          :: ZoneMaxChangeTe /;"	k	type:TimeStepControls
+ZoneMaxChangeTi	mods/TimeStepControls_mod.F90	/^     integer          :: ZoneMaxChangeTi /;"	k	type:TimeStepControls
+ZoneMaxChangeTr4	mods/TimeStepControls_mod.F90	/^     integer          :: ZoneMaxChangeTr4 /;"	k	type:TimeStepControls
+ZoneToSrc	mods/Geometry_mod.F90	/^     integer, pointer :: ZoneToSrc(/;"	k	type:Geometry
+_TagList_h	include/TagList.h	13;"	d
+_tag_h	include/tag.h	12;"	d
+addBoundary	aux/addBoundary.F90	/^   subroutine addBoundary(/;"	s
+addProfile	aux/addProfile.F90	/^   subroutine addProfile(/;"	s
+adqt	mods/kind_mod.F90	/^  integer, parameter, public ::  adqt /;"	v	module:kind_mod
+adqtEpsilon	mods/constant_mod.F90	/^                      adqtEpsilon /;"	v	module:constant_mod
+adqtTiny	mods/constant_mod.F90	/^                      adqtTiny /;"	v	module:constant_mod
+advanceRT	control/advanceRT.F90	/^   subroutine advanceRT(/;"	s
+areac	mods/Geometry_mod.F90	/^     real(adqt), pointer :: areac(/;"	k	type:Geometry
+assert	misc/assert.F90	/^subroutine assert(/;"	s
+bdyedt	rt/bdyedt.F90	/^   subroutine bdyedt(/;"	s
+c0	mods/ZoneData_mod.F90	/^     integer              :: c0 /;"	k	type:ZoneData
+check	include/assert.h	6;"	d
+constant_mod	mods/constant_mod.F90	/^module constant_mod$/;"	m
+cosPhiXYZ	mods/QuadratureData_mod.F90	/^   real(adqt), public :: cosPhiXYZ(/;"	v	module:QuadratureData_mod
+cosTheta	mods/QuadratureData_mod.F90	/^   real(adqt), public :: cosTheta(/;"	v	module:QuadratureData_mod
+cutoff	mods/TimeStepControls_mod.F90	/^                                   cutoff=/;"	v	module:TimeStepControls_mod
+cve	mods/Material_mod.F90	/^     real(adqt), pointer :: cve(/;"	k	type:Material
+cyclebreaker	snac/cyclebreaker.F90	/^   subroutine cyclebreaker(/;"	s
+decomp_s	mods/Size_mod.F90	/^     character(len=8) :: decomp_s /;"	k	type:MeshSize
+decompton	mods/Material_mod.F90	/^     real(adqt), pointer :: decompton(/;"	k	type:Material
+denec	mods/Material_mod.F90	/^     real(adqt), pointer :: denec(/;"	k	type:Material
+denez	mods/Material_mod.F90	/^     real(adqt), pointer :: denez(/;"	k	type:Material
+dircos	mods/QuadratureData_mod.F90	/^   real(adqt), public :: dircos(/;"	v	module:QuadratureData_mod
+dtnew	control/dtnew.F90	/^   subroutine dtnew$/;"	s
+eight	mods/constant_mod.F90	/^                      eight /;"	v	module:constant_mod
+electronMass	mods/radconstant_mod.F90	/^                      electronMass /;"	v	module:radconstant_mod
+ensure	include/assert.h	5;"	d
+epsilonPoint	mods/iter_control_mod.F90	/^    real(adqt)    :: epsilonPoint$/;"	k	type:IterControl
+etac	mods/Material_mod.F90	/^     real(adqt), pointer :: etac(/;"	k	type:Material
+exchange	rt/exchange.F90	/^   subroutine exchange(/;"	s
+f90advise	misc/f90advise.F90	/^subroutine f90advise(/;"	s
+f90fatal	misc/f90fatal.F90	/^subroutine f90fatal(/;"	s
+faceIndices	include/KULLLITE.h	/^  int*         faceIndices;$/;"	m	struct:__anon4
+faceToNodesIndex	include/KULLLITE.h	/^  int*         faceToNodesIndex;$/;"	m	struct:__anon4
+face_coords	rt/face_coords.F90	/^   subroutine face_coords(/;"	s
+findReflectedAngles	rt/findReflectedAngles.F90	/^   subroutine findReflectedAngles /;"	s
+findexit	rt/findexit.F90	/^   subroutine findexit$/;"	s
+findseeds	snac/findseeds.F90	/^   subroutine findseeds(/;"	s
+first	mods/QuadratureData_mod.F90	/^   integer, public    :: first(/;"	v	module:QuadratureData_mod
+five	mods/constant_mod.F90	/^                      five /;"	v	module:constant_mod
+fixZone	snac/fixZone.F90	/^   subroutine fixZone(/;"	s
+fluxIterations	mods/Quadrature_mod.F90	/^     integer,    pointer :: fluxIterations(/;"	k	type:Quadrature
+four	mods/constant_mod.F90	/^                      four /;"	v	module:constant_mod
+fourth	mods/constant_mod.F90	/^                      fourth /;"	v	module:constant_mod
+getAbsorptionRate	rt/getAbsorptionRate.F90	/^   subroutine getAbsorptionRate(/;"	s
+getDownStreamData	snac/getDownStreamData.F90	/^   subroutine getDownStreamData(/;"	s
+getEdits	aux/getEdits.F90	/^   subroutine getEdits(/;"	s
+getGeometry	aux/getGeometry.F90	/^   subroutine getGeometry$/;"	s
+getRunStats	aux/getRunStats.F90	/^   subroutine getRunStats(/;"	s
+globalError	mods/iter_control_mod.F90	/^    real(adqt)    :: globalError$/;"	k	type:IterControl
+greyControl	mods/iter_control_mod.F90	/^  type(IterControl), pointer, public :: greyControl$/;"	v	module:iter_control_mod
+half	mods/constant_mod.F90	/^                      half /;"	v	module:constant_mod
+hj	mods/Geometry_mod.F90	/^     real(adqt), pointer :: hj(/;"	k	type:Geometry
+hundred	mods/constant_mod.F90	/^                      hundred /;"	v	module:constant_mod
+iBoundary	mods/BoundaryList_mod.F90	/^     type(Boundary), pointer :: iBoundary(/;"	k	type:BoundaryList
+iComms	mods/Quadrature_mod.F90	/^     type(Communicator), pointer :: iComms(/;"	k	type:Quadrature
+iControls	mods/iter_control_list_mod.F90	/^    type(IterControl), pointer :: iControls(/;"	k	type:IterControlList
+iExit	mods/Quadrature_mod.F90	/^     type(Exit),         pointer :: iExit(/;"	k	type:Quadrature
+iProfile	mods/ProfileList_mod.F90	/^     type(Profile), pointer :: iProfile(/;"	k	type:ProfileList
+iQuads	mods/QuadratureList_mod.F90	/^     type(Quadrature),   pointer :: iQuads(/;"	k	type:QuadratureList
+iRef	mods/Boundary_mod.F90	/^     type(ReflectedAngle), pointer :: iRef(/;"	k	type:Boundary
+iaccel	mods/Size_mod.F90	/^     character(len=8) :: iaccel /;"	k	type:MeshSize
+iang	mods/QuadratureData_mod.F90	/^   integer, public    :: iang(/;"	v	module:QuadratureData_mod
+icoff	mods/QuadratureData_mod.F90	/^   integer, public    :: icoff(/;"	v	module:QuadratureData_mod
+ieta	mods/QuadratureData_mod.F90	/^   integer, public    :: ieta(/;"	v	module:QuadratureData_mod
+igeom	mods/Size_mod.F90	/^     character(len=8) :: igeom /;"	k	type:MeshSize
+imu	mods/QuadratureData_mod.F90	/^   integer, public    :: imu(/;"	v	module:QuadratureData_mod
+incidentFluxControl	mods/iter_control_mod.F90	/^  type(IterControl), pointer, public :: incidentFluxControl$/;"	v	module:iter_control_mod
+initcomm	rt/initcomm.F90	/^   subroutine initcomm$/;"	s
+intensityControl	mods/iter_control_mod.F90	/^  type(IterControl), pointer, public :: intensityControl$/;"	v	module:iter_control_mod
+io_mod	mods/io_mod.F90	/^module io_mod$/;"	m
+irequest	mods/Communicator_mod.F90	/^     integer,    pointer :: irequest(/;"	k	type:Communicator
+iscat	mods/Size_mod.F90	/^     character(len=8) :: iscat /;"	k	type:MeshSize
+iter_control_ctor	mods/iter_control_mod.F90	/^  subroutine iter_control_ctor(/;"	s	module:iter_control_mod
+iter_control_dtor	mods/iter_control_mod.F90	/^  subroutine iter_control_dtor(/;"	s	module:iter_control_mod
+iter_control_get_epsilonPoint	mods/iter_control_mod.F90	/^  function iter_control_get_epsilonPoint(/;"	f	module:iter_control_mod
+iter_control_get_globalError	mods/iter_control_mod.F90	/^  function iter_control_get_globalError(/;"	f	module:iter_control_mod
+iter_control_get_localError	mods/iter_control_mod.F90	/^  function iter_control_get_localError(/;"	f	module:iter_control_mod
+iter_control_get_maxIter	mods/iter_control_mod.F90	/^  function iter_control_get_maxIter(/;"	f	module:iter_control_mod
+iter_control_get_nIter	mods/iter_control_mod.F90	/^  function iter_control_get_nIter(/;"	f	module:iter_control_mod
+iter_control_get_nTotIter	mods/iter_control_mod.F90	/^  function iter_control_get_nTotIter(/;"	f	module:iter_control_mod
+iter_control_get_processOfMax	mods/iter_control_mod.F90	/^  function iter_control_get_processOfMax(/;"	f	module:iter_control_mod
+iter_control_get_zoneOfMax	mods/iter_control_mod.F90	/^  function iter_control_get_zoneOfMax(/;"	f	module:iter_control_mod
+iter_control_list_ctor	mods/iter_control_list_mod.F90	/^  subroutine iter_control_list_ctor(/;"	s	module:iter_control_list_mod
+iter_control_list_dtor	mods/iter_control_list_mod.F90	/^  subroutine iter_control_list_dtor(/;"	s	module:iter_control_list_mod
+iter_control_list_get_iCon	mods/iter_control_list_mod.F90	/^  function iter_control_list_get_iCon(/;"	f	module:iter_control_list_mod
+iter_control_list_get_nIterCon	mods/iter_control_list_mod.F90	/^  function iter_control_list_get_nIterCon(/;"	f	module:iter_control_list_mod
+iter_control_list_mod	mods/iter_control_list_mod.F90	/^module iter_control_list_mod$/;"	m
+iter_control_list_reset_nIter	mods/iter_control_list_mod.F90	/^  subroutine iter_control_list_reset_nIter(/;"	s	module:iter_control_list_mod
+iter_control_mod	mods/iter_control_mod.F90	/^module iter_control_mod$/;"	m
+iter_control_reset_nIter	mods/iter_control_mod.F90	/^  subroutine iter_control_reset_nIter(/;"	s	module:iter_control_mod
+iter_control_set	mods/iter_control_mod.F90	/^  subroutine iter_control_set(/;"	s	module:iter_control_mod
+iter_control_set_globalError	mods/iter_control_mod.F90	/^  subroutine iter_control_set_globalError(/;"	s	module:iter_control_mod
+iter_control_set_localError	mods/iter_control_mod.F90	/^  subroutine iter_control_set_localError(/;"	s	module:iter_control_mod
+iter_control_set_nIter	mods/iter_control_mod.F90	/^  subroutine iter_control_set_nIter(/;"	s	module:iter_control_mod
+iter_control_set_processOfMax	mods/iter_control_mod.F90	/^  subroutine iter_control_set_processOfMax(/;"	s	module:iter_control_mod
+iter_control_set_zoneOfMax	mods/iter_control_mod.F90	/^  subroutine iter_control_set_zoneOfMax(/;"	s	module:iter_control_mod
+itimsrc	mods/Size_mod.F90	/^     character(len=8) :: itimsrc /;"	k	type:MeshSize
+ittyp	mods/Size_mod.F90	/^     character(len=8) :: ittyp /;"	k	type:MeshSize
+iwgt	mods/QuadratureData_mod.F90	/^   integer, public    :: iwgt(/;"	v	module:QuadratureData_mod
+ixi	mods/QuadratureData_mod.F90	/^   integer, public    :: ixi(/;"	v	module:QuadratureData_mod
+kind_mod	mods/kind_mod.F90	/^module kind_mod$/;"	m
+kullLite	include/KULLLITE.h	/^} kullLite;$/;"	t	typeref:struct:__anon4
+last	mods/QuadratureData_mod.F90	/^   integer, public    :: last(/;"	v	module:QuadratureData_mod
+lenrecv	mods/Communicator_mod.F90	/^     integer             :: lenrecv$/;"	k	type:Communicator
+lensend	mods/Communicator_mod.F90	/^     integer             :: lensend$/;"	k	type:Communicator
+list	include/Global.h	/^   int* list;$/;"	m	struct:__anon2
+list	include/Global1.h	/^   int* list;$/;"	m	struct:__anon1
+listSize	include/Global.h	/^   int listSize;$/;"	m	struct:__anon2
+listSize	include/Global1.h	/^   int listSize;$/;"	m	struct:__anon1
+localError	mods/iter_control_mod.F90	/^    real(adqt)    :: localError$/;"	k	type:IterControl
+logPtr	include/Global.h	/^   FILE *logPtr;$/;"	v
+logPtr	include/Global1.h	/^   FILE *logPtr;$/;"	v
+long	mods/kind_mod.F90	/^  integer, parameter, public ::  long /;"	v	module:kind_mod
+longEpsilon	mods/constant_mod.F90	/^                      longEpsilon /;"	v	module:constant_mod
+longTiny	mods/constant_mod.F90	/^                      longTiny /;"	v	module:constant_mod
+make_silo_file	include/Global.h	/^   int make_silo_file = 1;$/;"	v
+maxCorner	mods/Size_mod.F90	/^     integer :: maxCorner /;"	k	type:MeshSize
+maxIter	mods/iter_control_mod.F90	/^    integer       :: maxIter$/;"	k	type:IterControl
+maxIterCon	mods/iter_control_list_mod.F90	/^    integer                    :: maxIterCon$/;"	k	type:IterControlList
+maxcf	mods/Size_mod.F90	/^     integer :: maxcf /;"	k	type:MeshSize
+mpi_MPIAllReduceT_i	misc/mpif90_mod.F90	/^  subroutine mpi_MPIAllReduceT_i(/;"	s	module:mpif90_mod
+mpi_MPIAllReduceT_i_	misc/mpif90_mod.F90	/^  subroutine mpi_MPIAllReduceT_i_(/;"	s	module:mpif90_mod
+mpi_MPIAllReduceT_r	misc/mpif90_mod.F90	/^  subroutine mpi_MPIAllReduceT_r(/;"	s	module:mpif90_mod
+mpi_MPIAllReduceT_r_	misc/mpif90_mod.F90	/^  subroutine mpi_MPIAllReduceT_r_(/;"	s	module:mpif90_mod
+mpi_MPIBarrierT	misc/mpif90_mod.F90	/^  subroutine mpi_MPIBarrierT(/;"	s	module:mpif90_mod
+mpi_MPICommRank	misc/mpif90_mod.F90	/^  subroutine mpi_MPICommRank(/;"	s	module:mpif90_mod
+mpi_MPICommSize	misc/mpif90_mod.F90	/^  subroutine mpi_MPICommSize(/;"	s	module:mpif90_mod
+mpi_MPIFinalize	misc/mpif90_mod.F90	/^  subroutine mpi_MPIFinalize(/;"	s	module:mpif90_mod
+mpi_MPIGather_r_	misc/mpif90_mod.F90	/^  subroutine mpi_MPIGather_r_(/;"	s	module:mpif90_mod
+mpi_MPIGather_r__	misc/mpif90_mod.F90	/^  subroutine mpi_MPIGather_r__(/;"	s	module:mpif90_mod
+mpi_MPIInit	misc/mpif90_mod.F90	/^  subroutine mpi_MPIInit(/;"	s	module:mpif90_mod
+mpi_getMPIRankT	misc/mpif90_mod.F90	/^  function mpi_getMPIRankT(/;"	f	module:mpif90_mod
+mpi_getMPISizeT	misc/mpif90_mod.F90	/^  function mpi_getMPISizeT(/;"	f	module:mpif90_mod
+mpi_param_mod	misc/mpi_param_mod.F90	/^module mpi_param_mod$/;"	m
+mpif90_mod	misc/mpif90_mod.F90	/^module mpif90_mod$/;"	m
+my_node	mods/Size_mod.F90	/^     integer :: my_node /;"	k	type:MeshSize
+nCFaces	mods/ZoneData_mod.F90	/^     integer              :: nCFaces /;"	k	type:ZoneData
+nCorner	mods/ZoneData_mod.F90	/^     integer              :: nCorner /;"	k	type:ZoneData
+nExit	mods/Quadrature_mod.F90	/^     integer             :: nExit /;"	k	type:Exit
+nFaces	mods/ZoneData_mod.F90	/^     integer              :: nFaces /;"	k	type:ZoneData
+nIter	mods/iter_control_mod.F90	/^    integer       :: nIter$/;"	k	type:IterControl
+nIterCon	mods/iter_control_list_mod.F90	/^    integer                    :: nIterCon$/;"	k	type:IterControlList
+nTotIter	mods/iter_control_mod.F90	/^    integer       :: nTotIter$/;"	k	type:IterControl
+name	include/tag.h	/^  char     *name;$/;"	m	struct:tag_S
+names	mods/iter_control_list_mod.F90	/^    character(12),     pointer :: names(/;"	k	type:IterControlList
+nangSN	mods/Size_mod.F90	/^     integer :: nangSN /;"	k	type:MeshSize
+nangac	mods/Size_mod.F90	/^     integer :: nangac /;"	k	type:MeshSize
+nbedit	mods/Size_mod.F90	/^     integer :: nbedit /;"	k	type:MeshSize
+nbelem	mods/Size_mod.F90	/^     integer :: nbelem /;"	k	type:MeshSize
+nbout	mods/io_mod.F90	/^                                nbout /;"	v	module:io_mod
+nbshare	mods/Size_mod.F90	/^     integer :: nbshare /;"	k	type:MeshSize
+ncomm	mods/Size_mod.F90	/^     integer :: ncomm /;"	k	type:MeshSize
+ncornr	mods/Size_mod.F90	/^     integer :: ncornr /;"	k	type:MeshSize
+ndim	mods/Size_mod.F90	/^     integer :: ndim /;"	k	type:MeshSize
+ndimensions	include/KULLLITE.h	/^  int          ndimensions;$/;"	m	struct:__anon4
+neighborID	include/Global.h	/^   int neighborID;$/;"	m	struct:__anon2
+neighborID	include/Global1.h	/^   int neighborID;$/;"	m	struct:__anon1
+neout	mods/io_mod.F90	/^                                neout /;"	v	module:io_mod
+newenergy	control/newenergy.F90	/^   subroutine newenergy$/;"	s
+next	mods/Quadrature_mod.F90	/^     integer,    pointer :: next(/;"	k	type:Quadrature
+nextZ	mods/Quadrature_mod.F90	/^     integer,    pointer :: nextZ(/;"	k	type:Quadrature
+nfaces	include/KULLLITE.h	/^  int          nfaces;$/;"	m	struct:__anon4
+nfaces	mods/Size_mod.F90	/^     integer :: nfaces /;"	k	type:MeshSize
+nfpc	mods/Geometry_mod.F90	/^     integer, pointer :: nfpc(/;"	k	type:Geometry
+ngr	mods/Size_mod.F90	/^     integer :: ngr /;"	k	type:MeshSize
+nin	mods/io_mod.F90	/^                                nin /;"	v	module:io_mod
+nine	mods/constant_mod.F90	/^                      nine /;"	v	module:constant_mod
+nodeIndices	include/KULLLITE.h	/^  int*         nodeIndices;$/;"	m	struct:__anon4
+nopac	mods/io_mod.F90	/^  integer, parameter, public :: nopac /;"	v	module:io_mod
+nout	mods/io_mod.F90	/^                                nout /;"	v	module:io_mod
+npnts	include/KULLLITE.h	/^  int          npnts;$/;"	m	struct:__anon4
+npnts	mods/Size_mod.F90	/^     integer :: npnts /;"	k	type:MeshSize
+npsi	mods/Size_mod.F90	/^     integer :: npsi /;"	k	type:MeshSize
+nrecv	mods/Communicator_mod.F90	/^     integer,    pointer :: nrecv(/;"	k	type:Communicator
+nsend	mods/Communicator_mod.F90	/^     integer,    pointer :: nsend(/;"	k	type:Communicator
+numGhostZones	include/Global.h	/^   int numGhostZones;$/;"	v
+numGhostZones	include/Global1.h	/^   int numGhostZones;$/;"	v
+numInternalSides	include/Global.h	/^   int numInternalSides;$/;"	v
+numInternalSides	include/Global1.h	/^   int numInternalSides;$/;"	v
+numInternalZones	include/Global.h	/^   int numInternalZones;$/;"	v
+numInternalZones	include/Global1.h	/^   int numInternalZones;$/;"	v
+num_tags	include/TagList.h	/^  int      num_tags;$/;"	m	struct:TagList_S
+nzones	include/KULLLITE.h	/^  int          nzones;$/;"	m	struct:__anon4
+nzones	mods/Size_mod.F90	/^     integer :: nzones /;"	k	type:MeshSize
+omp_block_partition	rt/rtstrtsn.F90	/^subroutine omp_block_partition(/;"	s
+one	mods/constant_mod.F90	/^                      one /;"	v	module:constant_mod
+pi	mods/constant_mod.F90	/^                      pi /;"	v	module:constant_mod
+positions	include/KULLLITE.h	/^  xyz*         positions;$/;"	m	struct:__anon4
+processOfMax	mods/iter_control_mod.F90	/^    integer       :: processOfMax$/;"	k	type:IterControl
+profint	control/profint.F90	/^   subroutine profint$/;"	s
+psibrecv	mods/Communicator_mod.F90	/^     real(adqt), pointer :: psibrecv(/;"	k	type:Communicator
+psibsend	mods/Communicator_mod.F90	/^     real(adqt), pointer :: psibsend(/;"	k	type:Communicator
+px	mods/Geometry_mod.F90	/^     real(adqt), pointer :: px(/;"	k	type:Geometry
+qext	mods/Material_mod.F90	/^     real(adqt), pointer :: qext(/;"	k	type:Material
+quadLobatto	rt/quadLobatto.F90	/^   subroutine quadLobatto(/;"	s
+quadProduct	rt/quadProduct.F90	/^   subroutine quadProduct(/;"	s
+quadp	mods/kind_mod.F90	/^  integer, parameter, public :: quadp /;"	v	module:kind_mod
+quadxyz	rt/quadxyz.F90	/^   subroutine quadxyz(/;"	s
+r2	mods/Geometry_mod.F90	/^     real(adqt), pointer :: r2(/;"	k	type:Geometry
+radForceMultiplier	mods/Size_mod.F90	/^     real(adqt)       :: radForceMultiplier /;"	k	type:MeshSize
+rad_constant	mods/radconstant_mod.F90	/^                      rad_constant /;"	v	module:radconstant_mod
+rad_constant2	mods/radconstant_mod.F90	/^                      rad_constant2 /;"	v	module:radconstant_mod
+radconstant_mod	mods/radconstant_mod.F90	/^module radconstant_mod$/;"	m
+radtr	control/radtr.F90	/^   subroutine radtr(/;"	s
+relError	mods/Quadrature_mod.F90	/^     real(adqt), pointer :: relError(/;"	k	type:Quadrature
+require	include/assert.h	4;"	d
+rho	mods/Material_mod.F90	/^     real(adqt), pointer :: rho(/;"	k	type:Material
+rj2	mods/Geometry_mod.F90	/^     real(adqt), pointer :: rj2(/;"	k	type:Geometry
+rswpmd	rt/rswpmd.F90	/^   subroutine rswpmd(/;"	s
+rtave	rt/rtave.F90	/^   subroutine rtave(/;"	s
+rtbatch	control/rtbatch.F90	/^   subroutine rtbatch(/;"	s
+rtbdry	control/rtbdry.F90	/^   subroutine rtbdry$/;"	s
+rtcompton	rt/rtcompton.F90	/^   subroutine rtcompton(/;"	s
+rtconi	rt/rtconi.F90	/^   subroutine rtconi(/;"	s
+rtconv	rt/rtconv.F90	/^   subroutine rtconv(/;"	s
+rtedit	control/rtedit.F90	/^   subroutine rtedit(/;"	s
+rtgeom3	rt/rtgeom3.F90	/^   subroutine rtgeom3$/;"	s
+rtinit	control/rtinit.F90	/^   subroutine rtinit(/;"	s
+rtmainsn	rt/rtmainsn.F90	/^   subroutine rtmainsn(/;"	s
+rtorder	rt/rtorder.F90	/^   subroutine rtorder /;"	s
+rtplnk	rt/rtplnk.F90	/^      subroutine rtplnk(/;"	s
+rtquad	rt/rtquad.F90	/^   subroutine rtquad(/;"	s
+rtstrtsn	rt/rtstrtsn.F90	/^   subroutine rtstrtsn(/;"	s
+rtvsrc	control/rtvsrc.F90	/^   subroutine rtvsrc /;"	s
+scatteringControl	mods/iter_control_mod.F90	/^  type(IterControl), pointer, public :: scatteringControl$/;"	v	module:iter_control_mod
+sccsearch	snac/sccsearch.F90	/^   recursive subroutine sccsearch(/;"	s
+setEditorModule	aux/setEditorModule.F90	/^   subroutine setEditorModule(/;"	s
+setEnergyEdits	aux/setEnergyEdits.F90	/^   subroutine setEnergyEdits(/;"	s
+setGeometry	aux/setGeometry.F90	/^   subroutine setGeometry(/;"	s
+setIncidentFlux	rt/setIncidentFlux.F90	/^   subroutine setIncidentFlux(/;"	s
+setMaterialModule	aux/setMaterialModule.F90	/^   subroutine setMaterialModule(/;"	s
+setSnOrder	aux/setSnOrder.F90	/^   subroutine setSnOrder(/;"	s
+setTimeStep	aux/setTimeStep.F90	/^   subroutine setTimeStep(/;"	s
+setZone	aux/setZone.F90	/^   subroutine setZone(/;"	s
+setbdy	rt/setbdy.F90	/^   subroutine setbdy(/;"	s
+seven	mods/constant_mod.F90	/^                      seven /;"	v	module:constant_mod
+short	mods/kind_mod.F90	/^  integer, parameter, public :: short /;"	v	module:kind_mod
+siga	mods/Material_mod.F90	/^     real(adqt), pointer :: siga(/;"	k	type:Material
+sigs	mods/Material_mod.F90	/^     real(adqt), pointer :: sigs(/;"	k	type:Material
+six	mods/constant_mod.F90	/^                      six /;"	v	module:constant_mod
+sixth	mods/constant_mod.F90	/^                      sixth /;"	v	module:constant_mod
+sixty	mods/constant_mod.F90	/^                      sixty /;"	v	module:constant_mod
+size	include/tag.h	/^  int      size;$/;"	m	struct:tag_S
+snflwxyz	snac/snflwxyz.F90	/^   subroutine snflwxyz(/;"	s
+snmoments	snac/snmoments.F90	/^   subroutine snmoments(/;"	s
+snmref	snac/snmref.F90	/^   subroutine snmref(/;"	s
+snneed	snac/snneed.F90	/^   subroutine snneed(/;"	s
+snnext	snac/snnext.F90	/^   subroutine snnext(/;"	s
+snpnmset	snac/snpnmset.F90	/^   subroutine snpnmset(/;"	s
+snreflect	snac/snreflect.F90	/^   subroutine snreflect(/;"	s
+snswp3d	snac/snswp3d.F90	/^   subroutine snswp3d(/;"	s
+snynmset	snac/snynmset.F90	/^   subroutine snynmset(/;"	s
+speed_light	mods/radconstant_mod.F90	/^                      speed_light /;"	v	module:radconstant_mod
+tag	include/tag.h	/^typedef struct tag_S tag;$/;"	t	typeref:struct:tag_S
+tag_S	include/tag.h	/^struct tag_S { $/;"	s
+tags	include/TagList.h	/^  tag      *tags;$/;"	m	struct:TagList_S
+tau	mods/Size_mod.F90	/^     real(adqt)       :: tau /;"	k	type:MeshSize
+tec	mods/Material_mod.F90	/^     real(adqt), pointer :: tec(/;"	k	type:Material
+tecn	mods/Material_mod.F90	/^     real(adqt), pointer :: tecn(/;"	k	type:Material
+temperatureControl	mods/iter_control_mod.F90	/^  type(IterControl), pointer, public :: temperatureControl$/;"	v	module:iter_control_mod
+ten	mods/constant_mod.F90	/^                      ten /;"	v	module:constant_mod
+testFluxConv	rt/testFluxConv.F90	/^   subroutine testFluxConv(/;"	s
+tez	mods/Material_mod.F90	/^     real(adqt), pointer :: tez(/;"	k	type:Material
+tezn	mods/Material_mod.F90	/^     real(adqt), pointer :: tezn(/;"	k	type:Material
+tezold	mods/Material_mod.F90	/^     real(adqt), pointer :: tezold(/;"	k	type:Material
+tfloor	mods/Size_mod.F90	/^     real(adqt)       :: tfloor /;"	k	type:MeshSize
+third	mods/constant_mod.F90	/^                      third /;"	v	module:constant_mod
+three	mods/constant_mod.F90	/^                      three /;"	v	module:constant_mod
+tmin	mods/Size_mod.F90	/^     real(adqt)       :: tmin /;"	k	type:MeshSize
+topsrcdir	Makefile	/^topsrcdir=..\/..\/..$/;"	m
+totcycles	mods/Quadrature_mod.F90	/^     integer             :: totcycles /;"	k	type:Quadrature
+trz	mods/Material_mod.F90	/^     real(adqt), pointer :: trz(/;"	k	type:Material
+trzn	mods/Material_mod.F90	/^     real(adqt), pointer :: trzn(/;"	k	type:Material
+twenty	mods/constant_mod.F90	/^                      twenty /;"	v	module:constant_mod
+two	mods/constant_mod.F90	/^                      two /;"	v	module:constant_mod
+type	include/tag.h	/^  int      type;$/;"	m	struct:tag_S
+volc	mods/Geometry_mod.F90	/^     real(adqt), pointer :: volc(/;"	k	type:Geometry
+weight	mods/QuadratureData_mod.F90	/^   real(adqt), public :: weight(/;"	v	module:QuadratureData_mod
+weightPhiXYZ	mods/QuadratureData_mod.F90	/^   real(adqt), public :: weightPhiXYZ(/;"	v	module:QuadratureData_mod
+weightTheta	mods/QuadratureData_mod.F90	/^   real(adqt), public :: weightTheta(/;"	v	module:QuadratureData_mod
+wtiso	mods/Size_mod.F90	/^     real(adqt)       :: wtiso /;"	k	type:MeshSize
+x	include/KULLLITE.h	/^  double x;$/;"	m	struct:__anon3
+xyz	include/KULLLITE.h	/^} xyz;$/;"	t	typeref:struct:__anon3
+y	include/KULLLITE.h	/^  double y;$/;"	m	struct:__anon3
+z	include/KULLLITE.h	/^  double z;$/;"	m	struct:__anon3
+zero	mods/constant_mod.F90	/^                      zero /;"	v	module:constant_mod
+zoneOfMax	mods/iter_control_mod.F90	/^    integer       :: zoneOfMax$/;"	k	type:IterControl
+zoneToFacesIndex	include/KULLLITE.h	/^  int*         zoneToFacesIndex;$/;"	m	struct:__anon4
+zone_coords	rt/zone_coords.F90	/^   subroutine zone_coords(/;"	s
