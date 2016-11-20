@@ -53,7 +53,7 @@ FPP             = pgf90
 #F90FLAGS_OPT    =  -Mcuda=cc3+,nordc,maxregcount:64,ptxinfo -O2 -Kpic $(OPENMPF_FLAGS)
 #F90FLAGS_OPT    =  -g -Mcuda=cc35,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
 
-F90FLAGS_OPT    =  -g -Mcuda=cc35,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
+F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
 
 #F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
