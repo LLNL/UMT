@@ -97,7 +97,7 @@ contains
 !   Pointers
 
     allocate( self % ZData(Size%nzones) )
-    allocate( self % d_ZData(Size%nzones) )
+    allocate( self % d_ZData(Size%nzones) ) !should be able to eliminate this later?
     allocate( self % ZDataSoA )
     allocate( self % d_ZDataSoA )
 
