@@ -123,4 +123,5 @@ endif
 %.d: %.cc
 	g++ -c $(CFLAGS_CMG) $(CPPFLAGS) $(INCPATH) $< -MM -MF $@
 
-
+%.o : %.cu
+	nvcc --maxrregcount=64 -gencode=arch=compute_37,code=sm_37 --resource-usage -Xptxas -v -O3 -c $< -o $@

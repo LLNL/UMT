@@ -122,6 +122,8 @@ INFRASTRUCTURE_OBJECTS=communication/DomainNeighborMapInst.o communication/CommA
 	transport/Teton/snac/snpnmset.o \
 	transport/Teton/snac/snreflect.o \
 	transport/Teton/snac/snswp3d.o \
+	transport/Teton/snac/cu_snswp3d.o \
+	transport/Teton/snac/GPU_sweep.o \
 	transport/Teton/snac/snynmset.o\
 	utilities/VERIFY.o\
 	utilities/DBC.o\

@@ -109,7 +109,12 @@ SOURCES=mods/BoundaryList_mod.F90 \
         snac/snflwxyz.F90 \
         snac/snynmset.F90
 
+CUDASRC=snac/cu_snswp3d.cu \
+        snac/GPU_sweep.cu
+
+
 OBJECTS = ${patsubst %.F90,%.o,$(SOURCES)}
+OBJECTS += ${patsubst %.cu,%.o,$(CUDASRC)}
 
 all: $(OBJECTS)
 

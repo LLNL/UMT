@@ -33,6 +33,72 @@
    implicit none
    include 'mpif.h'
 
+   ! Fortran to C interface
+   interface 
+
+    subroutine snswp3d_c ( &
+          anglebatch, &
+          numzones, &
+          numgroups, &
+          ncornr, &
+          numAngles, &
+          AngleOrder, &
+          maxcorners, &
+          maxfaces, &
+          binRecv, &
+          nangbin, &
+          nbelem, &
+          omega, &
+          numCorners, &
+          numCFaces, &
+          c0, &
+          A_fp , &
+          A_ez , &
+          Connect , &
+          STotal , &
+          STime , &
+          Volume , &
+          psic, &
+          psib, &
+          next, &
+          nextZ, &   
+          Sigt, &
+          SigtInv, &
+          passZ ) &
+          bind ( c ) 
+
+         use iso_c_binding
+         integer ( c_int ) :: anglebatch
+         integer ( c_int ) :: numzones
+         integer ( c_int ) :: numgroups
+         integer ( c_int ) :: ncornr
+         integer ( c_int ) :: numAngles
+         integer ( c_int ), device :: AngleOrder(*)
+         integer ( c_int ) :: maxcorners
+         integer ( c_int ) :: maxfaces
+         integer ( c_int ) :: binRecv
+         integer ( c_int ) :: nangbin
+         integer ( c_int ) :: nbelem
+         real ( c_double ),device :: omega(*)
+         integer ( c_int ),device :: numCorners(*) 
+         integer ( c_int ),device :: numCFaces(*) 
+         integer ( c_int ),device :: c0(*)
+         real ( c_double ),device :: A_fp(*) 
+         real ( c_double ),device :: A_ez(*) 
+         integer ( c_int ),device :: Connect(*) 
+         real ( c_double ),device :: STotal(*) 
+         real ( c_double ),device :: STime(*) 
+         real ( c_double ),device :: Volume(*) 
+         real ( c_double ),device :: psic(*) 
+         real ( c_double ),device :: psib(*) 
+         integer ( c_int ),device :: next(*)
+         integer ( c_int ),device :: nextZ(*)
+         real ( c_double ),device :: Sigt(*) 
+         real ( c_double ),device :: SigtInv(*) 
+         integer ( c_int ),device :: passZ(*)
+    end subroutine snswp3d_c
+  end interface
+
 !  Arguments
 
    real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
@@ -71,7 +137,7 @@
    type(C_DEVPTR) :: dptr
 
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
-   integer angles, nbelem, ncornr, NumBin, myrank, info
+   integer NumAngles, nbelem, ncornr, NumBin, myrank, info
 
    integer :: devnum, cacheconfig
 
@@ -79,7 +145,7 @@
 
    Groups = QuadSet%Groups
 
-   angles = QuadSet%NumAngles
+   NumAngles = QuadSet%NumAngles
    nbelem = Size%nbelem
    ncornr = Size%ncornr
    NangBin = maxval(QuadSet%NangBinList(:))
@@ -132,7 +198,7 @@
    
    ! Set the Cache configuration for the GPU (use more L1, less shared)
    istat = cudaDeviceGetCacheConfig(cacheconfig)
-   print *, cacheconfig
+   print *, "cacheconfig =", cacheconfig
    if (cacheconfig .eq. cudaFuncCachePreferShared) then
       print *, "L1 set for shared memory usage"
    elseif (cacheconfig .eq. cudaFuncCachePreferL1) then
@@ -186,10 +252,12 @@
        
 
        call timer_beg('_angleloop')
-       ! loop over batches within the angle bin
+       ! loop over batches within the angle bin (Later will want loop variable to be batch number.)
        AngleLoop: do mm1=1,NangBin,BATCHSIZE
 
+         ! get the angleloop upper bound for this batch
          mm2=min(mm1+BATCHSIZE-1,NangBin)
+         ! true size of the batch (not always batchsize for last iteration)
          anglebatch=mm2-mm1+1
 
          !Stage batches of (psi,psib,phi) into GPU
@@ -197,10 +265,10 @@
             !for other bins, will begin staging in the data at the end of prev
             !iteration of the loop
 
-            ! move d_psi, which holds BATCHSIZE angles of psi
+            ! move anglebatch section of psi to d_psi, which has room for BATCHSIZE angles of psi
             istat=cudaMemcpyAsync(d_psi(1,1,1),                 &
                                    psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                                   QuadSet%Groups*Size%ncornr*mm2, stream(binRecv) )
+                                   QuadSet%Groups*Size%ncornr*anglebatch, stream(binRecv) )
 
          endif
 
@@ -209,11 +277,26 @@
          do mm=mm1,mm2
             call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
          enddo
+            !Stage batch of psib into GPU
+            if (binRecv == 1) then
+               !for other bins, will begin staging in the data at the end of prev
+               !iteration of the loop
+
+               ! This is not working yet.
+               if(0) then
+               !if( TRIM(envstring) .ne. "True" ) then               
+                  ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+                  istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
+                       psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                       QuadSet%Groups*Size%nbelem*anglebatch, stream(binRecv) )
+               endif
+
+         endif
 
 !        Sweep the mesh, calculating PSI for each corner; the
 !        boundary flux array PSIB is also updated here.
 !        Mesh cycles are fixed automatically.
-
+         if(0) then ! call CUDA fortran version
           call snswp3d(     anglebatch,                     &
                               Size%nzones,               &
                               QuadSet%Groups,            &
@@ -243,18 +326,43 @@
                               Geom%ZDataSoA%SigtInv,             &
                               QuadSet%d_passZstart,              &
                               stream(binRecv))
-
-
-         ! call snswp3d(anglebatch, QuadSet%AngleOrder(mm1,binSend), &
-         !              QuadSet%d_AngleOrder(mm1,binSend),           &
-         !              QuadSet%d_next,QuadSet%d_nextZ,              &
-         !              QuadSet%d_passZstart, d_psi, psib, stream(binRecv))
+        else ! Call CUDA c version
+          call snswp3d_c(     anglebatch,                     &
+                              Size%nzones,               &
+                              QuadSet%Groups,            &
+                              Size%ncornr,               &
+                              QuadSet%NumAngles,         &
+                              QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
+                              Size%maxCorner,            &
+                              Size%maxcf,                &
+                              binRecv,                   &
+                              NangBin,                   &
+                              Size%nbelem,                &
+                              QuadSet%d_omega,             &
+                              Geom%ZDataSoA%nCorner,                &
+                              Geom%ZDataSoA%nCFaces,                &
+                              Geom%ZDataSoA%c0,                &
+                              Geom%ZDataSoA%A_fp,                &
+                              Geom%ZDataSoA%A_ez,                &
+                              Geom%ZDataSoA%Connect,             &
+                              Geom%ZDataSoA%STotal,              &
+                              Geom%ZDataSoA%STime,               &
+                              Geom%ZDataSoA%Volume,             &
+                              d_psi,                      &  ! only want angle batch portion
+                              d_psib,                      &
+                              QuadSet%d_next,              &
+                              QuadSet%d_nextZ,             &
+                              Geom%ZDataSoA%Sigt,                &
+                              Geom%ZDataSoA%SigtInv,             &
+                              QuadSet%d_passZstart)
+                              !stream(binRecv)) fix later
+        endif
 
 
          ! update psi on the host:
          istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
               d_psi(1,1,1), &
-              QuadSet%Groups*Size%ncornr*mm2, stream(binRecv) )
+              QuadSet%Groups*Size%ncornr*anglebatch, stream(binRecv) )
 
          if (ipath == 'sweep') then
             call timer_beg('__snmoments')
@@ -262,6 +370,7 @@
             call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
                            QuadSet%d_AngleOrder(mm1,binSend),      &
                            anglebatch, stream(binRecv)) ! GPU version, one slice at a time
+            ! This could have actually been done in some different stream. Or only after event snswp3d finished.
             call timer_end('__snmoments')
          endif
 
@@ -278,17 +387,29 @@
 
 
          if (binRecv < QuadSet% NumBin) then
-           ! pre-stage data for next angle bin while exchange is happening
+           ! If not the last bin, pre-stage data for next angle bin while exchange is happening
              istat=cudaMemcpyAsync(d_psi(1,1,1),        &
                                    psi(1,1,QuadSet%AngleOrder(mm1,QuadSet%SendOrder(binRecv+1))), &
-                                   QuadSet%Groups*Size%ncornr*mm2, stream(binRecv+1) )
+                                   QuadSet%Groups*Size%ncornr*anglebatch, stream(binRecv+1) )
+             ! this won't work for when all anglebatch sizes are not the same...
+
+             ! below is not working yet
+             if(0) then
+             !if( TRIM(envstring) .ne. "True" ) then
+                !Stage batch of psib into GPU
+               
+                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
+                     psib(1,1,QuadSet%AngleOrder(mm1,QuadSet%SendOrder(binRecv+1))), &
+                     QuadSet%Groups*Size%nbelem*anglebatch, stream(binRecv+1) )
+
+             endif
          endif
 
 
        enddo AngleLoop
        call timer_end('_angleloop')
-       endOMPLoopTime = MPI_WTIME()
-       theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
+
 
 !      Exchange Boundary Fluxes
 
@@ -297,6 +418,9 @@
        call timer_end('_exch')
 
      enddo AngleBin
+
+     endOMPLoopTime = MPI_WTIME()
+     theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
      istat = cudaDeviceSynchronize()
 
