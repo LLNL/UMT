@@ -41,7 +41,7 @@ extern "C"
 			    int* soa_nCFaces,
 			    int* soa_c0,
 			    double* soa_STotal,
-			    double* soa_STime,
+			    double* STimeBatch,
 			    double* soa_SigtInv,
 			    double* soa_Volume,
 			    double* soa_Sigt,
@@ -126,7 +126,7 @@ extern "C"
 #define soa_SigtInv(ig,zone) soa_SigtInv[(ig) + Groups * (zone)]
 #define soa_STotal(ig,c,zone) soa_STotal[ig + Groups * ( c + size_maxCorner * (zone) )]
 //#define soa_STime(ig,c,Angle,zone) soa_STime[ig + Groups * ( c + size_maxCorner * ( Angle + nAngle * (zone) ) )]
-#define soa_STime(ig,ic,Angle) soa_STime[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
+#define STimeBatch(ig,ic,Angle) STimeBatch[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
 #define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
 #define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
 
@@ -158,7 +158,7 @@ extern "C"
     soa_Sigt += group_offset;
     soa_STotal += group_offset;
     soa_SigtInv += group_offset;
-    soa_STime += group_offset;
+    STimeBatch += group_offset;
 
     int ndone = 0;
     int ndoneZ = 0;
@@ -207,7 +207,7 @@ extern "C"
   
 	for(c=0;c<nCorner;c++)
 	{
-	  double source = soa_STotal(ig,c,zone) + soa_STime(ig,c0+c,Angle);
+	  double source = soa_STotal(ig,c,zone) + STimeBatch(ig,c0+c,blockIdx.x);
 	  Q[c]       = r_soa_SightInv *source ;
 	  //src(ig,c)     = soa_Volume(c,zone) *source;
 	  //volume[c] = soa_Volume(c,zone);

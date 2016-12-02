@@ -18,6 +18,9 @@ else
 endif
 
 #------------------------------------------------ IBM ----------------------------------------------------------
+MPI_HOME=/opt/ibm/spectrum_mpi
+PGI_VERSION=16.10
+
 CFLAGS_CMG     += 
 
 OPENMPC_FLAGS    = -fopenmp
@@ -26,7 +29,7 @@ OPENMPF_FLAGS    = -mp
 #FLIBS           = -L/opt/ibm/xlf/15.1.3/lib -lxlf90_r -lxlfmath -lxl \
 #	           -Wl,-rpath=/opt/ibm/lib /gpfs/ess2fs0/walkup/mpitrace/openmpi/nounderscore/libmpihpm_c.so
 
-FLIBS = -L/opt/pgi/linuxpower/16.7/lib -L/usr/local/cuda-8.0/lib64 /gpfs/ess2fs0/walkup/codes/timers/libtimers.a -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
+FLIBS = -L/opt/pgi/linuxpower/$(PGI_VERSION)/lib -L/usr/local/cuda-8.0/lib64 /home/walkup/codes/timers/libtimers.a -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
        -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass -lmass_simdp8 \
        -lcudapgi -lcudafor -lcudart
 
@@ -36,7 +39,7 @@ CPPFLAGS += -DLINUX -DLinux -DUSE_MPI -DOMPI_SKIP_MPICXX $(GPROF_FLAGS)
 CPPFFLAGS = -DLINUX,-DLinux,-Dmpi,-DMPI,-DUSE_MPI,-DOMPI_SKIP_MPICXX 
 
 # MPI Definitions
-MPI_INC_PATH    = -I/gpfs/ess2fs0/walkup/openmpi-1.8.8/include
+MPI_INC_PATH    = -I/$(MPI_HOME)/include
 
 MPI_LIB_PATH    = 
 MPI_LIBS        = -lmpi_mpifh
@@ -53,7 +56,7 @@ FPP             = pgf90
 #F90FLAGS_OPT    =  -Mcuda=cc3+,nordc,maxregcount:64,ptxinfo -O2 -Kpic $(OPENMPF_FLAGS)
 #F90FLAGS_OPT    =  -g -Mcuda=cc35,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
 
-F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
+F90FLAGS_OPT    =  -Mcuda=cc60,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
 
 #F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
@@ -66,7 +69,7 @@ LIB_EXT         = so
 LDFLAGS         =  -shared -fpic
 
 LINK            = $(CXX)
-LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/16.7/lib:/usr/local/cuda-8.0/lib64 \
+LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERSION)/lib:/usr/local/cuda-8.0/lib64 \
 		
 
 #
@@ -122,6 +125,10 @@ endif
 
 %.d: %.cc
 	g++ -c $(CFLAGS_CMG) $(CPPFLAGS) $(INCPATH) $< -MM -MF $@
+	#$(CXX) -c $(CFLAGS_CMG) $(CPPFLAGS) $(INCPATH) $< -MM -MF $@
 
 %.o : %.cu
-	nvcc --maxrregcount=64 -gencode=arch=compute_37,code=sm_37 --resource-usage -Xptxas -v -O3 -c $< -o $@
+	nvcc --maxrregcount=64 -gencode=arch=compute_60,code=sm_60 --resource-usage -Xptxas -v -O3 -c $< -o $@
+
+
+

@@ -44,7 +44,7 @@ contains
                               A_ez,                &
                               Connect,             &
                               STotal,              &
-                              STime,               &
+                              STimeBatch,               & ! only angle batch portion
                               Volume,             &
                               psicbatch,                      &  ! only angle batch portion
                               psib,                      &
@@ -78,7 +78,7 @@ contains
    real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    integer, device, intent(in):: Connect(3,maxcf,maxCorner,nzones) 
    real(adqt), device, intent(in)    :: STotal(Groups, maxCorner, nzones)
-   real(adqt), device, intent(in)    :: STime(Groups, ncornr, NumAngles)
+   real(adqt), device, intent(in)    :: STimeBatch(Groups, ncornr, anglebatch)
    real(adqt), device, intent(in)    :: Volume(maxCorner, nzones)
    real(adqt), device, intent(inout) :: psicbatch(Groups,ncornr,anglebatch)
    real(adqt), device, intent(inout) :: psib(Groups,nbelem,NumAngles)
@@ -151,7 +151,7 @@ contains
 
              do c=1,nCorner
                 !do ig= threadIdx%x, Groups, blockDim%x
-                source     =  STotal(ig,c,zone) +  STime(ig,c0+c,Angle)
+                source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
                 !enddo
                 Q(c)       = SigtInv*source 
                 src(c)     =  Volume(c,zone)*source
@@ -1129,7 +1129,7 @@ end subroutine setExitFlux
                               d_A_ez,                &
                               d_Connect,             &
                               d_STotal,              &
-                              d_STime,               &
+                              d_STimeBatch,               & ! only angle batch portion
                               d_Volume,             &
                               d_psicbatch,                      &  ! only angle batch portion
                               d_psib,                      &
@@ -1175,7 +1175,7 @@ end subroutine setExitFlux
    real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    integer, device, intent(in):: d_Connect(3,maxcf,maxCorner,nzones) 
    real(adqt), device, intent(in)    :: d_STotal(Groups, maxCorner, nzones)
-   real(adqt), device, intent(in)    :: d_STime(Groups, ncornr, NumAngles)
+   real(adqt), device, intent(in)    :: d_STimeBatch(Groups, ncornr, anglebatch)
    real(adqt), device, intent(in)    :: d_Volume(maxCorner, nzones)
    real(adqt), device, intent(inout) :: d_psicbatch(QuadSet%Groups,Size%ncornr,anglebatch)
    real(adqt), device, intent(inout) :: d_psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
@@ -1228,7 +1228,7 @@ end subroutine setExitFlux
                               d_A_ez,                &
                               d_Connect,             &
                               d_STotal,              &
-                              d_STime,               &
+                              d_STimeBatch,               &  ! only angle batch portion
                               d_Volume,             &
                               d_psicbatch,                      &  ! only angle batch portion
                               d_psib,                      &
@@ -1249,4 +1249,84 @@ end subroutine setExitFlux
    return
    end subroutine snswp3d
 
-   end module snswp3d_mod
+
+   subroutine computeSTime(psiccache, STimeBatch, anglebatch, streamid)
+     ! Multiply by tau to get STime
+     use kind_mod
+     use constant_mod
+     use Quadrature_mod
+     use Size_mod
+     use cudafor
+     
+     implicit none
+     
+     !  Arguments
+
+     real(adqt), device, intent(in)  :: psiccache(QuadSet%Groups,Size%ncornr,anglebatch) 
+     real(adqt), device, intent(out) :: STimeBatch(QuadSet%Groups,Size%ncornr,anglebatch)
+     integer, intent(in)  :: anglebatch 
+     integer(kind=cuda_stream_kind), intent(in) :: streamid
+
+     !  Local
+
+     integer    :: ia, ic, ig, ncornr, Groups
+     real(adqt) :: tau
+
+
+     ncornr = Size%ncornr
+     Groups = QuadSet% Groups   
+     tau    = Size%tau
+
+
+     !$cuf kernel do(3) <<< *, *, stream=streamid >>>
+     do ia=1,anglebatch
+        do ic=1,ncornr
+           do ig=1, Groups
+              STimeBatch(ig,ic,ia) = tau*psiccache(ig,ic,ia)
+           enddo
+        enddo
+     enddo
+
+
+     return
+   end subroutine computeSTime
+
+
+
+  attributes(global)   subroutine computeSTimeD(psiccache, STimeBatch, anglebatch, groups, ncornr, tau)
+     ! Multiply by tau to get STime
+     !use kind_mod
+     !use constant_mod
+     !use Quadrature_mod
+     !use Size_mod
+     !use cudafor
+     
+     implicit none
+     
+     !  Arguments
+
+     real(adqt), device, intent(in)  :: psiccache(Groups,ncornr,anglebatch) 
+     real(adqt), device, intent(out) :: STimeBatch(Groups,ncornr,anglebatch)
+     integer, value, intent(in)  :: anglebatch, Groups, ncornr
+     real(adqt), value, intent(in) :: tau
+
+     !  Local
+
+     integer    :: ia, ic, ig
+
+     do ia=1,anglebatch !blockIdx.x
+        do ic=1,ncornr !threadIdx.y
+           do ig=1, Groups !threadIdx.x
+              STimeBatch(ig,ic,ia) = tau*psiccache(ig,ic,ia)
+           enddo
+        enddo
+     enddo
+
+
+     return
+   end subroutine computeSTimeD
+
+
+
+
+ end module snswp3d_mod

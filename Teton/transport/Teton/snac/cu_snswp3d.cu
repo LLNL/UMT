@@ -31,7 +31,7 @@ __global__ void GPU_sweep(
           int* soa_nCFaces,
           int* soa_c0,
        double* soa_STotal,
-       double* soa_STime,
+       double* STimeBatch,
        double* soa_SigtInv,
        double* soa_Volume,
        double* soa_Sigt,
@@ -90,7 +90,7 @@ __global__ void GPU_fp_ez(
 		  double *d_A_ez, 
 		  int    *d_Connect,
 		  double *d_STotal,
-		  double *d_STime,
+		  double *d_STimeBatch,
 		  double *d_Volume,
 		  double *d_psic,
 		  double *d_psib,
@@ -99,6 +99,7 @@ __global__ void GPU_fp_ez(
 		  double *d_Sigt,
 		  double *d_SigtInv,
 		  int *d_passZ
+		  //cudaStream_t *streamid
 		  ) 
   {
 	  static int dump_cnt=0;
@@ -191,7 +192,7 @@ __global__ void GPU_fp_ez(
                        d_nCFaces,                   
                        d_c0,                        
                        d_STotal,                    
-                       d_STime,                     
+                       d_STimeBatch,                     
                        d_SigtInv,                   
                        d_Volume,                    
                        d_Sigt,                      

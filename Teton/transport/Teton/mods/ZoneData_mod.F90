@@ -49,7 +49,9 @@ module ZoneData_mod
      real(adqt), device, allocatable  :: Sigt(:,:)          ! total opacity
      real(adqt), device, allocatable  :: SigtInv(:,:)       ! reciprocal of total opacity
      real(adqt), device, allocatable  :: STotal(:,:,:)      ! fixed + scattering source
-     real(adqt), device, allocatable  :: STime(:,:,:)     ! time dependent source new layout:(ig,c0+c,zone)
+!     real(adqt), device, allocatable  :: STime(:,:,:)     ! time dependent source new layout:(ig,c0+c,zone)
+     real(adqt), pinned, allocatable  :: STime(:,:,:)     ! time dependent source new layout:(ig,c0+c,zone)
+
      real(adqt), device, allocatable  :: A_fp(:,:,:,:)      ! outward normals on corner faces 
      real(adqt), device, allocatable  :: A_ez(:,:,:,:)      !
      integer,    device, allocatable  :: Connect(:,:,:,:)   ! nearest neighbor connectivity 

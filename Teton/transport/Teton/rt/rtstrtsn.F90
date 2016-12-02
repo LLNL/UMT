@@ -65,7 +65,7 @@
 if (Size%itimsrc == 'exact') then
   ! Move tau*psir to the GPU STime array.
   !Geom%ZDataSoA%STime(:,:,:) = tau*psir(:,:,:)
-  Geom%ZDataSoA%STime = tau*psir
+  !Geom%ZDataSoA%STime = tau*psir
   !Geom%ZDataSoA%STime(:,:,:) = psir(:,:,:)
   ! Move psir into STime array for processing
 !   istat=cudaMemcpy(Geom%ZDataSoA%STime(1,1,1),                 &
@@ -76,15 +76,15 @@ if (Size%itimsrc == 'exact') then
 
 !   ! Multiply by tau to get STime
 !   !$cuf kernel do(3) <<< (*,*), (16,16) >>>
-!   do ia=1,nangSN
-!     do ic=1,ncornr
-!       do ig=1, ngr
-!         Geom%ZDataSoA%STime(ig,ic,ia) = tau*Geom%ZDataSoA%STime(ig,ic,ia)
-!       enddo
-!     enddo
-!   enddo
+   ! do ia=1,nangSN
+   !    do ic=1,ncornr
+   !       do ig=1, ngr
+   !          Geom%ZDataSoA%STime(ig,ic,ia) = tau*psir(ig,ic,ia)
+   !       enddo
+   !    enddo
+   ! enddo
 else
-  Geom%ZDataSoA%STime = zero
+!  Geom%ZDataSoA%STime = zero
 endif
 
 

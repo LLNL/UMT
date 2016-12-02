@@ -213,7 +213,7 @@
          call timer_end('exch')
 
          call timer_beg('rswpmd')
-         call rswpmd(PSIB, PSIR, PHI, angleLoopTime)
+         call rswpmd(PSIB, PSIR, PHI, angleLoopTime, intensityIter, noutrt)
          call timer_end('rswpmd')
 
        enddo GroupSetLoop

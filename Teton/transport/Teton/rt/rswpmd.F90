@@ -10,7 +10,7 @@
 !                    elements                             (E/A/t/ster) *
 !                                                                      *
 !***********************************************************************
-   subroutine rswpmd(PSIB, PSIR, PHI, angleLoopTime)
+   subroutine rswpmd(PSIB, PSIR, PHI, angleLoopTime, intensityIter, tempIter)
  
    use kind_mod
    use constant_mod
@@ -28,6 +28,8 @@
    real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles),  &
                                 psir(QuadSet%Groups,Size%ncornr,QuadSet%NumAngles),  &
                                 Phi(QuadSet%Groups,Size%ncornr), angleLoopTime
+
+   integer, intent(in) :: intensityIter, tempIter ! current flux and temperature iteration from rtmainsn
 
 !  Local
 
@@ -56,7 +58,7 @@
 
 !  Follow particles through the mesh:
 
-   call snflwxyz(ipath, PSIB, PSIR, PHI, angleLoopTime)
+   call snflwxyz(ipath, PSIB, PSIR, PHI, angleLoopTime, intensityIter, tempIter)
 
 
 
