@@ -46,7 +46,7 @@ __global__ void GPU_sweep(
        ,   int* passZ
  );
 
-__global__ void GPU_fp_ez(
+__global__ void GPU_fp_ez_hplane(
           int  size_maxCorner,
           int  size_maxcf,
           int  nAngle,
@@ -66,7 +66,8 @@ __global__ void GPU_fp_ez(
        double* omega_A_fp,
        double* omega_A_ez,
           int* soa_Connect,
-          int* soa_Connect_reorder
+          int* soa_Connect_reorder,
+	  int* passZ
  );
 
 
@@ -146,7 +147,8 @@ __global__ void GPU_fp_ez(
 	     // This does all the angles. Redundant when angles are done in batches.
 	     // Could async copy psic or psib while doing all angles once at beginning.
 	     // Actually batched works too, since this does not depend on psic or psib.
-	GPU_fp_ez<<<nA/32,32,0,streamid>>>(
+	//GPU_fp_ez<<<nA/32,32,0,streamid>>>(
+	GPU_fp_ez_hplane<<<nA,32,0,streamid>>>(
 				mC,                 
 				mF,       //                 
 				nA,                  
@@ -166,7 +168,8 @@ __global__ void GPU_fp_ez(
 				d_omega_A_fp,
 				d_omega_A_ez,
 				d_Connect,
-				d_Connect_reorder
+				d_Connect_reorder,
+				d_passZ
 				);
       }
 

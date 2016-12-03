@@ -86,14 +86,14 @@ extern "C"
     volatile int *ez_exit;
     __shared__ volatile double sm_agg[12*128];  // 4x32 thread per tb. 8tb. 6KB
    
-    int offset = (8+3+96+3)*threadIdx.y;
+    int offset = (8+3+3*WARP_SIZE+3)*threadIdx.y;
     volume = &(sm_agg[offset]);  //8 doubles  
     offset += size_maxCorner;
 
     coefpsic = &(sm_agg[offset]); // 3 doubles
     offset += size_maxcf;
 
-    psifp = &(sm_agg[offset]); // 3 x 32 doubles
+    psifp = &(sm_agg[offset]); // 3 x warp size doubles
     offset += size_maxcf * WARP_SIZE;
 
     //note ez_exit has integer type
@@ -118,14 +118,11 @@ extern "C"
 #define psic(ig,b,c) psic[(ig) + Groups * ((b) + ncornr *(c) )]
    
 #define Q(ig,c) Q[(ig) + WARP_SIZE * (c)]
-    //#define src(ig,c) src[(ig) + Groups * (c)]
 #define src(ig,c) src[c]
-    //  #define SigtVol(ig,c) SigtVol[(ig) + Groups * (c)]
 #define soa_Sigt(ig,zone) soa_Sigt[(ig) + Groups * (zone)]
 #define soa_Volume(c,zone) soa_Volume[c + size_maxCorner * (zone)]
 #define soa_SigtInv(ig,zone) soa_SigtInv[(ig) + Groups * (zone)]
 #define soa_STotal(ig,c,zone) soa_STotal[ig + Groups * ( c + size_maxCorner * (zone) )]
-//#define soa_STime(ig,c,Angle,zone) soa_STime[ig + Groups * ( c + size_maxCorner * ( Angle + nAngle * (zone) ) )]
 #define STimeBatch(ig,ic,Angle) STimeBatch[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
 #define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
 #define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
@@ -135,21 +132,11 @@ extern "C"
     ig = threadIdx.x;
  
 
-    //   if(ig==0) printf("my offset=%d\n",offset);
-    //   if(ig==0)
-    //   {
-    //     printf("psic=%x\n",psic);
-    //     printf("nextZ=%x\n",psic);
-    //     printf("next=%x\n",psic);
-    //     printf("psib=%x\n",psic);
-    //   }
-
-
     omega_A_fp += Angle * nzones * size_maxcf * size_maxCorner;
     omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
     passZ      += Angle * nzones;
    
-    const int group_offset=blockIdx.y * 32;
+    const int group_offset=blockIdx.y * WARP_SIZE;
 
     //  if (!( group_offset + threadIdx.x < Groups )) return;
     
@@ -178,8 +165,6 @@ extern "C"
  
 	// get the zone (minus 1 so it is valid c index)
 	int zone = nextZ(ndoneZ+ii,Angle) - 1;
-
-	//       if(ig==0 && blockIdx.x==0) printf("ang=%d zone=%d tidy=%d ndoneZ=%d\n",blockIdx.x,zone,threadIdx.y,ndoneZ);
   
   
 	int nCorner   = soa_nCorner[zone];
@@ -192,6 +177,8 @@ extern "C"
 	double r_omega_A_ez;
 	int connect0,connect1,connect2;
   
+
+	// coallesced loads into shared memory
 	if(ig<nCorner) volume[ig] = soa_Volume(ig,zone);
 
 	if(ig<nCorner*nCFaces)
@@ -211,7 +198,7 @@ extern "C"
 	  Q[c]       = r_soa_SightInv *source ;
 	  //src(ig,c)     = soa_Volume(c,zone) *source;
 	  //volume[c] = soa_Volume(c,zone);
-	  src(ig,c)     = volume[c]*source;
+	  src(ig,c)     = volume[c]*source; // really just src[c]
 	  //SigtVol(ig,c) = soa_Sigt(ig,zone)*soa_Volume(c,zone);
 	}
   
@@ -236,9 +223,6 @@ extern "C"
 	    int icfp= __shfl(connect0,icface+size_maxcf*c);
 	    int ib= __shfl(connect1,icface+size_maxcf*c);
   
-	    //         if ( Angle == 1 && ig==0 && zone == 1 )
-	    //               printf("a=%d,c=%d,icface=%d,afpm=%e\n",Angle,c,icface,r_afpm);
-                                                                                                     
 	    if ( r_afpm >= 0.0 )
 	    { 
 	      sumArea = sumArea + r_afpm;
@@ -249,32 +233,20 @@ extern "C"
 	      {
 		//             psifp(ig,icface) = psib(ig,ib,Angle);
 		r_psifp = psib(ig,ib,Angle);
-		//    if ( Angle == 1 && ig==0 && zone == 0 )
-		//      printf("a=%d,c=%d,icface=%d,zone=%d,icfp=%d,ib=%d,%e\n",Angle,c,icface,zone,icfp,ib,r_psifp);
 	      }
 	      else
 	      {
 		//             psifp(ig,icface) = psic(ig,icfp,Angle);
-		//             printf("psic(%d,%d,%d)\n",ig,icfp,Angle);
-		r_psifp = psic(ig,icfp,blockIdx.x);
-		//          if ( Angle == 1 && ig==0 && zone == 0 )
-		//            printf("a=%d,c=%d,icface=%d,zone=%d,icfp=%d,ib=%d,%e\n",Angle,c,icface,zone,icfp,ib,r_psifp);
-            
+		r_psifp = psic(ig,icfp,blockIdx.x);            
 	      }
   
 	      src(ig,c)  -= r_afpm*r_psifp;
 	      psifp(ig,icface) = r_psifp;
 	      //psifp[icface] = r_psifp;
 	    }
-	    //       if ( Angle == 1 && ig==0 && zone == 1 )
-	    //              printf("a=%d,c=%d,icface=%d,afpm=%e\n",Angle,c,icface,afpm[icface]);
+
 	  }
-  
-  
-	  //       if ( Angle == 1 && ig < 5 && c == 2 && zone == 1 )
-	  //         printf("a=%d,g=%d,c=%d,psifp=%e,sumArea=%e\n",Angle,ig,c,psifp(ig,1),sumArea);
-  
-  
+    
 	  int nxez = 0;
   
 	  for(icface=0;icface<nCFaces;icface++)
@@ -282,8 +254,6 @@ extern "C"
   
 	    //double aez = omega_A_ez(icface,c,zone);
 	    double aez = shfl_d(r_omega_A_ez,icface+size_maxcf*c);
-	    //                     if ( Angle == 1 && ig==0 && zone == 0 )
-	    //                            printf("a=%d,c=%d,aez=%e,icface=%d\n",Angle,c,aez,icface);
   
 	    if (aez > 0.0 )
 	    {
@@ -301,8 +271,6 @@ extern "C"
   
 		ifp = (icface+1)%nCFaces;
 		r_afpm = shfl_d(r_omega_A_fp,ifp+size_maxcf*c);
-                //       if ( Angle == 1 && ig==0 && zone == 1 )
-                //         printf("a=%d,c=%d,ifp=%d,afpm=%e\n",Angle,c,ifp,afpm[ifp]);
   
 		if ( r_afpm < 0.0 )
 		{ 
@@ -351,9 +319,6 @@ extern "C"
 		  src(ig,c)    = src(ig,c)   + sez;
 		  src(ig,cez)  = src(ig,cez) - sez;
   
-		  //                       if ( Angle == 1 && ig < 5 && zone == 0 )
-		  //                                    printf("a=%d,g=%d,c=%d,cez=%d,icface=%d,src(c)=%e,src(cez)=%e,sez=%e\n",Angle,ig,c,cez,icface,src(ig,c),src(ig,cez),sez);
-  
 		}
   
 	      }
@@ -366,8 +331,6 @@ extern "C"
 	      } 
 	    }
 	  }
-  
-	  //       printf("ckim angle,zone,corner,aez_cnt %d,%d,%d,%d\n",Angle,zone,c,aez_cnt);
   
   
 	  tpsic = src(ig,c)/(sumArea + Sigt*volume[c]);
@@ -383,8 +346,6 @@ extern "C"
 	  psic(ig,c0+c,blockIdx.x) = tpsic;
 	  //psibatch(ig,c0+c,mm)= tpsic;
 
-	  //     if ( Angle == 1 && ig < 5 && zone == 0 )
-	  //                  printf("a=%d,g=%d,c=%d,psic=%e,corner=%d\n",Angle,ig,c,tpsic,c0+c);
 	} //end of corner 
   
       } //end of zone loop 
@@ -418,45 +379,22 @@ __global__ void GPU_fp_ez(
           int* soa_Connect_ro)
   {
 
-//   double omega[3];
    int c,i,ig,icface,ii;
-//   double Q[Groups * size_maxCorner];
-//   double src[Groups * size_maxCorner];
-//   double SigtVol[Groups * size_maxCorner];
-//   double afpm[size_maxcf];
-//   double psifp[Groups * size_maxcf];
-//   int    ez_exit[size_maxcf];
-//   double coefpsic[size_maxcf];
-//   double tpsic[Groups * size_maxCorner];
-//   double psi_opp[Groups];
 
    double omega0, omega1, omega2;
-   
-
-   
-//   const double fouralpha4 = 5.82;
    
    #define soa_omega(a,b) soa_omega[a + 3 * b]
    #define omega_A_fp(icface,c,zone) omega_A_fp[  ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
    #define omega_A_ez(icface,c,zone) omega_A_ez[  ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
 
-//   #define tpsic(ig,c) tpsic[ (ig) + Groups * (c)]
-   #define EB_ListExit(a,ia) EB_ListExit[ a + 2 * (ia) ]
+
+   //#define EB_ListExit(a,ia) EB_ListExit[ a + 2 * (ia) ]
    #define soa_A_fp(a,icface,c,zone) soa_A_fp[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
    #define soa_A_ez(a,icface,c,zone) soa_A_ez[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
    #define soa_Connect(a,icface,c,zone) soa_Connect[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
    #define soa_Connect_ro(a,icface,c,zone) soa_Connect_ro[ icface + size_maxcf * ( c + size_maxCorner * ( a + 3 * zone) ) ]
    
-   //#define psifp(ig,jf) psifp[(ig) + Groups * (jf)]
-   #define psib(ig,b,c) psib[(ig) + Groups * ((b) + nbelem * (c) )]
-   
-     //#define Q(ig,c) Q[(ig) + Groups * (c)]
-     //#define src(ig,c) src[(ig) + Groups * (c)]
-//  #define SigtVol(ig,c) SigtVol[(ig) + Groups * (c)]
-   #define soa_Sigt(ig,zone) soa_Sigt[(ig) + Groups * (zone)]
-   #define soa_SigtInv(ig,zone) soa_SigtInv[(ig) + Groups * (zone)]
-   #define soa_STotal(ig,c,zone) soa_STotal[ig + Groups * ( c + size_maxCorner * (zone) )]
-//   #define soa_STime(ig,c,Angle,zone) soa_STime[ig + Groups * ( c + size_maxCorner * ( Angle + nAngle * (zone) ) )]
+
    #define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
    #define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
 
@@ -476,6 +414,7 @@ __global__ void GPU_fp_ez(
 
    omega_A_fp += Angle * nzones * size_maxcf * size_maxCorner;
    omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
+
 
    for(ii=0;ii<nzones;ii++)
    {
@@ -506,7 +445,6 @@ __global__ void GPU_fp_ez(
          soa_Connect_ro(1,icface,c,zone) = ib  ;
          soa_Connect_ro(2,icface,c,zone) = cez ;
 
-         //if (ig==0) printf("Angle,zone,c,icface,afp=%d,%d,%d,%d,%f\n",Angle,zone,c,icface,omega_A_fp(icface,c,zone));
        }
 
 
@@ -514,7 +452,6 @@ __global__ void GPU_fp_ez(
        {
 
          omega_A_ez(icface,c,zone) = omega0*soa_A_ez(0,icface,c,zone) + omega1*soa_A_ez(1,icface,c,zone) + omega2*soa_A_ez(2,icface,c,zone) ;
-         //if (ig==0) printf("Angle,zone,c,icface,afp=%d,%d,%d,%d,%f\n",Angle,zone,c,icface,omega_A_ez(icface,c,zone));
        }
 
 
@@ -525,6 +462,129 @@ __global__ void GPU_fp_ez(
   }
 
 
+
+
+
+
+  __global__ void GPU_fp_ez_hplane(
+          int  size_maxCorner,
+          int  size_maxcf,
+          int  nAngle,
+          int  nzones,
+          int  ncornr,
+          int  Groups,
+          int  nbelem,
+          int* AngleOrder,
+       double* soa_omega,
+          int* nextZ,
+          int* next,
+          int* soa_nCorner,
+          int* soa_nCFaces,
+          int* soa_c0,
+       double* soa_A_fp,
+       double* soa_A_ez,
+       double* omega_A_fp,
+       double* omega_A_ez,
+          int* soa_Connect,
+          int* soa_Connect_ro,
+	  int* passZ)
+  {
+
+    //int c,i,ig,icface,ii;
+    int c,i,icface;
+
+
+   
+#define soa_omega(a,b) soa_omega[a + 3 * b]
+#define omega_A_fp(icface,c,zone) omega_A_fp[  ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
+#define omega_A_ez(icface,c,zone) omega_A_ez[  ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
+
+#define soa_A_fp(a,icface,c,zone) soa_A_fp[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
+#define soa_A_ez(a,icface,c,zone) soa_A_ez[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
+#define soa_Connect(a,icface,c,zone) soa_Connect[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
+#define soa_Connect_ro(a,icface,c,zone) soa_Connect_ro[ icface + size_maxcf * ( c + size_maxCorner * ( a + 3 * zone) ) ]
+   
+
+#define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
+#define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
+
+
+    //   for(int Angle=0;Angle<nAngle;Angle++)
+
+    int Angle = blockIdx.x;
+
+    double omega0, omega1, omega2;
+    omega0 = soa_omega(0,Angle);
+    omega1 = soa_omega(1,Angle);
+    omega2 = soa_omega(2,Angle);
+    
+    omega_A_fp += Angle * nzones * size_maxcf * size_maxCorner;
+    omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
+
+    int ndone = 0;
+    int ndoneZ = 0;
+    // hyperplane number p
+    int p=0;
+
+    while(ndoneZ < nzones)
+    {
+      //increment hyperplane
+      p++;
+    
+      // get number of zones in this hyperplane
+      int passZcnt = passZ[p] - passZ[p-1];
+
+      for(int ii=threadIdx.x;ii<passZcnt;ii+=blockDim.x) 
+      {
+	ndone = ( ndoneZ + ii ) * size_maxCorner;
+    
+	// get the zone (minus 1 so it is valid c index)
+	int zone = nextZ(ndoneZ+ii,Angle) - 1;
+ 
+
+	int nCorner   = soa_nCorner[zone];
+	int nCFaces   = soa_nCFaces[zone];
+	int c0        = soa_c0[zone] ;
+
+	for(i=0;i<nCorner;i++)
+	{
+	  int ic      = next(ndone+i,Angle);
+	  c       = ic - c0 - 1;
+
+ 
+	  for(icface=0;icface<nCFaces;icface++)
+	  {
+	    omega_A_fp(icface,c,zone) =  omega0*soa_A_fp(0,icface,c,zone) + 
+	      omega1*soa_A_fp(1,icface,c,zone) + 
+	      omega2*soa_A_fp(2,icface,c,zone);
+	    int icfp    = soa_Connect(0,icface,c,zone) - 1;
+	    int ib      = soa_Connect(1,icface,c,zone) - 1;
+	    int cez     = soa_Connect(2,icface,c,zone) - 1;
+	    soa_Connect_ro(0,icface,c,zone) = icfp;
+	    soa_Connect_ro(1,icface,c,zone) = ib  ;
+	    soa_Connect_ro(2,icface,c,zone) = cez ;
+	  
+	  }
+
+
+	  for(icface=0;icface<nCFaces;icface++)
+	  {
+    
+	    omega_A_ez(icface,c,zone) = omega0*soa_A_ez(0,icface,c,zone) + omega1*soa_A_ez(1,icface,c,zone) + omega2*soa_A_ez(2,icface,c,zone) ;
+	  }
+
+
+	} // end corners 
+      } // end zones in hplane
+
+      ndoneZ += passZcnt;
+      __syncthreads();
+
+      //ndone = ndone + nCorner;
+
+    }//end while
+
+  }//end function
 
 
 }
