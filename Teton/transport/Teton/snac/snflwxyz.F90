@@ -64,12 +64,13 @@
           nextZ, &   
           Sigt, &
           SigtInv, &
-          passZ &
-          !streamid &
+          passZ, &
+          streamid &
           ) &
           bind ( c ) 
 
          use iso_c_binding
+         use cudafor
          integer ( c_int ) :: anglebatch
          integer ( c_int ) :: numzones
          integer ( c_int ) :: numgroups
@@ -98,7 +99,7 @@
          real ( c_double ),device :: Sigt(*) 
          real ( c_double ),device :: SigtInv(*) 
          integer ( c_int ),device :: passZ(*)
-         !integer ( cuda_stream_kind ) :: streamid
+         integer ( kind=cuda_stream_kind ),value :: streamid
     end subroutine snswp3d_c
   end interface
 
@@ -385,8 +386,8 @@
                               QuadSet%d_nextZ,             &
                               Geom%ZDataSoA%Sigt,                &
                               Geom%ZDataSoA%SigtInv,             &
-                              QuadSet%d_passZstart        &
-                              !stream(binRecv)           &
+                              QuadSet%d_passZstart,        &
+                              stream(binRecv)           &
                               )
         endif
 

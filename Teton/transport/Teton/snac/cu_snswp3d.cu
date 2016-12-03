@@ -98,8 +98,8 @@ __global__ void GPU_fp_ez(
 		  int *d_nextZ,
 		  double *d_Sigt,
 		  double *d_SigtInv,
-		  int *d_passZ
-		  //cudaStream_t *streamid
+		  int *d_passZ,
+		  cudaStream_t streamid
 		  ) 
   {
 	  static int dump_cnt=0;
@@ -117,6 +117,8 @@ __global__ void GPU_fp_ez(
     int nC = *ncornr;
     int nBe = *nbelem;
 
+    //printf("cuda c stream size = %d\n", sizeof(streamid));
+    //printf("cuda c stream = %lld\n",streamid);
 
     {
 
@@ -126,6 +128,7 @@ __global__ void GPU_fp_ez(
       if ( dump_cnt == 0 )
       {
 
+	// I guess these are synchronous now... Will need to make data members of ZData later.
 
 	     // create device versions
 	     cudaMalloc(&d_omega_A_fp,sizeof(double)*nZ*mC*mF*nA);
@@ -143,7 +146,7 @@ __global__ void GPU_fp_ez(
 	     // This does all the angles. Redundant when angles are done in batches.
 	     // Could async copy psic or psib while doing all angles once at beginning.
 	     // Actually batched works too, since this does not depend on psic or psib.
-	     GPU_fp_ez<<<nA/32,32>>>(
+	GPU_fp_ez<<<nA/32,32,0,streamid>>>(
 				mC,                 
 				mF,       //                 
 				nA,                  
@@ -168,7 +171,8 @@ __global__ void GPU_fp_ez(
       }
 
 
-        cudaDeviceSynchronize();
+      cudaStreamSynchronize(streamid );
+      //cudaDeviceSynchronize();
 
 
 
@@ -176,7 +180,7 @@ __global__ void GPU_fp_ez(
       printf("nGG=%d\n",nGG);
       if (nG%32 != 0) {printf("current version must use groups of multiple of 32!!! sorry \n"); exit(0);}
 
-      GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(32,8,1)>>>(
+      GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(32,8,1),0,streamid>>>(
                        mC,                 
                        mF,       //                 
                        nA,                  
