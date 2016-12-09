@@ -75,16 +75,17 @@ int main(int argc, char* argv[])
 
     int numDevices;
     cudaError_t istat;
-    istat = cudaGetDeviceCount(&numDevices);
-    cout<<"myRank = "<< myRank <<"numDevices"<<numDevices<<"istat = "<<istat<<endl;
-    istat = cudaSetDevice(myRank%numDevices);
-    cout<<"myRank = "<<myRank <<" istat = "<<istat<<endl;
+    //istat = cudaGetDeviceCount(&numDevices);
+    //cout<<"myRank = "<< myRank <<"numDevices = "<<numDevices<<"istat = "<<istat<<endl;
+    // Using mps pipe directories to set device
+    //istat = cudaSetDevice(myRank%numDevices);
+    //cout<<"myRank = "<<myRank <<" istat = "<<istat<<endl;
 #pragma omp parallel
     {
       int myTID = omp_get_thread_num();
       int numThreads = omp_get_num_threads();
       if(myTID == 0) {
-	cout<<"myRank = "<<myRank<<" tried setting gpu device to "<<myRank%numDevices<<endl;
+	//cout<<"myRank = "<<myRank<<" tried setting gpu device to "<<myRank%numDevices<<endl;
 	if(myRank == 0) {
 	  cout<<" Executing UMT2015 Number of ranks ="<<numProcs<<endl;
 	  cout<<" and number of OMP threads  ="<< numThreads <<endl;
