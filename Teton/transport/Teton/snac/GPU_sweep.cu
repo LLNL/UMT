@@ -84,7 +84,8 @@ extern "C"
     volatile double *coefpsic;
     volatile double *psifp;
     volatile int *ez_exit;
-    __shared__ volatile double sm_agg[12*128];  // 4x32 thread per tb. 8tb. 6KB
+    //__shared__ volatile double sm_agg[12*128];  // 4x32 thread per tb. 8tb. 6KB
+    extern __shared__ double sm_agg[];  
    
     int offset = (8+3+3*WARP_SIZE+3)*threadIdx.y;
     volume = &(sm_agg[offset]);  //8 doubles  
@@ -533,6 +534,9 @@ __global__ void GPU_fp_ez(
     
       // get number of zones in this hyperplane
       int passZcnt = passZ[p] - passZ[p-1];
+
+      // you can print hyperplanes for visualization
+      //if( Angle == 0 && threadIdx.x==0) printf("%d \t %d\n",p,passZcnt);
 
       for(int ii=threadIdx.x;ii<passZcnt;ii+=blockDim.x) 
       {

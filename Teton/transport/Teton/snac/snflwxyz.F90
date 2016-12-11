@@ -171,7 +171,7 @@
    ! Translate that C pointer to the fortran array with given dimensions
    call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
    
-   if(0) then
+   if(1) then
       ! This sets up to allow zero copy use of STime directly on the device:
       ! Get a device pointer for STime, put it to d_STime_p
       istat = cudaHostGetDevicePointer(d_STime_p, C_LOC(Geom%ZDataSoA%STime(1,1,1)), 0)
@@ -220,7 +220,9 @@
    endif
 
    cacheconfig = cudaFuncCachePreferL1
-   istat = cudaDeviceSetCacheConfig(cacheconfig)
+   !istat = cudaDeviceSetCacheConfig(cacheconfig)
+   !istat = cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte)
+
 
    ! Create streams that can overlap 
    do i = 1, nStreams
@@ -511,6 +513,13 @@
      endif
 
    enddo FluxIteration
+
+   ! Destroy streams 
+   do i = 1, nStreams
+      istat = cudaStreamDestroy(stream(i))
+   enddo
+
+
 
 !  Update the scaler flux
 

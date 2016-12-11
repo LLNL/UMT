@@ -118,12 +118,9 @@ __global__ void GPU_fp_ez_hplane(
     int nC = *ncornr;
     int nBe = *nbelem;
 
-    //printf("cuda c stream size = %d\n", sizeof(streamid));
-    //printf("cuda c stream = %lld\n",streamid);
-
     {
 
-      printf("max faces=%d\n",mF);
+      //printf("max faces=%d\n",mF);
 
       // first time being called, allocate some host and device arrays
       if ( dump_cnt == 0 )
@@ -138,10 +135,7 @@ __global__ void GPU_fp_ez_hplane(
         cudaMalloc(&d_Connect_reorder,sizeof(int)*3*nZ*mC*mF);
         
       }
-
-
-      //cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-      cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+      
 
       if( *octant == 1) {
 	     // This does all the angles. Redundant when angles are done in batches.
@@ -174,16 +168,18 @@ __global__ void GPU_fp_ez_hplane(
       }
 
 
-      cudaStreamSynchronize(streamid );
+      //cudaStreamSynchronize(streamid );
       //cudaDeviceSynchronize();
 
 
 
       int nGG = ceil(nG / 32.0);
-      printf("nGG=%d\n",nGG);
+      //printf("nGG=%d\n",nGG);
       if (nG%32 != 0) {printf("current version must use groups of multiple of 32!!! sorry \n"); exit(0);}
 
-      GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(32,8,1),0,streamid>>>(
+      // shared memory needs are (8+3+3*blockDim.x+3)*blockDim.y;
+
+      GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(32,32,1),(8+3+3*32+3)*32*sizeof(double),streamid>>>(
                        mC,                 
                        mF,       //                 
                        nA,                  
@@ -214,7 +210,7 @@ __global__ void GPU_fp_ez_hplane(
                        d_passZ
                           );
 
-      printf("Completed a batch sweep\n");
+      //printf("Completed a batch sweep\n");
 
 
       dump_cnt++;
