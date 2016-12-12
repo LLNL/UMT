@@ -179,6 +179,7 @@ __global__ void GPU_fp_ez_hplane(
 
       // shared memory needs are (8+3+3*blockDim.x+3)*blockDim.y;
 
+      //GPU_sweep<<<dim3(*anglebatch,nGG,2),dim3(32,16,1),(8+3+3*32+3)*16*sizeof(double),streamid>>>(
       GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(32,32,1),(8+3+3*32+3)*32*sizeof(double),streamid>>>(
                        mC,                 
                        mF,       //                 

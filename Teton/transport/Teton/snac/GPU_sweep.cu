@@ -137,7 +137,7 @@ extern "C"
     omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
     passZ      += Angle * nzones;
    
-    const int group_offset=blockIdx.y * WARP_SIZE;
+    const int group_offset=blockIdx.y * WARP_SIZE; //should be blockDim.x instead of warpsize?
 
     //  if (!( group_offset + threadIdx.x < Groups )) return;
     
@@ -160,7 +160,9 @@ extern "C"
       // get number of zones in this hyperplane
       int passZcnt = passZ[p] - passZ[p-1];
 
-      for(int ii=threadIdx.y;ii<passZcnt;ii+=blockDim.y)
+      // for(int ii=threadIdx.y+blockDim.y*blockIdx.z; ii<passZcnt;ii+=blockDim.y*gridDim.z)
+      //for(int ii=blockIdx.z; ii<passZcnt;ii+=gridDim.z)
+      for(int ii=threadIdx.y; ii<passZcnt;ii+=blockDim.y)
       {
 	ndone = ( ndoneZ + ii ) * size_maxCorner;
  
@@ -182,6 +184,8 @@ extern "C"
 	// coallesced loads into shared memory
 	if(ig<nCorner) volume[ig] = soa_Volume(ig,zone);
 
+	// different threads hold values for different icface in registers instead of shared memory
+	// other threads can access the register values via a shuffle command.
 	if(ig<nCorner*nCFaces)
 	{
           int cc = size_maxcf * size_maxCorner;
@@ -405,7 +409,7 @@ __global__ void GPU_fp_ez(
 
 //   for(int Angle=0;Angle<nAngle;Angle++)
 
-   int Angle = 32*blockIdx.x + threadIdx.x;
+   int Angle = blockDim.x*blockIdx.x + threadIdx.x;
 
    omega0 = soa_omega(0,Angle);
    omega1 = soa_omega(1,Angle);
