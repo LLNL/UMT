@@ -31,7 +31,7 @@ __global__ void GPU_sweep(
           int* soa_nCFaces,
           int* soa_c0,
        double* soa_STotal,
-       double* STimeBatch,
+       double* STime,
        double* soa_SigtInv,
        double* soa_Volume,
        double* soa_Sigt,
@@ -39,11 +39,13 @@ __global__ void GPU_sweep(
        double* soa_A_ez,
           int* soa_Connect,
        double* psic,
-       double* psib
-       ,double* omega_A_fp
-       ,double* omega_A_ez
-       ,   int* Connect_ro
-       ,   int* passZ
+       double* psib,
+       double* omega_A_fp,
+       double* omega_A_ez,
+	  int* Connect_ro,
+          int* passZ,
+	  bool calcSTime,
+	  double tau
  );
 
 __global__ void GPU_fp_ez_hplane(
@@ -91,7 +93,7 @@ __global__ void GPU_fp_ez_hplane(
 		  double *d_A_ez, 
 		  int    *d_Connect,
 		  double *d_STotal,
-		  double *d_STimeBatch,
+		  double *d_STime,
 		  double *d_Volume,
 		  double *d_psic,
 		  double *d_psib,
@@ -100,6 +102,8 @@ __global__ void GPU_fp_ez_hplane(
 		  double *d_Sigt,
 		  double *d_SigtInv,
 		  int *d_passZ,
+		  bool *calcSTime,
+		  double *tau,
 		  cudaStream_t streamid
 		  ) 
   {
@@ -121,6 +125,8 @@ __global__ void GPU_fp_ez_hplane(
     {
 
       //printf("max faces=%d\n",mF);
+
+      printf("*tau = %.17g\n",*tau);
 
       // first time being called, allocate some host and device arrays
       if ( dump_cnt == 0 )
@@ -169,7 +175,9 @@ __global__ void GPU_fp_ez_hplane(
 
 
       //cudaStreamSynchronize(streamid );
-      //cudaDeviceSynchronize();
+      
+      // synchronize to be sure all streams have fully transferred psi to device. 
+      cudaDeviceSynchronize();
 
 
 
@@ -196,7 +204,7 @@ __global__ void GPU_fp_ez_hplane(
                        d_nCFaces,                   
                        d_c0,                        
                        d_STotal,                    
-                       d_STimeBatch,                     
+                       d_STime,                     
                        d_SigtInv,                   
                        d_Volume,                    
                        d_Sigt,                      
@@ -208,7 +216,9 @@ __global__ void GPU_fp_ez_hplane(
                        d_omega_A_fp,
                        d_omega_A_ez,
                        d_Connect_reorder,
-                       d_passZ
+                       d_passZ,
+		       *calcSTime,
+		       *tau
                           );
 
       //printf("Completed a batch sweep\n");

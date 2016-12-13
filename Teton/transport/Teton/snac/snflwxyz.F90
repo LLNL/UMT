@@ -65,6 +65,8 @@
           Sigt, &
           SigtInv, &
           passZ, &
+          calcSTime, &
+          tau, &
           streamid &
           ) &
           bind ( c ) 
@@ -99,6 +101,8 @@
          real ( c_double ),device :: Sigt(*) 
          real ( c_double ),device :: SigtInv(*) 
          integer ( c_int ),device :: passZ(*)
+         logical ( c_bool ) :: calcSTime
+         real ( c_double ) :: tau
          integer ( kind=cuda_stream_kind ),value :: streamid
     end subroutine snswp3d_c
   end interface
@@ -137,6 +141,7 @@
    real(adqt), device, allocatable :: d_psib(:,:,:)
    real(adqt), device, allocatable :: d_STime(:,:,:)
    
+   logical(kind=1) :: calcSTime
 
    ! picking up environment variables
    character(len=255) :: envstring
@@ -228,6 +233,7 @@
    do i = 1, nStreams
       istat = cudaStreamCreate(stream(i))
    enddo
+
 !  Loop over angle bins
 
    if (ipath == 'sweep') then
@@ -259,7 +265,9 @@
 
 !    Loop over angles, solving for each in turn:
      startOMPLoopTime = MPI_WTIME()
-
+     
+     ! By default STime does not need to computed.
+     calcSTime = .false.
      
      AngleBin: do binRecv=1,QuadSet% NumBin
        binSend = QuadSet% SendOrder(binRecv)
@@ -276,6 +284,8 @@
          ! true size of the batch (not always batchsize for last iteration)
          anglebatch=mm2-mm1+1
 
+         print*, "Size%tau = ", Size%tau
+
          !Stage batches of (psi,psib,phi, STime) into GPU
          if (binRecv == 1) then
             !for other bins, will begin staging in the data at the end of prev
@@ -287,25 +297,38 @@
                  QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
 
 
-            ! If this is first temp and intensity iteration, need to calculate STime and update to host:
-            if (intensityIter == 1 .and. tempIter == 1) then
-               ! compute STime from initial d_psi
-               call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(1) )
-               ! Update STime to host
-               istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                    d_STimeBatch(1,1,1), &
-                    QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
+            ! ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+            ! if (intensityIter == 1 .and. tempIter == 1) then
+            !    ! compute STime from initial d_psi
+            !    !call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(1) )
+            !    ! Update STime to host
+            !    !istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+            !    !     d_STimeBatch(1,1,1), &
+            !    !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
 
-            else
-               ! STime already computed, just need to move section of STime to device
-               istat=cudaMemcpyAsync(d_STimeBatch(1,1,1),                 &
-                    Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                    QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
+            ! else
+            !    ! STime already computed, just need to move section of STime to device
+            !    !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1),                 &
+            !    !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+            !    !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
 
-               ! could just use pinned memory version instead here.
-            endif
+            !    ! could just use pinned memory version instead here.
+            ! endif
 
          endif
+
+
+
+         ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+         if (intensityIter == 1 .and. tempIter == 1) then
+            ! compute STime from initial d_psi
+            calcSTime = .true.
+         else
+               ! STime already computed, just used pinned memory version of it.
+            calcSTime = .false.
+         endif
+
+
 
 !        Set angular fluxes for reflected angles
 
@@ -383,7 +406,7 @@
                               Geom%ZDataSoA%Connect,             &
                               Geom%ZDataSoA%STotal,              &
                               !Geom%ZDataSoA%STime,               &
-                              d_STimeBatch,                          &
+                              d_STime,                          &
                               Geom%ZDataSoA%Volume,             &
                               d_psi,                      &  ! only want angle batch portion
                               d_psib,                      &
@@ -392,10 +415,13 @@
                               Geom%ZDataSoA%Sigt,                &
                               Geom%ZDataSoA%SigtInv,             &
                               QuadSet%d_passZstart,        &
+                              calcSTime,                  &
+                              Size%tau,             &
                               stream(1)           &
                               )
         endif
 
+        ! synchronize so that streams > 1 don't start moving psi until GPUsweep is finished.
         istat=cudaDeviceSynchronize()
 
         ! need different stream for every angle...
@@ -415,7 +441,12 @@
            call timer_end('__snmoments')
         endif
 
+        !$omp parralel do private(mm,istat)
         do mm=mm1, mm2
+
+! ---- might be faster to just move this to end, and change to a polling loop to see what streams are ready.
+!      Could use multiple omp threads to poll.
+
            ! synchronize with stream mm to be sure psi(mm) is on the host
            istat = cudaStreamSynchronize( stream(mm-mm1+1) )
            if (istat /= 0) then
@@ -426,6 +457,8 @@
            call timer_beg('__setExitFlux')
            call setExitFlux_singleangle(QuadSet%AngleOrder(mm,binSend), psi, psib)
            call timer_end('__setExitFlux')
+
+! ------
 
            if (binRecv < QuadSet% NumBin) then
               ! If not the last bin, pre-stage data for next angle bin (an angle at a time)
@@ -448,20 +481,20 @@
            ! If this is first temp and intensity iteration, need to calculate STime and update to host:
            if (intensityIter == 1 .and. tempIter == 1) then
               ! sync all streams (d_psi must be on device to compute STime).
-              istat=cudaDeviceSynchronize()
+              !istat=cudaDeviceSynchronize()
               ! compute STime from initial d_psi
-              call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(1) )
+              !call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(1) )
               ! Update STime to host
-              istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                   d_STimeBatch(1,1,1), &
-                   QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
+              !istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+              !     d_STimeBatch(1,1,1), &
+              !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
 
            else
 
               ! STime already computed, just need to move section of STime to device
-              istat=cudaMemcpyAsync(d_STimeBatch(1,1,1),                 &
-                   Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                   QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
+              !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1),                 &
+              !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+              !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
            endif
 
            ! below is not working yet

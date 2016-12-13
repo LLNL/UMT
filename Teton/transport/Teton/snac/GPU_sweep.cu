@@ -41,7 +41,7 @@ extern "C"
 			    int* soa_nCFaces,
 			    int* soa_c0,
 			    double* soa_STotal,
-			    double* STimeBatch,
+			    double* STime,
 			    double* soa_SigtInv,
 			    double* soa_Volume,
 			    double* soa_Sigt,
@@ -53,7 +53,10 @@ extern "C"
 			    double* omega_A_fp,
 			    double* omega_A_ez,
 			    int* soa_Connect_ro,
-			    int* passZ)
+			    int* passZ,
+			    bool calcSTime,
+			    double tau
+			    )
   {
 
     //   double omega[3];
@@ -124,7 +127,7 @@ extern "C"
 #define soa_Volume(c,zone) soa_Volume[c + size_maxCorner * (zone)]
 #define soa_SigtInv(ig,zone) soa_SigtInv[(ig) + Groups * (zone)]
 #define soa_STotal(ig,c,zone) soa_STotal[ig + Groups * ( c + size_maxCorner * (zone) )]
-#define STimeBatch(ig,ic,Angle) STimeBatch[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
+#define STime(ig,ic,Angle) STime[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
 #define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
 #define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
 
@@ -146,7 +149,7 @@ extern "C"
     soa_Sigt += group_offset;
     soa_STotal += group_offset;
     soa_SigtInv += group_offset;
-    STimeBatch += group_offset;
+    STime += group_offset;
 
     int ndone = 0;
     int ndoneZ = 0;
@@ -199,7 +202,18 @@ extern "C"
   
 	for(c=0;c<nCorner;c++)
 	{
-	  double source = soa_STotal(ig,c,zone) + STimeBatch(ig,c0+c,blockIdx.x);
+	  double source;
+	  if(!calcSTime) 
+	  {
+	    source = soa_STotal(ig,c,zone) + STime(ig,c0+c,Angle);
+	  }
+	  else  // first temp and flux iteration: compute STime, use it, and zero copy back to host.
+	  {
+	    double STime_temp = tau*psic(ig,c0+c,blockIdx.x);
+	    source = soa_STotal(ig,c,zone) + STime_temp;
+	    STime(ig,c0+c,Angle) = STime_temp;
+	  }
+
 	  Q[c]       = r_soa_SightInv *source ;
 	  //src(ig,c)     = soa_Volume(c,zone) *source;
 	  //volume[c] = soa_Volume(c,zone);
