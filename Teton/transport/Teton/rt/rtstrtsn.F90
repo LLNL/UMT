@@ -125,6 +125,7 @@ endif
 
 !  Calculate zone-average energy density for convergence test
 
+! think zones are independent and can use omp here.
    do zone=1,nzones
      Z => getZoneData(Geom, zone)
 

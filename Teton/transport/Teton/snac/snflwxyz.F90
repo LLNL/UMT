@@ -142,6 +142,7 @@
    real(adqt), device, allocatable :: d_STime(:,:,:)
    
    logical(kind=1) :: calcSTime
+   logical(kind=1) :: done(BATCHSIZE) = .false.
 
    ! picking up environment variables
    character(len=255) :: envstring
@@ -233,6 +234,7 @@
    do i = 1, nStreams
       istat = cudaStreamCreate(stream(i))
    enddo
+
 
 !  Loop over angle bins
 
@@ -441,36 +443,57 @@
            call timer_end('__snmoments')
         endif
 
-        !$omp parralel do private(mm,istat)
-        do mm=mm1, mm2
+        done(1:anglebatch) = .false.
+        ! if anglebatch != BATCHSIZE, all angles will be true from previous iteration.
 
-! ---- might be faster to just move this to end, and change to a polling loop to see what streams are ready.
-!      Could use multiple omp threads to poll.
+        istat = cudaStreamSynchronize( stream(1) )
 
-           ! synchronize with stream mm to be sure psi(mm) is on the host
-           istat = cudaStreamSynchronize( stream(mm-mm1+1) )
-           if (istat /= 0) then
-              write(*,*) "CUDA stream sync API error:",istat
-              stop
-           endif
+        
+        do while( any(.not.done) )
 
-           call timer_beg('__setExitFlux')
-           call setExitFlux_singleangle(QuadSet%AngleOrder(mm,binSend), psi, psib)
-           call timer_end('__setExitFlux')
+           !$omp parallel do private(mm,istat)
+           do mm=mm1, mm2
 
-! ------
+              if(done(mm-mm1+1) == .true.) then
+                 ! continue through loop
+              else
+                 ! check if stream is ready
+                 istat = cudaStreamQuery( stream(mm-mm1+1) )
+                 if ( istat == cudaSuccess) then
+                    ! if ready then set exit flux and move psi.
+                    !call timer_beg('__setExitFlux')
+                    call setExitFlux_singleangle(QuadSet%AngleOrder(mm,binSend), psi, psib)
+                    !call timer_end('__setExitFlux')
+                    if (binRecv < QuadSet% NumBin) then
+                       ! If not the last bin, pre-stage data for next angle bin (an angle at a time)
+                       
+                       istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),        &
+                            psi(1,1,QuadSet%AngleOrder(mm,binSend_next)), &
+                            QuadSet%Groups*Size%ncornr, stream(mm-mm1+1) )
+                       
+                    endif
+                    ! mark this stream as done
+                    done(mm-mm1+1) = .true.
+                    !print *, "did angle ", mm-mm1+1
+                 elseif( istat == cudaErrorNotReady ) then
+                    ! just continue until it is ready, or we get a different error
+                 else
+                    ! report the error from istat and exit
+                    write(*,*) "CUDA stream sync API error:",istat
+                    stop
+                 endif
+              
+              endif ! end if done
 
-           if (binRecv < QuadSet% NumBin) then
-              ! If not the last bin, pre-stage data for next angle bin (an angle at a time)
+           enddo
 
-              istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),        &
-                   psi(1,1,QuadSet%AngleOrder(mm,binSend_next)), &
-                   QuadSet%Groups*Size%ncornr, stream(mm-mm1+1) )
-
-           endif
+           i=i+1
 
         enddo
         
+
+        !print*, "i = ", i
+
         if (binRecv < QuadSet% NumBin) then
            ! If ! not the last bin, pre-stage data for next angle bin
            ! istat=cudaMemcpyAsync(d_psi(1,1,1),        &
@@ -511,17 +534,17 @@
 
         endif
 
-       enddo AngleLoop
-       call timer_end('_angleloop')
+     enddo AngleLoop
+     call timer_end('_angleloop')
 
 
-!      Exchange Boundary Fluxes
+     !      Exchange Boundary Fluxes
 
-       call timer_beg('_exch')
-       call exchange(PSIB, binSend, binRecv) 
-       call timer_end('_exch')
+     call timer_beg('_exch')
+     call exchange(PSIB, binSend, binRecv) 
+     call timer_end('_exch')
 
-     enddo AngleBin
+  enddo AngleBin
 
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
@@ -545,7 +568,7 @@
        cycle FluxIteration
      endif
 
-   enddo FluxIteration
+  enddo FluxIteration
 
    ! Destroy streams 
    do i = 1, nStreams
