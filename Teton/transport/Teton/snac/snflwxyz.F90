@@ -14,7 +14,7 @@
 !***********************************************************************
 
 ! if batches are not currently size of bins, data is staged wrong.
-#define BATCHSIZE 32
+#define BATCHSIZE 16
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime, intensityIter, tempIter)
 
    use, intrinsic :: iso_c_binding
@@ -165,6 +165,7 @@
    NumAngles = QuadSet%NumAngles
    nbelem = Size%nbelem
    ncornr = Size%ncornr
+   print *, ncornr
    NangBin = maxval(QuadSet%NangBinList(:))
    NumBin = QuadSet%NumBin
    call mpi_comm_rank(mpi_comm_world, myrank, info)

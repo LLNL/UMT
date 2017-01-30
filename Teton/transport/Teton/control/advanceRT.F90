@@ -61,6 +61,7 @@
 !  Advance zone temperatures [set old = new]                           *
 !***********************************************************************
 
+!$omp parallel do private(zone,Z,nCorner,c0,Tstar,c,ratio)
    ZoneLoop: do zone=1,nzones
 
      Z       => getZoneData(Geom, zone)

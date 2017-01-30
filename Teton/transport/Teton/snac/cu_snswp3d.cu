@@ -115,6 +115,7 @@ __global__ void GPU_fp_ez_hplane(
 
     int nZ = *numzones;
     int nA = *numAngles;
+    // will need this for large problems
     //int nAbatch = *anglebatch;
     int mC = *maxcorners;
     int mF = *maxfaces;
@@ -137,6 +138,7 @@ __global__ void GPU_fp_ez_hplane(
 	     // create device versions
 	     cudaMalloc(&d_omega_A_fp,sizeof(double)*nZ*mC*mF*nA);
 	     cudaMalloc(&d_omega_A_ez,sizeof(double)*nZ*mC*mF*nA);
+	     printf("d_omega_A_fp allocated size = %d\n",nZ*mC*mF*nA*8);
 
         cudaMalloc(&d_Connect_reorder,sizeof(int)*3*nZ*mC*mF);
         

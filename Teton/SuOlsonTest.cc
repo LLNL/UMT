@@ -284,6 +284,8 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
 {
     //
     // ugh.  accessing public data of Teton
+
+  cout<<"entered initialize"<<endl;
     
     strncpy(theTeton.igeom.data,"xyz     ", 8);
     strncpy(theTeton.iaccel.data,"off     ", 8);  // iterative acceleration: gda, or off
@@ -297,6 +299,8 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
     // define volume source on some subset of zones with the given
     // time history
     getZoneIDs('z',0.5, myMesh, theSourceZones);
+
+  cout<<"got zone ids"<<endl;
 
     double theSourceTemp = 1.0;
     
@@ -318,8 +322,12 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
     TetonVolumeSource theVolSource(theSourceZones, theSrcName, theType, theShape, 1.0, theTimeTemps);
     volSourceData[0]=theVolSource;
 
+  cout<<"set vol source"<<endl;
+
     // set group boundaries
     setFrequencies( theNumGroups, quadType, theOrder, Npolar, Nazimu, freqData);
+
+  cout<<"set frequencies"<<endl;
 
     // set boundary information
     std::vector<std::string> tagNames(6),typeNames(6),shapeNames(6);
@@ -340,6 +348,8 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
 
     setBoundary( myMesh, boundaryData, tagNames, typeNames, shapeNames);
     
+  cout<<"set boundary"<<endl;
+
     //
     // ugh.  again accessing public data of Teton
     theTeton.ngr = freqData.size();
@@ -363,8 +373,10 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
          
     theTeton.linkKull(myMesh, freqData, boundaryData, volSourceData);
     
+  cout<<"linkKull"<<endl;
     
     theTeton.CInitMaterial(myPartList);
+  cout<<"set CInitMaterial"<<endl;
     theTeton.CsetControls();
 
     for(PartList<MeshBase>::iterator pIt = myPartList.begin();

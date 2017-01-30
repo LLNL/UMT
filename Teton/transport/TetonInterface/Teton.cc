@@ -172,9 +172,11 @@ Teton<Mesh>::resize() {
 
     int isSphere = 0, isCylinder = 0, isSlab =0, isXy = 0, isRz = 0;
     int isXyz = 0;
-    int D_ncornr, D_nzones,  D_ncornr_npsi;
+    int D_ncornr, D_nzones;
+    long int D_ncornr_npsi;
     int D_nbedit, D_nbedit_ngr;
-    int D_ncornr_ngr, D_nbedit1_ngr, D_npnts_ndim;
+    long int D_ncornr_ngr;
+    int D_nbedit1_ngr, D_npnts_ndim;
     int D_nzones_ngr, D_zones_ndim, D_ncornr_ndim, D_ngr1;
 // Set  ndim
     isSphere   = ( strncmp(igeom.data, "sphere  ", 8) == 0 );
@@ -201,9 +203,18 @@ Teton<Mesh>::resize() {
 
 
     D_ncornr            = std::max(ncornr, 0);
+    cout<<"ncornr = "<<ncornr<<endl;
     D_nzones            = std::max(nzones, 0);
-    D_ncornr_npsi       = std::max(ncornr * npsi, 0);
-    D_ncornr_ngr        = std::max(ncornr * ngr, 0);
+    cout<<"ncornr ="<<ncornr<<"npsi ="<<npsi<<endl;
+    long temp = (long)ncornr*(long)npsi;
+    cout<<"temp = "<<temp<<endl;
+    D_ncornr_npsi       = temp; //std::max(temp, 0); //ncornr*npsi overflows int
+    cout<<"D_ncornr_npsi ="<<D_ncornr_npsi<<endl;
+
+    temp = (long)ncornr*(long)ngr;
+    cout<<"temp = "<<temp<<endl;
+    
+    D_ncornr_ngr        = temp;//std::max(temp, 0);
     D_ncornr_ndim       = std::max(ncornr * ndim, 0);
     D_nbedit            = std::max(nbedit, 0);
     D_nbedit_ngr        = std::max(nbedit * ngr, 0);
@@ -1446,8 +1457,12 @@ Teton<Mesh>::CInitMaterial(PartList<Mesh> &partList)
 
 // Initialize corner radiation variables
 
+    cout<<"calling rtinit. ownedZones = "<<ownedZones<<endl;
+
     F77_ID(rtinit_, rtinit, RTINIT)
         (&EnergyRadiation, &psir[0]);
+
+    cout<<"finished rtinit"<<endl;
 
     F77_ID(setenergyedits_, setenergyedits, SETENERGYEDITS)
         (&EnergyRadiation, &EnergyMaterial, &EnergyIncident, 
