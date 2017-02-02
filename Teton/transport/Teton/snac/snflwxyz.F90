@@ -346,10 +346,21 @@
                      QuadSet%Groups*Size%ncornr*anglebatch, stream(s) ) ! can be another stream later?
              else
                 ! STime already computed, just need to move section of STime to device
-                !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,batch),                 &
-                !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                !     QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
+                istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,batch),                 &
+                     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                     QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
              endif
+
+             !Stage batch of psib into GPU
+             ! This is not working yet. zero copy used instead
+             if(0) then
+                !if( TRIM(envstring) .ne. "True" ) then               
+                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
+                     psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                     QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
+             endif
+
 
              ! record when HtoD movements are completed for stream s
              istat=cudaEventRecord(HtoDdone(s), stream(s) )
@@ -382,21 +393,6 @@
           do mm=mm1,mm2
              call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
           enddo
-          !Stage batch of psib into GPU
-          if (binRecv == 1) then
-             !for other bins, will begin staging in the data at the end of prev
-             !iteration of the loop
-
-             ! This is not working yet. zero copy used instead
-             if(0) then
-                !if( TRIM(envstring) .ne. "True" ) then               
-                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
-                     psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                     QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
-             endif
-
-          endif
 
           ! Do not launch sweep kernel in stream s+1 until HtoD transfer in stream s is done.
           istat = cudaStreamWaitEvent(stream(s+1), HtoDdone(s), 0)
@@ -535,16 +531,16 @@
              if (calcSTime == .true.) then
                 ! doing this in the kernel with zero-copy of STime for now. Only for calcSTime
                 ! compute STime from initial d_psi
-                !call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(s) )
+                call computeSTime(d_psi(1,1,1,batch), d_STimeBatch(1,1,1,batch), anglebatch, stream(s) )
                 ! Update STime to host
-                !istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                !     d_STimeBatch(1,1,1,batch), &
-                !     QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) ) ! can be another stream later?
+                istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                     d_STimeBatch(1,1,1,batch), &
+                     QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) ) ! can be another stream later?
              else
                 ! STime already computed, just need to move section of STime to device
-                !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,batch),                 &
-                !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                !     QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
+                istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,batch),                 &
+                     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                     QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
              endif
 
              ! below is not working yet
