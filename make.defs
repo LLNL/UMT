@@ -58,7 +58,7 @@ FPP             = pgf90
 
 # Munixlogical makes pgf90 use 0 for false instead of 0xff.
 
-F90FLAGS_OPT    =  -g -Mcuda=cc60,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
+F90FLAGS_OPT    =  -Mcuda=cc60,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
 
 #F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)

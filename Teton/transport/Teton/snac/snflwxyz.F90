@@ -14,7 +14,7 @@
 !***********************************************************************
 
 ! if batches are not currently size of bins, data is staged wrong.
-#define BATCHSIZE 16
+#define BATCHSIZE 32
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime, intensityIter, tempIter)
 
    use, intrinsic :: iso_c_binding
@@ -56,6 +56,7 @@
           A_ez , &
           Connect , &
           STotal , &
+          STimeBatch , &
           STime , &
           Volume , &
           psic, &
@@ -92,6 +93,7 @@
          real ( c_double ),device :: A_ez(*) 
          integer ( c_int ),device :: Connect(*) 
          real ( c_double ),device :: STotal(*) 
+         real ( c_double ),device :: STimeBatch(*)
          real ( c_double ),device :: STime(*) 
          real ( c_double ),device :: Volume(*) 
          real ( c_double ),device :: psic(*) 
@@ -119,14 +121,18 @@
 
 !  Local
 
-   integer, parameter :: nStreams = BATCHSIZE
+   ! Cuda streams overlapping stuff
+   integer, parameter :: Nbatches=1
+   integer :: nStreams = 2*Nbatches*8 ! 2*Nbatches streams per octant (8 max, should be ok with less)
    integer(kind=cuda_stream_kind) :: stream(nStreams)
-   integer :: i
+   type(cudaEvent) :: HtoDdone(nStreams),SweepFinished(nStreams),PsiOnHost(nStreams)
+   integer :: s, batch, istat
    
 
-   integer          :: Angle, mm,mm1,mm2,anglebatch
+
+   integer          :: Angle, mm,mm1,mm2,anglebatch, anglebatch_next
    integer          :: Groups, fluxIter, ishared
-   integer          :: binSend, binSend_next, binRecv, NangBin, istat
+   integer          :: binSend, binSend_next, binRecv, NangBin, NangBin_next
 
    logical (kind=1) :: FluxConverged
 
@@ -142,13 +148,13 @@
    real(adqt), device, allocatable :: d_STime(:,:,:)
    
    logical(kind=1) :: calcSTime
-   logical(kind=1) :: done(BATCHSIZE) = .false.
+   !logical(kind=1) :: done(BATCHSIZE) = .false.
 
    ! picking up environment variables
    character(len=255) :: envstring
 
-   real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE)
-   real(adqt), device :: d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE)
+   real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,Nbatches)
+   real(adqt), device :: d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,Nbatches)
    
    type(C_PTR) :: cptr
    type(C_DEVPTR) :: dptr
@@ -208,7 +214,7 @@
 
    call mpi_comm_rank(mpi_comm_world, myrank, info)
    
-   ! Double check the rank and divice mapping:
+   ! Double check the rank and device mapping:
    !istat = cudaGetDevice(devnum)
    !write(0,*) 'Rank = ', myrank, 'gpu device = ', devnum, 'istat = ', istat
 
@@ -232,10 +238,16 @@
 
 
    ! Create streams that can overlap 
-   do i = 1, nStreams
-      istat = cudaStreamCreate(stream(i))
+   do s = 1, nStreams
+      istat = cudaStreamCreate(stream(s))
    enddo
 
+   ! Create events to synchronize among different streams (only need even ones)
+   do s = 1, nStreams, 2
+      istat = cudaEventCreate(HtoDdone(s))
+      istat = cudaEventCreate(SweepFinished(s))
+      istat = cudaEventCreate(PsiOnHost(s))
+   enddo
 
 !  Loop over angle bins
 
@@ -271,94 +283,131 @@
      
      ! By default STime does not need to computed.
      calcSTime = .false.
-     
+
+     ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+     if (intensityIter == 1 .and. tempIter == 1) then
+        ! compute STime from initial d_psi
+        calcSTime = .true.
+     else
+        ! STime already computed,
+        calcSTime = .false.
+     endif
+
+
+     call timer_beg('_anglebins')     
      AngleBin: do binRecv=1,QuadSet% NumBin
        binSend = QuadSet% SendOrder(binRecv)
        binSend_next = QuadSet% SendOrder(binRecv+1) ! binSend on next iteration
        NangBin = QuadSet% NangBinList(binSend)
+       NangBin_next = QuadSet% NangBinList(binSend_next)
        
 
-       call timer_beg('_angleloop')
-       ! loop over batches within the angle bin (Later will want loop variable to be batch number.)
-       AngleLoop: do mm1=1,NangBin,BATCHSIZE
-
-         ! get the angleloop upper bound for this batch
-         mm2=min(mm1+BATCHSIZE-1,NangBin)
-         ! true size of the batch (not always batchsize for last iteration)
-         anglebatch=mm2-mm1+1
-
-         print*, "Size%tau = ", Size%tau
-
-         !Stage batches of (psi,psib,phi, STime) into GPU
-         if (binRecv == 1) then
-            !for other bins, will begin staging in the data at the end of prev
-            !iteration of the loop
-
-            ! move anglebatch section of psi to d_psi, which has room for BATCHSIZE angles of psi
-            istat=cudaMemcpyAsync(d_psi(1,1,1),                 &
-                 psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                 QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
 
 
-            ! ! If this is first temp and intensity iteration, need to calculate STime and update to host:
-            ! if (intensityIter == 1 .and. tempIter == 1) then
-            !    ! compute STime from initial d_psi
-            !    !call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(1) )
-            !    ! Update STime to host
-            !    !istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-            !    !     d_STimeBatch(1,1,1), &
-            !    !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
+       
+       !Stage batches of (psi,psib,phi, STime) into GPU
+       FirstOctant: if (binRecv == 1) then
+          !for other bins, will begin staging in the data at the end of prev
+          !iteration of the loop
 
-            ! else
-            !    ! STime already computed, just need to move section of STime to device
-            !    !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1),                 &
-            !    !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-            !    !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
+          ! loop over batches of angles within the angle bin (Later will want loop variable to be batch number.)
+          do batch=1,Nbatches
+             ! lower angle index for this batch
+             mm1=(batch-1)*BATCHSIZE+1
+             ! get the angles upper index for this batch
+             mm2=min(batch*BATCHSIZE,NangBin)
+             ! True size of the batch (not always BATCHSIZE for last batch if not nicely divisible)
+             anglebatch=mm2-mm1+1
 
-            !    ! could just use pinned memory version instead here.
-            ! endif
+             ! stream is determined by octant and batch (2 unique streams per batch)
+             s = batch*2-1 + 2*Nbatches*(binRecv-1)
 
-         endif
+             print *,"first octant:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
+
+             ! stream s wait until data from previous stream is done moving (event HtoDdone(s-2))
+             istat=cudaStreamWaitEvent( stream(s), HtoDdone(s-2), 0)
+
+             istat=cudaDeviceSynchronize()
+
+             ! move anglebatch section of psi to d_psi(batch), which has room for BATCHSIZE angles of psi
+             istat=cudaMemcpyAsync(d_psi(1,1,1,batch),                 &
+                  psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                  QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
+
+             istat=cudaDeviceSynchronize()
+
+             ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+             if (calcSTime == .true.) then
+                ! compute STime from initial d_psi
+                call computeSTime(d_psi(1,1,1,batch), d_STimeBatch(1,1,1,batch), anglebatch, stream(s) )
+                ! Update STime to host
+                istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                     d_STimeBatch(1,1,1,batch), &
+                     QuadSet%Groups*Size%ncornr*anglebatch, stream(s) ) ! can be another stream later?
+             else
+                ! STime already computed, just need to move section of STime to device
+                !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,batch),                 &
+                !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                !     QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
+             endif
+
+             ! record when HtoD movements are completed for stream s
+             istat=cudaEventRecord(HtoDdone(s), stream(s) )
+
+          enddo
+
+          ! Now the data movements have been pipelined for the buffers that fit on GPU.
+
+       endif FirstOctant
 
 
+       
+       ! loop over batches of angles within the angle bin
+       do batch=1,Nbatches
+          ! lower angle index for this batch
+          mm1=(batch-1)*BATCHSIZE+1
+          ! get the angles upper index for this batch
+          mm2=min(batch*BATCHSIZE,NangBin)
+          ! True size of the batch (not always BATCHSIZE for last batch if not nicely divisible)
+          anglebatch=mm2-mm1+1
 
-         ! If this is first temp and intensity iteration, need to calculate STime and update to host:
-         if (intensityIter == 1 .and. tempIter == 1) then
-            ! compute STime from initial d_psi
-            calcSTime = .true.
-         else
-               ! STime already computed, just used pinned memory version of it.
-            calcSTime = .false.
-         endif
+          ! stream is determined by octant and batch (2 unique streams per batch)
+          s = batch*2-1 + 2*Nbatches*(binRecv-1)
+       
+          print *,"compute section:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
 
+          istat=cudaDeviceSynchronize()
 
+          ! Set angular fluxes for reflected angles
+          do mm=mm1,mm2
+             call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
+          enddo
+          !Stage batch of psib into GPU
+          if (binRecv == 1) then
+             !for other bins, will begin staging in the data at the end of prev
+             !iteration of the loop
 
-!        Set angular fluxes for reflected angles
+             ! This is not working yet. zero copy used instead
+             if(0) then
+                !if( TRIM(envstring) .ne. "True" ) then               
+                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
+                     psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                     QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
+             endif
 
-         do mm=mm1,mm2
-            call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
-         enddo
-            !Stage batch of psib into GPU
-            if (binRecv == 1) then
-               !for other bins, will begin staging in the data at the end of prev
-               !iteration of the loop
+          endif
 
-               ! This is not working yet.
-               if(0) then
-               !if( TRIM(envstring) .ne. "True" ) then               
-                  ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-                  istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
-                       psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                       QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
-               endif
+          ! Do not launch sweep kernel in stream s+1 until HtoD transfer in stream s is done.
+          istat = cudaStreamWaitEvent(stream(s+1), HtoDdone(s), 0)
 
-         endif
-
-!        Sweep the mesh, calculating PSI for each corner; the
-!        boundary flux array PSIB is also updated here.
-!        Mesh cycles are fixed automatically.
-         if(0) then ! call CUDA fortran version
-          call snswp3d(     anglebatch,                     &
+          istat=cudaDeviceSynchronize()
+          
+          !        Sweep the mesh, calculating PSI for each corner; the
+          !        boundary flux array PSIB is also updated here.
+          !        Mesh cycles are fixed automatically.
+          if(0) then ! call CUDA fortran version
+             call snswp3d(     anglebatch,                     &
                               Size%nzones,               &
                               QuadSet%Groups,            &
                               Size%ncornr,               &
@@ -388,8 +437,8 @@
                               Geom%ZDataSoA%SigtInv,             &
                               QuadSet%d_passZstart,              &
                               stream(1))
-        else ! Call CUDA c version
-          call snswp3d_c(     anglebatch,                     &
+          else ! Call CUDA c version
+             call snswp3d_c(     anglebatch,                     &
                               Size%nzones,               &
                               QuadSet%Groups,            &
                               Size%ncornr,               &
@@ -409,9 +458,10 @@
                               Geom%ZDataSoA%Connect,             &
                               Geom%ZDataSoA%STotal,              &
                               !Geom%ZDataSoA%STime,               &
-                              d_STime,                          &
+                              d_STimeBatch(1,1,1,batch),          &
+                              d_STime,                            &
                               Geom%ZDataSoA%Volume,             &
-                              d_psi,                      &  ! only want angle batch portion
+                              d_psi(1,1,1,batch),                      &  ! only want angle batch portion
                               d_psib,                      &
                               QuadSet%d_next,              &
                               QuadSet%d_nextZ,             &
@@ -420,130 +470,137 @@
                               QuadSet%d_passZstart,        &
                               calcSTime,                  &
                               Size%tau,             &
-                              stream(1)           &
+                              stream(s+1)           &
                               )
-        endif
+          endif
+          
+          ! record when sweep of s (as opposed to s+2) is finished in stream s+1
+          istat=cudaEventRecord(SweepFinished(s), stream(s+1) )
 
-        ! synchronize so that streams > 1 don't start moving psi until GPUsweep is finished.
-        istat=cudaDeviceSynchronize()
+          istat=cudaDeviceSynchronize()
 
-        ! need different stream for every angle...
-        ! update psi on the host an angle at a time:
-        do mm=mm1,mm2
-           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm,binSend)), &
-                d_psi(1,1,mm-mm1+1), &
-                QuadSet%Groups*Size%ncornr, stream(mm-mm1+1) )
-        enddo
-        
-        if (ipath == 'sweep') then
-           call timer_beg('__snmoments')
-           ! snmoments only reads d_psi, produces d_phi
-           call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
-                QuadSet%d_AngleOrder(mm1,binSend),      &
-                anglebatch, stream(1)) ! GPU version, one batch at a time
-           call timer_end('__snmoments')
-        endif
+          if (ipath == 'sweep') then
+             call timer_beg('__snmoments')
+             ! snmoments only reads d_psi, produces d_phi
+             call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
+                  QuadSet%d_AngleOrder(mm1,binSend),      &
+                  anglebatch, stream(s+1)) ! GPU version, one batch at a time
+             call timer_end('__snmoments')
+          endif
 
-        done(1:anglebatch) = .false.
-        ! if anglebatch != BATCHSIZE, all angles will be true from previous iteration.
 
-        istat = cudaStreamSynchronize( stream(1) )
+          istat=cudaStreamWaitEvent(stream(s), SweepFinished(s) , 0)
+          
+          istat=cudaDeviceSynchronize()
 
-        
-        do while( any(.not.done) )
+          istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+               d_psi(1,1,1,batch), &
+               QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
 
-           !$omp parallel do private(mm,istat)
-           do mm=mm1, mm2
+          istat=cudaEventRecord(PsiOnHost(s), stream(s))
 
-              if(done(mm-mm1+1) == .true.) then
-                 ! continue through loop
-              else
-                 ! check if stream is ready
-                 istat = cudaStreamQuery( stream(mm-mm1+1) )
-                 if ( istat == cudaSuccess) then
-                    ! if ready then set exit flux and move psi.
-                    !call timer_beg('__setExitFlux')
-                    call setExitFlux_singleangle(QuadSet%AngleOrder(mm,binSend), psi, psib)
-                    !call timer_end('__setExitFlux')
-                    if (binRecv < QuadSet% NumBin) then
-                       ! If not the last bin, pre-stage data for next angle bin (an angle at a time)
-                       
-                       istat=cudaMemcpyAsync(d_psi(1,1,mm-mm1+1),        &
-                            psi(1,1,QuadSet%AngleOrder(mm,binSend_next)), &
-                            QuadSet%Groups*Size%ncornr, stream(mm-mm1+1) )
-                       
-                    endif
-                    ! mark this stream as done
-                    done(mm-mm1+1) = .true.
-                    !print *, "did angle ", mm-mm1+1
-                 elseif( istat == cudaErrorNotReady ) then
-                    ! just continue until it is ready, or we get a different error
-                 else
-                    ! report the error from istat and exit
-                    write(*,*) "CUDA stream sync API error:",istat
-                    stop
-                 endif
-              
-              endif ! end if done
+       enddo
 
-           enddo
+       NotLastOctants: if (binRecv < QuadSet% NumBin) then
+          ! If not the last bin (octant), pre-stage data for next angle bin 
 
-           i=i+1
+          ! loop over batches of angles within the angle bin (Later will want loop variable to be batch number.)
+          do batch=1,Nbatches
+             ! lower angle index
+             mm1=(batch-1)*BATCHSIZE+1
+             ! get the angles upper index for this batch for next octant
+             mm2=min(batch*BATCHSIZE,NangBin_next)
+             ! True size of the batch (not always BATCHSIZE for last batch if not nicely divisible)
+             anglebatch_next=mm2-mm1+1
 
-        enddo
-        
+             ! the stream here corresponds to the next octant streams (binRecv+1-1)
+             s = batch*2-1 + Nbatches*2*(binRecv)
 
-        !print*, "i = ", i
+             print *,"NotLastOctants:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch_next = ", anglebatch_next, "s = ", s
 
-        if (binRecv < QuadSet% NumBin) then
-           ! If ! not the last bin, pre-stage data for next angle bin
-           ! istat=cudaMemcpyAsync(d_psi(1,1,1),        &
-           !      psi(1,1,QuadSet%AngleOrder(mm1,QuadSet%SendOrder(binRecv+1))), &
-           !      QuadSet%Groups*Size%ncornr*anglebatch, stream(binRecv+1) )
-           ! ! this won't work for when all anglebatch sizes are not the same...need next_anglebatch
+             ! wait in stream s for the data transfer in the corresponding previous stream to finish.
+             istat=cudaStreamWaitEvent(stream(s), HtoDdone(s-2) , 0)
 
-           ! If this is first temp and intensity iteration, need to calculate STime and update to host:
-           if (intensityIter == 1 .and. tempIter == 1) then
-              ! sync all streams (d_psi must be on device to compute STime).
-              !istat=cudaDeviceSynchronize()
-              ! compute STime from initial d_psi
-              !call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(1) )
-              ! Update STime to host
-              !istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-              !     d_STimeBatch(1,1,1), &
-              !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
-
-           else
-
-              ! STime already computed, just need to move section of STime to device
-              !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1),                 &
-              !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-              !     QuadSet%Groups*Size%ncornr*anglebatch, stream(1) )
-           endif
-
-           ! below is not working yet
-           if(0) then
-              !if( TRIM(envstring) .ne. "True" ) then
-              !Stage batch of psib into GPU
+             istat=cudaDeviceSynchronize()
 
               ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-              istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
-                   psib(1,1,QuadSet%AngleOrder(mm1,QuadSet%SendOrder(binRecv+1))), &
-                   QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
-
-           endif
-
-        endif
-
-     enddo AngleLoop
-     call timer_end('_angleloop')
+             istat=cudaMemcpyAsync(d_psi(1,1,1,batch),        &
+                  psi(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                  QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
 
 
-     !      Exchange Boundary Fluxes
+             istat=cudaDeviceSynchronize()
 
-     call timer_beg('_exch')
-     call exchange(PSIB, binSend, binRecv) 
-     call timer_end('_exch')
+             ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+             if (calcSTime == .true.) then
+                ! doing this in the kernel with zero-copy of STime for now. Only for calcSTime
+                ! compute STime from initial d_psi
+                !call computeSTime(d_psi, d_STimeBatch, anglebatch, stream(s) )
+                ! Update STime to host
+                !istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                !     d_STimeBatch(1,1,1,batch), &
+                !     QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) ) ! can be another stream later?
+             else
+                ! STime already computed, just need to move section of STime to device
+                !istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,batch),                 &
+                !     Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                !     QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
+             endif
+
+             ! below is not working yet
+             if(0) then
+                !if( TRIM(envstring) .ne. "True" ) then
+                !Stage batch of psib into GPU
+                              
+                ! istat=cudaMemcpyAsync(d_psib(1,1,1,batch),                 &
+                !      psib(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                !      QuadSet%Groups*Size%nbelem*anglebatch_next, stream(s) )
+                
+             endif
+
+
+             istat=cudaDeviceSynchronize()
+
+             ! record when HtoD movements are completed for stream s
+             istat = cudaEventRecord(HtoDdone(s), stream(s) )
+
+          enddo
+          
+       endif NotLastOctants
+       
+       ! loop over batches of angles within the angle bin
+       do batch=1,Nbatches
+          ! lower angle index for this batch
+          mm1=(batch-1)*BATCHSIZE+1
+          ! get the angles upper index for this batch
+          mm2=min(batch*BATCHSIZE,NangBin)
+          ! True size of the batch (not always BATCHSIZE for last batch if not nicely divisible)
+          anglebatch=mm2-mm1+1
+
+          ! stream is determined by octant and batch (2 unique streams per batch)
+          s = batch*2-1 + 2*Nbatches*(binRecv-1)
+
+          print *,"CPU work:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
+
+          ! if ready then set exit flux and move psi.
+          !istat=cudaEventSynchronize( PsiOnHost(s) )
+          istat = cudaDeviceSynchronize()
+          !call timer_beg('__setExitFlux')
+          call setExitFlux(anglebatch, QuadSet%AngleOrder(mm1,binSend), psi, psib)
+          !call timer_end('__setExitFlux')
+
+       enddo
+
+       istat=cudaDeviceSynchronize()
+
+       call timer_end('_anglebins')
+
+       !      Exchange Boundary Fluxes
+       ! these need to become non-blocking
+
+       call timer_beg('_exch')
+       call exchange(PSIB, binSend, binRecv) 
+       call timer_end('_exch')
 
   enddo AngleBin
 
@@ -572,8 +629,8 @@
   enddo FluxIteration
 
    ! Destroy streams 
-   do i = 1, nStreams
-      istat = cudaStreamDestroy(stream(i))
+   do s = 1, nStreams
+      istat = cudaStreamDestroy(stream(s))
    enddo
 
 

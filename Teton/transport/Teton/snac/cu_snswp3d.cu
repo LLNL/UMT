@@ -31,6 +31,7 @@ __global__ void GPU_sweep(
           int* soa_nCFaces,
           int* soa_c0,
        double* soa_STotal,
+       double* STimeBatch,
        double* STime,
        double* soa_SigtInv,
        double* soa_Volume,
@@ -93,6 +94,7 @@ __global__ void GPU_fp_ez_hplane(
 		  double *d_A_ez, 
 		  int    *d_Connect,
 		  double *d_STotal,
+		  double *d_STimeBatch,
 		  double *d_STime,
 		  double *d_Volume,
 		  double *d_psic,
@@ -116,7 +118,7 @@ __global__ void GPU_fp_ez_hplane(
     int nZ = *numzones;
     int nA = *numAngles;
     // will need this for large problems
-    //int nAbatch = *anglebatch;
+    int nAbatch = *anglebatch;
     int mC = *maxcorners;
     int mF = *maxfaces;
     int nG = *numgroups;
@@ -179,7 +181,7 @@ __global__ void GPU_fp_ez_hplane(
       //cudaStreamSynchronize(streamid );
       
       // synchronize to be sure all streams have fully transferred psi to device. 
-      cudaDeviceSynchronize();
+      cudaDeviceSynchronize(); // remove this later.
 
 
 
@@ -206,6 +208,7 @@ __global__ void GPU_fp_ez_hplane(
                        d_nCFaces,                   
                        d_c0,                        
                        d_STotal,                    
+		       d_STimeBatch,
                        d_STime,                     
                        d_SigtInv,                   
                        d_Volume,                    
