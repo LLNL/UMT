@@ -14,7 +14,7 @@
 !***********************************************************************
 
 ! if batches are not currently size of bins, data is staged wrong.
-#define BATCHSIZE 32
+#define BATCHSIZE 16
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime, intensityIter, tempIter)
 
    use, intrinsic :: iso_c_binding
@@ -122,7 +122,7 @@
 !  Local
 
    ! Cuda streams overlapping stuff
-   integer, parameter :: Nbatches=1
+   integer, parameter :: Nbatches=2
    integer :: nStreams = 2*Nbatches*8 ! 2*Nbatches streams per octant (8 max, should be ok with less)
    integer(kind=cuda_stream_kind) :: stream(nStreams)
    type(cudaEvent) :: HtoDdone(nStreams),SweepFinished(nStreams),PsiOnHost(nStreams)
@@ -478,7 +478,7 @@
           if (ipath == 'sweep') then
              call timer_beg('__snmoments')
              ! snmoments only reads d_psi, produces d_phi
-             call snmomentsD(d_psi, d_phi, QuadSet%d_Weight,     &
+             call snmomentsD(d_psi(1,1,1,batch), d_phi, QuadSet%d_Weight,     &
                   QuadSet%d_AngleOrder(mm1,binSend),      &
                   anglebatch, stream(s+1)) ! GPU version, one batch at a time
              call timer_end('__snmoments')
