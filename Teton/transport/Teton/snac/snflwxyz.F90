@@ -351,17 +351,6 @@
                      QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
              endif
 
-             !Stage batch of psib into GPU
-             ! This is not working yet. zero copy used instead
-             if(0) then
-                !if( TRIM(envstring) .ne. "True" ) then               
-                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
-                     psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                     QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
-             endif
-
-
              ! record when HtoD movements are completed for stream s
              istat=cudaEventRecord(HtoDdone(s), stream(s) )
 
@@ -385,14 +374,26 @@
           ! stream is determined by octant and batch (2 unique streams per batch)
           s = batch*2-1 + 2*Nbatches*(binRecv-1)
        
-          print *,"compute section:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
+          !print *,"compute section:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
 
-          istat=cudaDeviceSynchronize()
+          !istat=cudaDeviceSynchronize()
 
           ! Set angular fluxes for reflected angles
           do mm=mm1,mm2
              call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
           enddo
+
+          if (binRecv == 1) then
+             !Stage batch of psib into GPU
+             ! This is not working yet. zero copy used instead
+             if(0) then
+                !if( TRIM(envstring) .ne. "True" ) then               
+                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
+                     psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                     QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
+             endif
+          endif
 
           ! Do not launch sweep kernel in stream s+1 until HtoD transfer in stream s is done.
           istat = cudaStreamWaitEvent(stream(s+1), HtoDdone(s), 0)
@@ -473,7 +474,7 @@
           ! record when sweep of s (as opposed to s+2) is finished in stream s+1
           istat=cudaEventRecord(SweepFinished(s), stream(s+1) )
 
-          istat=cudaDeviceSynchronize()
+          !istat=cudaDeviceSynchronize()
 
           if (ipath == 'sweep') then
              call timer_beg('__snmoments')
@@ -487,7 +488,7 @@
 
           istat=cudaStreamWaitEvent(stream(s), SweepFinished(s) , 0)
           
-          istat=cudaDeviceSynchronize()
+          !istat=cudaDeviceSynchronize()
 
           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
                d_psi(1,1,1,batch), &
@@ -512,12 +513,15 @@
              ! the stream here corresponds to the next octant streams (binRecv+1-1)
              s = batch*2-1 + Nbatches*2*(binRecv)
 
-             print *,"NotLastOctants:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch_next = ", anglebatch_next, "s = ", s
+             !print *,"NotLastOctants:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch_next = ", anglebatch_next, "s = ", s
 
              ! wait in stream s for the data transfer in the corresponding previous stream to finish.
              istat=cudaStreamWaitEvent(stream(s), HtoDdone(s-2) , 0)
 
-             istat=cudaDeviceSynchronize()
+             ! most importantly, cannot overwrite psi before it has been moved off device
+             istat=cudaStreamWaitEvent(stream(s), PsiOnHost(s-2*Nbatches) , 0)
+
+             !istat=cudaDeviceSynchronize()
 
               ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
              istat=cudaMemcpyAsync(d_psi(1,1,1,batch),        &
@@ -525,7 +529,7 @@
                   QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
 
 
-             istat=cudaDeviceSynchronize()
+             !istat=cudaDeviceSynchronize()
 
              ! If this is first temp and intensity iteration, need to calculate STime and update to host:
              if (calcSTime == .true.) then
@@ -555,7 +559,7 @@
              endif
 
 
-             istat=cudaDeviceSynchronize()
+             !istat=cudaDeviceSynchronize()
 
              ! record when HtoD movements are completed for stream s
              istat = cudaEventRecord(HtoDdone(s), stream(s) )
@@ -576,10 +580,10 @@
           ! stream is determined by octant and batch (2 unique streams per batch)
           s = batch*2-1 + 2*Nbatches*(binRecv-1)
 
-          print *,"CPU work:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
+          !print *,"CPU work:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
 
           ! if ready then set exit flux and move psi.
-          !istat=cudaEventSynchronize( PsiOnHost(s) )
+          istat=cudaEventSynchronize( PsiOnHost(s) )
           istat = cudaDeviceSynchronize()
           !call timer_beg('__setExitFlux')
           call setExitFlux(anglebatch, QuadSet%AngleOrder(mm1,binSend), psi, psib)

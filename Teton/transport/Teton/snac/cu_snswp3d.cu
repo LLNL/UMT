@@ -181,7 +181,7 @@ __global__ void GPU_fp_ez_hplane(
       //cudaStreamSynchronize(streamid );
       
       // synchronize to be sure all streams have fully transferred psi to device. 
-      cudaDeviceSynchronize(); // remove this later.
+      //cudaDeviceSynchronize(); // remove this later.
 
 
 
