@@ -322,19 +322,19 @@
              ! stream is determined by octant and batch (2 unique streams per batch)
              s = batch*2-1 + 2*Nbatches*(binRecv-1)
 
-             print *,"first octant:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
+             !print *,"first octant:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
 
              ! stream s wait until data from previous stream is done moving (event HtoDdone(s-2))
              istat=cudaStreamWaitEvent( stream(s), HtoDdone(s-2), 0)
 
-             istat=cudaDeviceSynchronize()
+             !istat=cudaDeviceSynchronize()
 
              ! move anglebatch section of psi to d_psi(batch), which has room for BATCHSIZE angles of psi
              istat=cudaMemcpyAsync(d_psi(1,1,1,batch),                 &
                   psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
                   QuadSet%Groups*Size%ncornr*anglebatch, stream(s) )
 
-             istat=cudaDeviceSynchronize()
+             !istat=cudaDeviceSynchronize()
 
              ! If this is first temp and intensity iteration, need to calculate STime and update to host:
              if (calcSTime == .true.) then
@@ -584,7 +584,9 @@
 
           ! if ready then set exit flux and move psi.
           istat=cudaEventSynchronize( PsiOnHost(s) )
-          istat = cudaDeviceSynchronize()
+          
+          !istat = cudaDeviceSynchronize()
+
           !call timer_beg('__setExitFlux')
           call setExitFlux(anglebatch, QuadSet%AngleOrder(mm1,binSend), psi, psib)
           !call timer_end('__setExitFlux')
@@ -592,8 +594,6 @@
        enddo
 
        istat=cudaDeviceSynchronize()
-
-       call timer_end('_anglebins')
 
        !      Exchange Boundary Fluxes
        ! these need to become non-blocking
@@ -603,6 +603,8 @@
        call timer_end('_exch')
 
   enddo AngleBin
+
+  call timer_end('_anglebins')
 
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
