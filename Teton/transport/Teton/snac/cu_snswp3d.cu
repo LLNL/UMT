@@ -90,9 +90,12 @@ __global__ void GPU_fp_ez_hplane(
 		  int    *d_nCorner,
 		  int    *d_nCFaces,
 		  int    *d_c0,
-		  double *d_A_fp, 
+		  double *d_A_fp,
+		  double *d_omega_A_fp,
 		  double *d_A_ez, 
+		  double* d_omega_A_ez,
 		  int    *d_Connect,
+		  int* d_Connect_reorder,
 		  double *d_STotal,
 		  double *d_STimeBatch,
 		  double *d_STime,
@@ -111,9 +114,9 @@ __global__ void GPU_fp_ez_hplane(
   {
 	  static int dump_cnt=0;
     //int zone,ic;
-    static double* d_omega_A_fp;
-    static double* d_omega_A_ez;
-    static    int* d_Connect_reorder;
+    //static double* d_omega_A_fp;
+    //static double* d_omega_A_ez;
+    //static    int* d_Connect_reorder;
 
     int nZ = *numzones;
     int nA = *numAngles;
@@ -138,11 +141,11 @@ __global__ void GPU_fp_ez_hplane(
 	// I guess these are synchronous now... Will need to make data members of ZData later.
 
 	     // create device versions
-	     cudaMalloc(&d_omega_A_fp,sizeof(double)*nZ*mC*mF*nA);
-	     cudaMalloc(&d_omega_A_ez,sizeof(double)*nZ*mC*mF*nA);
-	     printf("d_omega_A_fp allocated size = %d\n",nZ*mC*mF*nA*8);
+	//     cudaMalloc(&d_omega_A_fp,sizeof(double)*nZ*mC*mF*nA);
+	//   cudaMalloc(&d_omega_A_ez,sizeof(double)*nZ*mC*mF*nA);
+	//   printf("d_omega_A_fp allocated size = %d\n",nZ*mC*mF*nA*8);
 
-        cudaMalloc(&d_Connect_reorder,sizeof(int)*3*nZ*mC*mF);
+        //cudaMalloc(&d_Connect_reorder,sizeof(int)*3*nZ*mC*mF);
         
       }
       

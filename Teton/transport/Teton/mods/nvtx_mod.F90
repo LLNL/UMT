@@ -1,6 +1,4 @@
-# 1 "mods/nvtx_mod.F90"
-
-module nvtx
+module nvtx_mod
 
 use iso_c_binding
 implicit none
@@ -64,5 +62,5 @@ subroutine nvtxEndRange
   call nvtxRangePop
 end subroutine
 
-end module nvtx
+end module nvtx_mod
 

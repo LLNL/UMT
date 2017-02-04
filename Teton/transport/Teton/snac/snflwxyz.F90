@@ -26,6 +26,7 @@
    use ZoneData_mod
    use snswp3d_mod
    use cudafor
+   use nvtx_mod
 
 #include "assert.h"
 !  Assertion checking include file for TETON
@@ -53,8 +54,11 @@
           numCFaces, &
           c0, &
           A_fp , &
+          omega_A_fp , &
           A_ez , &
+          omega_A_ez , &
           Connect , &
+          Connect_reorder, &
           STotal , &
           STimeBatch , &
           STime , &
@@ -90,8 +94,11 @@
          integer ( c_int ),device :: numCFaces(*) 
          integer ( c_int ),device :: c0(*)
          real ( c_double ),device :: A_fp(*) 
+         real ( c_double ),device :: omega_A_fp(*) 
          real ( c_double ),device :: A_ez(*) 
+         real ( c_double ),device :: omega_A_ez(*) 
          integer ( c_int ),device :: Connect(*) 
+         integer ( c_int ),device :: Connect_reorder(*) 
          real ( c_double ),device :: STotal(*) 
          real ( c_double ),device :: STimeBatch(*)
          real ( c_double ),device :: STime(*) 
@@ -269,7 +276,9 @@
                                                                                                   
      
      call timer_beg('_initexch')
+     !call nvtxStartRange("InitExchange")
      call InitExchange
+     !call nvtxEndRange
      call timer_end('_initexch')
 
      fluxIter = fluxIter + 1
@@ -398,7 +407,8 @@
           ! Do not launch sweep kernel in stream s+1 until HtoD transfer in stream s is done.
           istat = cudaStreamWaitEvent(stream(s+1), HtoDdone(s), 0)
 
-          istat=cudaDeviceSynchronize()
+          ! currently need this synch to make sure psib updated in snreflect before zero copy to device?
+          !istat=cudaDeviceSynchronize()
           
           !        Sweep the mesh, calculating PSI for each corner; the
           !        boundary flux array PSIB is also updated here.
@@ -451,8 +461,11 @@
                               Geom%ZDataSoA%nCFaces,                &
                               Geom%ZDataSoA%c0,                &
                               Geom%ZDataSoA%A_fp,                &
+                              Geom%ZDataSoA%omega_A_fp,                &
                               Geom%ZDataSoA%A_ez,                &
+                              Geom%ZDataSoA%omega_A_ez,                &
                               Geom%ZDataSoA%Connect,             &
+                              Geom%ZDataSoA%Connect_reorder,             &
                               Geom%ZDataSoA%STotal,              &
                               !Geom%ZDataSoA%STime,               &
                               d_STimeBatch(1,1,1,batch),          &
@@ -485,9 +498,12 @@
              call timer_end('__snmoments')
           endif
 
-
+          ! before moving DtoH psi, sweep needs to complete
           istat=cudaStreamWaitEvent(stream(s), SweepFinished(s) , 0)
           
+          ! make sure psi in previous stream done before moving psi in new stream (otherwise they share bandwidth)
+          istat=cudaStreamWaitEvent(stream(s), PsiOnHost(s-2) , 0)
+
           !istat=cudaDeviceSynchronize()
 
           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &

@@ -31,7 +31,7 @@ OPENMPF_FLAGS    = -mp
 
 FLIBS = -L/opt/pgi/linuxpower/$(PGI_VERSION)/lib -L/usr/local/cuda-8.0/lib64 /home/walkup/codes/timers/libtimers.a -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
        -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass -lmass_simdp8 \
-       -lcudapgi -lcudafor -lcudart
+       -lcudapgi -lcudafor -lcudart 
 
 CLIBS = -L/usr/local/cuda-8.0/lib64
 
@@ -68,7 +68,7 @@ CFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
 
 LD              = $(CXX)
 LIB_EXT         = so
-LDFLAGS         =  -shared -fpic
+LDFLAGS         =  -shared -fpic 
 
 LINK            = $(CXX)
 LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERSION)/lib:/usr/local/cuda-8.0/lib64 \
@@ -83,7 +83,7 @@ LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERS
 PLATFORM_LIBPATH_EXTRAS = 
 
 # Extra lib paths / libs for libInfrastructure.[a,so]
-PLATFORM_Infrastructure_EXTRAS = $(OPENMPC_FLAGS) $(MPI_LIB_PATH) $(MPI_LIBS)
+PLATFORM_Infrastructure_EXTRAS = $(OPENMPC_FLAGS) $(MPI_LIB_PATH) $(MPI_LIBS) 
 
 # Extra lib paths / libs for libTetonUtils.[a,so]
 PLATFORM_TetonUtils_EXTRAS = 

@@ -461,6 +461,7 @@ __global__ void GPU_fp_ez(
          omega_A_fp(icface,c,zone) =  omega0*soa_A_fp(0,icface,c,zone) + 
                         omega1*soa_A_fp(1,icface,c,zone) + 
                         omega2*soa_A_fp(2,icface,c,zone);
+	 // could get rid of below if new order was used originally?
          int icfp    = soa_Connect(0,icface,c,zone) - 1;
          int ib      = soa_Connect(1,icface,c,zone) - 1;
          int cez     = soa_Connect(2,icface,c,zone) - 1;
