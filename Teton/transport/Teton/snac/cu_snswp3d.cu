@@ -132,24 +132,7 @@ __global__ void GPU_fp_ez_hplane(
 
       //printf("max faces=%d\n",mF);
 
-      printf("*tau = %.17g\n",*tau);
-
-      // first time being called, allocate some host and device arrays
-      if ( dump_cnt == 0 )
-      {
-
-	// I guess these are synchronous now... Will need to make data members of ZData later.
-
-	     // create device versions
-	//     cudaMalloc(&d_omega_A_fp,sizeof(double)*nZ*mC*mF*nA);
-	//   cudaMalloc(&d_omega_A_ez,sizeof(double)*nZ*mC*mF*nA);
-	//   printf("d_omega_A_fp allocated size = %d\n",nZ*mC*mF*nA*8);
-
-        //cudaMalloc(&d_Connect_reorder,sizeof(int)*3*nZ*mC*mF);
-        
-      }
       
-
       if( *octant == 1) {
 	     // This does all the angles. Redundant when angles are done in batches.
 	     // Could async copy psic or psib while doing all angles once at beginning.

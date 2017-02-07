@@ -255,7 +255,7 @@ extern "C"
 	      if (icfp == -1)
 	      {
 		//             psifp(ig,icface) = psib(ig,ib,Angle);
-		r_psifp = psib(ig,ib,Angle);
+		r_psifp = psib(ig,ib,blockIdx.x);
 	      }
 	      else
 	      {

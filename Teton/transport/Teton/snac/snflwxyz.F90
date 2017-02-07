@@ -133,6 +133,7 @@
    integer :: nStreams = 2*Nbatches*8 ! 2*Nbatches streams per octant (8 max, should be ok with less)
    integer(kind=cuda_stream_kind) :: stream(nStreams)
    type(cudaEvent) :: HtoDdone(nStreams),SweepFinished(nStreams),PsiOnHost(nStreams)
+   type(cudaEvent) :: PsibOnDevice(nStreams), PsibOnHost(nStreams)
    integer :: s, batch, istat
    
 
@@ -155,13 +156,13 @@
    real(adqt), device, allocatable :: d_STime(:,:,:)
    
    logical(kind=1) :: calcSTime
-   !logical(kind=1) :: done(BATCHSIZE) = .false.
 
    ! picking up environment variables
    character(len=255) :: envstring
 
    real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,Nbatches)
    real(adqt), device :: d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,Nbatches)
+   real(adqt), device :: d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,Nbatches)
    
    type(C_PTR) :: cptr
    type(C_DEVPTR) :: dptr
@@ -202,20 +203,20 @@
    !call get_environment_variable ("ZEROCOPY", envstring )
 
 
-   if(1) then
-   !if(TRIM(envstring) .eq. "True") then
-      print *, "Zero copy setup of d_psib"
-      ! Get a device pointer for psib, put it to d_psib_p
-      istat = cudaHostGetDevicePointer(d_psib_p, C_LOC(psib(1,1,1)), 0)
-      ! Translate that C pointer to the fortran array with given dimensions
-      call c_f_pointer(d_psib_p, d_psib, [QuadSet%Groups,Size%nbelem,QuadSet%NumAngles] )
-      ! conversion from c to f not really need anymore with cuda c call.
-   else !NOT WORKING YET.
-      ! explicitly batch d_psib onto GPU. 
-      print *, "explicitly batching d_psib onto GPU."
-      ! Allocate an array to hold subset of angles:
-      allocate(d_psib(Groups,nbelem,BATCHSIZE))
-   endif
+   ! if(0) then
+   ! !if(TRIM(envstring) .eq. "True") then
+   !    print *, "Zero copy setup of d_psib"
+   !    ! Get a device pointer for psib, put it to d_psib_p
+   !    istat = cudaHostGetDevicePointer(d_psib_p, C_LOC(psib(1,1,1)), 0)
+   !    ! Translate that C pointer to the fortran array with given dimensions
+   !    call c_f_pointer(d_psib_p, d_psib, [QuadSet%Groups,Size%nbelem,QuadSet%NumAngles] )
+   !    ! conversion from c to f not really need anymore with cuda c call.
+   ! else !NOT WORKING YET.
+   !    ! explicitly batch d_psib onto GPU. 
+   !    print *, "explicitly batching d_psib onto GPU."
+   !    ! Allocate an array to hold subset of angles:
+   !    allocate(d_psib(Groups,nbelem,BATCHSIZE))
+   ! endif
 
    theOMPLoopTime=0.0
 
@@ -254,6 +255,8 @@
       istat = cudaEventCreate(HtoDdone(s))
       istat = cudaEventCreate(SweepFinished(s))
       istat = cudaEventCreate(PsiOnHost(s))
+      istat = cudaEventCreate(PsibOnDevice(s))
+      istat = cudaEventCreate(PsibOnHost(s))
    enddo
 
 !  Loop over angle bins
@@ -336,6 +339,9 @@
              ! stream s wait until data from previous stream is done moving (event HtoDdone(s-2))
              istat=cudaStreamWaitEvent( stream(s), HtoDdone(s-2), 0)
 
+             ! May want to wait until previous psib is moved as well:
+             istat = cudaStreamWaitEvent(stream(s), PsibOnDevice(s-2), 0)
+
              !istat=cudaDeviceSynchronize()
 
              ! move anglebatch section of psi to d_psi(batch), which has room for BATCHSIZE angles of psi
@@ -393,20 +399,21 @@
           enddo
           call nvtxEndRange
 
-          if (binRecv == 1) then
-             !Stage batch of psib into GPU
-             ! This is not working yet. zero copy used instead
-             if(0) then
-                !if( TRIM(envstring) .ne. "True" ) then               
-                ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-                istat=cudaMemcpyAsync(d_psib(1,1,1),                 &
-                     psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                     QuadSet%Groups*Size%nbelem*anglebatch, stream(1) )
-             endif
-          endif
-
+          !Stage batch of psib into GPU
+          ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+          istat=cudaMemcpyAsync(d_psibBatch(1,1,1,batch),                 &
+               psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+               QuadSet%Groups*Size%nbelem*anglebatch, stream(s) )
+          ! record when psib is on device
+          istat=cudaEventRecord(PsibOnDevice(s), stream(s) )
+          
+          
           ! Do not launch sweep kernel in stream s+1 until HtoD transfer in stream s is done.
           istat = cudaStreamWaitEvent(stream(s+1), HtoDdone(s), 0)
+
+          ! Also wait until psib is on device.
+          ! Later can run Afpz kernel befor this
+          istat = cudaStreamWaitEvent(stream(s+1), PsibOnDevice(s), 0)
 
           ! currently need this synch to make sure psib updated in snreflect before zero copy to device?
           !istat=cudaDeviceSynchronize()
@@ -473,7 +480,7 @@
                               d_STime,                            &
                               Geom%ZDataSoA%Volume,             &
                               d_psi(1,1,1,batch),                      &  ! only want angle batch portion
-                              d_psib,                      &
+                              d_psibBatch(1,1,1,batch),                      &
                               QuadSet%d_next,              &
                               QuadSet%d_nextZ,             &
                               Geom%ZDataSoA%Sigt,                &
@@ -485,7 +492,7 @@
                               )
           endif
           
-          ! record when sweep of s (as opposed to s+2) is finished in stream s+1
+          ! record when stream s+1 finishes s sweep (as opposed to s+2)
           istat=cudaEventRecord(SweepFinished(s), stream(s+1) )
 
           !istat=cudaDeviceSynchronize()
@@ -540,7 +547,7 @@
 
              !istat=cudaDeviceSynchronize()
 
-              ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+              ! move anglebatch section of psi to d_psi, which has room for BATCHSIZE angles of psi
              istat=cudaMemcpyAsync(d_psi(1,1,1,batch),        &
                   psi(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
                   QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
