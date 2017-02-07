@@ -40,6 +40,7 @@ INFRASTRUCTURE_OBJECTS=communication/DomainNeighborMapInst.o communication/CommA
 	transport/Teton/mods/iter_control_mod.o \
 	transport/Teton/mods/kind_mod.o \
 	transport/Teton/mods/radconstant_mod.o \
+	transport/Teton/mods/nvtx_mod.o\
 	transport/Teton/misc/assert.o \
 	transport/Teton/misc/f90advise.o \
 	transport/Teton/misc/f90fatal.o \

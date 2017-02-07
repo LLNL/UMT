@@ -276,9 +276,9 @@
                                                                                                   
      
      call timer_beg('_initexch')
-     !call nvtxStartRange("InitExchange")
+     call nvtxStartRange("InitExchange")
      call InitExchange
-     !call nvtxEndRange
+     call nvtxEndRange
      call timer_end('_initexch')
 
      fluxIter = fluxIter + 1
@@ -386,11 +386,12 @@
           !print *,"compute section:", "mm1 = ", mm1, "mm2 = ", mm2, "anglebatch = ", anglebatch, "s = ", s
 
           !istat=cudaDeviceSynchronize()
-
+          call nvtxStartRange("snreflect")
           ! Set angular fluxes for reflected angles
           do mm=mm1,mm2
              call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
           enddo
+          call nvtxEndRange
 
           if (binRecv == 1) then
              !Stage batch of psib into GPU
@@ -604,7 +605,9 @@
           !istat = cudaDeviceSynchronize()
 
           !call timer_beg('__setExitFlux')
+          call nvtxStartRange("setExitFlux")
           call setExitFlux(anglebatch, QuadSet%AngleOrder(mm1,binSend), psi, psib)
+          call nvtxEndRange
           !call timer_end('__setExitFlux')
 
        enddo
@@ -615,7 +618,9 @@
        ! these need to become non-blocking
 
        call timer_beg('_exch')
+       call nvtxStartRange("exchange")
        call exchange(PSIB, binSend, binRecv) 
+       call nvtxEndRange
        call timer_end('_exch')
 
   enddo AngleBin
