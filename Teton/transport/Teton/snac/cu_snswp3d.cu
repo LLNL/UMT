@@ -52,7 +52,6 @@ __global__ void GPU_sweep(
 __global__ void GPU_fp_ez_hplane(
           int  size_maxCorner,
           int  size_maxcf,
-          int  nAngle,
           int  nzones,
           int  ncornr,
           int  Groups,
@@ -133,15 +132,14 @@ __global__ void GPU_fp_ez_hplane(
       //printf("max faces=%d\n",mF);
 
       
-      if( *octant == 1) {
+      //if( *octant == 1) {
 	     // This does all the angles. Redundant when angles are done in batches.
 	     // Could async copy psic or psib while doing all angles once at beginning.
 	     // Actually batched works too, since this does not depend on psic or psib.
 	//GPU_fp_ez<<<nA/32,32,0,streamid>>>(
-	GPU_fp_ez_hplane<<<dim3(nA,2,1),32,0,streamid>>>(
+	GPU_fp_ez_hplane<<<dim3(nAbatch,2,1),32,0,streamid>>>(
 				mC,                 
 				mF,       //                 
-				nA,                  
 				nZ,                   
 				nC,                          
 				nG,                  
@@ -161,7 +159,7 @@ __global__ void GPU_fp_ez_hplane(
 				d_Connect_reorder,
 				d_passZ
 				);
-      }
+	//}
 
 
       //cudaStreamSynchronize(streamid );

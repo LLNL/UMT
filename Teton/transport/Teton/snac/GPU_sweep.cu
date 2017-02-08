@@ -496,7 +496,6 @@ __global__ void GPU_fp_ez(
   __global__ void GPU_fp_ez_hplane(
           int  size_maxCorner,
           int  size_maxcf,
-          int  nAngle,
           int  nzones,
           int  ncornr,
           int  Groups,
@@ -538,7 +537,8 @@ __global__ void GPU_fp_ez(
 
     //   for(int Angle=0;Angle<nAngle;Angle++)
 
-    int Angle = blockIdx.x;
+    //int Angle = blockIdx.x;
+    int Angle = AngleOrder[blockIdx.x]-1;
 
     double omega0, omega1, omega2;
     omega0 = soa_omega(0,Angle);
@@ -563,8 +563,8 @@ __global__ void GPU_fp_ez(
 
       // you can print hyperplanes for visualization
       //if( Angle == 0 && threadIdx.x==0) printf("%d \t %d\n",p,passZcnt);
-      for(int ii=threadIdx.x+blockIdx.y*blockDim.x;ii<passZcnt;ii+=blockDim.x*gridDim.y) 
-      //for(int ii=threadIdx.x;ii<passZcnt;ii+=blockDim.x) 
+      //for(int ii=threadIdx.x+blockIdx.y*blockDim.x;ii<passZcnt;ii+=blockDim.x*gridDim.y) 
+      for(int ii=threadIdx.x;ii<passZcnt;ii+=blockDim.x) 
       {
 	ndone = ( ndoneZ + ii ) * size_maxCorner;
     
@@ -587,6 +587,7 @@ __global__ void GPU_fp_ez(
 	    omega_A_fp(icface,c,zone) =  omega0*soa_A_fp(0,icface,c,zone) + 
 	      omega1*soa_A_fp(1,icface,c,zone) + 
 	      omega2*soa_A_fp(2,icface,c,zone);
+	    // could get rid of below if new order was used originally?
 	    int icfp    = soa_Connect(0,icface,c,zone) - 1;
 	    int ib      = soa_Connect(1,icface,c,zone) - 1;
 	    int cez     = soa_Connect(2,icface,c,zone) - 1;
