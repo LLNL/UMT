@@ -137,7 +137,7 @@ __global__ void GPU_fp_ez_hplane(
 	     // Could async copy psic or psib while doing all angles once at beginning.
 	     // Actually batched works too, since this does not depend on psic or psib.
 	//GPU_fp_ez<<<nA/32,32,0,streamid>>>(
-	GPU_fp_ez_hplane<<<dim3(nAbatch,2,1),32,0,streamid>>>(
+	GPU_fp_ez_hplane<<<dim3(nAbatch,1,1),128,0,streamid>>>(
 				mC,                 
 				mF,       //                 
 				nZ,                   
