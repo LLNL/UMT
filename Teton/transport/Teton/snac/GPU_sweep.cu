@@ -189,20 +189,23 @@ extern "C"
   
 
 	// coallesced loads into shared memory
-	if(ig<nCorner) volume[ig] = soa_Volume(ig,zone);
+	if(threadIdx.x<nCorner) volume[threadIdx.x] = soa_Volume(threadIdx.x,zone);
 
 	// different threads hold values for different icface in registers instead of shared memory
-	// other threads can access the register values via a shuffle command.
-	if(ig<nCorner*nCFaces)
+	// other threads can access the register values via a shuffle command. 
+	//But now with only 16 threads (groups) there are not threads to hold nCorner*nCFaces (3*8)
+	if(threadIdx.x<nCorner*nCFaces) 
 	{
           int cc = size_maxcf * size_maxCorner;
-          r_omega_A_fp = omega_A_fp[ig + cc * zone];
-          r_omega_A_ez = omega_A_ez[ig + cc * zone];
-          connect0     = soa_Connect_ro[ig + cc*(0 + 3*zone)];
-          connect1     = soa_Connect_ro[ig + cc*(1 + 3*zone)];
-          connect2     = soa_Connect_ro[ig + cc*(2 + 3*zone)];
+          r_omega_A_fp = omega_A_fp[threadIdx.x + cc * zone];
+          r_omega_A_ez = omega_A_ez[threadIdx.x + cc * zone];
+          connect0     = soa_Connect_ro[threadIdx.x + cc*(0 + 3*zone)];
+          connect1     = soa_Connect_ro[threadIdx.x + cc*(1 + 3*zone)];
+          connect2     = soa_Connect_ro[threadIdx.x + cc*(2 + 3*zone)];
 	}
    
+	//if(nCorner*nCFaces>blockDim.x){printf("Error: threads are not covering nCorner*nCFaces\n");abort;}
+
   
 	for(c=0;c<nCorner;c++)
 	{
@@ -560,8 +563,8 @@ __global__ void GPU_fp_ez(
 
       // you can print hyperplanes for visualization
       //if( Angle == 0 && threadIdx.x==0) printf("%d \t %d\n",p,passZcnt);
-
-      for(int ii=threadIdx.x;ii<passZcnt;ii+=blockDim.x) 
+      for(int ii=threadIdx.x+blockIdx.y*blockDim.x;ii<passZcnt;ii+=blockDim.x*gridDim.y) 
+      //for(int ii=threadIdx.x;ii<passZcnt;ii+=blockDim.x) 
       {
 	ndone = ( ndoneZ + ii ) * size_maxCorner;
     

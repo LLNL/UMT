@@ -138,7 +138,7 @@ __global__ void GPU_fp_ez_hplane(
 	     // Could async copy psic or psib while doing all angles once at beginning.
 	     // Actually batched works too, since this does not depend on psic or psib.
 	//GPU_fp_ez<<<nA/32,32,0,streamid>>>(
-	GPU_fp_ez_hplane<<<nA,32,0,streamid>>>(
+	GPU_fp_ez_hplane<<<dim3(nA,2,1),32,0,streamid>>>(
 				mC,                 
 				mF,       //                 
 				nA,                  
@@ -169,16 +169,16 @@ __global__ void GPU_fp_ez_hplane(
       // synchronize to be sure all streams have fully transferred psi to device. 
       //cudaDeviceSynchronize(); // remove this later.
 
+      int groupsize=32;
 
-
-      int nGG = ceil(nG / 32.0);
+      int nGG = ceil(nG / groupsize);
       //printf("nGG=%d\n",nGG);
-      if (nG%32 != 0) {printf("current version must use groups of multiple of 32!!! sorry \n"); exit(0);}
+      if (nG%groupsize != 0) {printf("current version must use groups of multiple of %d!!! sorry \n",groupsize); exit(0);}
 
       // shared memory needs are (8+3+3*blockDim.x+3)*blockDim.y;
 
       //GPU_sweep<<<dim3(*anglebatch,nGG,2),dim3(32,16,1),(8+3+3*32+3)*16*sizeof(double),streamid>>>(
-      GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(32,32,1),(8+3+3*32+3)*32*sizeof(double),streamid>>>(
+      GPU_sweep<<<dim3(*anglebatch,nGG,1),dim3(groupsize,32,1),(8+3+3*groupsize+3)*32*sizeof(double),streamid>>>(
                        mC,                 
                        mF,       //                 
                        nA,                  
