@@ -14,7 +14,7 @@
 !***********************************************************************
 
 ! if batches are not currently size of bins, data is staged wrong.
-#define BATCHSIZE 32
+#define BATCHSIZE 16
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime, intensityIter, tempIter)
 
    use, intrinsic :: iso_c_binding
@@ -129,7 +129,7 @@
 !  Local
 
    ! Cuda streams overlapping stuff
-   integer, parameter :: Nbatches=1
+   integer, parameter :: Nbatches=2
    integer :: nStreams = 2*Nbatches*8 ! 2*Nbatches streams per octant (8 max, should be ok with less)
    integer(kind=cuda_stream_kind) :: stream(nStreams)
    type(cudaEvent) :: HtoDdone(nStreams),SweepFinished(nStreams),PsiOnHost(nStreams)
@@ -571,17 +571,6 @@
                      QuadSet%Groups*Size%ncornr*anglebatch_next, stream(s) )
              endif
 
-             ! below is not working yet
-             if(0) then
-                !if( TRIM(envstring) .ne. "True" ) then
-                !Stage batch of psib into GPU
-                              
-                ! istat=cudaMemcpyAsync(d_psib(1,1,1,batch),                 &
-                !      psib(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                !      QuadSet%Groups*Size%nbelem*anglebatch_next, stream(s) )
-                
-             endif
-
 
              !istat=cudaDeviceSynchronize()
 
@@ -619,7 +608,11 @@
 
        enddo
 
-       istat=cudaDeviceSynchronize()
+
+
+       !istat=cudaDeviceSynchronize()
+       
+       !istat=cudaEventSynchronize( PsiOnHost(s) )
 
        !      Exchange Boundary Fluxes
        ! these need to become non-blocking
