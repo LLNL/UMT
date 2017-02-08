@@ -14,7 +14,7 @@
 !***********************************************************************
 
 ! if batches are not currently size of bins, data is staged wrong.
-#define BATCHSIZE 16
+#define BATCHSIZE 32
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime, intensityIter, tempIter)
 
    use, intrinsic :: iso_c_binding
@@ -129,7 +129,7 @@
 !  Local
 
    ! Cuda streams overlapping stuff
-   integer, parameter :: Nbatches=2
+   integer, parameter :: Nbatches=1
    integer :: nStreams = 2*Nbatches*8 ! 2*Nbatches streams per octant (8 max, should be ok with less)
    integer(kind=cuda_stream_kind) :: stream(nStreams)
    type(cudaEvent) :: HtoDdone(nStreams),SweepFinished(nStreams),PsiOnHost(nStreams)
@@ -297,7 +297,7 @@
      calcSTime = .false.
 
      ! If this is first temp and intensity iteration, need to calculate STime and update to host:
-     if (intensityIter == 1 .and. tempIter == 1) then
+     if (intensityIter == 1 .and. tempIter == 1 .and. fluxIter==1) then
         ! compute STime from initial d_psi
         calcSTime = .true.
      else
