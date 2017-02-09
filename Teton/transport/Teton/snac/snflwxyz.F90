@@ -257,15 +257,14 @@
 
 !  Convenient Mesh Constants
 
-   Groups = QuadSet%Groups
-
-   NumAngles = QuadSet%NumAngles
-   nbelem = Size%nbelem
-   ncornr = Size%ncornr
-   print *, ncornr
-   NangBin = maxval(QuadSet%NangBinList(:))
-   NumBin = QuadSet%NumBin
-   call mpi_comm_rank(mpi_comm_world, myrank, info)
+   ! Groups = QuadSet%Groups
+   ! NumAngles = QuadSet%NumAngles
+   ! nbelem = Size%nbelem
+   ! ncornr = Size%ncornr
+   ! print *, ncornr
+   ! NangBin = maxval(QuadSet%NangBinList(:))
+   ! NumBin = QuadSet%NumBin
+   !call mpi_comm_rank(mpi_comm_world, myrank, info)
 
 
    
@@ -275,45 +274,45 @@
    ! Translate that C pointer to the fortran array with given dimensions
    !call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
    
-   if(1) then
-      ! This sets up to allow zero copy use of STime directly on the device:
-      ! Get a device pointer for STime, put it to d_STime_p
-      istat = cudaHostGetDevicePointer(d_STime_p, C_LOC(Geom%ZDataSoA%STime(1,1,1)), 0)
-      ! Translate that C pointer to the fortran array with given dimensions
-      call c_f_pointer(d_STime_p, d_STime, [QuadSet%Groups,Size%ncornr, Size%nangSN] )
-   endif
+   ! if(1) then
+   !    ! This sets up to allow zero copy use of STime directly on the device:
+   !    ! Get a device pointer for STime, put it to d_STime_p
+   !    istat = cudaHostGetDevicePointer(d_STime_p, C_LOC(Geom%ZDataSoA%STime(1,1,1)), 0)
+   !    ! Translate that C pointer to the fortran array with given dimensions
+   !    call c_f_pointer(d_STime_p, d_STime, [QuadSet%Groups,Size%ncornr, Size%nangSN] )
+   ! endif
 
 
 
    theOMPLoopTime=0.0
 
-   call mpi_comm_rank(mpi_comm_world, myrank, info)
+   !call mpi_comm_rank(mpi_comm_world, myrank, info)
    
    
-   ! Set the Cache configuration for the GPU (use more L1, less shared)
-   istat = cudaDeviceGetCacheConfig(cacheconfig)
-   print *, "cacheconfig =", cacheconfig
-   if (cacheconfig .eq. cudaFuncCachePreferShared) then
-      print *, "L1 set for shared memory usage"
-   elseif (cacheconfig .eq. cudaFuncCachePreferL1) then
-      print *, "L1 set for hardware caching (prefer L1)."
-   else
-      print *, "other L1 configuration present."
-   endif
+   ! ! Set the Cache configuration for the GPU (use more L1, less shared)
+   ! istat = cudaDeviceGetCacheConfig(cacheconfig)
+   ! print *, "cacheconfig =", cacheconfig
+   ! if (cacheconfig .eq. cudaFuncCachePreferShared) then
+   !    print *, "L1 set for shared memory usage"
+   ! elseif (cacheconfig .eq. cudaFuncCachePreferL1) then
+   !    print *, "L1 set for hardware caching (prefer L1)."
+   ! else
+   !    print *, "other L1 configuration present."
+   ! endif
 
-   cacheconfig = cudaFuncCachePreferL1
+   ! cacheconfig = cudaFuncCachePreferL1
    !istat = cudaDeviceSetCacheConfig(cacheconfig)
    !istat = cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte)
 
 
-!   if (first_time) then
+   if (first_time) then
       ! Create streams that can overlap 
       istat = cudaStreamCreate(transfer_stream)
       istat = cudaStreamCreate(kernel_stream)
- !     first_time = .false.
-  ! endif
+      first_time = .false.
+   endif
 
-
+   call nvtxStartRange("createEvents")
    ! Create events to synchronize among different streams
    do batch = 1, Nbatches
       istat = cudaEventCreate(Psi_OnDevice(batch))
@@ -322,12 +321,15 @@
       istat = cudaEventCreate(SweepFinished(batch))
       istat = cudaEventCreate(Psi_OnHost(batch))
    enddo
+   call nvtxEndRange
 
 !  Loop over angle bins
 
    if (ipath == 'sweep') then
      call timer_beg('_setflux')
+     call nvtxStartRange("InitExchange")
      call setIncidentFlux(psib)
+     call nvtxEndRange
      call timer_end('_setflux')
    endif
                                                                                          
@@ -439,6 +441,7 @@
         FirstOctant2: if (binRecv == 1) then
 
            if (calcSTime == .true.) then
+              ! THIS PART COULD PROBABLY BE MOVED AFTER SWEEP TO HELP HIDE EXCHANGE
               ! Wait for STime to be computed:
               istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
               ! Update STime to host
@@ -450,7 +453,7 @@
               istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,current),                 &
                    Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
                    QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
-!!!!! ALERT
+
               istat=cudaEventRecord(STimeFinished(batch), transfer_stream ) ! don't think this should be kernel stream....
 
            endif
@@ -494,11 +497,6 @@
                 Size%tau,             &
                 kernel_stream           &
                 )
-
-!!!! todo: I think I can move the fpez here, and also precompute after sweep.
-! cudamallocs are slow. snmoments has to use psi, but phi could be stored for a few clicks before copying up. 
-! currently interfering with DtoH copy of psi.
-
 
         endif FirstOctant2
 
