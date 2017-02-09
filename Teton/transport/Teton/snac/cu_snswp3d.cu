@@ -73,6 +73,82 @@ __global__ void GPU_fp_ez_hplane(
  );
 
 
+  void fp_ez_c (
+		  int *anglebatch,
+		  int *numzones, 
+		  int *numgroups,
+		  int *ncornr,
+		  int *numAngles,
+		  int *d_AngleOrder,
+		  int *maxcorners, 
+		  int *maxfaces, 
+		  int *octant,  //=binRecv
+		  int *NangBin, 
+		  int *nbelem,
+		  double *d_omega,
+		  int    *d_nCorner,
+		  int    *d_nCFaces,
+		  int    *d_c0,
+		  double *d_A_fp,
+		  double *d_omega_A_fp,
+		  double *d_A_ez, 
+		  double* d_omega_A_ez,
+		  int    *d_Connect,
+		  int* d_Connect_reorder,
+		  double *d_STotal,
+		  double *d_STimeBatch,
+		  double *d_STime,
+		  double *d_Volume,
+		  double *d_psic,
+		  double *d_psib,
+		  int *d_next, 
+		  int *d_nextZ,
+		  double *d_Sigt,
+		  double *d_SigtInv,
+		  int *d_passZ,
+		  bool *calcSTime,
+		  double *tau,
+		  cudaStream_t streamid
+		  ) 
+  {
+
+    int nZ = *numzones;
+    int nA = *numAngles;
+    // will need this for large problems
+    int nAbatch = *anglebatch;
+    int mC = *maxcorners;
+    int mF = *maxfaces;
+    int nG = *numgroups;
+    int nC = *ncornr;
+    int nBe = *nbelem;
+
+
+	GPU_fp_ez_hplane<<<dim3(nAbatch,1,1),128,0,streamid>>>(
+				mC,                 
+				mF,       //                 
+				nZ,                   
+				nC,                          
+				nG,                  
+				nBe,                         
+				d_AngleOrder,                
+				d_omega,                     
+				d_nextZ,                     
+				d_next,                      
+				d_nCorner,                   
+				d_nCFaces,                   
+				d_c0,                        
+				d_A_fp,                      
+				d_A_ez,                      
+				d_omega_A_fp,
+				d_omega_A_ez,
+				d_Connect,
+				d_Connect_reorder,
+				d_passZ
+				);
+  }
+
+
+
   void snswp3d_c (
 		  int *anglebatch,
 		  int *numzones, 
@@ -129,43 +205,6 @@ __global__ void GPU_fp_ez_hplane(
 
     {
 
-      //printf("max faces=%d\n",mF);
-
-      
-      //if( *octant == 1) {
-	     // This does all the angles. Redundant when angles are done in batches.
-	     // Could async copy psic or psib while doing all angles once at beginning.
-	     // Actually batched works too, since this does not depend on psic or psib.
-	//GPU_fp_ez<<<nA/32,32,0,streamid>>>(
-	GPU_fp_ez_hplane<<<dim3(nAbatch,1,1),128,0,streamid>>>(
-				mC,                 
-				mF,       //                 
-				nZ,                   
-				nC,                          
-				nG,                  
-				nBe,                         
-				d_AngleOrder,                
-				d_omega,                     
-				d_nextZ,                     
-				d_next,                      
-				d_nCorner,                   
-				d_nCFaces,                   
-				d_c0,                        
-				d_A_fp,                      
-				d_A_ez,                      
-				d_omega_A_fp,
-				d_omega_A_ez,
-				d_Connect,
-				d_Connect_reorder,
-				d_passZ
-				);
-	//}
-
-
-      //cudaStreamSynchronize(streamid );
-      
-      // synchronize to be sure all streams have fully transferred psi to device. 
-      //cudaDeviceSynchronize(); // remove this later.
 
       int groupsize=32;
 
@@ -217,5 +256,6 @@ __global__ void GPU_fp_ez_hplane(
       //std::cout<<"dump_cnt="<<dump_cnt<<std::endl;
     }
   } 
+
 
 } // extern "C"
