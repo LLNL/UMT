@@ -229,10 +229,10 @@
    real(adqt)       :: startOMPLoopTime, endOMPLoopTime, theOMPLoopTime
 
    ! zero copy pointers for phi and psib
-   type(C_DEVPTR)                    :: d_phi_p
+   !type(C_DEVPTR)                    :: d_phi_p
    type(C_DEVPTR)                    :: d_psib_p
    type(C_DEVPTR)                    :: d_STime_p
-   real(adqt), device, allocatable :: d_phi(:,:)
+   !real(adqt), device, allocatable :: d_phi(:,:)
    real(adqt), device, allocatable :: d_psib(:,:,:)
    real(adqt), device, allocatable :: d_STime(:,:,:)
    
@@ -244,6 +244,8 @@
    real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,2)
    real(adqt), device :: d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,2)
    real(adqt), device :: d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,2)
+   ! d_phi is full size, and persists on the device.
+   real(adqt), device :: d_phi(QuadSet%Groups,Size%ncornr)
    
    type(C_PTR) :: cptr
    type(C_DEVPTR) :: dptr
@@ -266,12 +268,12 @@
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
 
-
+   
    ! This sets up to allow zero copy use of phi directly on the device:
    ! Get a device pointer for phi, put it to d_phi_p
-   istat = cudaHostGetDevicePointer(d_phi_p, C_LOC(phi(1,1)), 0)
+   !istat = cudaHostGetDevicePointer(d_phi_p, C_LOC(phi(1,1)), 0)
    ! Translate that C pointer to the fortran array with given dimensions
-   call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
+   !call c_f_pointer(d_phi_p, d_phi, [QuadSet%Groups,Size%ncornr] )
    
    if(1) then
       ! This sets up to allow zero copy use of STime directly on the device:
@@ -349,7 +351,8 @@
      fluxIter = fluxIter + 1
 
      if (ipath == 'sweep') then
-       phi(:,:) = zero
+       !phi(:,:) = zero
+        d_phi=0 ! could try something async memset here.
      endif
 
 !    Loop over angles, solving for each in turn:
@@ -750,6 +753,11 @@
   !  Update the scaler flux
 
   if (ipath == 'sweep') then
+     ! move d_phi data to host:
+     istat=cudaMemcpyAsync(phi(1,1), &
+                   d_phi(1,1), &
+                   QuadSet%Groups*Size%ncornr, transfer_stream )
+
      call restoreCommOrder(QuadSet)
   endif
 
