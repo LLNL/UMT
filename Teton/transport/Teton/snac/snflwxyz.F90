@@ -309,7 +309,7 @@
       istat = cudaStreamCreate(transfer_stream)
       istat = cudaStreamCreate(kernel_stream)
  !     first_time = .false.
- !  endif
+  ! endif
 
 
    ! Create events to synchronize among different streams
@@ -403,37 +403,85 @@
            ! Record when psi is on device: (not needed?)
            istat=cudaEventRecord(Psi_OnDevice(batch), transfer_stream )
 
+           
+           ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+           if (calcSTime == .true.) then
+              ! have kernel stream wait until transfer of psi to device
+              istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch), 0)
+              ! compute STime from initial d_psi
+              call computeSTime(d_psi(1,1,1,current), d_STimeBatch(1,1,1,current), anglebatch, kernel_stream )
+
+              istat=cudaEventRecord(STimeFinished(batch), kernel_stream )
+           endif
+
         endif FirstOctant
 
-        !istat=cudaDeviceSynchronize()
 
-        ! If this is first temp and intensity iteration, need to calculate STime and update to host:
-        if (calcSTime == .true.) then
-           ! have kernel stream wait until transfer of psi to device
-           istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch), 0)
-           ! compute STime from initial d_psi
-           call computeSTime(d_psi(1,1,1,current), d_STimeBatch(1,1,1,current), anglebatch, kernel_stream )
+        FirstOctant2: if (binRecv == 1) then
 
-           istat=cudaEventRecord(STimeFinished(batch), kernel_stream )
-        endif
+           if (calcSTime == .true.) then
+              ! Wait for STime to be computed:
+              istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
+              ! Update STime to host
+              istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                   d_STimeBatch(1,1,1,current), &
+                   QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream ) ! can be another stream later?
+           else
+              ! STime already computed, just need to move section of STime to device
+              istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,current),                 &
+                   Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+                   QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
+!!!!! ALERT
+              istat=cudaEventRecord(STimeFinished(batch), kernel_stream ) ! don't think this should be kernel stream....
+
+           endif
 
 
-        if (calcSTime == .true.) then
-           ! Wait for STime to be computed:
-           istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
-           ! Update STime to host
-           istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                d_STimeBatch(1,1,1,current), &
-                QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream ) ! can be another stream later?
-        else
-           ! STime already computed, just need to move section of STime to device
-           istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,current),                 &
-                Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
 
-           istat=cudaEventRecord(STimeFinished(batch), kernel_stream )
+           call fp_ez_c(     anglebatch,                     &
+                Size%nzones,               &
+                QuadSet%Groups,            &
+                Size%ncornr,               &
+                QuadSet%NumAngles,         &
+                QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
+                Size%maxCorner,            &
+                Size%maxcf,                &
+                binRecv,                   &
+                NangBin,                   &
+                Size%nbelem,                &
+                QuadSet%d_omega,             &
+                Geom%ZDataSoA%nCorner,                &
+                Geom%ZDataSoA%nCFaces,                &
+                Geom%ZDataSoA%c0,                &
+                Geom%ZDataSoA%A_fp,                &
+                Geom%ZDataSoA%omega_A_fp,                &
+                Geom%ZDataSoA%A_ez,                &
+                Geom%ZDataSoA%omega_A_ez,                &
+                Geom%ZDataSoA%Connect,             &
+                Geom%ZDataSoA%Connect_reorder,             &
+                Geom%ZDataSoA%STotal,              &
+                                !Geom%ZDataSoA%STime,               &
+                d_STimeBatch(1,1,1,current),          &
+                d_STime,                            &
+                Geom%ZDataSoA%Volume,             &
+                d_psi(1,1,1,current),                      &  ! only want angle batch portion
+                d_psibBatch(1,1,1,current),                      &
+                QuadSet%d_next,              &
+                QuadSet%d_nextZ,             &
+                Geom%ZDataSoA%Sigt,                &
+                Geom%ZDataSoA%SigtInv,             &
+                QuadSet%d_passZstart,        &
+                calcSTime,                  &
+                Size%tau,             &
+                kernel_stream           &
+                )
 
-        endif
+!!!! todo: I think I can move the fpez here, and also precompute after sweep.
+! cudamallocs are slow. snmoments has to use psi, but phi could be stored for a few clicks before copying up. 
+! currently interfering with DtoH copy of psi.
+
+
+        endif FirstOctant2
 
         ! relfected angles is done on CPU, while above is taking place on GPU
         call nvtxStartRange("snreflect")
@@ -450,47 +498,6 @@
              QuadSet%Groups*Size%nbelem*anglebatch, transfer_stream )
         ! record when psib is on device
         istat=cudaEventRecord(Psib_OnDevice(batch), transfer_stream )
-
-        call fp_ez_c(     anglebatch,                     &
-             Size%nzones,               &
-             QuadSet%Groups,            &
-             Size%ncornr,               &
-             QuadSet%NumAngles,         &
-             QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
-             Size%maxCorner,            &
-             Size%maxcf,                &
-             binRecv,                   &
-             NangBin,                   &
-             Size%nbelem,                &
-             QuadSet%d_omega,             &
-             Geom%ZDataSoA%nCorner,                &
-             Geom%ZDataSoA%nCFaces,                &
-             Geom%ZDataSoA%c0,                &
-             Geom%ZDataSoA%A_fp,                &
-             Geom%ZDataSoA%omega_A_fp,                &
-             Geom%ZDataSoA%A_ez,                &
-             Geom%ZDataSoA%omega_A_ez,                &
-             Geom%ZDataSoA%Connect,             &
-             Geom%ZDataSoA%Connect_reorder,             &
-             Geom%ZDataSoA%STotal,              &
-                                !Geom%ZDataSoA%STime,               &
-             d_STimeBatch(1,1,1,current),          &
-             d_STime,                            &
-             Geom%ZDataSoA%Volume,             &
-             d_psi(1,1,1,current),                      &  ! only want angle batch portion
-             d_psibBatch(1,1,1,current),                      &
-             QuadSet%d_next,              &
-             QuadSet%d_nextZ,             &
-             Geom%ZDataSoA%Sigt,                &
-             Geom%ZDataSoA%SigtInv,             &
-             QuadSet%d_passZstart,        &
-             calcSTime,                  &
-             Size%tau,             &
-             kernel_stream           &
-             )
-
-
-
 
 
         ! Do not launch sweep kernel until HtoD transfer in transfer stream is done.
@@ -601,6 +608,7 @@
            call timer_end('__snmoments')
         endif
 
+
         ! before moving DtoH psi, sweep needs to complete
         istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch), 0)
 
@@ -611,10 +619,82 @@
 
         istat=cudaEventRecord(Psi_OnHost(batch), transfer_stream)
 
-        ! if ready then set exit flux and move psi.
+        NotLastOctants2: if (binRecv < QuadSet% NumBin) then
+           ! If not the last bin (octant), pre-stage data for next angle bin 
+
+           ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+           if (calcSTime == .true.) then
+              ! have kernel stream wait until transfer of psi to device
+              istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch+1), 0)
+              ! compute STime from initial d_psi
+              call computeSTime(d_psi(1,1,1,next), d_STimeBatch(1,1,1,next), anglebatch_next, kernel_stream )
+
+              istat=cudaEventRecord(STimeFinished(batch+1), kernel_stream )
+           endif
+
+
+           if (calcSTime == .true.) then
+              ! Wait for STime to be computed:
+              istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch+1), 0)
+              ! Update STime to host
+              istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                   d_STimeBatch(1,1,1,next), &
+                   QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream ) 
+           else
+              ! STime already computed, just need to move section of STime to device
+              istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,next),                 &
+                   Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
+                   QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream )
+
+              istat=cudaEventRecord(STimeFinished(batch+1), kernel_stream )
+
+           endif
+
+           call fp_ez_c(     anglebatch_next,                     &
+                Size%nzones,               &
+                QuadSet%Groups,            &
+                Size%ncornr,               &
+                QuadSet%NumAngles,         &
+                QuadSet%d_AngleOrder(mm1,binSend_next),        & ! only need angle batch portion
+                Size%maxCorner,            &
+                Size%maxcf,                &
+                binRecv,                   &
+                NangBin,                   &
+                Size%nbelem,                &
+                QuadSet%d_omega,             &
+                Geom%ZDataSoA%nCorner,                &
+                Geom%ZDataSoA%nCFaces,                &
+                Geom%ZDataSoA%c0,                &
+                Geom%ZDataSoA%A_fp,                &
+                Geom%ZDataSoA%omega_A_fp,                &
+                Geom%ZDataSoA%A_ez,                &
+                Geom%ZDataSoA%omega_A_ez,                &
+                Geom%ZDataSoA%Connect,             &
+                Geom%ZDataSoA%Connect_reorder,             &
+                Geom%ZDataSoA%STotal,              &
+                                !Geom%ZDataSoA%STime,               &
+                d_STimeBatch(1,1,1,next),          &
+                d_STime,                            &
+                Geom%ZDataSoA%Volume,             &
+                d_psi(1,1,1,next),                      &  ! only want angle batch portion
+                d_psibBatch(1,1,1,next),                      &
+                QuadSet%d_next,              &
+                QuadSet%d_nextZ,             &
+                Geom%ZDataSoA%Sigt,                &
+                Geom%ZDataSoA%SigtInv,             &
+                QuadSet%d_passZstart,        &
+                calcSTime,                  &
+                Size%tau,             &
+                kernel_stream           &
+                )
+
+
+
+        endif NotLastOctants2
+
+        ! if ready then set exit flux and move exchange psib.
         istat=cudaEventSynchronize( Psi_OnHost(batch) )
 
-!!!!! This might be were you want to move STime(next)
 
         !call timer_beg('__setExitFlux')
         call nvtxStartRange("setExitFlux")
@@ -630,11 +710,11 @@
         !      Exchange Boundary Fluxes
         ! these need to become non-blocking
 
-        call timer_beg('_exch')
+        call timer_beg('__exch')
         call nvtxStartRange("exchange")
         call exchange(PSIB, binSend, binRecv) 
         call nvtxEndRange
-        call timer_end('_exch')
+        call timer_end('__exch')
 
      enddo AngleBin
 
