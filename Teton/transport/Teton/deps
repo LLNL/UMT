@@ -47,7 +47,8 @@ snac/snflwxyz.o : \
         mods/kind_mod.o\
         mods/Size_mod.o\
         mods/Quadrature_mod.o\
-	mods/nvtx_mod.o
+	mods/nvtx_mod.o\
+	mods/GPUhelper_mod.o
 snac/sccsearch.o : \
         mods/Geometry_mod.o\
         mods/Size_mod.o\

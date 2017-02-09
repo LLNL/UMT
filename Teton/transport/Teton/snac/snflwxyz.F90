@@ -27,6 +27,7 @@
    use snswp3d_mod
    use cudafor
    use nvtx_mod
+   use GPUhelper_mod
 
 #include "assert.h"
 !  Assertion checking include file for TETON
@@ -207,15 +208,6 @@
    integer, intent(in) :: intensityIter, tempIter ! current flux and temperature iteration from rtmainsn
 
 !  Local
-
-   ! Cuda streams overlapping stuff
-   ! (HtoD and DtoH combined stream, and kernel stream)
-   integer :: Nbatches =  8 !QuadSet%NumBin
-   integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream
-   type(cudaEvent) :: Psi_OnDevice(Nbatches), Psi_OnHost(Nbatches)
-   type(cudaEvent) :: Psib_OnDevice(Nbatches), Psib_OnHost(Nbatches)
-   type(cudaEvent) :: SweepFinished(Nbatches), STimeFinished(Nbatches)
-   integer :: s, batch, istat, current, next
    
    logical(kind=1), save :: first_time = .true.
 
@@ -228,32 +220,25 @@
    real(adqt)       :: maxFluxError
    real(adqt)       :: startOMPLoopTime, endOMPLoopTime, theOMPLoopTime
 
-   ! zero copy pointers for phi and psib
-   !type(C_DEVPTR)                    :: d_phi_p
-   type(C_DEVPTR)                    :: d_psib_p
-   type(C_DEVPTR)                    :: d_STime_p
-   !real(adqt), device, allocatable :: d_phi(:,:)
-   real(adqt), device, allocatable :: d_psib(:,:,:)
-   real(adqt), device, allocatable :: d_STime(:,:,:)
+   integer :: Nbatches =  8 !QuadSet%NumBin
+   integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream
+   type(cudaEvent) :: Psi_OnDevice(Nbatches), Psi_OnHost(Nbatches)
+   type(cudaEvent) :: Psib_OnDevice(Nbatches), Psib_OnHost(Nbatches)
+   type(cudaEvent) :: SweepFinished(Nbatches), STimeFinished(Nbatches)
+   integer :: s, batch, istat, current, next
    
    logical(kind=1) :: calcSTime
 
    ! picking up environment variables
-   character(len=255) :: envstring
-
-   real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,2)
-   real(adqt), device :: d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,2)
-   real(adqt), device :: d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,2)
-   ! d_phi is full size, and persists on the device.
-   real(adqt), device :: d_phi(QuadSet%Groups,Size%ncornr)
+   !character(len=255) :: envstring
    
-   type(C_PTR) :: cptr
-   type(C_DEVPTR) :: dptr
+   !type(C_PTR) :: cptr
+   !type(C_DEVPTR) :: dptr
 
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
 
-   integer :: devnum, cacheconfig
+   !integer :: devnum, cacheconfig
 
 !  Convenient Mesh Constants
 
@@ -309,6 +294,12 @@
       ! Create streams that can overlap 
       istat = cudaStreamCreate(transfer_stream)
       istat = cudaStreamCreate(kernel_stream)
+
+      allocate(d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,2))
+      allocate(d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,2))
+      allocate(d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,2))
+      allocate(d_phi(QuadSet%Groups,Size%ncornr))
+
       first_time = .false.
    endif
 

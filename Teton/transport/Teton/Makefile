@@ -26,6 +26,7 @@ SOURCES=mods/BoundaryList_mod.F90 \
         mods/kind_mod.F90 \
         mods/radconstant_mod.F90 \
         mods/nvtx_mod.F90 \
+	mods/GPUhelper_mod.F90 \
         misc/assert.F90 \
         misc/f90advise.F90 \
         misc/f90fatal.F90 \
