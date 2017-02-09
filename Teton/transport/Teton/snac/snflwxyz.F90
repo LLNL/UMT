@@ -416,6 +416,22 @@
 
         endif FirstOctant
 
+        ! relfected angles is done on CPU, while above is taking place on GPU
+        call nvtxStartRange("snreflect")
+        ! Set angular fluxes for reflected angles
+        do mm=mm1,mm2
+           call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
+        enddo
+        call nvtxEndRange
+
+        !Stage batch of psib into GPU (after reflected angles is completed on host)
+        ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
+        istat=cudaMemcpyAsync(d_psibBatch(1,1,1,current),                 &
+             psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+             QuadSet%Groups*Size%nbelem*anglebatch, transfer_stream )
+        ! record when psib is on device
+        istat=cudaEventRecord(Psib_OnDevice(batch), transfer_stream )
+
 
         FirstOctant2: if (binRecv == 1) then
 
@@ -432,7 +448,7 @@
                    Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
                    QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
 !!!!! ALERT
-              istat=cudaEventRecord(STimeFinished(batch), kernel_stream ) ! don't think this should be kernel stream....
+              istat=cudaEventRecord(STimeFinished(batch), transfer_stream ) ! don't think this should be kernel stream....
 
            endif
 
@@ -483,28 +499,15 @@
 
         endif FirstOctant2
 
-        ! relfected angles is done on CPU, while above is taking place on GPU
-        call nvtxStartRange("snreflect")
-        ! Set angular fluxes for reflected angles
-        do mm=mm1,mm2
-           call snreflect(QuadSet%AngleOrder(mm,binSend), PSIB)
-        enddo
-        call nvtxEndRange
 
-        !Stage batch of psib into GPU (after reflected angles is completed on host)
-        ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-        istat=cudaMemcpyAsync(d_psibBatch(1,1,1,current),                 &
-             psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-             QuadSet%Groups*Size%nbelem*anglebatch, transfer_stream )
-        ! record when psib is on device
-        istat=cudaEventRecord(Psib_OnDevice(batch), transfer_stream )
-
-
-        ! Do not launch sweep kernel until HtoD transfer in transfer stream is done.
+        ! Do not launch sweep kernel until psib is on GPU transfer in transfer stream is done.
         istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice(batch), 0)
 
-        ! currently need this synch to make sure psib updated in snreflect before zero copy to device?
-        !istat=cudaDeviceSynchronize()
+        ! would put snreflect here if done on GPU.
+
+        ! Also make sure STime is ready before launching sweep
+        istat = cudaStreamWaitEvent(kernel_stream, STimeFinished(batch), 0)
+
 
         !        Sweep the mesh, calculating PSI for each corner; the
         !        boundary flux array PSIB is also updated here.
@@ -646,7 +649,7 @@
                    Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
                    QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream )
 
-              istat=cudaEventRecord(STimeFinished(batch+1), kernel_stream )
+              istat=cudaEventRecord(STimeFinished(batch+1), transfer_stream )
 
            endif
 
