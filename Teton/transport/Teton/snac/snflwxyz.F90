@@ -295,6 +295,12 @@
       istat = cudaStreamCreate(transfer_stream)
       istat = cudaStreamCreate(kernel_stream)
 
+      ! allocate omega_A_fp sections for batchsize (or NangBin)
+      NangBin = maxval(QuadSet%NangBinList(:))
+      allocate( Geom%ZDataSoA % omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf, NangBin) )
+      allocate( Geom%ZDataSoA % omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf, NangBin) )
+
+
       allocate(d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,2))
       allocate(d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,2))
       allocate(d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,2))

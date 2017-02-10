@@ -153,6 +153,8 @@ contains
 
     implicit none
 
+    integer :: NangBin
+
 !   Passed variables
 
     type(ZoneData_SoA), intent(inout)    :: self
@@ -168,9 +170,6 @@ contains
     allocate( self % SigtInv(Size% ngr,Size% nzones) )
     allocate( self % A_fp(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
     allocate( self % A_ez(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
-
-    allocate( self % omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf,Size% nangSN) )
-    allocate( self % omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf,Size% nangSN) )
 
     allocate( self % Connect(3,Size% maxcf,Size% maxCorner,Size% nzones) )
     allocate( self % Connect_reorder(3,Size% nzones,Size% maxCorner,Size% maxcf) )

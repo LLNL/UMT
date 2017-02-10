@@ -138,8 +138,8 @@ extern "C"
     ig = threadIdx.x;
  
 
-    omega_A_fp += Angle * nzones * size_maxcf * size_maxCorner;
-    omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
+    omega_A_fp += blockIdx.x * nzones * size_maxcf * size_maxCorner;
+    omega_A_ez += blockIdx.x * nzones * size_maxcf * size_maxCorner;
     passZ      += Angle * nzones;
    
     const int group_offset=blockIdx.y * WARP_SIZE; //should be blockDim.x instead of warpsize?
@@ -382,113 +382,6 @@ extern "C"
   }
 
 
-__global__ void GPU_fp_ez(
-          int  size_maxCorner,
-          int  size_maxcf,
-          int  nAngle,
-          int  nzones,
-          int  ncornr,
-          int  Groups,
-          int  nbelem,
-          int* AngleOrder,
-       double* soa_omega,
-          int* nextZ,
-          int* next,
-          int* soa_nCorner,
-          int* soa_nCFaces,
-          int* soa_c0,
-       double* soa_A_fp,
-       double* soa_A_ez,
-       double* omega_A_fp,
-       double* omega_A_ez,
-          int* soa_Connect,
-          int* soa_Connect_ro)
-  {
-
-   int c,i,ig,icface,ii;
-
-   double omega0, omega1, omega2;
-   
-   #define soa_omega(a,b) soa_omega[a + 3 * b]
-   #define omega_A_fp(icface,c,zone) omega_A_fp[  ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
-   #define omega_A_ez(icface,c,zone) omega_A_ez[  ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
-
-
-   //#define EB_ListExit(a,ia) EB_ListExit[ a + 2 * (ia) ]
-   #define soa_A_fp(a,icface,c,zone) soa_A_fp[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
-   #define soa_A_ez(a,icface,c,zone) soa_A_ez[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
-   #define soa_Connect(a,icface,c,zone) soa_Connect[ a + 3 * ( icface + size_maxcf * ( c + size_maxCorner * (zone) ) )]
-   #define soa_Connect_ro(a,icface,c,zone) soa_Connect_ro[ icface + size_maxcf * ( c + size_maxCorner * ( a + 3 * zone) ) ]
-   
-
-   #define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
-   #define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
-
-
-
-
-
-//   for(int Angle=0;Angle<nAngle;Angle++)
-
-   int Angle = blockDim.x*blockIdx.x + threadIdx.x;
-
-   omega0 = soa_omega(0,Angle);
-   omega1 = soa_omega(1,Angle);
-   omega2 = soa_omega(2,Angle);
-
-   int ndone = 0;
-
-   omega_A_fp += Angle * nzones * size_maxcf * size_maxCorner;
-   omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
-
-
-   for(ii=0;ii<nzones;ii++)
-   {
- 
-     int zone = nextZ(ii,Angle) - 1;
-
-
-     int nCorner   = soa_nCorner[zone];
-     int nCFaces   = soa_nCFaces[zone];
-     int c0        = soa_c0[zone] ;
-
-     for(i=0;i<nCorner;i++)
-     {
-
-       int ic      = next(ndone+i,Angle);
-       c       = ic - c0 - 1;
-
- 
-       for(icface=0;icface<nCFaces;icface++)
-       {
-         omega_A_fp(icface,c,zone) =  omega0*soa_A_fp(0,icface,c,zone) + 
-                        omega1*soa_A_fp(1,icface,c,zone) + 
-                        omega2*soa_A_fp(2,icface,c,zone);
-	 // could get rid of below if new order was used originally?
-         int icfp    = soa_Connect(0,icface,c,zone) - 1;
-         int ib      = soa_Connect(1,icface,c,zone) - 1;
-         int cez     = soa_Connect(2,icface,c,zone) - 1;
-         soa_Connect_ro(0,icface,c,zone) = icfp;
-         soa_Connect_ro(1,icface,c,zone) = ib  ;
-         soa_Connect_ro(2,icface,c,zone) = cez ;
-
-       }
-
-
-       for(icface=0;icface<nCFaces;icface++)
-       {
-
-         omega_A_ez(icface,c,zone) = omega0*soa_A_ez(0,icface,c,zone) + omega1*soa_A_ez(1,icface,c,zone) + omega2*soa_A_ez(2,icface,c,zone) ;
-       }
-
-
-     } 
-
-     ndone = ndone + nCorner;
-   }
-  }
-
-
 
 
 
@@ -545,8 +438,8 @@ __global__ void GPU_fp_ez(
     omega1 = soa_omega(1,Angle);
     omega2 = soa_omega(2,Angle);
     
-    omega_A_fp += Angle * nzones * size_maxcf * size_maxCorner;
-    omega_A_ez += Angle * nzones * size_maxcf * size_maxCorner;
+    omega_A_fp += blockIdx.x * nzones * size_maxcf * size_maxCorner;
+    omega_A_ez += blockIdx.x * nzones * size_maxcf * size_maxCorner;
 
     int ndone = 0;
     int ndoneZ = 0;
