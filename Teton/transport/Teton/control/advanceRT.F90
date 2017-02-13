@@ -61,6 +61,8 @@
 !  Advance zone temperatures [set old = new]                           *
 !***********************************************************************
 
+   call timer_beg('_ZoneLoop0')
+
 !$omp parallel do private(zone,Z,nCorner,c0,Tstar,c,ratio)
    ZoneLoop: do zone=1,nzones
 
@@ -87,11 +89,17 @@
 
    enddo ZoneLoop
 
+   call timer_end('_ZoneLoop0')
+
 !***********************************************************************
 !  Set the scaler intensity                                            *
 !***********************************************************************
 
+   call timer_beg('_snmoments1')
+
    call snmoments(psir, PHI)
+
+   call timer_end('_snmoments1')
 
 !***********************************************************************
 !  Compute the work done on radiation field due to volume changes.     *
@@ -103,6 +111,8 @@
      Mat%qext(:,:) = zero
 
      factor = -third*Size%radForceMultiplier/(dtrad*speed_light)
+
+   call timer_beg('_ZoneLoop1')
 
      ZoneLoop1: do zone=1,nzones
 
@@ -121,6 +131,8 @@
 
      enddo ZoneLoop1
 
+     call timer_end('_ZoneLoop1')
+
    endif
 
 !***********************************************************************
@@ -131,18 +143,21 @@
    eradBOC = zero
    tr4min  = tfloor*tfloor*tfloor*tfloor
 
+   call timer_beg('_ZoneLoop2')
+
+!$omp parallel do private(zone,PhiAve,Z,nCorner,c0,c,volumeRatio,ia,sumRad) reduction(+:eradBOC)
    ZoneLoop2: do zone=1,nzones
 
      PhiAve  = zero
-!$omp parallel private(nCorner,c0,volumeRatio,sumRad) reduction(+:PhiAve)
+!!!!$omp parallel private(nCorner,c0,volumeRatio,sumRad) reduction(+:PhiAve)
      Z       => getZoneData(Geom, zone)
      nCorner = Z% nCorner
      c0      = Z% c0
-!$omp do
+!!!!$omp do
      do c=1,nCorner
        volumeRatio = Z% VolumeOld(c)/Z% Volume(c)
        Phi(:,c0+c) = Phi(:,c0+c)*volumeRatio
-
+       ! this better be vectorized....also seems to have nothing to do with surrounding, break into new loop?
        do ia=1,numAngles
          psir(:,c0+c,ia) = psir(:,c0+c,ia)*volumeRatio
        enddo
@@ -155,7 +170,7 @@
        PhiAve = PhiAve + Z% Volume(c)*sumRad
 
      enddo
-!$omp end parallel
+!!!!!$omp end parallel
 
      eradBOC = eradBOC + PhiAve
      PhiAve  = PhiAve/(Z% VolumeZone*rad_constant*speed_light)
@@ -164,6 +179,7 @@
 
    enddo ZoneLoop2
 
+   call timer_end('_ZoneLoop2')
 
    if (Size%igeom == 'rz') then
      RadEdit% EnergyRadBOC = two*pi*eradBOC/speed_light

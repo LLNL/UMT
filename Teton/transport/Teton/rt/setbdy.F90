@@ -43,13 +43,15 @@
    nVacuum     = getNumberOfVacuum(RadBoundary)
    nShared     = getNumberOfShared(RadBoundary)
 
+!$omp parallel private(i,Bdy,nBdyElem,b0,ib,ic,ia)
+
 !  Reflecting
 
    do i=1,nReflecting
      Bdy      => getReflecting(RadBoundary, i)
      nBdyElem =  getNumberOfBdyElements(Bdy)
      b0       =  getFirstBdyElement(Bdy) - 1
- 
+!$omp do
      do ib=1,nBdyElem
        ic = Bdy% BdyToC(ib)
        do ia=1,nangSN
@@ -65,7 +67,7 @@
      nBdyElem =  getNumberOfBdyElements(Bdy)
      b1       =  getFirstBdyElement(Bdy)
      b2       =  b1 + nBdyElem - 1
- 
+!$omp do
      do ib=b1,b2
        do ia=1,nangSN
           psib(:,ib,ia) = zero
@@ -81,8 +83,8 @@
      b1       = getFirstBdyElement(Bdy)
      b2       = b1 + nBdyElem - 1
      profID   = getProfileID(Bdy)
-
      do ia=1,nangSN
+!$omp do
        do ib=b1,b2
          psib(:,ib,ia) = SourceProfiles% Psi_Inc(:,ia,profID)
        enddo
@@ -91,18 +93,14 @@
 
 !  Shared
                                                                                                     
-!$omp parallel private(tid, nth, iabeg, iaend, nBdyElem, b0, ic)
-   tid = omp_get_thread_num()
-   nth = omp_get_num_threads()
-   call omp_block_partition(tid, nth, 1, nangSN, iabeg, iaend)
    do i=1,nShared
      Bdy      => getShared(RadBoundary, i)
      nBdyElem =  getNumberOfBdyElements(Bdy)
      b0       =  getFirstBdyElement(Bdy) - 1
-
+!$omp do
      do ib=1,nBdyElem
        ic = Bdy% BdyToC(ib)
-       do ia=iabeg, iaend  ! YKT was : 1,nangSN
+       do ia=1, nangSN  
          psib(:,b0+ib,ia) = psir(:,ic,ia)
        enddo
      enddo

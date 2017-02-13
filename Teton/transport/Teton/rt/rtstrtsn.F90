@@ -112,6 +112,7 @@ endif
 !      enddo
 !    endif
 
+   call timer_beg('_initialize')
 !  Initialize arrays
 
    do ic=1,ncornr
@@ -119,13 +120,16 @@ endif
      Mat%denec(ic) = zero
    enddo
 
-!  Initialize the boundary flux array (PSIB)
+   call timer_end('_initialize')
 
+!  Initialize the boundary flux array (PSIB)
+   call timer_beg('_setbdy')
    call setbdy(psir, PSIB)
+   call timer_end('_setbdy')
 
 !  Calculate zone-average energy density for convergence test
-
-! think zones are independent and can use omp here.
+   call timer_beg('_zoneaverage')
+!$omp parallel do private(zone,Z,nCorner,c0)
    do zone=1,nzones
      Z => getZoneData(Geom, zone)
 
@@ -142,6 +146,7 @@ endif
      enddo
      Z% EnergyDensityOld = Z% EnergyDensityOld/Z%VolumeZone
    enddo
+   call timer_end('_zoneaverage')
 
 !  Compute zone-average temperature for convergence test
 

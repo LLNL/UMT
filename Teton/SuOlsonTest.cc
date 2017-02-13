@@ -208,6 +208,7 @@ int main(int argc, char* argv[])
 
     double time;
     double dt= newDT(myTetonObject);
+    // YKT these should probably be longs....
     int numZones = myMesh.getNumberOfOwnedZones();
     int totMeshZones=0;
     
