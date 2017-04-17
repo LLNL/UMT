@@ -93,10 +93,12 @@ int main(int argc, char* argv[])
       }
     }
 
+    // If setting GPU device through setting cuda visible devices, this print may say all devices are GPU 0
+    // which is relatively true (but not absolutly)
     int devnum;
     istat = cudaGetDevice(&devnum);
     cout<<" myrank = "<<myRank<<"GPU number = "<<devnum<<"istat ="<<istat<<endl;
-    printf("Error: %s\n", cudaGetErrorString(istat));
+    printf("Check the device: %s\n", cudaGetErrorString(istat));
 
 
     if( argc >= 3 )

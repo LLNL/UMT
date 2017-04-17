@@ -19,7 +19,8 @@ endif
 
 #------------------------------------------------ IBM ----------------------------------------------------------
 MPI_HOME=/opt/ibm/spectrum_mpi
-PGI_VERSION=16.10
+#PGI_VERSION=16.10
+PGI_VERSION=17.1
 
 CFLAGS_CMG     += 
 
@@ -31,7 +32,7 @@ OPENMPF_FLAGS    = -mp
 
 FLIBS = -L/opt/pgi/linuxpower/$(PGI_VERSION)/lib -L/usr/local/cuda-8.0/lib64 /home/walkup/codes/timers/libtimers.a -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
        -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass -lmass_simdp8 \
-       -lcudapgi -lcudafor -lcudart 
+       -lcudapgi -lcudafor -lcudart -lcudaforblas
 
 CLIBS = -L/usr/local/cuda-8.0/lib64
 
