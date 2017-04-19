@@ -1,5 +1,9 @@
 ! GPUhelper module: stores the arrays of unknowns used on the GPU
 
+! these arrays of unknowns may fit on the GPU and persist accross iterations,
+! Or they may be batched in. Either way the same name is used here, and they are
+! declared allocatable here.
+
 module GPUhelper_mod 
 
    use kind_mod
@@ -26,9 +30,11 @@ module GPUhelper_mod
    !type(C_DEVPTR)                    :: d_phi_p
    type(C_DEVPTR)                    :: d_psib_p
    type(C_DEVPTR)                    :: d_STime_p
-   !real(adqt), device, allocatable :: d_phi(:,:)
-   real(adqt), device, allocatable :: d_psib(:,:,:)
-   real(adqt), device, allocatable :: d_STime(:,:,:)
+
+
+
+   !real(adqt), device, allocatable :: d_psib(:,:,:)
+   !real(adqt), device, allocatable :: d_STime(:,:,:)
 
 
    real(adqt), device, allocatable :: d_psi(:,:,:,:)

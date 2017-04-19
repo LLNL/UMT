@@ -60,19 +60,9 @@
           omega_A_ez , &
           Connect , &
           Connect_reorder, &
-          STotal , &
-          STimeBatch , &
-          STime , &
-          Volume , &
-          psic, &
-          psib, &
           next, &
           nextZ, &   
-          Sigt, &
-          SigtInv, &
           passZ, &
-          calcSTime, &
-          tau, &
           streamid &
           ) &
           bind ( c ) 
@@ -100,19 +90,9 @@
          real ( c_double ),device :: omega_A_ez(*) 
          integer ( c_int ),device :: Connect(*) 
          integer ( c_int ),device :: Connect_reorder(*) 
-         real ( c_double ),device :: STotal(*) 
-         real ( c_double ),device :: STimeBatch(*)
-         real ( c_double ),device :: STime(*) 
-         real ( c_double ),device :: Volume(*) 
-         real ( c_double ),device :: psic(*) 
-         real ( c_double ),device :: psib(*) 
          integer ( c_int ),device :: next(*)
          integer ( c_int ),device :: nextZ(*)
-         real ( c_double ),device :: Sigt(*) 
-         real ( c_double ),device :: SigtInv(*) 
          integer ( c_int ),device :: passZ(*)
-         logical ( c_bool ) :: calcSTime
-         real ( c_double ) :: tau
          integer ( kind=cuda_stream_kind ),value :: streamid
        end subroutine fp_ez_c
 
@@ -140,7 +120,6 @@
           Connect_reorder, &
           STotal , &
           STimeBatch , &
-          STime , &
           Volume , &
           psic, &
           psib, &
@@ -180,7 +159,6 @@
          integer ( c_int ),device :: Connect_reorder(*) 
          real ( c_double ),device :: STotal(*) 
          real ( c_double ),device :: STimeBatch(*)
-         real ( c_double ),device :: STime(*) 
          real ( c_double ),device :: Volume(*) 
          real ( c_double ),device :: psic(*) 
          real ( c_double ),device :: psib(*) 
@@ -478,20 +456,9 @@
                 Geom%ZDataSoA%omega_A_ez,                &
                 Geom%ZDataSoA%Connect,             &
                 Geom%ZDataSoA%Connect_reorder,             &
-                Geom%ZDataSoA%STotal,              &
-                                !Geom%ZDataSoA%STime,               &
-                d_STimeBatch(1,1,1,current),          &
-                d_STime,                            &
-                Geom%ZDataSoA%Volume,             &
-                d_psi(1,1,1,current),                      &  ! only want angle batch portion
-                d_psibBatch(1,1,1,current),                      &
                 QuadSet%d_next,              &
                 QuadSet%d_nextZ,             &
-                Geom%ZDataSoA%Sigt,                &
-                Geom%ZDataSoA%SigtInv,             &
                 QuadSet%d_passZstart,        &
-                calcSTime,                  &
-                Size%tau,             &
                 kernel_stream           &
                 )
 
@@ -511,36 +478,36 @@
         !        boundary flux array PSIB is also updated here.
         !        Mesh cycles are fixed automatically.
         if(0) then ! call CUDA fortran version
-           call snswp3d(     anglebatch,                     &
-                Size%nzones,               &
-                QuadSet%Groups,            &
-                Size%ncornr,               &
-                QuadSet%NumAngles,         &
-                QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
-                Size%maxCorner,            &
-                Size%maxcf,                &
-                binRecv,                   &
-                NangBin,                   &
-                Size%nbelem,                &
-                QuadSet%d_omega,             &
-                Geom%ZDataSoA%nCorner,                &
-                Geom%ZDataSoA%nCFaces,                &
-                Geom%ZDataSoA%c0,                &
-                Geom%ZDataSoA%A_fp,                &
-                Geom%ZDataSoA%A_ez,                &
-                Geom%ZDataSoA%Connect,             &
-                Geom%ZDataSoA%STotal,              &
-                                !Geom%ZDataSoA%STime,               &
-                d_STimeBatch, &
-                Geom%ZDataSoA%Volume,             &
-                d_psi,                      &  ! only want angle batch portion
-                d_psib,                      &
-                QuadSet%d_next,              &
-                QuadSet%d_nextZ,             &
-                Geom%ZDataSoA%Sigt,                &
-                Geom%ZDataSoA%SigtInv,             &
-                QuadSet%d_passZstart,              &
-                kernel_stream)
+           ! call snswp3d(     anglebatch,                     &
+           !      Size%nzones,               &
+           !      QuadSet%Groups,            &
+           !      Size%ncornr,               &
+           !      QuadSet%NumAngles,         &
+           !      QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
+           !      Size%maxCorner,            &
+           !      Size%maxcf,                &
+           !      binRecv,                   &
+           !      NangBin,                   &
+           !      Size%nbelem,                &
+           !      QuadSet%d_omega,             &
+           !      Geom%ZDataSoA%nCorner,                &
+           !      Geom%ZDataSoA%nCFaces,                &
+           !      Geom%ZDataSoA%c0,                &
+           !      Geom%ZDataSoA%A_fp,                &
+           !      Geom%ZDataSoA%A_ez,                &
+           !      Geom%ZDataSoA%Connect,             &
+           !      Geom%ZDataSoA%STotal,              &
+           !                      !Geom%ZDataSoA%STime,               &
+           !      d_STimeBatch, &
+           !      Geom%ZDataSoA%Volume,             &
+           !      d_psi,                      &  ! only want angle batch portion
+           !      d_psib,                      &
+           !      QuadSet%d_next,              &
+           !      QuadSet%d_nextZ,             &
+           !      Geom%ZDataSoA%Sigt,                &
+           !      Geom%ZDataSoA%SigtInv,             &
+           !      QuadSet%d_passZstart,              &
+           !      kernel_stream)
         else ! Call CUDA c version
            call snswp3d_c(     anglebatch,                     &
                 Size%nzones,               &
@@ -566,7 +533,6 @@
                 Geom%ZDataSoA%STotal,              &
                                 !Geom%ZDataSoA%STime,               &
                 d_STimeBatch(1,1,1,current),          &
-                d_STime,                            &
                 Geom%ZDataSoA%Volume,             &
                 d_psi(1,1,1,current),                      &  ! only want angle batch portion
                 d_psibBatch(1,1,1,current),                      &
@@ -672,20 +638,9 @@
                 Geom%ZDataSoA%omega_A_ez,                &
                 Geom%ZDataSoA%Connect,             &
                 Geom%ZDataSoA%Connect_reorder,             &
-                Geom%ZDataSoA%STotal,              &
-                                !Geom%ZDataSoA%STime,               &
-                d_STimeBatch(1,1,1,next),          &
-                d_STime,                            &
-                Geom%ZDataSoA%Volume,             &
-                d_psi(1,1,1,next),                      &  ! only want angle batch portion
-                d_psibBatch(1,1,1,next),                      &
                 QuadSet%d_next,              &
                 QuadSet%d_nextZ,             &
-                Geom%ZDataSoA%Sigt,                &
-                Geom%ZDataSoA%SigtInv,             &
                 QuadSet%d_passZstart,        &
-                calcSTime,                  &
-                Size%tau,             &
                 kernel_stream           &
                 )
 

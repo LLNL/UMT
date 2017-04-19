@@ -42,7 +42,6 @@ extern "C"
 			    int* soa_c0,
 			    double* soa_STotal,
 			    double* STimeBatch,
-			    double* STime,
 			    double* soa_SigtInv,
 			    double* soa_Volume,
 			    double* soa_Sigt,
@@ -129,7 +128,6 @@ extern "C"
 #define soa_SigtInv(ig,zone) soa_SigtInv[(ig) + Groups * (zone)]
 #define soa_STotal(ig,c,zone) soa_STotal[ig + Groups * ( c + size_maxCorner * (zone) )]
 #define STimeBatch(ig,ic,Angle) STimeBatch[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
-#define STime(ig,ic,Angle) STime[ig + Groups * ( (ic) + ncornr * (Angle) ) ]
 #define nextZ(a,b) nextZ[ (a) + nzones * (b) ]
 #define next(a,b) next[ (a) + (ncornr+1)  * (b) ]
 
@@ -153,7 +151,6 @@ extern "C"
     soa_SigtInv += group_offset;
     
     STimeBatch += group_offset;
-    //STime += group_offset;
 
     int ndone = 0;
     int ndoneZ = 0;
