@@ -16,9 +16,15 @@ module GPUhelper_mod
    use cudafor
    use nvtx_mod
 
+   ! Flag to control if problem fits in GPU memory or has to be batched in.
+   logical(kind=1) :: FitsOnGPU = .false. ! default is false
+
+   ! Batchsize in number of angles (currently best to set to NangBin as some parts assume this for convenience)
+   integer, parameter :: batchsize=32
 
    ! Cuda streams overlapping stuff
    ! (HtoD and DtoH combined stream, and kernel stream)
+   integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream
    ! integer :: Nbatches =  8 !QuadSet%NumBin
    ! integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream
    ! type(cudaEvent) :: Psi_OnDevice(Nbatches), Psi_OnHost(Nbatches)
@@ -51,5 +57,36 @@ module GPUhelper_mod
 
 
 contains
+
+  subroutine InitDeviceBuffers()
+    implicit none
+
+    integer :: NangBin
+
+    ! if the problem fits entirely in GPU memory, the buffers can be made the same size as the host arrays
+
+    ! But if the problem does not fit in GPU memory, a double buffer strategy is used and the buffers have
+    ! to be sized to fit chunks of the problem. (currently chunked by angle bins)
+
+    if( FitsOnGPU ) then
+
+
+    else ! Does not fit on GPU, use double buffer batching strategy:
+
+       ! allocate omega_A_fp sections for batchsize (hardwired to NangBin here)
+       NangBin = maxval(QuadSet%NangBinList(:))
+       allocate( Geom%ZDataSoA % omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf, NangBin) )
+       allocate( Geom%ZDataSoA % omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf, NangBin) )
+    
+    
+       allocate(d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,2))
+       allocate(d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,2))
+       allocate(d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,2))
+       allocate(d_phi(QuadSet%Groups,Size%ncornr))
+
+    endif
+
+  end subroutine InitDeviceBuffers
+
 
 end module GPUhelper_mod
