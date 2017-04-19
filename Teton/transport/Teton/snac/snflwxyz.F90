@@ -314,7 +314,7 @@
      ! By default STime does not need to computed.
      calcSTime = .false.
 
-     ! If this is first temp and intensity iteration, need to calculate STime and update to host:
+     ! If this is first temp and intensity iteration, need to calculate STime (and update to host if not FitsOnGPU):
      if (intensityIter == 1 .and. tempIter == 1 .and. fluxIter==1) then
         ! compute STime from initial d_psi
         calcSTime = .true.
@@ -351,13 +351,18 @@
            !iteration of the loop
 
 
-           ! move anglebatch section of psi to d_psi(batch), which has room for BATCHSIZE angles of psi
-           istat=cudaMemcpyAsync(d_psi(1,1,1,current),                 &
-                psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
+           call MoveHtoD(d_psi, psi, current, binSend, mm1, &
+                QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream, Psi_OnDevice(batch))
 
-           ! Record when psi is on device: (not needed?)
-           istat=cudaEventRecord(Psi_OnDevice(batch), transfer_stream )
+           ! ! move anglebatch section of psi to d_psi(batch), which has room for BATCHSIZE angles of psi
+           ! istat=cudaMemcpyAsync(d_psi(1,1,1,current),                 &
+           !      psi(1,1,QuadSet%AngleOrder(mm1,binSend)), &
+           !      QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
+
+           ! ! Record when psi is on device: (not needed?)
+           ! istat=cudaEventRecord(Psi_OnDevice(batch), transfer_stream )
+           
+
 
            
            ! If this is first temp and intensity iteration, need to calculate STime and update to host:
@@ -523,7 +528,7 @@
                 )
         endif
 
-        ! record when stream s+1 finishes s sweep (as opposed to s+2)
+        ! record when sweep is finished for this batch
         istat=cudaEventRecord(SweepFinished(batch), kernel_stream )
 
 

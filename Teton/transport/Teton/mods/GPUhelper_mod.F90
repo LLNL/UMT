@@ -113,4 +113,31 @@ contains
   end subroutine CreateEvents
 
 
+  subroutine MoveHtoD(d_buffer, h_buffer, devicebin, hostbin, mm1, elements, streamid, event)
+
+    implicit none
+    
+    !  Arguments
+
+    real(adqt), device, intent(in) :: d_buffer(:,:,:,:) ! d_psi, d_psib, or d_STime (may or not fit entire host buffer)
+    real(adqt), intent(in) :: h_buffer(:,:,:) ! host buffer
+    integer, intent(in) :: devicebin, hostbin !device bin might be current or next, hostbin will be an anglebin.
+    integer, intent(in) :: mm1 ! starting angle index within a bin. (will be 1 when batches are sized the same as bins)
+    integer, intent(in) :: elements ! number of array elements to be moved
+    integer(kind=cuda_stream_kind), intent(in) :: streamid
+    type(cudaEvent), intent(in) :: event
+    ! local variables
+    integer :: istat
+
+    istat=cudaMemcpyAsync(d_buffer(1,1,1,devicebin),                 &
+         h_buffer(1,1,QuadSet%AngleOrder(mm1,hostbin)), &
+         elements, streamid )
+    
+    ! Record when movement event finishes
+    istat=cudaEventRecord(event, streamid )
+
+  end subroutine MoveHtoD
+    
+
+
 end module GPUhelper_mod
