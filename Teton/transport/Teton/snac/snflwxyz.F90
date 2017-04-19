@@ -198,20 +198,11 @@
    real(adqt)       :: maxFluxError
    real(adqt)       :: startOMPLoopTime, endOMPLoopTime, theOMPLoopTime
 
-   integer :: Nbatches =  8 !QuadSet%NumBin
-   
-   type(cudaEvent) :: Psi_OnDevice(Nbatches), Psi_OnHost(Nbatches)
-   type(cudaEvent) :: Psib_OnDevice(Nbatches), Psib_OnHost(Nbatches)
-   type(cudaEvent) :: SweepFinished(Nbatches), STimeFinished(Nbatches)
+   ! Cuda streams and double buffer managment stuff
    integer :: s, batch, istat, current, next
    
    logical(kind=1) :: calcSTime
 
-   ! picking up environment variables
-   !character(len=255) :: envstring
-   
-   !type(C_PTR) :: cptr
-   !type(C_DEVPTR) :: dptr
 
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
@@ -280,13 +271,7 @@
 
    call nvtxStartRange("createEvents")
    ! Create events to synchronize among different streams
-   do batch = 1, Nbatches
-      istat = cudaEventCreate(Psi_OnDevice(batch))
-      istat = cudaEventCreate(STimeFinished(batch))
-      istat = cudaEventCreate(Psib_OnDevice(batch))
-      istat = cudaEventCreate(SweepFinished(batch))
-      istat = cudaEventCreate(Psi_OnHost(batch))
-   enddo
+   call CreateEvents()
    call nvtxEndRange
 
 !  Loop over angle bins
