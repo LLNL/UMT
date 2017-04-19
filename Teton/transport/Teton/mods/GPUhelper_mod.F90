@@ -133,7 +133,7 @@ contains
          h_buffer(1,1,QuadSet%AngleOrder(mm1,hostbin)), &
          elements, streamid )
     
-    ! Record when movement event finishes
+    ! Record when movement event finishes (for example, psib on device)
     istat=cudaEventRecord(event, streamid )
 
   end subroutine MoveHtoD

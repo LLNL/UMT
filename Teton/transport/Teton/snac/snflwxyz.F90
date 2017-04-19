@@ -386,12 +386,9 @@
         call nvtxEndRange
 
         !Stage batch of psib into GPU (after reflected angles is completed on host)
-        ! move anglebatch section of psib to d_psib, which has room for BATCHSIZE angles of psib
-        istat=cudaMemcpyAsync(d_psibBatch(1,1,1,current),                 &
-             psib(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-             QuadSet%Groups*Size%nbelem*anglebatch, transfer_stream )
-        ! record when psib is on device
-        istat=cudaEventRecord(Psib_OnDevice(batch), transfer_stream )
+        call MoveHtoD(d_psibBatch, psib, current, binSend, mm1, &
+             QuadSet%Groups*Size%nbelem*anglebatch, transfer_stream, Psib_OnDevice(batch))
+
 
 
         FirstOctant2: if (binRecv == 1) then
@@ -406,11 +403,8 @@
                    QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream ) ! can be another stream later?
            else
               ! STime already computed, just need to move section of STime to device
-              istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,current),                 &
-                   Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-                   QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream )
-
-              istat=cudaEventRecord(STimeFinished(batch), transfer_stream ) ! don't think this should be kernel stream....
+              call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, current, binSend, mm1, &
+                   QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream, STimeFinished(batch))
 
            endif
 
@@ -535,14 +529,8 @@
 
         NotLastOctants: if (binRecv < QuadSet% NumBin) then
            ! If not the last bin (octant), pre-stage data for next angle bin 
-
-           ! move anglebatch section of psi to d_psi, which has room for BATCHSIZE angles of psi
-           istat=cudaMemcpyAsync(d_psi(1,1,1,next),        &
-                psi(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream )
-
-           ! not needed?
-           istat = cudaEventRecord(Psi_OnDevice(batch+1), transfer_stream )
+           call MoveHtoD(d_psi, psi, next, binSend_next, mm1, &
+                QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream, Psi_OnDevice(batch+1))
 
         endif NotLastOctants
         
@@ -590,11 +578,8 @@
                    QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream ) 
            else
               ! STime already computed, just need to move section of STime to device
-              istat=cudaMemcpyAsync(d_STimeBatch(1,1,1,next),                 &
-                   Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-                   QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream )
-
-              istat=cudaEventRecord(STimeFinished(batch+1), transfer_stream )
+              call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, next, binSend_next, mm1, &
+                   QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream, STimeFinished(batch+1))
 
            endif
 
@@ -639,10 +624,6 @@
         call nvtxEndRange
         !call timer_end('__setExitFlux')
 
-
-        !istat=cudaDeviceSynchronize()
-
-        !istat=cudaEventSynchronize( PsiOnHost(s) )
 
         !      Exchange Boundary Fluxes
         ! these need to become non-blocking
