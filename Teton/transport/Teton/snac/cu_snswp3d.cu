@@ -81,7 +81,6 @@ __global__ void GPU_fp_ez_hplane(
 		  int *d_AngleOrder,
 		  int *maxcorners, 
 		  int *maxfaces, 
-		  int *octant,  //=binRecv
 		  int *NangBin, 
 		  int *nbelem,
 		  double *d_omega,
