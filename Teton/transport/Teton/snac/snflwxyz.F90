@@ -206,10 +206,10 @@
 
 !  Convenient Mesh Constants
 
-   ! Groups = QuadSet%Groups
+   Groups = QuadSet%Groups
    ! NumAngles = QuadSet%NumAngles
-   ! nbelem = Size%nbelem
-   ! ncornr = Size%ncornr
+   nbelem = Size%nbelem
+   ncornr = Size%ncornr
    ! print *, ncornr
    ! NangBin = maxval(QuadSet%NangBinList(:))
    ! NumBin = QuadSet%NumBin
@@ -387,50 +387,6 @@
 
            call stageGPUData(current,batch,mm1)
 
-           ! if (calcSTime == .true.) then
-           !    ! THIS PART COULD PROBABLY BE MOVED AFTER SWEEP TO HELP HIDE EXCHANGE
-           !    ! Wait for STime to be computed:
-           !    istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
-           !    ! Update STime to host
-           !    istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend)), &
-           !         d_STimeBatch(1,1,1,current), &
-           !         QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream ) ! can be another stream later?
-           ! else
-           !    ! STime already computed, just need to move section of STime to device
-           !    call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, current, binSend, mm1, &
-           !         QuadSet%Groups*Size%ncornr*anglebatch, transfer_stream, STimeFinished(batch))
-
-           ! endif
-
-
-
-           ! call fp_ez_c(     anglebatch,                     &
-           !      Size%nzones,               &
-           !      QuadSet%Groups,            &
-           !      Size%ncornr,               &
-           !      QuadSet%NumAngles,         &
-           !      QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
-           !      Size%maxCorner,            &
-           !      Size%maxcf,                &
-           !      binRecv,                   &
-           !      NangBin,                   &
-           !      Size%nbelem,                &
-           !      QuadSet%d_omega,             &
-           !      Geom%ZDataSoA%nCorner,                &
-           !      Geom%ZDataSoA%nCFaces,                &
-           !      Geom%ZDataSoA%c0,                &
-           !      Geom%ZDataSoA%A_fp,                &
-           !      Geom%ZDataSoA%omega_A_fp,                &
-           !      Geom%ZDataSoA%A_ez,                &
-           !      Geom%ZDataSoA%omega_A_ez,                &
-           !      Geom%ZDataSoA%Connect,             &
-           !      Geom%ZDataSoA%Connect_reorder,             &
-           !      QuadSet%d_next,              &
-           !      QuadSet%d_nextZ,             &
-           !      QuadSet%d_passZstart,        &
-           !      kernel_stream           &
-           !      )
-
         endif FirstOctant2
 
 
@@ -562,60 +518,45 @@
            endif
 
            call stageGPUData(next,batch+1,mm1)
-
-           ! if (calcSTime == .true.) then
-           !    ! Wait for STime to be computed:
-           !    istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch+1), 0)
-           !    ! Update STime to host
-           !    istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend_next)), &
-           !         d_STimeBatch(1,1,1,next), &
-           !         QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream ) 
-           ! else
-           !    ! STime already computed, just need to move section of STime to device
-           !    call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, next, binSend_next, mm1, &
-           !         QuadSet%Groups*Size%ncornr*anglebatch_next, transfer_stream, STimeFinished(batch+1))
-
-           ! endif
-
-
-           ! call fp_ez_c(     anglebatch_next,                     &
-           !      Size%nzones,               &
-           !      QuadSet%Groups,            &
-           !      Size%ncornr,               &
-           !      QuadSet%NumAngles,         &
-           !      QuadSet%d_AngleOrder(mm1,binSend_next),        & ! only need angle batch portion
-           !      Size%maxCorner,            &
-           !      Size%maxcf,                &
-           !      NangBin,                   &
-           !      Size%nbelem,                &
-           !      QuadSet%d_omega,             &
-           !      Geom%ZDataSoA%nCorner,                &
-           !      Geom%ZDataSoA%nCFaces,                &
-           !      Geom%ZDataSoA%c0,                &
-           !      Geom%ZDataSoA%A_fp,                &
-           !      Geom%ZDataSoA%omega_A_fp,                &
-           !      Geom%ZDataSoA%A_ez,                &
-           !      Geom%ZDataSoA%omega_A_ez,                &
-           !      Geom%ZDataSoA%Connect,             &
-           !      Geom%ZDataSoA%Connect_reorder,             &
-           !      QuadSet%d_next,              &
-           !      QuadSet%d_nextZ,             &
-           !      QuadSet%d_passZstart,        &
-           !      kernel_stream           &
-           !      )
-
-
-
+       
         endif NotLastOctants2
 
-        ! if ready then set exit flux and move exchange psib.
-        istat=cudaEventSynchronize( Psi_OnHost(batch) )
 
 
         !call timer_beg('__setExitFlux')
-        call nvtxStartRange("setExitFlux")
-        call setExitFlux(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), psi, psib)
-        call nvtxEndRange
+
+        ! Set the exit flux
+        if( fitsOnGPU ) then
+           call setExitFluxD<<<batchsize,Groups,0,kernel_stream>>>(anglebatch(current), &
+                QuadSet%d_AngleOrder(mm1,binSend(current)),  &
+                d_psi(1,1,1,current), d_psibBatch(1,1,1,current),&
+                QuadSet%d_iExit, groups, ncornr, nbelem )
+
+           ! When setExitFluxD is done, record it has finished in kernel stream
+           istat=cudaEventRecord(ExitFluxD(batch), kernel_stream )
+
+           ! transfer stream should wait for event setExitFluxD to finish
+           istat = cudaStreamWaitEvent(transfer_stream, ExitFluxD(batch), 0)
+
+           ! need to move psib to Host (or later exchange from GPU).
+           istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+                d_psibBatch(1,1,1,current), &
+                QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
+
+           ! CPU code should wait until psib is on the host.
+           istat=cudaEventSynchronize( psib_OnHost(batch) )
+
+        else ! Problem does not fit in GPU, and psi is moved back from GPU anyway
+
+           ! if ready then set exit flux and move exchange psib.
+           istat=cudaEventSynchronize( Psi_OnHost(batch) )
+           ! compute exit flux on host. 
+           call nvtxStartRange("setExitFlux")
+           call setExitFlux(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), psi, psib)
+           call nvtxEndRange
+
+        endif
+
         !call timer_end('__setExitFlux')
 
 

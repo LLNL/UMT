@@ -37,6 +37,7 @@ module GPUhelper_mod
    type(cudaEvent), allocatable :: Psi_OnDevice(:), Psi_OnHost(:)
    type(cudaEvent), allocatable :: Psib_OnDevice(:), Psib_OnHost(:)
    type(cudaEvent), allocatable :: SweepFinished(:), STimeFinished(:)
+   type(cudaEvent), allocatable :: ExitFluxD(:)
    ! integer :: s, batch, istat, current, next
 
    ! zero copy pointers for phi and psib
@@ -216,6 +217,7 @@ contains
     allocate( Psi_OnDevice(Nbatches), Psi_OnHost(Nbatches) )
     allocate( Psib_OnDevice(Nbatches), Psib_OnHost(Nbatches) )
     allocate( SweepFinished(Nbatches), STimeFinished(Nbatches) )
+    allocate( ExitFluxD(Nbatches) )
 
 
     ! DEVICE BUFFERS

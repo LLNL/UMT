@@ -43,7 +43,7 @@ CPPFFLAGS = -DLINUX,-DLinux,-Dmpi,-DMPI,-DUSE_MPI,-DOMPI_SKIP_MPICXX
 MPI_INC_PATH    = -I/$(MPI_HOME)/include
 
 MPI_LIB_PATH    = 
-MPI_LIBS        = -lmpi_mpifh 
+MPI_LIBS        = -lmpi_ibm_mpifh 
 
 LIBS 	       += $(MPI_LIBS) -lnvToolsExt
 LIBPATH 	= 

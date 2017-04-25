@@ -555,42 +555,55 @@ contains
   end subroutine GPU_sweep_old
 
 
-  subroutine setExitFlux_singleangle(Angle, psic, psib)
 
+
+
+  attributes(global) subroutine setExitFluxD(  anglebatch, Angles, psicache, psibBatch, iExit, groups,ncornr, nbelem)
+   
     use kind_mod
-    use constant_mod
-    use Size_mod
-    use Geometry_mod
-    use Quadrature_mod
-
+   use constant_mod
+   use Size_mod
+   use Geometry_mod
+   use Quadrature_mod
+   
     implicit none
 
-    integer,    intent(in) :: Angle
+   integer, value,  intent(in)    :: anglebatch, groups, ncornr, nbelem
 
-    real(adqt), intent(in) :: psic(QuadSet%Groups,Size%ncornr,QuadSet%NumAngles)
+   integer, device, intent(in)    :: Angles(anglebatch)
 
-    real(adqt), intent(out) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
+   real(adqt), device, intent(in)  :: psicache(groups,ncornr,anglebatch) 
 
-    integer :: i, ib, ic
+   real(adqt), intent(out) :: psibBatch(Groups,nbelem,anglebatch)
 
+   type(d_Exit), device, target, intent(in) :: iExit(:) 
 
-    !  Set exiting boundary fluxes
+   integer :: mm, Angle, ig, i, ib, ic
 
-    ExitBdy => getExitList(QuadSet, Angle)
-    !iExit => QuadSet%iExit(Angle)
-
-    do i=1,ExitBdy% nExit
-       ib = ExitBdy% ListExit(1,i)
-       ic = ExitBdy% ListExit(2,i)
-  !!!!!$OMP parallel do
-       !do ig=1,Groups
-       psib(:,ib,Angle) = psic(:,ic,Angle)
-       !enddo
-    enddo
+   type(d_Exit), device, pointer :: d_ExitBdy
 
 
+!  Set exiting boundary fluxes
 
-  end subroutine setExitFlux_singleangle
+  do mm=blockIdx%x, anglebatch, gridDim%x
+   Angle = Angles(mm)
+
+   d_ExitBdy => iExit(Angle)
+
+     do ig=threadIdx%x, Groups, blockDim%x
+        do i=1,d_ExitBdy% nExit
+           ib = d_ExitBdy% ListExit(1,i)
+           ic = d_ExitBdy% ListExit(2,i)
+
+           psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
+        enddo
+     enddo
+
+  enddo
+
+end subroutine setExitFluxD
+
+
 
 
 

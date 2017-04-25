@@ -18,7 +18,14 @@ module Quadrature_mod
   type, public :: Exit
      integer             :: nExit             ! number of exiting boundary elements
      integer,    pointer :: ListExit(:,:)     ! pairs of boundary element and corner IDs
+     integer, device, pointer :: d_ListExit(:,:)
   end type Exit
+
+  type, public :: d_Exit
+     integer              :: nExit             ! number of exiting boundary elements
+     integer, device, allocatable :: ListExit(:,:)     ! pairs of boundary element and corner IDs
+  end type d_Exit
+
 
 
   type, public :: Quadrature 
@@ -83,6 +90,8 @@ module Quadrature_mod
 
      type(Communicator), pointer :: iComms(:,:) ! Pointers to communicators
      type(Exit),         pointer :: iExit(:)    ! Pointers to exiting boundary lists
+
+     type(d_Exit), device, pointer :: d_iExit(:)
 
   end type Quadrature 
 
@@ -251,6 +260,8 @@ contains
       allocate( self% Converged(self% NumBin) )
 
       allocate( self% iExit(self % NumAngles) )
+      allocate( self% d_iExit(self % NumAngles) )
+
       allocate( self% iComms(Size% ncomm,self% NumBin) )
     endif
 
@@ -387,6 +398,7 @@ contains
       deallocate( self% Flux )
       deallocate( self% iComms )
       deallocate( self% iExit )
+      deallocate( self% d_iExit)
     endif
 
 !   Space for angular coefficients
@@ -453,6 +465,50 @@ contains
                                                                                                  
 !   Local
     type(Exit), pointer              :: iExit 
+    type(d_Exit), device, pointer    :: d_iExit 
+
+
+    iExit => self% iExit(angleID)
+    d_iExit => self% d_iExit(angleID)
+
+    allocate( iExit% ListExit(2,nExit) )
+    allocate( d_iExit% ListExit(2,nExit) )
+
+    ! make iExit%d_ListExit point to same device memory location as d_iExit%ListExit
+    ! this gives a host valid way to specify the nested device pointers
+  iExit%d_ListExit => d_iExit%ListExit !might need CDEVLOC? I don't think this is working....
+
+    iExit% nExit               = nExit
+    iExit% ListExit(:,1:nExit) = ListExit(:,1:nExit)
+
+    d_iExit% nExit             = nExit
+    iExit% d_ListExit = ListExit
+
+    ! if you tried to do 
+    ! d_iExit% ListExit = ListExit
+    ! you would have on left side device%device, which the compiler will not understand the second level
+    ! indirection. My creating a host valid container iExit%d_ListExit, we have host%device, so the compiler
+    ! can properly decipher what the final address is even when on the host. Similarly, we need device%device 
+    ! so the compiler can decipher where the address is when running on the device in the later kernel.
+
+
+    return
+                                                                                                 
+  end subroutine Quadrature_ctorExit
+
+
+  subroutine Quadrature_ctor_device_Exit(self, angleID, nExit, ListExit)
+                                                                                                 
+    implicit none
+                                                                                                 
+!   Passed variables
+    type(Quadrature),  intent(inout) :: self
+    integer,           intent(in)    :: angleID
+    integer,           intent(in)    :: nExit
+    integer,           intent(in)    :: ListExit(2,nExit)
+                                                                                                 
+!   Local
+    type(Exit), pointer              :: iExit 
 
 
     iExit => self% iExit(angleID)
@@ -464,7 +520,9 @@ contains
 
     return
                                                                                                  
-  end subroutine Quadrature_ctorExit
+  end subroutine Quadrature_ctor_device_Exit
+
+
 
 !=======================================================================
 ! restore Communication order 
