@@ -558,7 +558,7 @@ contains
 
 
 
-  attributes(global) subroutine setExitFluxD(  anglebatch, Angles, psicache, psibBatch, iExit, groups,ncornr, nbelem)
+  attributes(global) subroutine setExitFluxD(  anglebatch, Angles, psicache, psibBatch, d_iExit, groups,ncornr, nbelem)
    
     use kind_mod
    use constant_mod
@@ -576,11 +576,13 @@ contains
 
    real(adqt), intent(out) :: psibBatch(Groups,nbelem,anglebatch)
 
-   type(d_Exit), device, target, intent(in) :: iExit(:) 
+   type(Exit), device, target, intent(in) :: d_iExit(:) 
+
+   ! Local variables
 
    integer :: mm, Angle, ig, i, ib, ic
 
-   type(d_Exit), device, pointer :: d_ExitBdy
+   type(Exit), device, pointer :: d_ExitBdy
 
 
 !  Set exiting boundary fluxes
@@ -588,12 +590,12 @@ contains
   do mm=blockIdx%x, anglebatch, gridDim%x
    Angle = Angles(mm)
 
-   d_ExitBdy => iExit(Angle)
+   d_ExitBdy => d_iExit(Angle)
 
      do ig=threadIdx%x, Groups, blockDim%x
         do i=1,d_ExitBdy% nExit
-           ib = d_ExitBdy% ListExit(1,i)
-           ic = d_ExitBdy% ListExit(2,i)
+           ib = d_ExitBdy% d_ListExit(1,i)
+           ic = d_ExitBdy% d_ListExit(2,i)
 
            psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
         enddo

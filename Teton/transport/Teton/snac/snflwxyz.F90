@@ -306,10 +306,10 @@
 !    Loop over angles, solving for each in turn:
      startOMPLoopTime = MPI_WTIME()
      
-     ! By default STime does not need to computed.
+     ! By default STime does not need to be computed.
      calcSTime = .false.
 
-     ! If this is first temp and intensity iteration, need to calculate STime (and update to host if not FitsOnGPU):
+     ! If this is first temp and intensity iteration, need to calculate STime 
      if (intensityIter == 1 .and. tempIter == 1 .and. fluxIter==1) then
         ! compute STime from initial d_psi
         calcSTime = .true.
@@ -494,15 +494,19 @@
         endif
 
 
-        ! before moving DtoH psi, sweep needs to complete
-        istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch), 0)
+        if ( .not. fitsOnGPU ) then
+           ! before moving DtoH psi, sweep needs to complete
+           istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch), 0)
 
+           ! Copy d_psi to host psi.
+           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+                d_psi(1,1,1,current), &
+                QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
 
-        istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             d_psi(1,1,1,current), &
-             QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
+           istat=cudaEventRecord(Psi_OnHost(batch), transfer_stream)
 
-        istat=cudaEventRecord(Psi_OnHost(batch), transfer_stream)
+        endif
+
 
         NotLastOctants2: if (binRecv < QuadSet% NumBin) then
            ! If not the last bin (octant), pre-stage data for next angle bin 

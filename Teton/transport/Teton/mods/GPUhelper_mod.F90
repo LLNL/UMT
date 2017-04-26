@@ -332,50 +332,52 @@ contains
     ! before and after the sweep into one reusable function. Bin determines if you are staging it for the
     ! current bin or the next bin.
 
-    !batch+1 should be sent in if using next
-
-               if (calcSTime == .true.) then
-              ! Wait for STime to be computed:
-              istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
-              ! Update STime to host
-              istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(bin))), &
-                   d_STimeBatch(1,1,1,bin), &
-                   QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream ) 
-           else
-              ! STime already computed, just need to move section of STime to device
-              call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, bin, mm1, &
-                   QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream, STimeFinished(batch))
-
-           endif
+    !batch+1 should be sent in if using bin=next
 
 
-           call fp_ez_c(     anglebatch(bin),                     &
-                Size%nzones,               &
-                QuadSet%Groups,            &
-                Size%ncornr,               &
-                QuadSet%NumAngles,         &
-                QuadSet%d_AngleOrder(mm1,binSend(bin)),        & ! only need angle batch portion
-                Size%maxCorner,            &
-                Size%maxcf,                &
-                NangBin(bin),                   &
-                Size%nbelem,                &
-                QuadSet%d_omega,             &
-                Geom%ZDataSoA%nCorner,                &
-                Geom%ZDataSoA%nCFaces,                &
-                Geom%ZDataSoA%c0,                &
-                Geom%ZDataSoA%A_fp,                &
-                Geom%ZDataSoA%omega_A_fp,                &
-                Geom%ZDataSoA%A_ez,                &
-                Geom%ZDataSoA%omega_A_ez,                &
-                Geom%ZDataSoA%Connect,             &
-                Geom%ZDataSoA%Connect_reorder,             &
-                QuadSet%d_next,              &
-                QuadSet%d_nextZ,             &
-                QuadSet%d_passZstart,        &
-                kernel_stream           &
-                )
+    ! If this is first temp and intensity iteration, STime would have been calculated, needs update to host if not FitsOnGPU:
+    if (calcSTime == .true.) then
+       ! Wait for STime to be computed:
+       istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
+       ! Update STime to host
+       istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(bin))), &
+            d_STimeBatch(1,1,1,bin), &
+            QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream ) 
+    else
+       ! STime already computed, just need to move section of STime to device
+       call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, bin, mm1, &
+            QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream, STimeFinished(batch))
 
-         end subroutine stageGPUData
+    endif
+
+
+    call fp_ez_c(     anglebatch(bin),                     &
+         Size%nzones,               &
+         QuadSet%Groups,            &
+         Size%ncornr,               &
+         QuadSet%NumAngles,         &
+         QuadSet%d_AngleOrder(mm1,binSend(bin)),        & ! only need angle batch portion
+         Size%maxCorner,            &
+         Size%maxcf,                &
+         NangBin(bin),                   &
+         Size%nbelem,                &
+         QuadSet%d_omega,             &
+         Geom%ZDataSoA%nCorner,                &
+         Geom%ZDataSoA%nCFaces,                &
+         Geom%ZDataSoA%c0,                &
+         Geom%ZDataSoA%A_fp,                &
+         Geom%ZDataSoA%omega_A_fp,                &
+         Geom%ZDataSoA%A_ez,                &
+         Geom%ZDataSoA%omega_A_ez,                &
+         Geom%ZDataSoA%Connect,             &
+         Geom%ZDataSoA%Connect_reorder,             &
+         QuadSet%d_next,              &
+         QuadSet%d_nextZ,             &
+         QuadSet%d_passZstart,        &
+         kernel_stream           &
+         )
+
+  end subroutine stageGPUData
 
 
 end module GPUhelper_mod

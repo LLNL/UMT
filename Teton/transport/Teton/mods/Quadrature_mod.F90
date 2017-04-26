@@ -21,13 +21,6 @@ module Quadrature_mod
      integer, device, pointer :: d_ListExit(:,:)
   end type Exit
 
-  type, public :: d_Exit
-     integer              :: nExit             ! number of exiting boundary elements
-     integer, device, allocatable :: ListExit(:,:)     ! pairs of boundary element and corner IDs
-  end type d_Exit
-
-
-
   type, public :: Quadrature 
 
      integer              :: QuadID            ! quadrature ID
@@ -91,7 +84,7 @@ module Quadrature_mod
      type(Communicator), pointer :: iComms(:,:) ! Pointers to communicators
      type(Exit),         pointer :: iExit(:)    ! Pointers to exiting boundary lists
 
-     type(d_Exit), device, pointer :: d_iExit(:)
+     type(Exit), device, pointer :: d_iExit(:)  ! Device valid version of the same.
 
   end type Quadrature 
 
@@ -465,32 +458,24 @@ contains
                                                                                                  
 !   Local
     type(Exit), pointer              :: iExit 
-    type(d_Exit), device, pointer    :: d_iExit 
+    type(Exit), device, pointer    :: d_iExit 
+    integer :: istat
 
 
     iExit => self% iExit(angleID)
     d_iExit => self% d_iExit(angleID)
 
     allocate( iExit% ListExit(2,nExit) )
-    allocate( d_iExit% ListExit(2,nExit) )
-
-    ! make iExit%d_ListExit point to same device memory location as d_iExit%ListExit
-    ! this gives a host valid way to specify the nested device pointers
-  iExit%d_ListExit => d_iExit%ListExit !might need CDEVLOC? I don't think this is working....
+    allocate( iExit% d_ListExit(2,nExit) )
 
     iExit% nExit               = nExit
     iExit% ListExit(:,1:nExit) = ListExit(:,1:nExit)
 
-    d_iExit% nExit             = nExit
+    ! Copy ListExit data to GPU
     iExit% d_ListExit = ListExit
 
-    ! if you tried to do 
-    ! d_iExit% ListExit = ListExit
-    ! you would have on left side device%device, which the compiler will not understand the second level
-    ! indirection. My creating a host valid container iExit%d_ListExit, we have host%device, so the compiler
-    ! can properly decipher what the final address is even when on the host. Similarly, we need device%device 
-    ! so the compiler can decipher where the address is when running on the device in the later kernel.
-
+    ! duplicate memory locations to device valid derived type:
+    istat = cudaMemcpyAsync(C_DEVLOC(d_iExit), C_LOC(iExit), sizeof(iExit), 0)
 
     return
                                                                                                  
