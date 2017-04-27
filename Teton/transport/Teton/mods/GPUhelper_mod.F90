@@ -216,11 +216,11 @@ contains
     allocate(binSend(numGPUbuffers), NangBin(numGPUbuffers), anglebatch(numGPUbuffers))
 
     ! flags for determining if data for a batch is already on the GPU:
-    allocate(psi_present(numGPUbuffers), STime_present(numGPUbuffers))
+    allocate(psi_present(Nbatches), STime_present(Nbatches))
 
     ! psib_present not needed now since psib always must be moved into the device. 
     ! may be useful later if GPU direct communication is used so psib is not moved in.
-    allocate(psib_present(numGPUbuffers))
+    allocate(psib_present(Nbatches))
 
 
     ! events:
@@ -385,7 +385,7 @@ contains
                d_STimeBatch(1,1,1,bin), &
                QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream ) 
 
-          ! if STime is updated to the host, safe to assume it will be not be present next time data is moved to the GPU
+          ! if STime is updated to the host, safe to assume it will not be present next time data is moved to the GPU
           STime_present(batch) = .false.
 
 
@@ -394,7 +394,12 @@ contains
           call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, bin, mm1, &
                QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream, &
                STimeFinished(batch), STime_present(batch))
-                   
+               
+          ! PROBLEM: Now STime is marked as present...but it needs to be moved each time...
+
+          ! try unmarking it:
+          STime_present(batch) = .false.
+    
        endif
 
     endif
