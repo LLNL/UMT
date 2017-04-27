@@ -18,11 +18,18 @@ module GPUhelper_mod
    use nvtx_mod
 
    ! Flag to control if problem fits in GPU memory or has to be batched in.
-   !logical(kind=1) :: fitsOnGPU = .false. ! default is false
-   logical(kind=1) :: fitsOnGPU = .true. ! default is false
+   logical(kind=1) :: fitsOnGPU = .false. ! default is false
+   !logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
-   !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
-   integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
+   integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
+   !integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
+
+   ! create a for the GPU buffers
+   type :: gpuStorage
+      integer :: owner ! keeps track of which batch's data is currently held in this buffer
+      real(adqt), device, allocatable :: data(:,:,:)
+   end type gpuStorage
+
 
    integer, allocatable :: binSend(:), NangBin(:), anglebatch(:)
 
@@ -48,15 +55,17 @@ module GPUhelper_mod
    type(C_DEVPTR)                    :: d_STime_p
 
    ! these buffers are allocated to fit on the device, either in double buffer batches, or full size if fits.
-   real(adqt), device, allocatable :: d_psi(:,:,:,:)
-   real(adqt), device, allocatable :: d_STimeBatch(:,:,:,:)
+   type(gpuStorage), allocatable :: d_psi(:), d_STime(:)
+
+   !real(adqt), device, allocatable :: d_psi(:,:,:,:)
+   !real(adqt), device, allocatable :: d_STimeBatch(:,:,:,:)
    real(adqt), device, allocatable :: d_psibBatch(:,:,:,:)
    ! d_phi is full size, and persists on the device.
    real(adqt), device, allocatable :: d_phi(:,:)
 
    ! flags for marking if data is already present on the device:
-   logical(kind=1), allocatable :: psi_present(:),STime_present(:)
-   logical(kind=1), allocatable :: psib_present(:) ! this one is more of a dummy
+   !   logical(kind=1), allocatable :: psi_present(:),STime_present(:)
+   !   logical(kind=1), allocatable :: psib_present(:) ! this one is more of a dummy
 
 
    ! real(adqt), device :: d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,2)
@@ -211,20 +220,19 @@ contains
   subroutine InitDeviceBuffers()
     implicit none
 
+    ! local variables
     integer :: NangBin_max
-
+    integer :: buffer
 
     ! sweep helper variables
     allocate(binSend(numGPUbuffers), NangBin(numGPUbuffers), anglebatch(numGPUbuffers))
 
     ! flags for determining if data for a batch is already on the GPU:
-    allocate(psi_present(Nbatches), STime_present(Nbatches))
-
-    print*, "psi_present(:) = ", psi_present(:)
+    
 
     ! psib_present not needed now since psib always must be moved into the device. 
     ! may be useful later if GPU direct communication is used so psib is not moved in.
-    allocate(psib_present(Nbatches))
+    !allocate(psib_present(Nbatches))
 
 
     ! events:
@@ -243,9 +251,24 @@ contains
     ! But if the problem does not fit in GPU memory, a double buffer strategy is used and the buffers have
     ! to be sized to fit chunks of the problem. (currently chunked by angle bins)
 
-    ! THese are allocated regardless of size, but their size depends on numGPUbuffers. At least 2 for double buffer.
-    allocate(d_psi(QuadSet%Groups,Size%ncornr,BATCHSIZE,numGPUbuffers))
-    allocate(d_STimeBatch(QuadSet%Groups,Size%ncornr,BATCHSIZE,numGPUbuffers))
+    ! allocate the needed number of copies of the GPU buffers
+    allocate(d_psi(numGPUbuffers),d_STime(numGPUbuffers))
+    
+
+    do buffer=1, numGPUbuffers
+
+       ! allocate the data in each buffer:
+       allocate(d_psi(buffer)% data(QuadSet%Groups,Size%ncornr,BATCHSIZE) )
+       allocate(d_STime(buffer)% data(QuadSet%Groups,Size%ncornr,BATCHSIZE) )
+       
+       ! and set the batch who owns the data in it to null (0)
+
+       d_psi(buffer)% owner = 0
+       d_STime(buffer)% owner = 0
+
+    enddo
+
+    ! allocate the other GPU arrays:
     allocate(d_psibBatch(QuadSet%Groups,Size%nbelem,BATCHSIZE,numGPUbuffers))
     allocate(d_phi(QuadSet%Groups,Size%ncornr))
 
@@ -271,9 +294,10 @@ contains
     endif
 
 
-
-
   end subroutine InitDeviceBuffers
+
+
+
 
   subroutine CreateEvents()
     implicit none
@@ -292,44 +316,45 @@ contains
   end subroutine CreateEvents
 
 
-  subroutine MoveHtoD(d_buffer, h_buffer, bin, mm1, elements, streamid, event, dataPresent)
+  subroutine checkDataOnDevice(d_storage, h_data, batch, buffer, mm1, numelements, streamid, event)
 
     implicit none
     
     !  Arguments
 
-    real(adqt), device, intent(in) :: d_buffer(:,:,:,:) ! d_psi, d_psib, or d_STime (may or not fit entire host buffer)
-    real(adqt), intent(in) :: h_buffer(:,:,:) ! host buffer
-    integer, intent(in) :: bin !bin used to select which section of the buffer is used. What is sent in will be current or next
-    integer, intent(in) :: mm1 ! starting angle index within a bin. (will be 1 when batches are sized the same as bins)
-    integer, intent(in) :: elements ! number of array elements to be moved
+    type(gpuStorage), intent(inout) :: d_storage(:) ! d_psi, d_psib, or d_STime (may or not fit entire host buffer)
+    real(adqt), intent(in) :: h_data(:,:,:) ! host buffer
+    integer, intent(in) :: batch ! which data movement batch to check.
+    integer, intent(in) :: buffer !used to select which of the spair buffers. Variable sent in will be current or next
+    integer, intent(in) :: mm1 ! starting angle index within a bin. (will be 1 when batches are sized the same as angle bins)
+    integer, intent(in) :: numelements ! number of array elements to be moved
     integer(kind=cuda_stream_kind), intent(in) :: streamid
     type(cudaEvent), intent(in) :: event
-    logical(kind=1), intent(inout) :: dataPresent ! flag indicating if the data is already present on the device.
     ! local variables
     integer :: istat
 
-    ! this routine checks whether the given angle bin is already on the device to determine if the move should occur. 
-    ! If the dataPresent flag is true, the data should not be moved. If the data is not present it is moved.
+    ! this routine checks whether the given batch already has its data on the device to determine if the move should occur. 
 
     ! if the data is already on the device, do not actually do a move.
-    if(dataPresent) then
+    if(d_storage(buffer)%owner .eq. batch) then
 
        ! no ops
       
-    else ! the data needs to be moved and then marked as present.
+    else ! the data needs to be moved and ownership changed
 
-       istat=cudaMemcpyAsync(d_buffer(1,1,1,bin),                 &
-            h_buffer(1,1,QuadSet%AngleOrder(mm1,binSend(bin))), &
-            elements, streamid )
+       istat=cudaMemcpyAsync(d_storage(buffer)%data(1,1,1),                 &
+            h_data(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+            numelements, streamid )
 
-       dataPresent = .true.
+       ! change ownership: mark this batch's data as residing in this storage buffer.
+       d_storage(buffer)%owner = batch
 
     endif
-    ! Record when movement event finishes (for example, psib on device)
+
+    ! Record when movement event finishes (for example, psi on device)
     istat=cudaEventRecord(event, streamid )
 
-  end subroutine MoveHtoD
+  end subroutine CheckDataOnDevice
     
 
 
@@ -360,20 +385,20 @@ contains
   ! end subroutine MoveDtoH
 
 
-  subroutine stageGPUData(bin,batch,mm1)
+  subroutine stageGPUData(buffer,batch,mm1)
     implicit none
 
-    integer, intent(in) :: bin, batch, mm1
+    integer, intent(in) :: buffer, batch, mm1
 
     ! local variables
 
     integer istat
 
-    ! bin can be either current or next. Just a way of putting the data movement staging that happens 
-    ! before and after the sweep into one reusable function. Bin determines if you are staging it for the
-    ! current bin or the next bin.
+    ! buffer can be either current or next. Just a way of putting the data movement staging that happens 
+    ! before and after the sweep into one reusable function. Buffer determines if you are staging it for the
+    ! current buffer or the next buffer.
 
-    !dummybatch = batch+1 should be sent in if using bin=next
+    !dummybatch = batch+1 should be sent in if using buffer=next
 
     if( FitsOnGPU ) then 
        ! If data fits on GPU do not worry about data movement. Just record that STime is ready:
@@ -385,25 +410,16 @@ contains
           ! Wait for STime to be computed:
           istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
           ! Update STime to host
-          istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(bin))), &
-               d_STimeBatch(1,1,1,bin), &
-               QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream ) 
-
-          ! if STime is updated to the host, safe to assume it will not be present next time data is moved to the GPU
-          STime_present(batch) = .false.
-
+          istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+               d_STime(buffer)%data(1,1,1), &
+               QuadSet%Groups*Size%ncornr*anglebatch(buffer), transfer_stream ) 
 
        else ! STime already computed,
           ! just need to move section of STime to device (Never called when FitsOnGPU)
-          call MoveHtoD(d_STimeBatch, Geom%ZDataSoA%STime, bin, mm1, &
-               QuadSet%Groups*Size%ncornr*anglebatch(bin), transfer_stream, &
-               STimeFinished(batch), STime_present(batch))
-               
-          ! PROBLEM: Now STime is marked as present...but it needs to be moved each time...
-
-          ! try unmarking it:
-          STime_present(batch) = .false.
-    
+          call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, buffer, mm1, &
+               QuadSet%Groups*Size%ncornr*anglebatch(buffer), transfer_stream, &
+               STimeFinished(batch))
+                   
        endif
 
     endif
@@ -411,15 +427,15 @@ contains
 
     ! could select whether to recalculate fp each time. For now always do it.
 
-    call fp_ez_c(     anglebatch(bin),                     &
+    call fp_ez_c(     anglebatch(buffer),                     &
          Size%nzones,               &
          QuadSet%Groups,            &
          Size%ncornr,               &
          QuadSet%NumAngles,         &
-         QuadSet%d_AngleOrder(mm1,binSend(bin)),        & ! only need angle batch portion
+         QuadSet%d_AngleOrder(mm1,binSend(buffer)),        & ! only need angle batch portion
          Size%maxCorner,            &
          Size%maxcf,                &
-         NangBin(bin),                   &
+         Nangbin(buffer),                   &
          Size%nbelem,                &
          QuadSet%d_omega,             &
          Geom%ZDataSoA%nCorner,                &

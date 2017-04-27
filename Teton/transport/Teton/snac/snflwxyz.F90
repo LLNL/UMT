@@ -336,7 +336,7 @@
         next = 1+mod(batch,numGPUbuffers)      ! gives 2,1,2,1... or 2,3,4...8,1 
 
 
-        print*, "batch = ", batch, "current = ", current, "next = ", next
+        !print*, "batch = ", batch, "current = ", current, "next = ", next
 
         binSend(current) = QuadSet% SendOrder(binRecv)
         binSend(next) = QuadSet% SendOrder(binRecv+1) ! binSend on next iteration
@@ -357,16 +357,16 @@
            !iteration of the loop
 
 
-           call MoveHtoD(d_psi, psi, current, mm1, &
+           call checkDataOnDevice(d_psi, psi, batch, current, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
-                Psi_OnDevice(batch), psi_present(batch))
+                Psi_OnDevice(batch) )
 
            ! If this is first temp and intensity iteration, need to calculate STime
            if (calcSTime == .true.) then
               ! have kernel stream wait until transfer of psi to device
               istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch), 0)
               ! compute STime from initial d_psi
-              call computeSTime(d_psi(1,1,1,current), d_STimeBatch(1,1,1,current), anglebatch(current), kernel_stream )
+              call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
 
               istat=cudaEventRecord(STimeFinished(batch), kernel_stream )
            endif
@@ -383,9 +383,10 @@
 
         !Stage batch of psib into GPU (after reflected angles is completed on host)
         ! happens regardless of problem size.
-        call MoveHtoD(d_psibBatch, psib, current, mm1, &
-             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream, &
-             Psib_OnDevice(batch),psib_present(batch))
+        istat = cudaMemcpyAsync(d_psibBatch(1,1,1,current), psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream)
+
+        istat=cudaEventRecord(Psib_OnDevice(batch), transfer_stream )
 
         FirstOctant2: if (binRecv == 1) then
 
@@ -460,9 +461,9 @@
                 Geom%ZDataSoA%Connect_reorder,             &
                 Geom%ZDataSoA%STotal,              &
                                 !Geom%ZDataSoA%STime,               &
-                d_STimeBatch(1,1,1,current),          &
+                d_STime(current)%data(1,1,1),          &
                 Geom%ZDataSoA%Volume,             &
-                d_psi(1,1,1,current),                      &  ! only want angle batch portion
+                d_psi(current)%data(1,1,1),                      &  ! only want angle batch portion
                 d_psibBatch(1,1,1,current),                      &
                 QuadSet%d_next,              &
                 QuadSet%d_nextZ,             &
@@ -482,9 +483,9 @@
 
         NotLastOctants: if (binRecv < QuadSet% NumBin) then
            ! If not the last bin (octant), pre-stage data for next angle bin 
-           call MoveHtoD(d_psi, psi, next, mm1, &
+           call checkDataOnDevice(d_psi, psi, batch+1, next, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
-                Psi_OnDevice(batch+1), psi_present(batch+1))
+                Psi_OnDevice(batch+1))
 
         endif NotLastOctants
         
@@ -492,7 +493,7 @@
         if (ipath == 'sweep') then
            call timer_beg('__snmoments')
            ! snmoments only reads d_psi, produces d_phi
-           call snmomentsD(d_psi(1,1,1,current), d_phi, QuadSet%d_Weight,     &
+           call snmomentsD(d_psi(current)%data(1,1,1), d_phi, QuadSet%d_Weight,     &
                 QuadSet%d_AngleOrder(mm1,binSend(current)),      &
                 anglebatch(current), kernel_stream) ! GPU version, one batch at a time
            call timer_end('__snmoments')
@@ -505,13 +506,10 @@
 
            ! Copy d_psi to host psi.
            istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-                d_psi(1,1,1,current), &
+                d_psi(current)%data(1,1,1), &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
 
            istat=cudaEventRecord(Psi_OnHost(batch), transfer_stream)
-
-           ! mark that psi will need updating next time batch is solved.
-           psi_present(batch) = .false.
 
         endif
 
@@ -521,10 +519,10 @@
 
            ! If this is first temp and intensity iteration, need to calculate STime
            if (calcSTime == .true.) then
-              ! have kernel stream wait until transfer of psi to device
+              ! have kernel stream wait until transfer of psi to device so it does not steal bandwidth
               istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch+1), 0)
               ! compute STime from initial d_psi
-              call computeSTime(d_psi(1,1,1,next), d_STimeBatch(1,1,1,next), anglebatch(next), kernel_stream )
+              call computeSTime(d_psi(next)%data(1,1,1), d_STime(next)%data(1,1,1), anglebatch(next), kernel_stream )
 
               istat=cudaEventRecord(STimeFinished(batch+1), kernel_stream )
            endif
@@ -541,7 +539,7 @@
         if( fitsOnGPU ) then
            call setExitFluxD<<<batchsize,Groups,0,kernel_stream>>>(anglebatch(current), &
                 QuadSet%d_AngleOrder(mm1,binSend(current)),  &
-                d_psi(1,1,1,current), d_psibBatch(1,1,1,current),&
+                d_psi(current)%data(1,1,1), d_psibBatch(1,1,1,current),&
                 QuadSet%d_iExit, groups, ncornr, nbelem )
 
            ! When setExitFluxD is done, record it has finished in kernel stream
@@ -555,13 +553,12 @@
                 d_psibBatch(1,1,1,current), &
                 QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
 
-
            istat=cudaEventRecord(psib_OnHost(batch), transfer_stream )
            
            ! CPU code should wait until psib is on the host.
            istat=cudaEventSynchronize( psib_OnHost(batch) )
 
-        else ! Problem does not fit in GPU, and psi is moved back from GPU anyway
+        else ! Problem does not fit in GPU, and psi is moved back from GPU already, so better to compute psib on host.
 
            ! if ready then set exit flux and move exchange psib.
            istat=cudaEventSynchronize( Psi_OnHost(batch) )
@@ -583,10 +580,6 @@
         call exchange(PSIB, binSend(current), binRecv) 
         call nvtxEndRange
         call timer_end('__exch')
-
-        ! Exchanging boundary fluxes has made the psib on the device stale.
-        ! Need to set it to be updated to the GPU next time this batch is swept.
-        psib_present(batch) = .false. 
 
      enddo AngleBin
 
