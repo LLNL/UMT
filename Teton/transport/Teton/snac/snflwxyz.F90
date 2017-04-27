@@ -332,9 +332,11 @@
         ! cycle the buffers used to hold the batches.
 
         ! there will be either 2 buffers if the problem does not fit in GPU, or NangBin if it fits.
-        current = 1 + mod(batch,numGPUbuffers) ! gives 2,1,2,1,2,1,2
-        next = 1+mod(current,numGPUbuffers)      ! gives 1,2,1,2, etc.
+        current = 1 + mod(batch-1,numGPUbuffers) ! gives 1,2,1,2...  or 1,2,3...7,8
+        next = 1+mod(batch,numGPUbuffers)      ! gives 2,1,2,1... or 2,3,4...8,1 
 
+
+        print*, "batch = ", batch, "current = ", current, "next = ", next
 
         binSend(current) = QuadSet% SendOrder(binRecv)
         binSend(next) = QuadSet% SendOrder(binRecv+1) ! binSend on next iteration

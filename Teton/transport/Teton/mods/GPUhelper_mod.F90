@@ -18,9 +18,11 @@ module GPUhelper_mod
    use nvtx_mod
 
    ! Flag to control if problem fits in GPU memory or has to be batched in.
-   logical(kind=1) :: fitsOnGPU = .false. ! default is false
+   !logical(kind=1) :: fitsOnGPU = .false. ! default is false
+   logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
-   integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
+   !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
+   integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
 
    integer, allocatable :: binSend(:), NangBin(:), anglebatch(:)
 
@@ -217,6 +219,8 @@ contains
 
     ! flags for determining if data for a batch is already on the GPU:
     allocate(psi_present(Nbatches), STime_present(Nbatches))
+
+    print*, "psi_present(:) = ", psi_present(:)
 
     ! psib_present not needed now since psib always must be moved into the device. 
     ! may be useful later if GPU direct communication is used so psib is not moved in.
