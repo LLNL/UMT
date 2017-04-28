@@ -26,6 +26,7 @@ module ZoneData_mod
      real(adqt), pointer  :: Radius(:,:,:)      ! average radius
 
      real(adqt), pinned, allocatable  :: Volume(:)          ! corner volume
+     real(adqt), pinned, allocatable  :: volumeRatio(:)
      real(adqt), pinned, allocatable  :: Sigt(:)            ! total opacity
      real(adqt), pinned, allocatable  :: SigtInv(:)         ! reciprocal of total opacity
      real(adqt), pinned, allocatable  :: STotal(:,:)        ! fixed + scattering source
@@ -46,6 +47,7 @@ module ZoneData_mod
      integer, device, allocatable :: c0(:)
 
      real(adqt), device, allocatable  :: Volume(:,:)        ! corner volume
+     real(adqt), device, allocatable  :: volumeRatio(:,:)        ! old corner volume just needed to scale by volume changes
      real(adqt), device, allocatable  :: Sigt(:,:)          ! total opacity
      real(adqt), device, allocatable  :: SigtInv(:,:)       ! reciprocal of total opacity
      real(adqt), device, allocatable  :: STotal(:,:,:)      ! fixed + scattering source
@@ -122,6 +124,7 @@ contains
     allocate( self % VolumeOld(self% nCorner) )
 
     allocate( self % Volume(self% nCorner) )
+    allocate( self % volumeRatio(self% nCorner) )
     allocate( self % Sigt(Size% ngr) )
     allocate( self % SigtInv(Size% ngr) )
     allocate( self % A_fp(Size% ndim,self% nCFaces,self% nCorner) )
@@ -166,6 +169,7 @@ contains
     allocate( self % c0(Size% nzones))
 
     allocate( self % Volume(Size% maxCorner ,Size% nzones) )
+    allocate( self % volumeRatio(Size% maxCorner ,Size% nzones) )
     allocate( self % Sigt(Size% ngr,Size% nzones) )
     allocate( self % SigtInv(Size% ngr,Size% nzones) )
     allocate( self % A_fp(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
@@ -211,8 +215,10 @@ contains
       self % c0(zone) = ZData(zone)% c0
 
       if (i <= nCorner) then
-!        self % VolumeOld(i,zone) = ZData(zone)% VolumeOld(i)
         self % Volume(i,zone) = ZData(zone)% Volume(i)
+        self % volumeRatio(i,zone) = ZData(zone)% volumeRatio(i) ! only needed for first iteration in the set.
+        ! try below later:
+        !self % volumeRatio(i+c0) = ZData(zone)% volumeRatio(i) ! only needed for first iteration in the set.
       endif
 
       if (i <= ngr) then

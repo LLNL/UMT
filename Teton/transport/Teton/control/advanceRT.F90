@@ -149,18 +149,23 @@
    ZoneLoop2: do zone=1,nzones
 
      PhiAve  = zero
-!!!!$omp parallel private(nCorner,c0,volumeRatio,sumRad) reduction(+:PhiAve)
+
      Z       => getZoneData(Geom, zone)
      nCorner = Z% nCorner
      c0      = Z% c0
-!!!!$omp do
+
      do c=1,nCorner
        volumeRatio = Z% VolumeOld(c)/Z% Volume(c)
+
+       ! store volume ratio for later transfer to gpu and use with scalePsibyVol
+       Z%volumeRatio(c) = volumeRatio 
+
        Phi(:,c0+c) = Phi(:,c0+c)*volumeRatio
-       ! this better be vectorized....also seems to have nothing to do with surrounding, break into new loop?
-       do ia=1,numAngles
-         psir(:,c0+c,ia) = psir(:,c0+c,ia)*volumeRatio
-       enddo
+
+       ! This scaling of psi is now done with psi on the GPU in snflwxyz.F90.
+       !do ia=1,numAngles
+       !  psir(:,c0+c,ia) = psir(:,c0+c,ia)*volumeRatio
+       !enddo
 
        sumRad = zero
        do ig=1,ngr
@@ -170,7 +175,7 @@
        PhiAve = PhiAve + Z% Volume(c)*sumRad
 
      enddo
-!!!!!$omp end parallel
+
 
      eradBOC = eradBOC + PhiAve
      PhiAve  = PhiAve/(Z% VolumeZone*rad_constant*speed_light)

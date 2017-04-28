@@ -22,6 +22,7 @@
    use constant_mod
    use radconstant_mod
    use cudafor
+   use GPUhelper_mod
 
    implicit none
 
@@ -41,6 +42,8 @@
    integer    :: set, NumQuadSets, NumBin
 
    real(adqt) :: maxEnergyDensityError, maxTempError 
+
+   integer :: mm1, buffer
 
 !  Dynamic Arrays
  
@@ -288,6 +291,32 @@
      endif
  
    enddo TemperatureIteration
+
+
+   ! Here is where psi should be moved back to the host (only at the end of each timestep).
+   if( fitsOnGPU ) then 
+      mm1 = 1
+      ! Copy d_psi to host psi.
+      do buffer=1, QuadSet% NumBin0 
+         binSend(buffer) = QuadSet% SendOrder0(buffer)
+         !print *, "QuadSet% NumBin = ", QuadSet% NumBin
+         !print *, "binSend(buffer) = ", binSend(buffer)
+         !print *, "mm1 = ", mm1
+         !print *, "buffer = ", buffer
+         !print *, "anglebatch(buffer) = ", anglebatch(buffer)
+         istat=cudaMemcpyAsync(psir(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+              d_psi(buffer)%data(1,1,1), &
+              QuadSet%Groups*Size%ncornr*batchsize, 0 )
+
+         ! mark the data as un-owned since host will change it, making device version stale:
+         !d_psi(buffer)% owner = 0
+         ! CHECKME: STime may be marked as stale more often than necessary.
+         !d_STime(buffer)% owner = 0
+
+      enddo
+
+   endif ! if not fits on GPU, it will have already been moved back.
+
 
 !  Update Iteration Counts
 

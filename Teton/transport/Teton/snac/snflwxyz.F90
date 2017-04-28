@@ -136,7 +136,7 @@
 
    if (ipath == 'sweep') then
      call timer_beg('_setflux')
-     call nvtxStartRange("InitExchange")
+     call nvtxStartRange("setIncidentFlux")
      call setIncidentFlux(psib)
      call nvtxEndRange
      call timer_end('_setflux')
@@ -172,13 +172,23 @@
      ! By default STime does not need to be computed.
      calcSTime = .false.
 
-     ! If this is first temp and intensity iteration, need to calculate STime 
+     ! If this is first temp and intensity iteration, several things should be done that were previously done in other routines:
+     ! 1. need to calculate STime (was done in rtstrsn.F90). Now done for each storage buffer as they are loaded in.
+     ! 2. need to scale phi and psi by the ratio of the volume change.
      if (intensityIter == 1 .and. tempIter == 1 .and. fluxIter==1) then
         ! compute STime from initial d_psi
         calcSTime = .true.
+        scaleVolume = .true.
+
+        ! ! Mark all the psi buffers as stale and needing update (trying to find bug)
+        ! do buffer=1,8
+        !    d_psi(buffer)% owner = 0
+        ! enddo
+
      else
         ! STime already computed,
         calcSTime = .false.
+        scaleVolume = .false.
      endif
 
 
@@ -232,6 +242,10 @@
            if (calcSTime == .true.) then
               ! have kernel stream wait until transfer of psi to device
               istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch), 0)
+
+              ! scale psi on first iteration too
+              call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
+
               ! compute STime from initial d_psi
               call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
 
@@ -386,8 +400,12 @@
 
            ! If this is first temp and intensity iteration, need to calculate STime
            if (calcSTime == .true.) then
-              ! have kernel stream wait until transfer of psi to device so it does not steal bandwidth
+              ! have kernel stream wait until transfer of psi to device (calc depends on psi)
               istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch+1), 0)
+
+              ! scale psi on first iteration too
+              call scalePsibyVolume(d_psi(next)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(next), kernel_stream )  
+
               ! compute STime from initial d_psi
               call computeSTime(d_psi(next)%data(1,1,1), d_STime(next)%data(1,1,1), anglebatch(next), kernel_stream )
 
@@ -498,27 +516,27 @@
 
   ! There are still some routines (advanceRT) that expect a host psi.
   ! so for now, once converged, move psi back from the device
-  if( fitsOnGPU ) then
-     ! Copy d_psi to host psi.
-     do buffer=1, QuadSet% NumBin0 
-        binSend(buffer) = QuadSet% SendOrder0(buffer)
-        !print *, "QuadSet% NumBin = ", QuadSet% NumBin
-        !print *, "binSend(buffer) = ", binSend(buffer)
-        !print *, "mm1 = ", mm1
-        !print *, "buffer = ", buffer
-        !print *, "anglebatch(buffer) = ", anglebatch(buffer)
-        istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
-             d_psi(buffer)%data(1,1,1), &
-             QuadSet%Groups*Size%ncornr*batchsize, 0 )
+  ! if( fitsOnGPU ) then
+  !    ! Copy d_psi to host psi.
+  !    do buffer=1, QuadSet% NumBin0 
+  !       binSend(buffer) = QuadSet% SendOrder0(buffer)
+  !       !print *, "QuadSet% NumBin = ", QuadSet% NumBin
+  !       !print *, "binSend(buffer) = ", binSend(buffer)
+  !       !print *, "mm1 = ", mm1
+  !       !print *, "buffer = ", buffer
+  !       !print *, "anglebatch(buffer) = ", anglebatch(buffer)
+  !       istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+  !            d_psi(buffer)%data(1,1,1), &
+  !            QuadSet%Groups*Size%ncornr*batchsize, 0 )
 
-        ! mark the data as un-owned since host will change it, making device version stale:
-        d_psi(buffer)% owner = 0
-        ! CHECKME: STime may be marked as stale more often than necessary.
-        !d_STime(buffer)% owner = 0
+  !       ! mark the data as un-owned since host will change it, making device version stale:
+  !       d_psi(buffer)% owner = 0
+  !       ! CHECKME: STime may be marked as stale more often than necessary.
+  !       !d_STime(buffer)% owner = 0
 
-     enddo
+  !    enddo
 
-  endif
+  ! endif
 
 
 

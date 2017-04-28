@@ -819,6 +819,49 @@ end subroutine setExitFlux
    end subroutine snswp3d
 
 
+
+   subroutine scalePsibyVolume(psir, volumeRatio, anglebatch, streamid)
+     ! scaling by change in mesh volume that used to be done in advanceRT is done here
+     use kind_mod
+     use constant_mod
+     use Quadrature_mod
+     use Size_mod
+     use cudafor
+     
+     implicit none
+     
+     !  Arguments
+
+     real(adqt), device, intent(inout)  :: psir(QuadSet%Groups,Size%ncornr,anglebatch) 
+     real(adqt), device, intent(in) :: volumeRatio(Size%ncornr)
+     integer, intent(in)  :: anglebatch 
+     integer(kind=cuda_stream_kind), intent(in) :: streamid
+
+     !  Local
+
+     integer    :: ia, ic, ig, ncornr, Groups
+     real(adqt) :: tau
+
+
+     ncornr = Size%ncornr
+     Groups = QuadSet% Groups   
+
+     !$cuf kernel do(3) <<< *, *, stream=streamid >>>
+     do ia=1,anglebatch
+        do ic=1,ncornr
+           do ig=1, Groups
+             psir(ig,ic,ia) = psir(ig,ic,ia)*volumeRatio(ic)
+          enddo
+       enddo
+     enddo
+
+
+     return
+   end subroutine scalePsibyVolume
+
+
+
+
    subroutine computeSTime(psiccache, STimeBatch, anglebatch, streamid)
      ! Multiply by tau to get STime
      use kind_mod

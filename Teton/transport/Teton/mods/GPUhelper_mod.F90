@@ -18,8 +18,8 @@ module GPUhelper_mod
    use nvtx_mod
 
    ! Flag to control if problem fits in GPU memory or has to be batched in.
-   !logical(kind=1) :: fitsOnGPU = .false. ! default is false
-   logical(kind=1) :: fitsOnGPU = .true. ! default is false
+   logical(kind=1) :: fitsOnGPU = .false. ! default is false
+   !logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
    !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
    integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
@@ -38,6 +38,8 @@ module GPUhelper_mod
 
    ! flag to determine if STime needs to be computed from tau*psi
    logical(kind=1) :: calcSTime
+   ! flag to determine if scaleVolume needs to be done
+   logical(kind=1) :: scaleVolume
 
    ! Cuda streams overlapping stuff
    ! (HtoD and DtoH combined stream, and kernel stream)
