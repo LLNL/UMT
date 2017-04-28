@@ -18,11 +18,11 @@ module GPUhelper_mod
    use nvtx_mod
 
    ! Flag to control if problem fits in GPU memory or has to be batched in.
-   logical(kind=1) :: fitsOnGPU = .false. ! default is false
-   !logical(kind=1) :: fitsOnGPU = .true. ! default is false
+   !logical(kind=1) :: fitsOnGPU = .false. ! default is false
+   logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
-   integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
-   !integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
+   !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
+   integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
 
    ! create a for the GPU buffers
    type :: gpuStorage
@@ -57,8 +57,7 @@ module GPUhelper_mod
    ! these buffers are allocated to fit on the device, either in double buffer batches, or full size if fits.
    type(gpuStorage), allocatable :: d_psi(:), d_STime(:)
 
-   !real(adqt), device, allocatable :: d_psi(:,:,:,:)
-   !real(adqt), device, allocatable :: d_STimeBatch(:,:,:,:)
+   
    real(adqt), device, allocatable :: d_psibBatch(:,:,:,:)
    ! d_phi is full size, and persists on the device.
    real(adqt), device, allocatable :: d_phi(:,:)
@@ -308,6 +307,7 @@ contains
        istat = cudaEventCreate(Psi_OnDevice(batch))
        istat = cudaEventCreate(STimeFinished(batch))
        istat = cudaEventCreate(Psib_OnDevice(batch))
+       istat = cudaEventCreate(Psib_OnHost(batch))
        istat = cudaEventCreate(SweepFinished(batch))
        istat = cudaEventCreate(Psi_OnHost(batch))
        istat = cudaEventCreate(ExitFluxDFinished(batch))
@@ -402,7 +402,7 @@ contains
 
     if( FitsOnGPU ) then 
        ! If data fits on GPU do not worry about data movement. Just record that STime is ready:
-       istat=cudaEventRecord(STimeFinished(batch), transfer_stream )
+       !istat=cudaEventRecord(STimeFinished(batch), transfer_stream )
     else !data does not fit on GPU and has to be streamed
 
        ! If this is first temp and intensity iteration, STime would have been calculated, needs update to host:

@@ -81,6 +81,9 @@
 
    !enddo
 !$omp end parallel
+
+
+   print *, "host version of snmoments still called here!!!!"
  
    return
    end subroutine snmoments

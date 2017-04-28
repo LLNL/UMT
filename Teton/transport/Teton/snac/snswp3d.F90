@@ -582,7 +582,8 @@ contains
 
    integer :: mm, Angle, ig, i, ib, ic
 
-   type(Exit), device, pointer :: d_ExitBdy
+   !type(Exit), device, pointer :: d_ExitBdy
+   
 
 
 !  Set exiting boundary fluxes
@@ -590,18 +591,34 @@ contains
   do mm=blockIdx%x, anglebatch, gridDim%x
    Angle = Angles(mm)
 
-   d_ExitBdy => d_iExit(Angle)
+   !d_iExit(Angle)
 
      do ig=threadIdx%x, Groups, blockDim%x
-        do i=1,d_ExitBdy% nExit
-           ib = d_ExitBdy% d_ListExit(1,i)
-           ic = d_ExitBdy% d_ListExit(2,i)
+        do i=1,d_iExit(Angle)% nExit
+           ib = d_iExit(Angle)% d_ListExit(1,i)
+           ic = d_iExit(Angle)% d_ListExit(2,i)
 
            psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
         enddo
      enddo
 
   enddo
+
+  ! do mm=blockIdx%x, anglebatch, gridDim%x
+  !  Angle = Angles(mm)
+
+  !  d_ExitBdy => d_iExit(Angle)
+
+  !    do ig=threadIdx%x, Groups, blockDim%x
+  !       do i=1,d_ExitBdy% nExit
+  !          ib = d_ExitBdy% d_ListExit(1,i)
+  !          ic = d_ExitBdy% d_ListExit(2,i)
+
+  !          psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
+  !       enddo
+  !    enddo
+
+  ! enddo
 
 end subroutine setExitFluxD
 

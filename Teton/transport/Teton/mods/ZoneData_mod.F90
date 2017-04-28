@@ -211,6 +211,7 @@ contains
       self % c0(zone) = ZData(zone)% c0
 
       if (i <= nCorner) then
+!        self % VolumeOld(i,zone) = ZData(zone)% VolumeOld(i)
         self % Volume(i,zone) = ZData(zone)% Volume(i)
       endif
 

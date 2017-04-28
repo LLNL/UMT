@@ -35,143 +35,6 @@
    implicit none
    include 'mpif.h'
 
-   ! ! Fortran to C interface
-   ! interface 
-
-   !  subroutine fp_ez_c ( &
-   !        anglebatch, &
-   !        numzones, &
-   !        numgroups, &
-   !        ncornr, &
-   !        numAngles, &
-   !        AngleOrder, &
-   !        maxcorners, &
-   !        maxfaces, &
-   !        nangbin, &
-   !        nbelem, &
-   !        omega, &
-   !        numCorners, &
-   !        numCFaces, &
-   !        c0, &
-   !        A_fp , &
-   !        omega_A_fp , &
-   !        A_ez , &
-   !        omega_A_ez , &
-   !        Connect , &
-   !        Connect_reorder, &
-   !        next, &
-   !        nextZ, &   
-   !        passZ, &
-   !        streamid &
-   !        ) &
-   !        bind ( c ) 
-
-   !       use iso_c_binding
-   !       use cudafor
-   !       integer ( c_int ) :: anglebatch
-   !       integer ( c_int ) :: numzones
-   !       integer ( c_int ) :: numgroups
-   !       integer ( c_int ) :: ncornr
-   !       integer ( c_int ) :: numAngles
-   !       integer ( c_int ), device :: AngleOrder(*)
-   !       integer ( c_int ) :: maxcorners
-   !       integer ( c_int ) :: maxfaces
-   !       integer ( c_int ) :: nangbin
-   !       integer ( c_int ) :: nbelem
-   !       real ( c_double ),device :: omega(*)
-   !       integer ( c_int ),device :: numCorners(*) 
-   !       integer ( c_int ),device :: numCFaces(*) 
-   !       integer ( c_int ),device :: c0(*)
-   !       real ( c_double ),device :: A_fp(*) 
-   !       real ( c_double ),device :: omega_A_fp(*) 
-   !       real ( c_double ),device :: A_ez(*) 
-   !       real ( c_double ),device :: omega_A_ez(*) 
-   !       integer ( c_int ),device :: Connect(*) 
-   !       integer ( c_int ),device :: Connect_reorder(*) 
-   !       integer ( c_int ),device :: next(*)
-   !       integer ( c_int ),device :: nextZ(*)
-   !       integer ( c_int ),device :: passZ(*)
-   !       integer ( kind=cuda_stream_kind ),value :: streamid
-   !     end subroutine fp_ez_c
-
-   !     subroutine snswp3d_c ( &
-   !        anglebatch, &
-   !        numzones, &
-   !        numgroups, &
-   !        ncornr, &
-   !        numAngles, &
-   !        AngleOrder, &
-   !        maxcorners, &
-   !        maxfaces, &
-   !        binRecv, &
-   !        nangbin, &
-   !        nbelem, &
-   !        omega, &
-   !        numCorners, &
-   !        numCFaces, &
-   !        c0, &
-   !        A_fp , &
-   !        omega_A_fp , &
-   !        A_ez , &
-   !        omega_A_ez , &
-   !        Connect , &
-   !        Connect_reorder, &
-   !        STotal , &
-   !        STimeBatch , &
-   !        Volume , &
-   !        psic, &
-   !        psib, &
-   !        next, &
-   !        nextZ, &   
-   !        Sigt, &
-   !        SigtInv, &
-   !        passZ, &
-   !        calcSTime, &
-   !        tau, &
-   !        streamid &
-   !        ) &
-   !        bind ( c ) 
-
-   !       use iso_c_binding
-   !       use cudafor
-   !       integer ( c_int ) :: anglebatch
-   !       integer ( c_int ) :: numzones
-   !       integer ( c_int ) :: numgroups
-   !       integer ( c_int ) :: ncornr
-   !       integer ( c_int ) :: numAngles
-   !       integer ( c_int ), device :: AngleOrder(*)
-   !       integer ( c_int ) :: maxcorners
-   !       integer ( c_int ) :: maxfaces
-   !       integer ( c_int ) :: binRecv
-   !       integer ( c_int ) :: nangbin
-   !       integer ( c_int ) :: nbelem
-   !       real ( c_double ),device :: omega(*)
-   !       integer ( c_int ),device :: numCorners(*) 
-   !       integer ( c_int ),device :: numCFaces(*) 
-   !       integer ( c_int ),device :: c0(*)
-   !       real ( c_double ),device :: A_fp(*) 
-   !       real ( c_double ),device :: omega_A_fp(*) 
-   !       real ( c_double ),device :: A_ez(*) 
-   !       real ( c_double ),device :: omega_A_ez(*) 
-   !       integer ( c_int ),device :: Connect(*) 
-   !       integer ( c_int ),device :: Connect_reorder(*) 
-   !       real ( c_double ),device :: STotal(*) 
-   !       real ( c_double ),device :: STimeBatch(*)
-   !       real ( c_double ),device :: Volume(*) 
-   !       real ( c_double ),device :: psic(*) 
-   !       real ( c_double ),device :: psib(*) 
-   !       integer ( c_int ),device :: next(*)
-   !       integer ( c_int ),device :: nextZ(*)
-   !       real ( c_double ),device :: Sigt(*) 
-   !       real ( c_double ),device :: SigtInv(*) 
-   !       integer ( c_int ),device :: passZ(*)
-   !       logical ( c_bool ) :: calcSTime
-   !       real ( c_double ) :: tau
-   !       integer ( kind=cuda_stream_kind ),value :: streamid
-   !     end subroutine snswp3d_c
-
-
-   !  end interface
 
 !  Arguments
 
@@ -197,7 +60,7 @@
    real(adqt)       :: startOMPLoopTime, endOMPLoopTime, theOMPLoopTime
 
    ! Cuda streams and double buffer managment stuff
-   integer :: s, batch, istat, current, next   
+   integer :: s, batch, istat, current, next, buffer
    
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
@@ -352,6 +215,10 @@
         anglebatch(current)=mm2-mm1+1
         anglebatch(next)=NangBin(next)
         
+        !print *, "current = ", current
+        !print *, "anglebatch(current) = ", anglebatch(current)
+        !print *, "binSend(current) = ", binSend(current)
+
         FirstOctant: if (binRecv == 1) then
            !for other bins, will begin staging in the data at the end of prev
            !iteration of the loop
@@ -395,7 +262,7 @@
         endif FirstOctant2
 
 
-        ! Do not launch sweep kernel until psib is on GPU transfer in transfer stream is done.
+        ! Do not launch sweep kernel until psib is on GPU.
         istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice(batch), 0)
 
         ! would put snreflect here if done on GPU.
@@ -537,10 +404,17 @@
 
         ! Set the exit flux
         if( fitsOnGPU ) then
+
+           istat = cudaDeviceSynchronize()
+
+           !print*, "anglebatch(1) = ", anglebatch(1)
+
            call setExitFluxD<<<batchsize,Groups,0,kernel_stream>>>(anglebatch(current), &
                 QuadSet%d_AngleOrder(mm1,binSend(current)),  &
                 d_psi(current)%data(1,1,1), d_psibBatch(1,1,1,current),&
                 QuadSet%d_iExit, groups, ncornr, nbelem )
+
+           istat = cudaDeviceSynchronize()
 
            ! When setExitFluxD is done, record it has finished in kernel stream
            istat=cudaEventRecord(ExitFluxDFinished(batch), kernel_stream )
@@ -619,6 +493,34 @@
 
      call restoreCommOrder(QuadSet)
   endif
+
+
+
+  ! There are still some routines (advanceRT) that expect a host psi.
+  ! so for now, once converged, move psi back from the device
+  if( fitsOnGPU ) then
+     ! Copy d_psi to host psi.
+     do buffer=1, QuadSet% NumBin0 
+        binSend(buffer) = QuadSet% SendOrder0(buffer)
+        !print *, "QuadSet% NumBin = ", QuadSet% NumBin
+        !print *, "binSend(buffer) = ", binSend(buffer)
+        !print *, "mm1 = ", mm1
+        !print *, "buffer = ", buffer
+        !print *, "anglebatch(buffer) = ", anglebatch(buffer)
+        istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+             d_psi(buffer)%data(1,1,1), &
+             QuadSet%Groups*Size%ncornr*batchsize, 0 )
+
+        ! mark the data as un-owned since host will change it, making device version stale:
+        d_psi(buffer)% owner = 0
+        ! CHECKME: STime may be marked as stale more often than necessary.
+        !d_STime(buffer)% owner = 0
+
+     enddo
+
+  endif
+
+
 
   angleLoopTime = angleLoopTime + theOMPLoopTime
 
