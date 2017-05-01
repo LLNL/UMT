@@ -39,6 +39,7 @@
 
    real(adqt), intent(in)    :: psic(QuadSet%Groups,Size%ncornr,QuadSet%NumAngles) 
 
+   ! Why is this inout, phi is set to zero inside routine. Looks like it is only out.
    real(adqt), intent(inout) :: Phi(QuadSet%NumMoments*QuadSet%Groups,Size%ncornr)
 
 !  Local

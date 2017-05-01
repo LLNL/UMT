@@ -14,7 +14,7 @@
 !***********************************************************************
 
 ! if batches are not currently size of bins, data is staged wrong.
-!!!#define BATCHSIZE 32
+
    subroutine snflwxyz(ipath, PSIB, PSI, PHI, angleLoopTime, intensityIter, tempIter)
 
    use, intrinsic :: iso_c_binding
@@ -35,6 +35,9 @@
    implicit none
    include 'mpif.h'
 
+
+   real(adqt) :: psib_temp(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
+   integer :: ib, ig
 
 !  Arguments
 
@@ -244,7 +247,7 @@
               istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch), 0)
 
               ! scale psi on first iteration too
-              call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
+              !call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
 
               ! compute STime from initial d_psi
               call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
@@ -385,10 +388,15 @@
            ! before moving DtoH psi, sweep needs to complete
            istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch), 0)
 
+           ! when I do not copy back this psi in fits on GPU case, results are wrong...
+           ! Even though I copy back psi at the end of temperature iterations...
+
+  !    !     ! FIXME
+
            ! Copy d_psi to host psi.
-           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-                d_psi(current)%data(1,1,1), &
-                QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
+           !istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+           !     d_psi(current)%data(1,1,1), &
+           !     QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
 
            istat=cudaEventRecord(Psi_OnHost(batch), transfer_stream)
 
@@ -404,7 +412,7 @@
               istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch+1), 0)
 
               ! scale psi on first iteration too
-              call scalePsibyVolume(d_psi(next)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(next), kernel_stream )  
+              !call scalePsibyVolume(d_psi(next)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(next), kernel_stream )  
 
               ! compute STime from initial d_psi
               call computeSTime(d_psi(next)%data(1,1,1), d_STime(next)%data(1,1,1), anglebatch(next), kernel_stream )
@@ -418,10 +426,11 @@
 
 
 
-        !call timer_beg('__setExitFlux')
+        call timer_beg('__setExitFlux')
 
         ! Set the exit flux
-        if( fitsOnGPU ) then
+        !if( fitsOnGPU ) then
+        if ( .true. ) then
 
            istat = cudaDeviceSynchronize()
 
@@ -461,7 +470,23 @@
 
         endif
 
-        !call timer_end('__setExitFlux')
+        call timer_end('__setExitFlux')
+
+        ! print *, "comparison is happening"
+        ! ! compare psib and psib_temp
+        ! do mm1=1,32
+        !    do ib=1,Size%nbelem
+        !       do ig=1,QuadSet%Groups
+        !          if(psib(ig,ib,QuadSet%AngleOrder(mm1,binSend(current)))&
+        !               /= psib_temp(ig,ib,QuadSet%AngleOrder(mm1,binSend(current))) ) then
+        !             print *, "setExitFluxD screwed up at ", ig,ib,mm1
+        !          endif
+        !       enddo
+        !    enddo
+        ! enddo
+
+
+
 
 
         !      Exchange Boundary Fluxes

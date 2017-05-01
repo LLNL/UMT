@@ -163,9 +163,10 @@
        Phi(:,c0+c) = Phi(:,c0+c)*volumeRatio
 
        ! This scaling of psi is now done with psi on the GPU in snflwxyz.F90.
-       !do ia=1,numAngles
-       !  psir(:,c0+c,ia) = psir(:,c0+c,ia)*volumeRatio
-       !enddo
+       ! or comment that out and do here:
+       do ia=1,numAngles
+          psir(:,c0+c,ia) = psir(:,c0+c,ia)*volumeRatio
+       enddo
 
        sumRad = zero
        do ig=1,ngr

@@ -153,6 +153,12 @@
 !  Save various quantities from previous time step and calculate
 !  the time-dependent source
 
+
+
+   ! psir is expected to have already been scaled by the volume here...
+
+
+
    call timer_beg('rtstrtsn')
    call rtstrtsn(psir, Phi, PSIB)
    call timer_end('rtstrtsn')
@@ -216,7 +222,7 @@
  
          call timer_beg('exch')
          call InitExchange
-         call exchange(PSIB, izero, izero)
+         call exchange(PSIB, izero, izero) ! This exchange could be pushed into snflw after volume scaling
          call timer_end('exch')
 
          call timer_beg('rswpmd')
@@ -294,7 +300,7 @@
 
 
    ! Here is where psi should be moved back to the host (only at the end of each timestep).
-   if( fitsOnGPU ) then 
+   !if( fitsOnGPU ) then 
       mm1 = 1
       ! Copy d_psi to host psi.
       do buffer=1, QuadSet% NumBin0 
@@ -308,14 +314,17 @@
               d_psi(buffer)%data(1,1,1), &
               QuadSet%Groups*Size%ncornr*batchsize, 0 )
 
+         ! THIS WAS THE FIX!!!
+         istat = cudaDeviceSynchronize()
+
          ! mark the data as un-owned since host will change it, making device version stale:
-         !d_psi(buffer)% owner = 0
+         d_psi(buffer)% owner = 0
          ! CHECKME: STime may be marked as stale more often than necessary.
          !d_STime(buffer)% owner = 0
 
       enddo
 
-   endif ! if not fits on GPU, it will have already been moved back.
+   !endif ! if not fits on GPU, it will have already been moved back.
 
 
 !  Update Iteration Counts
