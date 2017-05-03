@@ -96,6 +96,8 @@
 !*********************************************************************** 
 
    call timer_beg('advanceRT')
+   ! calls snmoments to consume psir, produce phi
+   ! scales psi (and phi too).
    call advanceRT(dtrad, PSIR, PHI)
    call timer_end('advanceRT')
 
@@ -128,6 +130,8 @@
 !     UPDATE RADIATION MOMENTS                                         *
 !***********************************************************************
 
+   !in: Phi
+   !out: RadEnergyDensity(zone,groups)
    call RadMoments(Phi, RadEnergyDensity)
 
 !***********************************************************************

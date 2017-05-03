@@ -160,12 +160,16 @@
 
 
    call timer_beg('rtstrtsn')
+   ! in: psir, phi
+   ! out: psib from set boundary
    call rtstrtsn(psir, Phi, PSIB)
    call timer_end('rtstrtsn')
 
 !  Energy Change due to Compton scattering
 
    call timer_beg('compton')
+   ! in: Phi (not even used in UMT)
+   ! out: nothing
    call rtcompton(Phi) 
    call timer_end('compton')
 
@@ -182,6 +186,8 @@
 !  Initialize Absorption Rate
 
    call timer_beg('absorbrate')
+   ! in: Phi
+   ! out: absorbrate (1 value per corner)
    call getAbsorptionRate(Phi) 
    call timer_end('absorbrate')
 
@@ -240,6 +246,8 @@
        Mat%AbsorptionRateOld(:) = Mat%AbsorptionRate(:)
 
        call timer_beg('absorbrate')
+       ! in: Phi
+       ! out: absorbrate (1 value per corner)
        call getAbsorptionRate(Phi)
        call timer_end('absorbrate')
 
@@ -342,6 +350,7 @@
 !***********************************************************************
 
    call timer_beg('bdyedt')
+   ! in: psib
    call bdyedt(psib)
    call timer_end('bdyedt')
 
