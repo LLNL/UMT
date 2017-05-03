@@ -300,7 +300,7 @@
 
 
    ! Here is where psi should be moved back to the host (only at the end of each timestep).
-   !if( fitsOnGPU ) then 
+   if( fitsOnGPU ) then 
       mm1 = 1
       ! Copy d_psi to host psi.
       do buffer=1, QuadSet% NumBin0 
@@ -324,7 +324,7 @@
 
       enddo
 
-   !endif ! if not fits on GPU, it will have already been moved back.
+   endif ! if not fits on GPU, it will have already been moved back.
 
 
 !  Update Iteration Counts

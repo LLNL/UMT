@@ -35,10 +35,6 @@
    implicit none
    include 'mpif.h'
 
-
-   real(adqt) :: psib_temp(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
-   integer :: ib, ig
-
 !  Arguments
 
    real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem,QuadSet%NumAngles)
@@ -388,15 +384,10 @@
            ! before moving DtoH psi, sweep needs to complete
            istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch), 0)
 
-           ! when I do not copy back this psi in fits on GPU case, results are wrong...
-           ! Even though I copy back psi at the end of temperature iterations...
-
-  !    !     ! FIXME
-
            ! Copy d_psi to host psi.
-           !istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-           !     d_psi(current)%data(1,1,1), &
-           !     QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
+           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+                d_psi(current)%data(1,1,1), &
+                QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
 
            istat=cudaEventRecord(Psi_OnHost(batch), transfer_stream)
 
@@ -429,8 +420,8 @@
         call timer_beg('__setExitFlux')
 
         ! Set the exit flux
-        !if( fitsOnGPU ) then
-        if ( .true. ) then
+        if( fitsOnGPU ) then
+        !if ( .true. ) then
 
            istat = cudaDeviceSynchronize()
 
@@ -472,22 +463,6 @@
 
         call timer_end('__setExitFlux')
 
-        ! print *, "comparison is happening"
-        ! ! compare psib and psib_temp
-        ! do mm1=1,32
-        !    do ib=1,Size%nbelem
-        !       do ig=1,QuadSet%Groups
-        !          if(psib(ig,ib,QuadSet%AngleOrder(mm1,binSend(current)))&
-        !               /= psib_temp(ig,ib,QuadSet%AngleOrder(mm1,binSend(current))) ) then
-        !             print *, "setExitFluxD screwed up at ", ig,ib,mm1
-        !          endif
-        !       enddo
-        !    enddo
-        ! enddo
-
-
-
-
 
         !      Exchange Boundary Fluxes
         ! these need to become non-blocking
@@ -505,6 +480,7 @@
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
+     ! needed?
      istat = cudaDeviceSynchronize()
 
 

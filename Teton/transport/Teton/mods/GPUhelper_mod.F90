@@ -21,8 +21,8 @@ module GPUhelper_mod
    logical(kind=1) :: fitsOnGPU = .false. ! default is false
    !logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
-   !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
-   integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
+   integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
+   !integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
 
    ! create a for the GPU buffers
    type :: gpuStorage
