@@ -228,6 +228,7 @@
  
          call timer_beg('exch')
          call InitExchange
+         ! exchange over all angle bins. Could be done one at a time, no?
          call exchange(PSIB, izero, izero) ! This exchange could be pushed into snflw after volume scaling
          call timer_end('exch')
 
@@ -306,33 +307,35 @@
  
    enddo TemperatureIteration
 
+   ! don't need to move psi back to host now, because I will port the routines that use psi.
 
-   ! Here is where psi should be moved back to the host (only at the end of each timestep).
-   if( fitsOnGPU ) then 
-      mm1 = 1
-      ! Copy d_psi to host psi.
-      do buffer=1, QuadSet% NumBin0 
-         binSend(buffer) = QuadSet% SendOrder0(buffer)
-         !print *, "QuadSet% NumBin = ", QuadSet% NumBin
-         !print *, "binSend(buffer) = ", binSend(buffer)
-         !print *, "mm1 = ", mm1
-         !print *, "buffer = ", buffer
-         !print *, "anglebatch(buffer) = ", anglebatch(buffer)
-         istat=cudaMemcpyAsync(psir(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
-              d_psi(buffer)%data(1,1,1), &
-              QuadSet%Groups*Size%ncornr*batchsize, 0 )
 
-         ! THIS WAS THE FIX!!!
-         istat = cudaDeviceSynchronize()
+   ! ! Here is where psi should be moved back to the host (only at the end of each timestep).
+   ! if( fitsOnGPU ) then 
+   !    mm1 = 1
+   !    ! Copy d_psi to host psi.
+   !    do buffer=1, QuadSet% NumBin0 
+   !       binSend(buffer) = QuadSet% SendOrder0(buffer)
+   !       !print *, "QuadSet% NumBin = ", QuadSet% NumBin
+   !       !print *, "binSend(buffer) = ", binSend(buffer)
+   !       !print *, "mm1 = ", mm1
+   !       !print *, "buffer = ", buffer
+   !       !print *, "anglebatch(buffer) = ", anglebatch(buffer)
+   !       istat=cudaMemcpyAsync(psir(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+   !            d_psi(buffer)%data(1,1,1), &
+   !            QuadSet%Groups*Size%ncornr*batchsize, 0 )
 
-         ! mark the data as un-owned since host will change it, making device version stale:
-         d_psi(buffer)% owner = 0
-         ! CHECKME: STime may be marked as stale more often than necessary.
-         !d_STime(buffer)% owner = 0
+   !       ! THIS WAS THE FIX!!!
+   !       istat = cudaDeviceSynchronize()
 
-      enddo
+   !       ! mark the data as un-owned since host will change it, making device version stale:
+   !       d_psi(buffer)% owner = 0
+   !       ! CHECKME: STime may be marked as stale more often than necessary.
+   !       !d_STime(buffer)% owner = 0
 
-   endif ! if not fits on GPU, it will have already been moved back.
+   !    enddo
+
+   ! endif ! if not fits on GPU, it will have already been moved back.
 
 
 !  Update Iteration Counts

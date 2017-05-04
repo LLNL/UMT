@@ -30,8 +30,10 @@ module GPUhelper_mod
       real(adqt), device, allocatable :: data(:,:,:)
    end type gpuStorage
 
+   ! Cuda streams and double buffer managment stuff
+   integer :: s, istat, current, next
 
-   integer, allocatable :: binSend(:), NangBin(:), anglebatch(:)
+   integer, allocatable :: batch(:), binSend(:), NangBin(:), anglebatch(:)
 
    ! Batchsize in number of angles (currently best to set to NangBin as some parts assume this for convenience)
    integer, parameter :: batchsize=32
@@ -226,6 +228,7 @@ contains
     integer :: buffer
 
     ! sweep helper variables
+    allocate(batch(numGPUbuffers))
     allocate(binSend(numGPUbuffers), NangBin(numGPUbuffers), anglebatch(numGPUbuffers))
 
     ! flags for determining if data for a batch is already on the GPU:
@@ -303,6 +306,8 @@ contains
   subroutine CreateEvents()
     implicit none
 
+    ! create an event for each batch.
+
     integer :: batch, istat
 
     do batch = 1, Nbatches
@@ -326,19 +331,22 @@ contains
 
     type(gpuStorage), intent(inout) :: d_storage(:) ! d_psi, d_psib, or d_STime (may or not fit entire host buffer)
     real(adqt), intent(in) :: h_data(:,:,:) ! host buffer
-    integer, intent(in) :: batch ! which data movement batch to check.
+    integer, intent(in) :: batch(:) ! which data movement batch to check.
     integer, intent(in) :: buffer !used to select which of the spair buffers. Variable sent in will be current or next
     integer, intent(in) :: mm1 ! starting angle index within a bin. (will be 1 when batches are sized the same as angle bins)
     integer, intent(in) :: numelements ! number of array elements to be moved
     integer(kind=cuda_stream_kind), intent(in) :: streamid
-    type(cudaEvent), intent(in) :: event
+    type(cudaEvent), intent(in) :: event(:)
     ! local variables
     integer :: istat
 
+    integer :: thisbatch ! holds the batch being worked on in this routine. batch(buffer)
+
+    thisbatch = batch(buffer)
     ! this routine checks whether the given batch already has its data on the device to determine if the move should occur. 
 
     ! if the data is already on the device, do not actually do a move.
-    if(d_storage(buffer)%owner .eq. batch) then
+    if(d_storage(buffer)%owner .eq. thisbatch ) then
 
        ! no ops
       
@@ -349,12 +357,12 @@ contains
             numelements, streamid )
 
        ! change ownership: mark this batch's data as residing in this storage buffer.
-       d_storage(buffer)%owner = batch
+       d_storage(buffer)%owner = thisbatch
 
     endif
 
-    ! Record when movement event finishes (for example, psi on device)
-    istat=cudaEventRecord(event, streamid )
+    ! Record when movement event finishes (for example, psi on device) for this batch
+    istat=cudaEventRecord(event(thisbatch), streamid )
 
   end subroutine CheckDataOnDevice
     
@@ -390,17 +398,19 @@ contains
   subroutine stageGPUData(buffer,batch,mm1)
     implicit none
 
-    integer, intent(in) :: buffer, batch, mm1
+    integer, intent(in) :: buffer, batch(:), mm1
 
     ! local variables
 
     integer istat
+    integer thisbatch
+
+    ! select that batch used in this routine.
+    thisbatch = batch(buffer)
 
     ! buffer can be either current or next. Just a way of putting the data movement staging that happens 
     ! before and after the sweep into one reusable function. Buffer determines if you are staging it for the
     ! current buffer or the next buffer.
-
-    !dummybatch = batch+1 should be sent in if using buffer=next
 
     if( FitsOnGPU ) then 
        ! If data fits on GPU do not worry about data movement. Just record that STime is ready:
@@ -410,7 +420,7 @@ contains
        ! If this is first temp and intensity iteration, STime would have been calculated, needs update to host:
        if (calcSTime == .true.) then
           ! Wait for STime to be computed:
-          istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch), 0)
+          istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(thisbatch), 0)
           ! Update STime to host
           istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
                d_STime(buffer)%data(1,1,1), &
@@ -420,7 +430,7 @@ contains
           ! just need to move section of STime to device (Never called when FitsOnGPU)
           call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, buffer, mm1, &
                QuadSet%Groups*Size%ncornr*anglebatch(buffer), transfer_stream, &
-               STimeFinished(batch))
+               STimeFinished)
                    
        endif
 
