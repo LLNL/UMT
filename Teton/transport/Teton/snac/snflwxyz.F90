@@ -28,6 +28,7 @@
    use cudafor
    use nvtx_mod
    use GPUhelper_mod
+   use snreflect
 
 #include "assert.h"
 !  Assertion checking include file for TETON
@@ -256,9 +257,12 @@
         ! relfected angles is done on CPU, while above is taking place on GPU
         call nvtxStartRange("snreflect")
         ! Set angular fluxes for reflected angles
-        do mm=mm1,mm2
-           call snreflect(QuadSet%AngleOrder(mm,binSend(current)), PSIB)
-        enddo
+
+           call snreflectD(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), PSIB)
+
+!           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &
+!                nReflecting, set)
+
         call nvtxEndRange
 
         ! Stage batch of psib into GPU (after reflected angles is completed on host)

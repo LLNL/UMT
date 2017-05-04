@@ -15,8 +15,8 @@ module Boundary_mod
          getReflectedAngle
 
   type, public :: ReflectedAngle
-     !integer,    pointer  :: ReflAngle(:)      ! list of angle IDs
      integer,    allocatable  :: ReflAngle(:)      ! list of angle IDs
+     integer, device, allocatable :: d_ReflAngle(:) ! list of angle IDs on device
   end type ReflectedAngle
                                                                                  
   type, public :: Boundary 
@@ -229,8 +229,12 @@ contains
       iRef    => self% iRef(set)
 
       allocate( iRef% ReflAngle(QuadSet% NumAngles) )
+      allocate( iRef% d_ReflAngle(QuadSet% NumAngles) )
 
       iRef% ReflAngle(:) = -1
+      ! duplicate on device:
+      iRef% d_ReflAngle(:) = -1
+
     enddo
 
     return
@@ -263,6 +267,7 @@ contains
       iRef    => self% iRef(set)
                                                                                                    
       deallocate( iRef% ReflAngle )
+      deallocate( iRef% d_ReflAngle )
     enddo
                                                                                                    
     return
@@ -322,6 +327,9 @@ contains
     set  =  QuadSet% QuadID
     iRef => self% iRef(set)                                                                                                 
     iRef% ReflAngle(IncAngle) = ReflAngle
+    ! set this value on the device too.
+    iRef% d_ReflAngle(IncAngle) = ReflAngle
+    
                                                                                                    
     return
                                                                                                    
