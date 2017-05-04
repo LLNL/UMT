@@ -361,13 +361,13 @@
 
 
 
-        NotLastOctants: if (binRecv < QuadSet% NumBin) then
+        !NotLastOctants: if (binRecv < QuadSet% NumBin) then
            ! If not the last bin (octant), pre-stage data for next angle bin 
            call checkDataOnDevice(d_psi, psi, batch, next, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
                 Psi_OnDevice)
 
-        endif NotLastOctants
+        !endif NotLastOctants
         
         
         if (ipath == 'sweep') then
