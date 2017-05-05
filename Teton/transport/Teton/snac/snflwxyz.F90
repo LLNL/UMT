@@ -63,10 +63,6 @@
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
 
-   ! zero copy pointers for psib
-   type(C_DEVPTR)                    :: d_psib_p
-   real(adqt), device, allocatable :: pinned_psib(:,:,:)
-
    !integer :: devnum, cacheconfig
 
 !  Convenient Mesh Constants
@@ -122,7 +118,7 @@
    !istat = cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte)
 
    
-   print *, "SendOrder(1:8)", QuadSet% SendOrder(1:8)
+   !print *, "SendOrder(1:8)", QuadSet% SendOrder(1:8)
 
 
    if (first_time) then
@@ -203,7 +199,7 @@
      call timer_beg('_anglebins')     
      AngleBin: do binRecv=1,QuadSet% NumBin
 
-
+        ! cycle the buffers used to hold the batches.
         ! there will be either 2 buffers if the problem does not fit in GPU, or NangBin if it fits.
         current = 1 + mod(binRecv-1,numGPUbuffers) ! gives 1,2,1,2...  or 1,2,3...7,8
         next = 1+mod(binRecv,numGPUbuffers)      ! gives 2,1,2,1... or 2,3,4...8,1 
@@ -212,12 +208,7 @@
         batch(current) = binRecv
         batch(next) = 1 + mod(binRecv,QuadSet% NumBin)
 
-        ! cycle the buffers used to hold the batches.
-
-
-
-        !print*, "batch = ", batch, "current = ", current, "next = ", next
-
+        
         binSend(current) = QuadSet% SendOrder(binRecv)
         binSend(next) = QuadSet% SendOrder(batch(next)) ! binSend on next iteration
         NangBin(current) = QuadSet% NangBinList(binSend(current))
@@ -236,10 +227,38 @@
         !print *, "anglebatch(current) = ", anglebatch(current)
         !print *, "binSend(current) = ", binSend(current)
 
-        !FirstOctant: if (binRecv == 1) then
-           !for other bins, will begin staging in the data at the end of prev
-           !iteration of the loop
 
+        ! Stage batch of psib into GPU 
+        ! happens regardless of problem size.
+        istat = cudaMemcpyAsync(d_psibBatch(1,1,1,current), psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream)
+
+        istat=cudaEventRecord(Psib_OnDevice( batch(current) ), transfer_stream )
+
+
+        ! Do not launch snreflect kernel until psib is on GPU.
+        istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
+
+        ! relfected angles could be done on CPU or GPU, both steal CPU bandwidth needed from copies.
+        call nvtxStartRange("snreflect")
+        ! Set angular fluxes for reflected angles
+
+        ! Do not launch snreflect until psib is on GPU.
+        !istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
+
+        call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), &
+             d_psibBatch(1,1,1,current), pinned_psib, kernel_stream)
+
+!           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &
+!                nReflecting, set)
+
+        call nvtxEndRange
+
+
+
+
+        ! Expect this will not need to be called, because
+        ! advanceRT will set up at least the first bin.
 
            call checkDataOnDevice(d_psi, psi, batch, current, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
@@ -259,15 +278,6 @@
               istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
            endif
 
-        !endif FirstOctant
-
-
-        ! Stage batch of psib into GPU (after reflected angles is completed on host)
-        ! happens regardless of problem size.
-        istat = cudaMemcpyAsync(d_psibBatch(1,1,1,current), psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream)
-
-        istat=cudaEventRecord(Psib_OnDevice( batch(current) ), transfer_stream )
 
 
         FirstOctant2: if (binRecv == 1) then
@@ -276,29 +286,6 @@
 
         endif FirstOctant2
 
-
-        ! Do not launch sweep kernel until psib is on GPU.
-        istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
-
-
-
-        ! relfected angles is done on CPU, while above is taking place on GPU
-        call nvtxStartRange("snreflect")
-        ! Set angular fluxes for reflected angles
-
-        ! Do not launch snreflect until psib is on GPU.
-        !istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
-
-        call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), &
-             d_psibBatch(1,1,1,current), pinned_psib, kernel_stream)
-
-!           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &
-!                nReflecting, set)
-
-        call nvtxEndRange
-
-
-        ! would put snreflect here if done on GPU.
 
         ! Also make sure STime is ready before launching sweep
         istat = cudaStreamWaitEvent(kernel_stream, STimeFinished( batch(current) ), 0)

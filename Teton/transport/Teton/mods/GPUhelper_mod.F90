@@ -53,15 +53,14 @@ module GPUhelper_mod
    type(cudaEvent), allocatable :: ExitFluxDFinished(:)
    ! integer :: s, batch, istat, current, next
 
-   ! zero copy pointers for phi and psib
-   !type(C_DEVPTR)                    :: d_phi_p
-   !type(C_DEVPTR)                    :: d_psib_p
-   !type(C_DEVPTR)                    :: d_STime_p
-
    ! these buffers are allocated to fit on the device, either in double buffer batches, or full size if fits.
    type(gpuStorage), allocatable :: d_psi(:), d_STime(:)
 
+   ! zero copy pointers for psib
+   type(C_DEVPTR)                    :: d_psib_p
+   real(adqt), device, allocatable :: pinned_psib(:,:,:)
    
+   ! device resident batch size of psib
    real(adqt), device, allocatable :: d_psibBatch(:,:,:,:)
    ! d_phi is full size, and persists on the device.
    real(adqt), device, allocatable :: d_phi(:,:)
