@@ -14,7 +14,7 @@
 
   contains
     
-    subroutine snreflectD(anglebatch, Angles, PSIB) 
+    subroutine snreflectD(anglebatch, Angles, d_psib, pinned_psib, streamid) 
 
       use kind_mod
       use constant_mod
@@ -22,6 +22,7 @@
       use Quadrature_mod
       use BoundaryList_mod
       use Boundary_mod
+      use cudafor
       
       implicit none
       
@@ -31,15 +32,19 @@
       
       integer, intent(in)    :: Angles(anglebatch)
       
-      real(adqt), intent(inout) :: psib(QuadSet%Groups,Size%nbelem, & 
-                                     QuadSet%NumAngles) 
+      real(adqt), device, intent(out) :: d_psib(QuadSet%Groups,Size%nbelem, anglebatch)
+      real(adqt), device, intent(in) :: pinned_psib(QuadSet%Groups,Size%nbelem, QuadSet%NumAngles) ! zerocopy
+
+!      integer, intent(in) :: mm1
+
+      integer(kind=cuda_stream_kind), intent(in) :: streamid
 
       
       !  Local Variables
 
-      integer    :: i, ib, Mref, Minc, mm, ig
+      integer    :: i, ib, Mref, Minc, mm, ig, m0
       
-      integer    :: nBdyElem, b1, b2
+      integer    :: nBdyElem, b1, b2, Groups
       
 
       integer      :: nReflecting, set ! num reflecting boundaries, set=QuadSet%QuadID
@@ -48,6 +53,7 @@
       
       set  =  QuadSet% QuadID
       
+      Groups = QuadSet% Groups
       
       !  Loop over reflecting-boundary sets:
       
@@ -66,19 +72,22 @@
          b2        =  b1 + nBdyElem - 1
 
          ! loop over angles in anglebatch:
+
          do mm=1, anglebatch
             Minc = Angles(mm)
+            !print *, "Minc = ", Minc
 
             Mref = RadBoundary%iBoundary(i)%iRef(set)% ReflAngle(Minc)
 
             if (Mref > 0) then
 
+               !$cuf kernel do(2) <<< (*,*), (16,16), stream=streamid >>>            
                do ib=b1,b2
-                  do ig=1,32 !Groups
-                     psib(ig,ib,Minc) = psib(ig,ib,Mref)
+                  do ig=1,Groups         
+                     d_psib(ig,ib,mm) = pinned_psib(ig,ib,Mref)
+
                   enddo
                enddo
-
             endif
 
          enddo 

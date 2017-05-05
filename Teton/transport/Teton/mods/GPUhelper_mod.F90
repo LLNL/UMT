@@ -55,8 +55,8 @@ module GPUhelper_mod
 
    ! zero copy pointers for phi and psib
    !type(C_DEVPTR)                    :: d_phi_p
-   type(C_DEVPTR)                    :: d_psib_p
-   type(C_DEVPTR)                    :: d_STime_p
+   !type(C_DEVPTR)                    :: d_psib_p
+   !type(C_DEVPTR)                    :: d_STime_p
 
    ! these buffers are allocated to fit on the device, either in double buffer batches, or full size if fits.
    type(gpuStorage), allocatable :: d_psi(:), d_STime(:)

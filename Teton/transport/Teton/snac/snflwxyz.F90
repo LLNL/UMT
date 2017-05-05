@@ -63,6 +63,10 @@
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
 
+   ! zero copy pointers for psib
+   type(C_DEVPTR)                    :: d_psib_p
+   real(adqt), device, allocatable :: pinned_psib(:,:,:)
+
    !integer :: devnum, cacheconfig
 
 !  Convenient Mesh Constants
@@ -92,6 +96,9 @@
    !    call c_f_pointer(d_STime_p, d_STime, [QuadSet%Groups,Size%ncornr, Size%nangSN] )
    ! endif
 
+   istat = cudaHostGetDevicePointer(d_psib_p, C_LOC(psib(1,1,1)), 0)
+   ! Translate that C pointer to the fortran array with given dimensions
+   call c_f_pointer(d_psib_p, pinned_psib, [QuadSet%Groups, Size%nbelem, QuadSet%NumAngles] )
 
 
    theOMPLoopTime=0.0
@@ -254,16 +261,6 @@
 
         !endif FirstOctant
 
-        ! relfected angles is done on CPU, while above is taking place on GPU
-        call nvtxStartRange("snreflect")
-        ! Set angular fluxes for reflected angles
-
-           call snreflectD(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), PSIB)
-
-!           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &
-!                nReflecting, set)
-
-        call nvtxEndRange
 
         ! Stage batch of psib into GPU (after reflected angles is completed on host)
         ! happens regardless of problem size.
@@ -271,6 +268,7 @@
              QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream)
 
         istat=cudaEventRecord(Psib_OnDevice( batch(current) ), transfer_stream )
+
 
         FirstOctant2: if (binRecv == 1) then
 
@@ -281,6 +279,24 @@
 
         ! Do not launch sweep kernel until psib is on GPU.
         istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
+
+
+
+        ! relfected angles is done on CPU, while above is taking place on GPU
+        call nvtxStartRange("snreflect")
+        ! Set angular fluxes for reflected angles
+
+        ! Do not launch snreflect until psib is on GPU.
+        !istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
+
+        call snreflectD(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), &
+             d_psibBatch(1,1,1,current), pinned_psib, kernel_stream)
+
+!           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &
+!                nReflecting, set)
+
+        call nvtxEndRange
+
 
         ! would put snreflect here if done on GPU.
 
