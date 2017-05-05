@@ -289,7 +289,7 @@
         ! Do not launch snreflect until psib is on GPU.
         !istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
 
-        call snreflectD(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), &
+        call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), &
              d_psibBatch(1,1,1,current), pinned_psib, kernel_stream)
 
 !           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &

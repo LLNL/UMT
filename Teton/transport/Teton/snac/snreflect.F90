@@ -30,7 +30,7 @@
       
       integer,  intent(in)    :: anglebatch!, groups, nbelem
       
-      integer, intent(in)    :: Angles(anglebatch)
+      integer, device, intent(in)    :: Angles(anglebatch)
       
       real(adqt), device, intent(out) :: d_psib(QuadSet%Groups,Size%nbelem, anglebatch)
       real(adqt), device, intent(in) :: pinned_psib(QuadSet%Groups,Size%nbelem, QuadSet%NumAngles) ! zerocopy
@@ -41,6 +41,9 @@
 
       
       !  Local Variables
+
+      integer, device, pointer :: d_ReflAngle(:)
+
 
       integer    :: i, ib, Mref, Minc, mm, ig, m0
       
@@ -55,6 +58,10 @@
       
       Groups = QuadSet% Groups
       
+
+      !allocate( d_ReflAngle(QuadSet%NumAngles) )
+
+
       !  Loop over reflecting-boundary sets:
       
       ReflectingLoop: do i=1,nReflecting
@@ -71,25 +78,23 @@
          b1 = Bdy%BdyElem1
          b2        =  b1 + nBdyElem - 1
 
-         ! loop over angles in anglebatch:
+         d_ReflAngle => RadBoundary%iBoundary(i)%iRef(set)% d_ReflAngle
 
+         ! loop over angles in anglebatch: (THIS CAN ACTUALLY BE DONE IN PARALLEL. IN FACT SHOULD DO EVEN ON HOST)
+         !$cuf kernel do(3) <<< (*,*), (16,16), stream=streamid >>>            
          do mm=1, anglebatch
-            Minc = Angles(mm)
-            !print *, "Minc = ", Minc
+            do ib=b1,b2
+               do ig=1,Groups         
+                  Minc = Angles(mm)
+                  
+                  Mref = d_ReflAngle(Minc)
 
-            Mref = RadBoundary%iBoundary(i)%iRef(set)% ReflAngle(Minc)
+                  if (Mref > 0) then
 
-            if (Mref > 0) then
-
-               !$cuf kernel do(2) <<< (*,*), (16,16), stream=streamid >>>            
-               do ib=b1,b2
-                  do ig=1,Groups         
                      d_psib(ig,ib,mm) = pinned_psib(ig,ib,Mref)
-
-                  enddo
+                  endif
                enddo
-            endif
-
+            enddo
          enddo 
 
       enddo ReflectingLoop
