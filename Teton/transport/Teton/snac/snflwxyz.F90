@@ -273,13 +273,16 @@
               istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
            endif
 
+          call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, current, mm1, &
+               QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
+               STimeFinished)
 
 
-        FirstOctant2: if (binRecv == 1) then
+        ! FirstOctant2: if (binRecv == 1) then
 
-           call stageGPUData(current,batch,mm1)
+        !    call stageGPUData(current,batch,mm1)
 
-        endif FirstOctant2
+        ! endif FirstOctant2
 
 
         ! Also make sure STime is ready before launching sweep
@@ -413,7 +416,12 @@
               istat=cudaEventRecord(STimeFinished( batch(next) ), kernel_stream )
            endif
 
-           call stageGPUData(next,batch,mm1)
+           ! think this should be done even for last bin.
+           call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
+                QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
+                STimeFinished)
+
+
        
         endif NotLastOctants2
 
