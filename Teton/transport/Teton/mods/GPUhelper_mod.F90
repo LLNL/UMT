@@ -47,11 +47,12 @@ module GPUhelper_mod
    ! (HtoD and DtoH combined stream, and kernel stream)
    integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream
    integer :: Nbatches =  8 !QuadSet%NumBin
+   ! movement events:
    type(cudaEvent), allocatable :: Psi_OnDevice(:), Psi_OnHost(:)
    type(cudaEvent), allocatable :: Psib_OnDevice(:), Psib_OnHost(:)
+   ! kernel events
    type(cudaEvent), allocatable :: SweepFinished(:), STimeFinished(:)
-   type(cudaEvent), allocatable :: ExitFluxDFinished(:)
-   ! integer :: s, batch, istat, current, next
+   type(cudaEvent), allocatable :: ExitFluxDFinished(:), AfpFinished(:)
 
    ! these buffers are allocated to fit on the device, either in double buffer batches, or full size if fits.
    type(gpuStorage), allocatable :: d_psi(:), d_STime(:)
@@ -64,6 +65,11 @@ module GPUhelper_mod
    real(adqt), device, allocatable :: d_psibBatch(:,:,:,:)
    ! d_phi is full size, and persists on the device.
    real(adqt), device, allocatable :: d_phi(:,:)
+
+   ! create device versions
+   real(adqt), device, allocatable :: d_omega_A_fp(:,:,:,:) ! size: nZ*mC*mF*anglebatch
+   real(adqt), device, allocatable :: d_omega_A_ez(:,:,:,:) ! size: nZ*mC*mF*anglebatch
+
 
    ! flags for marking if data is already present on the device:
    !   logical(kind=1), allocatable :: psi_present(:),STime_present(:)
@@ -244,7 +250,7 @@ contains
     allocate( Psi_OnDevice(Nbatches), Psi_OnHost(Nbatches) )
     allocate( Psib_OnDevice(Nbatches), Psib_OnHost(Nbatches) )
     allocate( SweepFinished(Nbatches), STimeFinished(Nbatches) )
-    allocate( ExitFluxDFinished(Nbatches) )
+    allocate( ExitFluxDFinished(Nbatches), AfpFinished(Nbatches) )
 
 
     ! device buffers:
@@ -287,12 +293,12 @@ contains
        allocate( Geom%ZDataSoA % omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf, Size%nangSN) )
        allocate( Geom%ZDataSoA % omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf, Size%nangSN) )
    
-    else ! Use just one bin for omega_A_fp and it will be recalculated every time.
+    else ! Use just one bin for omega_A_fp and it will be recalculated or moved in every time.
 
        ! allocate omega_A_fp sections for batchsize (hardwired to NangBin here, only single buffer of omega_A_fp needed)
-       NangBin_max = maxval(QuadSet%NangBinList(:))
-       allocate( Geom%ZDataSoA % omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf, NangBin_max) )
-       allocate( Geom%ZDataSoA % omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf, NangBin_max) )
+       !NangBin_max = maxval(QuadSet%NangBinList(:))
+       allocate( d_omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf, BATCHSIZE) )
+       allocate( d_omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf, BATCHSIZE) )
    
     endif
 
@@ -317,6 +323,7 @@ contains
        istat = cudaEventCreate(SweepFinished(batch))
        istat = cudaEventCreate(Psi_OnHost(batch))
        istat = cudaEventCreate(ExitFluxDFinished(batch))
+       istat = cudaEventCreate(AfpFinished(batch))
     enddo
 
   end subroutine CreateEvents
@@ -411,6 +418,23 @@ contains
     ! before and after the sweep into one reusable function. Buffer determines if you are staging it for the
     ! current buffer or the next buffer.
 
+
+
+    ! ! need to move fp stuff to device
+    ! istat = cudaMemcpyAsync(d_omega_A_fp(1,1,1,1), &
+    !          Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+    !          Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(buffer), transfer_stream)
+
+    ! ! need to move ez stuff to device
+    ! istat = cudaMemcpyAsync(d_omega_A_ez(1,1,1,1), &
+    !          Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
+    !          Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(buffer), transfer_stream)
+
+    ! ! fp and ez stuff will be finished if STimeFinished, since it is run in same stream below.
+    ! ! This means fp and ez are ready on the GPU if STime is ready.
+
+
+
     if( FitsOnGPU ) then 
        ! If data fits on GPU do not worry about data movement. Just record that STime is ready:
        !istat=cudaEventRecord(STimeFinished(batch), transfer_stream )
@@ -418,12 +442,6 @@ contains
 
        ! If this is first temp and intensity iteration, STime would have been calculated, needs update to host:
        if (calcSTime == .true.) then
-          ! Wait for STime to be computed:
-          istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(thisbatch), 0)
-          ! Update STime to host
-          istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
-               d_STime(buffer)%data(1,1,1), &
-               QuadSet%Groups*Size%ncornr*anglebatch(buffer), transfer_stream ) 
 
        else ! STime already computed,
           ! just need to move section of STime to device (Never called when FitsOnGPU)
@@ -438,33 +456,155 @@ contains
 
     ! could select whether to recalculate fp each time. For now always do it.
 
-    call fp_ez_c(     anglebatch(buffer),                     &
-         Size%nzones,               &
-         QuadSet%Groups,            &
-         Size%ncornr,               &
-         QuadSet%NumAngles,         &
-         QuadSet%d_AngleOrder(mm1,binSend(buffer)),        & ! only need angle batch portion
-         Size%maxCorner,            &
-         Size%maxcf,                &
-         Nangbin(buffer),                   &
-         Size%nbelem,                &
-         QuadSet%d_omega,             &
-         Geom%ZDataSoA%nCorner,                &
-         Geom%ZDataSoA%nCFaces,                &
-         Geom%ZDataSoA%c0,                &
-         Geom%ZDataSoA%A_fp,                &
-         Geom%ZDataSoA%omega_A_fp,                &
-         Geom%ZDataSoA%A_ez,                &
-         Geom%ZDataSoA%omega_A_ez,                &
-         Geom%ZDataSoA%Connect,             &
-         Geom%ZDataSoA%Connect_reorder,             &
-         QuadSet%d_next,              &
-         QuadSet%d_nextZ,             &
-         QuadSet%d_passZstart,        &
-         kernel_stream           &
-         )
+    ! call fp_ez_c(     anglebatch(buffer),                     &
+    !      Size%nzones,               &
+    !      QuadSet%Groups,            &
+    !      Size%ncornr,               &
+    !      QuadSet%NumAngles,         &
+    !      QuadSet%d_AngleOrder(mm1,binSend(buffer)),        & ! only need angle batch portion
+    !      Size%maxCorner,            &
+    !      Size%maxcf,                &
+    !      Nangbin(buffer),                   &
+    !      Size%nbelem,                &
+    !      QuadSet%d_omega,             &
+    !      Geom%ZDataSoA%nCorner,                &
+    !      Geom%ZDataSoA%nCFaces,                &
+    !      Geom%ZDataSoA%c0,                &
+    !      Geom%ZDataSoA%A_fp,                &
+    !      Geom%ZDataSoA%omega_A_fp,                &
+    !      Geom%ZDataSoA%A_ez,                &
+    !      Geom%ZDataSoA%omega_A_ez,                &
+    !      Geom%ZDataSoA%Connect,             &
+    !      Geom%ZDataSoA%Connect_reorder,             &
+    !      QuadSet%d_next,              &
+    !      QuadSet%d_nextZ,             &
+    !      QuadSet%d_passZstart,        &
+    !      kernel_stream           &
+    !      )
 
   end subroutine stageGPUData
+
+
+
+
+   subroutine scalePsibyVolume(psir, volumeRatio, anglebatch, streamid)
+     ! scaling by change in mesh volume that used to be done in advanceRT is done here
+     use kind_mod
+     use constant_mod
+     use Quadrature_mod
+     use Size_mod
+     use cudafor
+     
+     implicit none
+     
+     !  Arguments
+
+     real(adqt), device, intent(inout)  :: psir(QuadSet%Groups,Size%ncornr,anglebatch) 
+     real(adqt), device, intent(in) :: volumeRatio(Size%ncornr)
+     integer, intent(in)  :: anglebatch 
+     integer(kind=cuda_stream_kind), intent(in) :: streamid
+
+     !  Local
+
+     integer    :: ia, ic, ig, ncornr, Groups
+     real(adqt) :: tau
+
+
+     ncornr = Size%ncornr
+     Groups = QuadSet% Groups   
+
+     !$cuf kernel do(3) <<< *, *, stream=streamid >>>
+     do ia=1,anglebatch
+        do ic=1,ncornr
+           do ig=1, Groups
+             psir(ig,ic,ia) = psir(ig,ic,ia)*volumeRatio(ic)
+          enddo
+       enddo
+     enddo
+
+
+     return
+   end subroutine scalePsibyVolume
+
+
+
+
+   subroutine computeSTime(psiccache, STimeBatch, anglebatch, streamid)
+     ! Multiply by tau to get STime
+     use kind_mod
+     use constant_mod
+     use Quadrature_mod
+     use Size_mod
+     use cudafor
+     
+     implicit none
+     
+     !  Arguments
+
+     real(adqt), device, intent(in)  :: psiccache(QuadSet%Groups,Size%ncornr,anglebatch) 
+     real(adqt), device, intent(out) :: STimeBatch(QuadSet%Groups,Size%ncornr,anglebatch)
+     integer, intent(in)  :: anglebatch 
+     integer(kind=cuda_stream_kind), intent(in) :: streamid
+
+     !  Local
+
+     integer    :: ia, ic, ig, ncornr, Groups
+     real(adqt) :: tau
+
+
+     ncornr = Size%ncornr
+     Groups = QuadSet% Groups   
+     tau    = Size%tau
+
+
+     !$cuf kernel do(3) <<< *, *, stream=streamid >>>
+     do ia=1,anglebatch
+        do ic=1,ncornr
+           do ig=1, Groups
+              STimeBatch(ig,ic,ia) = tau*psiccache(ig,ic,ia)
+           enddo
+        enddo
+     enddo
+
+
+     return
+   end subroutine computeSTime
+
+
+
+  attributes(global)   subroutine computeSTimeD(psiccache, STimeBatch, anglebatch, groups, ncornr, tau)
+     ! Multiply by tau to get STime
+     !use kind_mod
+     !use constant_mod
+     !use Quadrature_mod
+     !use Size_mod
+     !use cudafor
+     
+     implicit none
+     
+     !  Arguments
+
+     real(adqt), device, intent(in)  :: psiccache(Groups,ncornr,anglebatch) 
+     real(adqt), device, intent(out) :: STimeBatch(Groups,ncornr,anglebatch)
+     integer, value, intent(in)  :: anglebatch, Groups, ncornr
+     real(adqt), value, intent(in) :: tau
+
+     !  Local
+
+     integer    :: ia, ic, ig
+
+     do ia=1,anglebatch !blockIdx.x
+        do ic=1,ncornr !threadIdx.y
+           do ig=1, Groups !threadIdx.x
+              STimeBatch(ig,ic,ia) = tau*psiccache(ig,ic,ia)
+           enddo
+        enddo
+     enddo
+
+
+     return
+   end subroutine computeSTimeD
+
 
 
 end module GPUhelper_mod

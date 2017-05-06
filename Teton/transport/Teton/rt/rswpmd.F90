@@ -52,9 +52,9 @@
      enddo
    enddo
 
-!  Update device-memory SoA copies of zone data
+!  Update device-memory SoA copies of STotal, sigt, sigtinv
 
-   call setZones_SoA(Geom%d_ZDataSoA, Geom%d_ZData)
+   call setZones_SoA_STotal(Geom%d_ZDataSoA, Geom%d_ZData)
 
 !  Follow particles through the mesh:
 

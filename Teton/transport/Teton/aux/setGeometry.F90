@@ -59,6 +59,8 @@
      do ib=1,nBdyElem
        Bdy% BdyToC(ib) = BdyToC(b0+ib)
      enddo
+     ! propigate this to the device version:
+     Bdy%d_BdyToC = Bdy%BdyToC
 
    enddo
 

@@ -11,7 +11,7 @@
 !                                                                      *
 !***********************************************************************
  
-   subroutine rtstrtsn(psir, Phi, PSIB)
+   subroutine rtstrtsn( Phi )
 
    use kind_mod
    use constant_mod
@@ -25,10 +25,10 @@
 
 !  Arguments
 
-   real(adqt), intent(in)    :: psir(Size%ngr,Size%ncornr,Size%nangSN),  &
-                                Phi(Size%ngr,Size%ncornr)
+   !real(adqt), intent(in)    :: psir(Size%ngr,Size%ncornr,Size%nangSN)
+   real(adqt), intent(in)    :: Phi(Size%ngr,Size%ncornr)
 
-   real(adqt), intent(inout) :: psib(Size%ngr,Size%nbelem,Size%nangSN)
+   !real(adqt), intent(inout) :: psib(Size%ngr,Size%nbelem,Size%nangSN)
 
 !  Local Variables
 
@@ -123,9 +123,9 @@ endif
    call timer_end('_initialize')
 
 !  Initialize the boundary flux array (PSIB)
-   call timer_beg('_setbdy')
-   call setbdy(psir, PSIB)
-   call timer_end('_setbdy')
+   !call timer_beg('_setbdy')
+   !call setbdy(psir, PSIB)
+   !call timer_end('_setbdy')
 
 !  Calculate zone-average energy density for convergence test
    call timer_beg('_zoneaverage')

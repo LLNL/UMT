@@ -81,7 +81,7 @@
          d_ReflAngle => RadBoundary%iBoundary(i)%iRef(set)% d_ReflAngle
 
          ! loop over angles in anglebatch: (THIS CAN ACTUALLY BE DONE IN PARALLEL. IN FACT SHOULD DO EVEN ON HOST)
-         !$cuf kernel do(3) <<< (*,*), (16,16), stream=streamid >>>            
+         !$cuf kernel do(3) <<< (*,*), (*,*), stream=streamid >>>            
          do mm=1, anglebatch
             do ib=b1,b2
                do ig=1,Groups         

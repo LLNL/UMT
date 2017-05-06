@@ -29,7 +29,9 @@ module Boundary_mod
 
      character(len=8)     :: Type              ! boundary type 
 
-     integer, pointer     :: BdyToC(:)         ! BdyToC(NumBdyElem)
+     integer,         pointer     :: BdyToC(:)         ! BdyToC(NumBdyElem)
+     integer, device, allocatable :: d_BdyToC(:)         ! BdyToC(NumBdyElem)
+     
 
      real(adqt), pointer  :: A_bdy(:,:)        ! A_bdy(ndim,NumBdyElem)
      real(adqt), pointer  :: Radius(:)         ! Radius(NumBdyElem)
@@ -143,6 +145,8 @@ contains
     self % Type       = Type
 
     allocate( self % BdyToC(self% NumBdyElem) )
+    allocate( self % d_BdyToC(self% NumBdyElem) )
+
     allocate( self % A_bdy(Size%ndim,self% NumBdyElem) )
 
     if (Size%ndim == 2) then
@@ -471,6 +475,8 @@ contains
 !   Local
 
     deallocate( self % BdyToC )
+    deallocate( self % d_BdyToC )
+
     deallocate( self % A_bdy  )
     deallocate( self % Radius )
 

@@ -22,7 +22,10 @@
    use ZoneData_mod
    use constant_mod
    use radconstant_mod
+
    use cudafor
+   !use GPUhelper_mod
+
 
    implicit none
 
@@ -34,7 +37,14 @@
                                 Phi(Size%ngr,Size%ncornr),               &
                                 RadEnergyDensity(Size%nzones,Size%ngr), angleLoopTime
 
+ 
+!  Photon Intensities on the problem boundary
+   real(adqt), pinned, allocatable, save :: psib(:,:,:)
+
+
 !  Local
+
+   integer    :: nbelem, ngr, nangSN
 
    integer    :: zone, istat
 
@@ -45,8 +55,53 @@
    call constructPsiInc(SourceProfiles)
 
 !***********************************************************************
+!                                                                      *
+!     ALLOCATE MEMORY                                                  *
+!                                                                      *
+!***********************************************************************
+ 
+!  Set some scalars used for dimensioning
+
+   nbelem   = Size%nbelem
+   ngr      = Size%ngr
+   nangSN   = Size%nangSN
+
+
+!  Photon Intensities on the problem boundary, and pin psi and phi
+
+   if (.not. allocated(psib) ) then
+     allocate( psib(ngr,nbelem,nangSN) )
+     print *, "sizeof(psib): ", sizeof(psib)
+
+     print *, "pinning psir"
+     !istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
+     istat = cudaHostRegister(C_LOC(psir(1,1,1)), int(Size%ngr,KIND=8)&
+          *int(Size%ncornr,KIND=8)&
+          *int(Size%nangSN,KIND=8)*8, cudaHostRegisterMapped)
+     print *, "size of psir: ", sizeof(psir)
+     print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
+     print *, "Correct size used is:", int(Size%ngr,KIND=8)&
+          *int(Size%ncornr,KIND=8)&
+          *int(Size%nangSN,KIND=8)*8
+     if(istat .ne. 0) then
+        print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
+        !print *, cudaGetErrorString(istat)
+     endif
+
+
+     print *, "pinning phi, sizeof(phi) = ", sizeof(phi)
+     istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
+   endif
+
+
+
+!***********************************************************************
 !     UPDATE DEVICE ZONE DATA (once only)                              *
 !***********************************************************************
+
+   ! this gives a device valid way to reference ZData%d_member where 
+   ! d_member is a device memory location. It copies the addresses of device 
+   ! memory locations (already stored in ZData) to the device structure d_ZData. 
 
    if (Geom%d_ZData_uptodate == .false.) then
      istat = cudaMemcpyAsync(C_DEVLOC(Geom%d_ZData), C_LOC(Geom%ZData), sizeof(Geom%ZData), 0)
@@ -91,21 +146,12 @@
 
    call rtvsrc
 
-!***********************************************************************
-!     SAVE ZONE AVERAGE TEMPERATURES FOR TIME STEP CALCULATION         *
-!*********************************************************************** 
-
-   call timer_beg('advanceRT')
-   ! calls snmoments to consume psir, produce phi
-   ! scales psi (and phi too).
-   call advanceRT(dtrad, PSIR, PHI)
-   call timer_end('advanceRT')
 
 !***********************************************************************
 !     RADIATION TRANSPORT MODULE                                       *
 !***********************************************************************
 
-   call rtmainsn(dtrad, PSIR, PHI, angleLoopTime) 
+   call rtmainsn(dtrad, PSIR, PHI, psib,  angleLoopTime) 
 
 !***********************************************************************
 !     ENERGY UPDATE                                                    *

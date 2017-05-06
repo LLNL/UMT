@@ -23,9 +23,14 @@
    use Boundary_mod
    use ZoneData_mod
 
+   use cudafor
+   use iso_c_binding
+
    implicit none
 
 !  Local Variables
+
+   integer :: istat
 
    type(ZoneData), pointer   :: Z2
 
@@ -192,6 +197,32 @@
      enddo
 
    enddo ZoneLoop
+
+
+   ! set up geometry on device from host geometry:
+
+   ! but I am setting up d_ZDataSoA from d_ZData, but d_ZData does not point
+   ! anywere valid yet! and where is d_ZData populated?
+
+   ! d_ZData and ZData members are the same memory. So wherever ZData is populated,
+   ! so is d_ZData, except d_ZData needs to be made sure to point to these memory locations.
+   
+   !***********************************************************************
+   !     UPDATE DEVICE ZONE DATA (once only)                              *
+   !***********************************************************************
+
+   ! this gives a device valid way to reference ZData%d_member where 
+   ! d_member is a device memory location. It copies the addresses of device 
+   ! memory locations (already stored in ZData) to the device structure d_ZData. 
+
+   if (Geom%d_ZData_uptodate == .false.) then
+     istat = cudaMemcpyAsync(C_DEVLOC(Geom%d_ZData), C_LOC(Geom%ZData), sizeof(Geom%ZData), 0)
+     Geom%d_ZData_uptodate = .true.
+   endif
+
+
+
+   call setZones_SoA_mesh(Geom%d_ZDataSoA, Geom%d_ZData)
 
 
    do i=1,nBoundary

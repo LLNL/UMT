@@ -201,6 +201,7 @@ contains
 
     self % Gnu(:) = Gnu(:)
 
+    print *, "calling rtquad, which will set d_weight"
     call rtquad(self, Ndim, igeom)
     call snynmset(self, Ndim, isctp1)
     call snpnmset(self, Ndim, isctp1)

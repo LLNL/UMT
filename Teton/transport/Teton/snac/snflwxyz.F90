@@ -47,8 +47,6 @@
    integer, intent(in) :: intensityIter, tempIter ! current flux and temperature iteration from rtmainsn
 
 !  Local
-   
-   logical(kind=1), save :: first_time = .true.
 
    integer          :: Angle, mm,mm1,mm2,  binRecv 
    integer          :: Groups, fluxIter, ishared
@@ -92,6 +90,8 @@
    !    call c_f_pointer(d_STime_p, d_STime, [QuadSet%Groups,Size%ncornr, Size%nangSN] )
    ! endif
 
+   
+   ! sets of zero copy of psib needed for snrefelctD on device.
    istat = cudaHostGetDevicePointer(d_psib_p, C_LOC(psib(1,1,1)), 0)
    ! Translate that C pointer to the fortran array with given dimensions
    call c_f_pointer(d_psib_p, pinned_psib, [QuadSet%Groups, Size%nbelem, QuadSet%NumAngles] )
@@ -102,35 +102,18 @@
    !call mpi_comm_rank(mpi_comm_world, myrank, info)
    
    
-   ! ! Set the Cache configuration for the GPU (use more L1, less shared)
-   ! istat = cudaDeviceGetCacheConfig(cacheconfig)
-   ! print *, "cacheconfig =", cacheconfig
-   ! if (cacheconfig .eq. cudaFuncCachePreferShared) then
-   !    print *, "L1 set for shared memory usage"
-   ! elseif (cacheconfig .eq. cudaFuncCachePreferL1) then
-   !    print *, "L1 set for hardware caching (prefer L1)."
-   ! else
-   !    print *, "other L1 configuration present."
+
+   ! if (first_time) then
+   !    ! Create streams that can overlap 
+   !    istat = cudaStreamCreate(transfer_stream)
+   !    istat = cudaStreamCreate(kernel_stream)
+
+   !    call InitDeviceBuffers()
+
+   !    first_time = .false.
    ! endif
 
-   ! cacheconfig = cudaFuncCachePreferL1
-   !istat = cudaDeviceSetCacheConfig(cacheconfig)
-   !istat = cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte)
-
-   
-   !print *, "SendOrder(1:8)", QuadSet% SendOrder(1:8)
-
-
-   if (first_time) then
-      ! Create streams that can overlap 
-      istat = cudaStreamCreate(transfer_stream)
-      istat = cudaStreamCreate(kernel_stream)
-
-      call InitDeviceBuffers()
-
-      first_time = .false.
-   endif
-
+   ! NOT NEEDED?
    call nvtxStartRange("createEvents")
    ! Create events to synchronize among different streams
    call CreateEvents()
@@ -153,9 +136,8 @@
 
 
    FluxIteration: do
-
-!    Post receives for all data
-                                                                                                  
+     
+     !  Post receives for all data                                                                                               
      
      call timer_beg('_initexch')
      call nvtxStartRange("InitExchange")
@@ -200,7 +182,7 @@
      AngleBin: do binRecv=1,QuadSet% NumBin
 
         ! cycle the buffers used to hold the batches.
-        ! there will be either 2 buffers if the problem does not fit in GPU, or NangBin if it fits.
+        ! there will be either 2 buffers if the problem does not fit in GPU, or NumBin if it fits.
         current = 1 + mod(binRecv-1,numGPUbuffers) ! gives 1,2,1,2...  or 1,2,3...7,8
         next = 1+mod(binRecv,numGPUbuffers)      ! gives 2,1,2,1... or 2,3,4...8,1 
 
@@ -226,6 +208,19 @@
         !print *, "current = ", current
         !print *, "anglebatch(current) = ", anglebatch(current)
         !print *, "binSend(current) = ", binSend(current)
+
+
+
+        ! stage omega_A_fp into GPU
+        istat = cudaMemcpyAsync( d_omega_A_fp(1,1,1,1), &
+             Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
+
+
+        ! stage omega_A_ez into GPU
+        istat = cudaMemcpyAsync( d_omega_A_ez(1,1,1,1), &
+             Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
 
 
         ! Stage batch of psib into GPU 
@@ -273,7 +268,7 @@
               !call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
 
               ! compute STime from initial d_psi
-              call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
+              !call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
 
               istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
            endif
@@ -341,9 +336,9 @@
                 Geom%ZDataSoA%nCFaces,                &
                 Geom%ZDataSoA%c0,                &
                 Geom%ZDataSoA%A_fp,                &
-                Geom%ZDataSoA%omega_A_fp,                &
+                d_omega_A_fp,                &
                 Geom%ZDataSoA%A_ez,                &
-                Geom%ZDataSoA%omega_A_ez,                &
+                d_omega_A_ez,                &
                 Geom%ZDataSoA%Connect,             &
                 Geom%ZDataSoA%Connect_reorder,             &
                 Geom%ZDataSoA%STotal,              &
@@ -516,6 +511,8 @@
      istat=cudaMemcpyAsync(phi(1,1), &
                    d_phi(1,1), &
                    QuadSet%Groups*Size%ncornr, transfer_stream )
+
+     ! May need device sync here if time between sweeps decreases.
 
      call restoreCommOrder(QuadSet)
   endif

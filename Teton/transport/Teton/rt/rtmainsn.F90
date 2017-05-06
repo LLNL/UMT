@@ -9,7 +9,7 @@
 !        energy/photon energy/temperature/mass/length/area/volume/time *
 !***********************************************************************
 
-   subroutine rtmainsn(dtrad, PSIR, PHI, angleLoopTime)
+   subroutine rtmainsn(dtrad, PSIR, PHI, psib, angleLoopTime)
 
    use, intrinsic :: iso_c_binding
    use kind_mod
@@ -30,15 +30,16 @@
 
    real(adqt), intent(in)    :: dtrad
 
-   real(adqt), intent(inout) :: psir(Size%ngr,Size%ncornr,Size%nangSN), &
+   real(adqt), intent(inout) :: psib(Size%ngr,Size%nbelem,Size%nangSN), &
+                                psir(Size%ngr,Size%ncornr,Size%nangSN), &
                                 Phi(Size%ngr,Size%ncornr), angleLoopTime
 
 !  Local
 
    integer    :: NumSnSets
 
-   integer    :: noutrt, ninrt, intensityIter, izero, istat
-   integer    :: nbelem, ngr, nangSN
+   integer    :: noutrt, ninrt, intensityIter, izero
+
    integer    :: set, NumQuadSets, NumBin
 
    real(adqt) :: maxEnergyDensityError, maxTempError 
@@ -46,10 +47,6 @@
    integer :: mm1, buffer
 
 !  Dynamic Arrays
- 
-!  Photon Intensities on the problem boundary
-
-   real(adqt), pinned, allocatable, save :: psib(:,:,:)
 
 #ifdef PROFILING_ON
    integer profiler(2) / 0, 0 /
@@ -65,11 +62,6 @@
    call TAU_PROFILE_START(profiler)
 #endif
 
-!  Set some scalars used for dimensioning
-
-   nbelem   = Size%nbelem
-   ngr      = Size%ngr
-   nangSN   = Size%nangSN
 
    NumSnSets = getNumSnSets(Quad)
 
@@ -90,37 +82,6 @@
    call setControls(incidentFluxControl,maxNumberOfIterations=2)
    call setGlobalError(temperatureControl,0.1d0)
 
-!***********************************************************************
-!                                                                      *
-!     ALLOCATE MEMORY                                                  *
-!                                                                      *
-!***********************************************************************
- 
-!  Photon Intensities on the problem boundary
-
-   if (.not. allocated(psib) ) then
-     allocate( psib(ngr,nbelem,nangSN) )
-     print *, "sizeof(psib): ", sizeof(psib)
-
-     print *, "pinning psir"
-     !istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
-     istat = cudaHostRegister(C_LOC(psir(1,1,1)), int(Size%ngr,KIND=8)&
-          *int(Size%ncornr,KIND=8)&
-          *int(Size%nangSN,KIND=8)*8, cudaHostRegisterMapped)
-     print *, "size of psir: ", sizeof(psir)
-     print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
-     print *, "Correct size used is:", int(Size%ngr,KIND=8)&
-          *int(Size%ncornr,KIND=8)&
-          *int(Size%nangSN,KIND=8)*8
-     if(istat .ne. 0) then
-        print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
-        !print *, cudaGetErrorString(istat)
-     endif
-
-
-     print *, "pinning phi, sizeof(phi) = ", sizeof(phi)
-     istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
-   endif
 
 !***********************************************************************
 !     SWEEP ORDER                                                      *
@@ -146,6 +107,25 @@
 
    call findexit
 
+
+!  Establish angle order for transport sweeps
+
+   call timer_beg('scheduler')
+   call SweepScheduler
+   call timer_end('scheduler')
+
+!***********************************************************************
+!     SAVE ZONE AVERAGE TEMPERATURES FOR TIME STEP CALCULATION         *
+!*********************************************************************** 
+
+   call timer_beg('advanceRT')
+   ! calls snmoments to consume psir, produce phi
+   ! scales psi (and phi too).
+   call advanceRT(dtrad, PSIR, PHI, psib)
+   call timer_end('advanceRT')
+
+
+
 !***********************************************************************
 !     SAVE PREVIOUS CYCLE INFORMATION AND BEGIN MATERIAL COUPLING      *
 !***********************************************************************
@@ -154,15 +134,11 @@
 !  the time-dependent source
 
 
-
-   ! psir is expected to have already been scaled by the volume here...
-
-
-
    call timer_beg('rtstrtsn')
    ! in: psir, phi
    ! out: psib from set boundary
-   call rtstrtsn(psir, Phi, PSIB)
+   ! removed psir and psib touching routines to advanceRT.
+   call rtstrtsn( Phi )
    call timer_end('rtstrtsn')
 
 !  Energy Change due to Compton scattering
@@ -177,11 +153,6 @@
 !     EXCHANGE BOUNDARY FLUXES                                         *
 !***********************************************************************
 
-!  Establish angle order for transport sweeps
-
-   call timer_beg('scheduler')
-   call SweepScheduler
-   call timer_end('scheduler')
 
 !  Initialize Absorption Rate
 
@@ -198,7 +169,20 @@
 !***********************************************************************
 !     BEGIN IMPLICIT ELECTRON/RADIATION COUPLING ITERATION (OUTER)     *
 !***********************************************************************
+
+! debugging optimized code:                                                
+
+   print *, "psib before starting sweeps: ", psib(1,1,1), psib(1,1,Size%nangSN)
+
+   print *, "phi before starting sweeps: ", phi(1,1), phi(1,Size%ncornr)
+
+   print *, "STime before starting sweeps: ", Geom%ZDataSoA%STime(1,1,1), Geom%ZDataSoA%STime(1,1,Size%nangSN)
  
+
+   print *, "d_psi(1)%owner = ", d_psi(1)%owner, "d_psi(2)%owner = ", d_psi(2)%owner
+
+   print *, "d_STime(1)%owner = ", d_STime(1)%owner, "d_STime(2)%owner = ", d_STime(2)%owner
+
    noutrt = 0
    ninrt  = 0
  
