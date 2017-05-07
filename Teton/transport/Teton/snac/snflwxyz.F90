@@ -231,24 +231,31 @@
         istat=cudaEventRecord(Psib_OnDevice( batch(current) ), transfer_stream )
 
 
+
+        ! If this is first temp and intensity iteration, can calculate STime while above is copying in
+        if (calcSTime == .true.) then
+           ! have kernel stream wait until transfer of psi to device (calc depends on psi)
+           istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch(current)), 0)
+
+           ! compute current batch STime from current batch d_psi (only possible first sweep of the timestep)
+           call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
+
+           ! need to record that next batch of STime is held in this device buffer (so it does not need to be copied in)
+           d_STime(current)% owner = batch(current)
+
+           istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
+        endif
+
+
         ! Do not launch snreflect kernel until psib is on GPU.
         istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
 
-        ! relfected angles could be done on CPU or GPU, both steal CPU bandwidth needed from copies.
-        call nvtxStartRange("snreflect")
+
+
         ! Set angular fluxes for reflected angles
-
-        ! Do not launch snreflect until psib is on GPU.
-        !istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( batch(current) ), 0)
-
+        ! relfected angles could be done on CPU or GPU, both steal CPU bandwidth needed from copies.
         call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), &
              d_psibBatch(1,1,1,current), pinned_psib, kernel_stream)
-
-!           call snreflectD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), PSIB, &
-!                nReflecting, set)
-
-        call nvtxEndRange
-
 
 
 
@@ -376,27 +383,6 @@
              Psi_OnDevice)
 
 
-        NotLastOctants2: if (binRecv < QuadSet% NumBin) then
-           ! If not the last bin (octant), pre-stage data for next angle bin 
-
-           ! If this is first temp and intensity iteration, need to calculate STime
-           if (calcSTime == .true.) then
-              ! have kernel stream wait until transfer of psi to device (calc depends on psi)
-              istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch(next)), 0)
-
-              ! scale psi on first iteration too
-              !call scalePsibyVolume(d_psi(next)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(next), kernel_stream )  
-
-              ! compute next batch STime from next batch d_psi (only possible first sweep of the timestep)
-              call computeSTime(d_psi(next)%data(1,1,1), d_STime(next)%data(1,1,1), anglebatch(next), kernel_stream )
-
-              ! need to record that next batch of STime is held in this device buffer (so it does not need to be copied in)
-              d_STime(next)% owner = batch(next)
-
-              istat=cudaEventRecord(STimeFinished( batch(next) ), kernel_stream )
-           endif
-       
-        endif NotLastOctants2
 
         ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
         call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
