@@ -115,6 +115,11 @@
       first_time = .false.
    endif
 
+   ! phi has to be set to zero before being used to accumultate. This
+   ! used to happen in snmoments in the original code, but since we
+   ! do a bin at a time now, we need to set to zero outside of bin loop.
+   d_phi=0 ! could try something async memset here.
+
    call nvtxStartRange("createEvents")
    ! Create events to synchronize among different streams
    call CreateEvents()
@@ -126,10 +131,6 @@
       d_STime(buffer)% owner = 0
    enddo
 
-   ! phi has to be set to zero before being used to accumultate. This
-   ! used to happen in snmoments in the original code, but since we
-   ! do a bin at a time now, we need to set to zero outside of bin loop.
-   d_phi=0 ! could try something async memset here.
 
 
    call timer_beg('_snmoments1')
@@ -162,17 +163,10 @@
         anglebatch(next)=NangBin(next)
 
 
-   ! debugging
-   istat = cudaDeviceSynchronize()
-
-
         ! check/move current batch of psi to GPU
         call checkDataOnDevice(d_psi, psi, batch, current, mm1, &
              QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
              Psi_OnDevice )
-
-   ! debugging
-   istat = cudaDeviceSynchronize()
 
 
         ! while this is transferring in, compute mesh normal stuff
@@ -209,10 +203,6 @@
         istat = cudaStreamWaitEvent(transfer_stream, AfpFinished( batch(current) ), 0)
 
 
-   ! debugging
-   istat = cudaDeviceSynchronize()
-
-
         ! need to move fp stuff back to host.
         istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
              d_omega_A_fp(1,1,1,1), &
@@ -223,8 +213,6 @@
              d_omega_A_ez(1,1,1,1), &
              Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
 
-   ! debugging
-   istat = cudaDeviceSynchronize()
 
         ! have kernel stream wait until transfer of psi to device
         istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice( batch(current) ), 0)
@@ -236,20 +224,11 @@
              anglebatch(current), kernel_stream) ! GPU version, one batch at a time
         call timer_end('__snmoments')
 
-
-   ! debugging
-   istat = cudaDeviceSynchronize()
-
-
         ! scale current batch of psi
-        ! FIXME, volumeratio is not ready here. 
-!(THINK I FIXED THIS, BUT STILL NEED ZDATA MOVED EARLIER)
         call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
 
         ! don't start Stime until previous Stime is on host. (not needed because transfer stream blocks)
 
-   ! debugging
-   istat = cudaDeviceSynchronize()
 
         ! compute STime from initial d_psi
         call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
@@ -259,19 +238,14 @@
         ! need to record who's batch of STime is held in this device buffer:
         d_STime(current)% owner = batch(current)
 
-        ! better not set the boundary until previous batch psib is on host
-
-   ! debugging
-   istat = cudaDeviceSynchronize()
-
+        ! better not set the boundary until previous batch psib is on host,
+        ! but I think this is enforced automatically.
         
         ! set the boundary here
         call setbdyD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), &
              d_psi(current)%data(1,1,1), &
              d_psibBatch(1,1,1,current), kernel_stream)
 
-   ! debugging
-   istat = cudaDeviceSynchronize()
 
         ! only prestage next batch psi if not the last bin, 
         ! because we want psi 2 and 1 on device, not 1 and 8
@@ -282,18 +256,11 @@
                 Psi_OnDevice )
         endif
 
-   ! debugging
-   istat = cudaDeviceSynchronize()
-
 
         ! move current batch psib to host
         istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
              d_psibBatch(1,1,1,current), &
              QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
-
-   ! debugging
-   istat = cudaDeviceSynchronize()
-
 
         
         ! transfer stream waits for STime to be computed:
@@ -302,9 +269,6 @@
         istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
              d_STime(current)%data(1,1,1), &
              QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream ) 
-
-   ! debugging
-   istat = cudaDeviceSynchronize()
 
 
 

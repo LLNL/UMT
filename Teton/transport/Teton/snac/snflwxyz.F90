@@ -364,15 +364,75 @@
         ! record when sweep is finished for this batch
         istat=cudaEventRecord(SweepFinished( batch(current) ), kernel_stream )
 
+        !!!!! Start of things that will overlap sweep kernel !!!!!
+
+        ! take off previous batch psi,
+        ! put on next batch psi
+        ! this would allow single buffer of STime, saving memory.
+
+        !  pre-stage data for next angle bin 
+        call checkDataOnDevice(d_psi, psi, batch, next, mm1, &
+             QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
+             Psi_OnDevice)
 
 
-        !NotLastOctants: if (binRecv < QuadSet% NumBin) then
+        NotLastOctants2: if (binRecv < QuadSet% NumBin) then
            ! If not the last bin (octant), pre-stage data for next angle bin 
-           call checkDataOnDevice(d_psi, psi, batch, next, mm1, &
-                QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
-                Psi_OnDevice)
 
-        !endif NotLastOctants
+           ! If this is first temp and intensity iteration, need to calculate STime
+           if (calcSTime == .true.) then
+              ! have kernel stream wait until transfer of psi to device (calc depends on psi)
+              istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch(next)), 0)
+
+              ! scale psi on first iteration too
+              !call scalePsibyVolume(d_psi(next)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(next), kernel_stream )  
+
+              ! compute next batch STime from next batch d_psi (only possible first sweep of the timestep)
+              call computeSTime(d_psi(next)%data(1,1,1), d_STime(next)%data(1,1,1), anglebatch(next), kernel_stream )
+
+              ! need to record that next batch of STime is held in this device buffer (so it does not need to be copied in)
+              d_STime(next)% owner = batch(next)
+
+              istat=cudaEventRecord(STimeFinished( batch(next) ), kernel_stream )
+           endif
+       
+        endif NotLastOctants2
+
+        ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
+        call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
+             QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
+             STimeFinished)
+
+
+        !!!!! End of things that will overlap sweep kernel  !!!!
+
+
+        call setExitFluxD2(anglebatch(current), &
+             QuadSet%d_AngleOrder(mm1,binSend(current)),  &
+             d_psi(current)%data(1,1,1), d_psibBatch(1,1,1,current),&
+             QuadSet%d_iExit, groups, ncornr, nbelem, kernel_stream )
+
+        ! call setExitFluxD<<<batchsize,Groups,0,kernel_stream>>>(anglebatch(current), &
+        !      QuadSet%d_AngleOrder(mm1,binSend(current)),  &
+        !      d_psi(current)%data(1,1,1), d_psibBatch(1,1,1,current),&
+        !      QuadSet%d_iExit, groups, ncornr, nbelem)
+
+
+        ! When setExitFluxD is done, record it has finished in kernel stream
+        istat=cudaEventRecord(ExitFluxDFinished( batch(current) ), kernel_stream )
+        
+        ! transfer stream should wait for event setExitFluxD to finish
+        istat = cudaStreamWaitEvent(transfer_stream, ExitFluxDFinished( batch(current) ), 0)
+        
+        ! need to move psib to Host (or later exchange from GPU).
+        istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+             d_psibBatch(1,1,1,current), &
+             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
+        
+        istat=cudaEventRecord(psib_OnHost( batch(current) ), transfer_stream )
+
+
+        !!!!! Start of things that will overlap exchange !!!!
         
         
         if (ipath == 'sweep') then
@@ -398,81 +458,8 @@
 
         endif
 
-
-        NotLastOctants2: if (binRecv < QuadSet% NumBin) then
-           ! If not the last bin (octant), pre-stage data for next angle bin 
-
-           ! If this is first temp and intensity iteration, need to calculate STime
-           if (calcSTime == .true.) then
-              ! have kernel stream wait until transfer of psi to device (calc depends on psi)
-              istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(batch(next)), 0)
-
-              ! scale psi on first iteration too
-              !call scalePsibyVolume(d_psi(next)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(next), kernel_stream )  
-
-              ! compute STime from initial d_psi
-              call computeSTime(d_psi(next)%data(1,1,1), d_STime(next)%data(1,1,1), anglebatch(next), kernel_stream )
-
-              istat=cudaEventRecord(STimeFinished( batch(next) ), kernel_stream )
-           endif
-
-           ! think this should be done even for last bin.
-           call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
-                QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
-                STimeFinished)
-
-
-       
-        endif NotLastOctants2
-
-
-
-        call timer_beg('__setExitFlux')
-
-        ! Set the exit flux
-        if( fitsOnGPU ) then
-        !if ( .true. ) then
-
-           istat = cudaDeviceSynchronize()
-
-           !print*, "anglebatch(1) = ", anglebatch(1)
-
-           call setExitFluxD<<<batchsize,Groups,0,kernel_stream>>>(anglebatch(current), &
-                QuadSet%d_AngleOrder(mm1,binSend(current)),  &
-                d_psi(current)%data(1,1,1), d_psibBatch(1,1,1,current),&
-                QuadSet%d_iExit, groups, ncornr, nbelem )
-
-           istat = cudaDeviceSynchronize()
-
-           ! When setExitFluxD is done, record it has finished in kernel stream
-           istat=cudaEventRecord(ExitFluxDFinished( batch(current) ), kernel_stream )
-
-           ! transfer stream should wait for event setExitFluxD to finish
-           istat = cudaStreamWaitEvent(transfer_stream, ExitFluxDFinished( batch(current) ), 0)
-
-           ! need to move psib to Host (or later exchange from GPU).
-           istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-                d_psibBatch(1,1,1,current), &
-                QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
-
-           istat=cudaEventRecord(psib_OnHost( batch(current) ), transfer_stream )
-           
-           ! CPU code should wait until psib is on the host.
-           istat=cudaEventSynchronize( psib_OnHost( batch(current) ) )
-
-        else ! Problem does not fit in GPU, and psi is moved back from GPU already, so better to compute psib on host.
-
-           ! if ready then set exit flux and move exchange psib.
-           istat=cudaEventSynchronize( Psi_OnHost( batch(current) ) )
-           ! compute exit flux on host. 
-           call nvtxStartRange("setExitFlux")
-           call setExitFlux(anglebatch(current), QuadSet%AngleOrder(mm1,binSend(current)), psi, psib)
-           call nvtxEndRange
-
-        endif
-
-        call timer_end('__setExitFlux')
-
+        ! CPU code should wait until psib is on the host before exchanging.
+        istat=cudaEventSynchronize( psib_OnHost( batch(current) ) )
 
         !      Exchange Boundary Fluxes
         ! these need to become non-blocking
@@ -490,7 +477,7 @@
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
-     ! needed?
+     ! needed? I think I can get rid of this.
      istat = cudaDeviceSynchronize()
 
 

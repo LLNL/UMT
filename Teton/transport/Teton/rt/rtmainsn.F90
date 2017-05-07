@@ -157,31 +157,35 @@
 !  Initialize Absorption Rate
 
    call timer_beg('absorbrate')
+   call nvtxStartRange("material")
    ! in: Phi
    ! out: absorbrate (1 value per corner)
    call getAbsorptionRate(Phi) 
+   call nvtxEndRange
    call timer_end('absorbrate')
 
    call timer_beg('material')
+   call nvtxStartRange("material")
    call UpdateMaterialCoupling(dtrad)
+   call nvtxEndRange
    call timer_end('material')
 
 !***********************************************************************
 !     BEGIN IMPLICIT ELECTRON/RADIATION COUPLING ITERATION (OUTER)     *
 !***********************************************************************
 
-! debugging optimized code:                                                
+   ! ! debugging optimized code:                                                
 
-   print *, "psib before starting sweeps: ", psib(1,1,1), psib(1,1,Size%nangSN)
+   ! print *, "psib before starting sweeps: ", psib(1,1,1), psib(1,1,Size%nangSN)
 
-   print *, "phi before starting sweeps: ", phi(1,1), phi(1,Size%ncornr)
+   ! print *, "phi before starting sweeps: ", phi(1,1), phi(1,Size%ncornr)
 
-   print *, "STime before starting sweeps: ", Geom%ZDataSoA%STime(1,1,1), Geom%ZDataSoA%STime(1,1,Size%nangSN)
+   ! print *, "STime before starting sweeps: ", Geom%ZDataSoA%STime(1,1,1), Geom%ZDataSoA%STime(1,1,Size%nangSN)
  
 
-   print *, "d_psi(1)%owner = ", d_psi(1)%owner, "d_psi(2)%owner = ", d_psi(2)%owner
+   ! print *, "d_psi(1)%owner = ", d_psi(1)%owner, "d_psi(2)%owner = ", d_psi(2)%owner
 
-   print *, "d_STime(1)%owner = ", d_STime(1)%owner, "d_STime(2)%owner = ", d_STime(2)%owner
+   ! print *, "d_STime(1)%owner = ", d_STime(1)%owner, "d_STime(2)%owner = ", d_STime(2)%owner
 
    noutrt = 0
    ninrt  = 0
@@ -201,7 +205,7 @@
        intensityIter = intensityIter + 1
  
 !***********************************************************************
-!     BEGIN LOOP OVER BATCHES                                          *
+!     BEGIN LOOP OVER BATCHES (meaning batches of quadsets here)       *
 !***********************************************************************
  
        GroupSetLoop: do set=1,NumSnSets
@@ -209,11 +213,14 @@
          QuadSet => getQuadrature(Quad, set)
 
 !  Sweep all angles in all groups in this "batch"
+
  
          call timer_beg('exch')
+         call nvtxStartRange("exch all bins")
          call InitExchange
-         ! exchange over all angle bins. Could be done one at a time, no?
-         call exchange(PSIB, izero, izero) ! This exchange could be pushed into snflw after volume scaling
+         ! exchange over all angle bins. Maybe could be done a bin at at time, overlapped with advanceRT.
+         call exchange(PSIB, izero, izero) 
+         call nvtxEndRange
          call timer_end('exch')
 
          call timer_beg('rswpmd')

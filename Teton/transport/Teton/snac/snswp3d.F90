@@ -559,8 +559,53 @@ contains
 
 
   attributes(global) subroutine setExitFluxD(  anglebatch, Angles, psicache, psibBatch, d_iExit, groups,ncornr, nbelem)
-   
+
     use kind_mod
+    use constant_mod
+    use Size_mod
+    use Geometry_mod
+    use Quadrature_mod
+
+    implicit none
+
+    integer, value,  intent(in)    :: anglebatch, groups, ncornr, nbelem
+
+    integer, device, intent(in)    :: Angles(anglebatch)
+
+    real(adqt), device, intent(in)  :: psicache(groups,ncornr,anglebatch) 
+
+    ! ALERT--SHOULDN'T THIS BE DEVICE ARRAY:
+    real(adqt), device, intent(out) :: psibBatch(Groups,nbelem,anglebatch)
+
+    type(Exit), device, intent(in) :: d_iExit(:) 
+
+    ! Local variables
+
+    integer :: mm, Angle, ig, i, ib, ic
+
+
+    !  Set exiting boundary fluxes
+
+    do mm=blockIdx%x, anglebatch, gridDim%x
+       do ig=threadIdx%x, Groups, blockDim%x
+          Angle = Angles(mm)
+          do i=1,d_iExit(Angle)% nExit
+             ib = d_iExit(Angle)% d_ListExit(1,i)
+             ic = d_iExit(Angle)% d_ListExit(2,i)
+
+             psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
+          enddo
+       enddo
+
+    enddo
+
+  end subroutine setExitFluxD
+
+
+
+subroutine setExitFluxD2(  anglebatch, Angles, psicache, psibBatch, d_iExit, groups,ncornr, nbelem, streamid)
+   
+   use kind_mod
    use constant_mod
    use Size_mod
    use Geometry_mod
@@ -568,59 +613,39 @@ contains
    
     implicit none
 
-   integer, value,  intent(in)    :: anglebatch, groups, ncornr, nbelem
+   integer,  intent(in)    :: anglebatch, groups, ncornr, nbelem
 
    integer, device, intent(in)    :: Angles(anglebatch)
 
    real(adqt), device, intent(in)  :: psicache(groups,ncornr,anglebatch) 
 
-   real(adqt), intent(out) :: psibBatch(Groups,nbelem,anglebatch)
+   real(adqt), device, intent(out) :: psibBatch(Groups,nbelem,anglebatch)
 
-   type(Exit), device, target, intent(in) :: d_iExit(:) 
+   type(Exit), device, intent(in) :: d_iExit(:) 
+
+   integer(kind=cuda_stream_kind), intent(in) :: streamid
 
    ! Local variables
 
    integer :: mm, Angle, ig, i, ib, ic
-
-   !type(Exit), device, pointer :: d_ExitBdy
    
 
+   !  Set exiting boundary fluxes
+   !$cuf kernel do(2) <<< (*,*), (*,*), stream=streamid >>>            
+   do mm=1, anglebatch
+      do ig=1, Groups
+         Angle = Angles(mm)
+         do i=1,d_iExit(Angle)% nExit
+            ib = d_iExit(Angle)% d_ListExit(1,i)
+            ic = d_iExit(Angle)% d_ListExit(2,i)
+            
+            psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
+         enddo
+      enddo
+      
+   enddo
 
-!  Set exiting boundary fluxes
-
-  do mm=blockIdx%x, anglebatch, gridDim%x
-   Angle = Angles(mm)
-
-   !d_iExit(Angle)
-
-     do ig=threadIdx%x, Groups, blockDim%x
-        do i=1,d_iExit(Angle)% nExit
-           ib = d_iExit(Angle)% d_ListExit(1,i)
-           ic = d_iExit(Angle)% d_ListExit(2,i)
-
-           psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
-        enddo
-     enddo
-
-  enddo
-
-  ! do mm=blockIdx%x, anglebatch, gridDim%x
-  !  Angle = Angles(mm)
-
-  !  d_ExitBdy => d_iExit(Angle)
-
-  !    do ig=threadIdx%x, Groups, blockDim%x
-  !       do i=1,d_ExitBdy% nExit
-  !          ib = d_ExitBdy% d_ListExit(1,i)
-  !          ic = d_ExitBdy% d_ListExit(2,i)
-
-  !          psibBatch(ig,ib,mm) = psicache(ig,ic,mm)
-  !       enddo
-  !    enddo
-
-  ! enddo
-
-end subroutine setExitFluxD
+end subroutine setExitFluxD2
 
 
 
