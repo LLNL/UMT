@@ -240,7 +240,7 @@
            ! compute current batch STime from current batch d_psi (only possible first sweep of the timestep)
            call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
 
-           ! need to record that next batch of STime is held in this device buffer (so it does not need to be copied in)
+           ! need to record that current batch of STime is held in this device buffer (so it does not need to be copied in)
            d_STime(current)% owner = batch(current)
 
            istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
@@ -261,36 +261,19 @@
 
         ! Expect this will not need to be called, because
         ! advanceRT will set up at least the first bin.
-
+        if(0) then
            call checkDataOnDevice(d_psi, psi, batch, current, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
                 Psi_OnDevice )
 
-           ! If this is first temp and intensity iteration, need to calculate STime
-           if (calcSTime == .true.) then
-              ! have kernel stream wait until transfer of psi to device
-              istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice( batch(current) ), 0)
+           ! I think this is not needed either (always a no-op)
+           call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, current, mm1, &
+                QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
+                STimeFinished)
+        endif
 
-              ! scale psi on first iteration too
-              !call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
-
-              ! compute STime from initial d_psi
-              !call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
-
-              istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
-           endif
-
-          call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, current, mm1, &
-               QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
-               STimeFinished)
-
-
-        ! FirstOctant2: if (binRecv == 1) then
-
-        !    call stageGPUData(current,batch,mm1)
-
-        ! endif FirstOctant2
-
+        ! YOU SHOULD BE ABLE TO MOVE STIME OFF THE DEVICE HERE IF CALCSTIME=TRUE
+        ! THIS WILL OVERLAP WITH SWEEP KERNEL
 
         ! Also make sure STime is ready before launching sweep
         istat = cudaStreamWaitEvent(kernel_stream, STimeFinished( batch(current) ), 0)
@@ -373,6 +356,7 @@
 
         !!!!! Start of things that will overlap sweep kernel !!!!!
 
+        ! DO ME:::::
         ! take off previous batch psi,
         ! put on next batch psi
         ! this would allow single buffer of STime, saving memory.

@@ -224,6 +224,9 @@
              anglebatch(current), kernel_stream) ! GPU version, one batch at a time
         call timer_end('__snmoments')
 
+        ! Record when snmoments finishes
+        istat=cudaEventRecord(snmomentsFinished( batch(current) ), kernel_stream )
+
         ! scale current batch of psi
         call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
 
@@ -274,19 +277,21 @@
 
    enddo
    
-   ! this could become sync on snmoments finished
-   istat = cudaDeviceSynchronize()
-
+   
+   ! transfer stream waits for snmoments calc to be finished (the last one)
+   istat = cudaStreamWaitEvent(transfer_stream, snmomentsFinished(batch(current)), 0)
+   
    ! move d_phi data to host:
    istat=cudaMemcpyAsync(phi(1,1), &
         d_phi(1,1), &
         QuadSet%Groups*Size%ncornr, transfer_stream )
 
+   istat=cudaEventRecord( phi_OnHost, transfer_stream )
    ! Actually could just do a synchronize on event phi on host...
-   istat = cudaDeviceSynchronize()
+   !istat = cudaDeviceSynchronize()
 
-
-   print *, "phi right after moving to host in advanceRT: ", phi(1,1), phi(1,Size%ncornr)
+   ! CPU code should wait until phi is on the host before using it
+   istat=cudaEventSynchronize( phi_OnHost )
 
 
    call timer_end('_snmoments1')

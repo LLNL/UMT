@@ -157,7 +157,7 @@
 !  Initialize Absorption Rate
 
    call timer_beg('absorbrate')
-   call nvtxStartRange("material")
+   call nvtxStartRange("absorbrate")
    ! in: Phi
    ! out: absorbrate (1 value per corner)
    call getAbsorptionRate(Phi) 
@@ -224,7 +224,9 @@
          call timer_end('exch')
 
          call timer_beg('rswpmd')
+         call nvtxStartRange("rswpmd",2)
          call rswpmd(PSIB, PSIR, PHI, angleLoopTime, intensityIter, noutrt)
+         call nvtxEndRange
          call timer_end('rswpmd')
 
        enddo GroupSetLoop
@@ -238,9 +240,11 @@
        Mat%AbsorptionRateOld(:) = Mat%AbsorptionRate(:)
 
        call timer_beg('absorbrate')
+       call nvtxStartRange("getAbsorptionRate")
        ! in: Phi
        ! out: absorbrate (1 value per corner)
        call getAbsorptionRate(Phi)
+       call nvtxEndRange
        call timer_end('absorbrate')
 
 !***********************************************************************
@@ -248,7 +252,9 @@
 !***********************************************************************
 
        call timer_beg('rtconi')
+       call nvtxStartRange("rtconi")
        call rtconi(maxEnergyDensityError, Phi)
+       call nvtxEndRange
        call timer_end('rtconi')
  
        if (maxEnergyDensityError < getEpsilonPoint(intensityControl) .or. &

@@ -50,9 +50,11 @@ module GPUhelper_mod
    ! movement events:
    type(cudaEvent), allocatable :: Psi_OnDevice(:), Psi_OnHost(:)
    type(cudaEvent), allocatable :: Psib_OnDevice(:), Psib_OnHost(:)
+   type(cudaEvent) :: phi_OnHost
    ! kernel events
    type(cudaEvent), allocatable :: SweepFinished(:), STimeFinished(:)
    type(cudaEvent), allocatable :: ExitFluxDFinished(:), AfpFinished(:)
+   type(cudaEvent), allocatable :: snmomentsFinished(:)
 
    ! these buffers are allocated to fit on the device, either in double buffer batches, or full size if fits.
    type(gpuStorage), allocatable :: d_psi(:), d_STime(:)
@@ -251,6 +253,7 @@ contains
     allocate( Psib_OnDevice(Nbatches), Psib_OnHost(Nbatches) )
     allocate( SweepFinished(Nbatches), STimeFinished(Nbatches) )
     allocate( ExitFluxDFinished(Nbatches), AfpFinished(Nbatches) )
+    allocate( snmomentsFinished(Nbatches) )
 
 
     ! device buffers:
@@ -324,7 +327,11 @@ contains
        istat = cudaEventCreate(Psi_OnHost(batch))
        istat = cudaEventCreate(ExitFluxDFinished(batch))
        istat = cudaEventCreate(AfpFinished(batch))
+       istat = cudaEventCreate(snmomentsFinished(batch))
+
     enddo
+
+    istat = cudaEventCreate(phi_OnHost)       
 
   end subroutine CreateEvents
 
