@@ -211,20 +211,6 @@
         !print *, "anglebatch(current) = ", anglebatch(current)
         !print *, "binSend(current) = ", binSend(current)
 
-
-
-        ! stage omega_A_fp into GPU
-        istat = cudaMemcpyAsync( d_omega_A_fp(1,1,1,1), &
-             Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
-
-
-        ! stage omega_A_ez into GPU
-        istat = cudaMemcpyAsync( d_omega_A_ez(1,1,1,1), &
-             Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
-
-
         ! Stage batch of psib into GPU 
         ! happens regardless of problem size.
         istat = cudaMemcpyAsync(d_psibBatch(1,1,1,current), psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
@@ -434,7 +420,17 @@
         ! THIS NEXT BATCH OF STIME SHOULD ACTUALLY GO RIGHT INTO THE CURRENT BATCH STIME 
         ! AS LONG AS SWEEP IS FINISHED. (NO DOUBLE BUFFER OF STIME)
 
-        if ( .not. calcSTime ) then
+        if ( calcSTime ) then
+
+           ! ! transfer stream waits for STime to be computed:
+           ! istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch(current)), 0)
+           ! ! move current batch STime to host
+           ! istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+           !      d_STime(current)%data(1,1,1), &
+           !      QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream ) 
+
+
+        else
 
            ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
            call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
@@ -449,9 +445,26 @@
            call snmomentsD(d_psi(current)%data(1,1,1), d_phi, QuadSet%d_Weight,     &
                 QuadSet%d_AngleOrder(mm1,binSend(current)),      &
                 anglebatch(current), kernel_stream) ! GPU version, one batch at a time
+
+           istat=cudaEventRecord(snmomentsFinished( batch(current) ), kernel_stream )
+
            call timer_end('__snmoments')
         endif
 
+
+        ! stage omega_A_fp into GPU
+        istat = cudaMemcpyAsync( d_omega_A_fp(1,1,1,1), &
+             Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,binSend(next))), &
+             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(next), transfer_stream)
+
+
+        ! stage omega_A_ez into GPU
+        istat = cudaMemcpyAsync( d_omega_A_ez(1,1,1,1), &
+             Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,binSend(next))), &
+             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(next), transfer_stream)
+
+
+        !!!! End of things that will overlap exchange
 
         ! CPU code should wait until psib is on the host before exchanging.
         istat=cudaEventSynchronize( psib_OnHost( batch(current) ) )
@@ -517,6 +530,12 @@
      istat=cudaMemcpyAsync(phi(1,1), &
                    d_phi(1,1), &
                    QuadSet%Groups*Size%ncornr, transfer_stream )
+     
+     istat=cudaEventRecord( phi_OnHost, transfer_stream )
+     
+     ! CPU code should wait until phi is on the host before using it
+     istat=cudaEventSynchronize( phi_OnHost )
+
 
      ! May need device sync here if time between sweeps decreases.
      istat = cudaDeviceSynchronize()

@@ -236,6 +236,7 @@
 
 
         ! compute STime from initial d_psi
+        ! (this is done again in snflw, but does not hurt now as transfer dominates here anyway, and better when data fits)
         call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
 
         istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
