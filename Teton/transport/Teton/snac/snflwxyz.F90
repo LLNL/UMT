@@ -405,14 +405,14 @@
         istat=cudaEventRecord(ExitFluxDFinished( batch(current) ), kernel_stream )
         
         ! transfer stream should wait for event setExitFluxD to finish
-        istat = cudaStreamWaitEvent(transfer_stream, ExitFluxDFinished( batch(current) ), 0)
+        istat = cudaStreamWaitEvent(transfer_stream1, ExitFluxDFinished( batch(current) ), 0)
         
         ! need to move psib to Host (or later exchange from GPU).
         istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
              d_psibBatch(1,1,1,current), &
-             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
+             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream1 ) 
         
-        istat=cudaEventRecord(psib_OnHost( batch(current) ), transfer_stream )
+        istat=cudaEventRecord(psib_OnHost( batch(current) ), transfer_stream1 )
 
 
         !!!!! Start of things that will overlap exchange !!!!
@@ -447,6 +447,22 @@
                 anglebatch(current), kernel_stream) ! GPU version, one batch at a time
 
            istat=cudaEventRecord(snmomentsFinished( batch(current) ), kernel_stream )
+
+           ! if this is the last bin, just move phi to the host 
+           ! (only need to move when converged, but it is small and this allows better overlap)
+           if (binRecv == 8 ) then
+              ! transfer stream1 waits for snmoments calc to be finished (the last current one)
+              istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
+
+
+              ! move d_phi data to host:
+              istat=cudaMemcpyAsync(phi(1,1), &
+                   d_phi(1,1), &
+                   QuadSet%Groups*Size%ncornr, transfer_stream1 )
+
+              istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
+           endif
+
 
            call timer_end('__snmoments')
         endif
@@ -501,7 +517,7 @@
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
-     ! needed? I think I can get rid of this.
+     ! not needed because psib is on host in order to do exchange
      !istat = cudaDeviceSynchronize()
 
 
@@ -528,26 +544,24 @@
   if (ipath == 'sweep') then
 
      
-     ! transfer stream1 waits for snmoments calc to be finished (the last current one)
-     istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
+     ! ! transfer stream1 waits for snmoments calc to be finished (the last current one)
+     ! istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
 
      
+     ! ! move d_phi data to host:
+     ! istat=cudaMemcpyAsync(phi(1,1), &
+     !               d_phi(1,1), &
+     !               QuadSet%Groups*Size%ncornr, transfer_stream1 )
+     
+     ! istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
+     
+     
 
-     ! move d_phi data to host:
-     istat=cudaMemcpyAsync(phi(1,1), &
-                   d_phi(1,1), &
-                   QuadSet%Groups*Size%ncornr, transfer_stream1 )
-     
-     istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
-     
+     call restoreCommOrder(QuadSet)
+
      ! CPU code should wait until phi is on the host before using it
      istat=cudaEventSynchronize( phi_OnHost )
 
-
-     ! May need device sync here if time between sweeps decreases.
-     ! istat = cudaDeviceSynchronize()
-
-     call restoreCommOrder(QuadSet)
   endif
 
 
