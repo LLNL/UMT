@@ -118,6 +118,7 @@
    ! phi has to be set to zero before being used to accumultate. This
    ! used to happen in snmoments in the original code, but since we
    ! do a bin at a time now, we need to set to zero outside of bin loop.
+
    d_phi=0 ! could try something async memset here.
 
    call nvtxStartRange("createEvents")
@@ -127,10 +128,11 @@
 
    do buffer=1, numGPUbuffers
       ! mark the data as un-owned since a new timestep has made device version stale:
-      d_psi(buffer)% owner = 0
+      !d_psi(buffer)% owner = 0
       d_STime(buffer)% owner = 0
    enddo
 
+   ! but actually buffer 8
 
 
    call timer_beg('_snmoments1')

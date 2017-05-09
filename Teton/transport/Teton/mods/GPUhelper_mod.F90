@@ -31,9 +31,11 @@ module GPUhelper_mod
    end type gpuStorage
 
    ! Cuda streams and double buffer managment stuff
-   integer :: s, istat, current, next
+   integer :: s, istat, previous, current, next
 
    integer, allocatable :: batch(:), binSend(:), NangBin(:), anglebatch(:)
+
+   integer :: previous_batch, previous_binSend, previous_buffer
 
    ! Batchsize in number of angles (currently best to set to NangBin as some parts assume this for convenience)
    integer, parameter :: batchsize=32

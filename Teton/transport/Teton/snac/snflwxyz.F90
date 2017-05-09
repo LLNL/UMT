@@ -193,6 +193,8 @@
         
         binSend(current) = QuadSet% SendOrder(binRecv)
         binSend(next) = QuadSet% SendOrder(batch(next)) ! binSend on next iteration
+
+        
         NangBin(current) = QuadSet% NangBinList(binSend(current))
         NangBin(next) = QuadSet% NangBinList(binSend(next))
 
@@ -261,15 +263,18 @@
 
         ! Expect this will not need to be called, because
         ! advanceRT will set up at least the first bin.
-        if(0) then
+        if(1) then
            call checkDataOnDevice(d_psi, psi, batch, current, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
                 Psi_OnDevice )
 
+           if( d_STime(current)%owner /= batch(current) ) print *, "I was called, batch = ", batch(current)
            ! I think this is not needed either (always a no-op)
            call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, current, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
                 STimeFinished)
+
+
         endif
 
         ! YOU SHOULD BE ABLE TO MOVE STIME OFF THE DEVICE HERE IF CALCSTIME=TRUE
@@ -361,18 +366,40 @@
         ! put on next batch psi
         ! this would allow single buffer of STime, saving memory.
 
-        !  pre-stage data for next angle bin 
-        call checkDataOnDevice(d_psi, psi, batch, next, mm1, &
-             QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
-             Psi_OnDevice)
+        if ( .not. fitsOnGPU ) then
+!           if ( binRecv /= 1 ) then
+              ! take the previous batch of psi off the device (have previous, current, and next)
+              previous = 1+ modulo(binRecv-2,numGPUbuffers) ! gives 2,1,2,1...  or 8,1,2...6,7
+
+              previous_batch = 1 + modulo(binRecv-2,QuadSet% NumBin)
+
+              previous_binSend = QuadSet% SendOrder(previous_batch) ! binSend on previous iteration
+
+              ! before moving DtoH psi, previous sweep needs to complete
+              istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(previous_batch), 0)
+
+              !print *, "previous = ", previous
+              !print *, "previous_batch = ", previous_batch
+              !print *, "anglebatch(previous) = ", anglebatch(previous)
+
+              ! Copy d_psi to host psi.
+              istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,previous_binSend )), &
+                   d_psi(previous)%data(1,1,1), &
+                   QuadSet%Groups*Size%ncornr*anglebatch(previous), transfer_stream )
+
+              istat=cudaEventRecord( Psi_OnHost( previous_batch ), transfer_stream)
 
 
 
-        ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
-        call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
-             QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
-             STimeFinished)
+              !  pre-stage next batch of psi into the device
+              call checkDataOnDevice(d_psi, psi, batch, next, mm1, &
+                   QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
+                   Psi_OnDevice)
 
+!           endif
+
+
+        endif
 
         !!!!! End of things that will overlap sweep kernel  !!!!
 
@@ -404,6 +431,17 @@
 
         !!!!! Start of things that will overlap exchange !!!!
         
+        ! THIS NEXT BATCH OF STIME SHOULD ACTUALLY GO RIGHT INTO THE CURRENT BATCH STIME 
+        ! AS LONG AS SWEEP IS FINISHED. (NO DOUBLE BUFFER OF STIME)
+
+        if ( .not. calcSTime ) then
+
+           ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
+           call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
+                QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
+                STimeFinished)
+
+        endif
         
         if (ipath == 'sweep') then
            call timer_beg('__snmoments')
@@ -414,19 +452,6 @@
            call timer_end('__snmoments')
         endif
 
-
-        if ( .not. fitsOnGPU ) then
-           ! before moving DtoH psi, sweep needs to complete
-           istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch(current)), 0)
-
-           ! Copy d_psi to host psi.
-           istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-                d_psi(current)%data(1,1,1), &
-                QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
-
-           istat=cudaEventRecord( Psi_OnHost( batch(current) ), transfer_stream)
-
-        endif
 
         ! CPU code should wait until psib is on the host before exchanging.
         istat=cudaEventSynchronize( psib_OnHost( batch(current) ) )
@@ -443,6 +468,22 @@
      enddo AngleBin
 
      call timer_end('_anglebins')
+
+
+     ! ELIMINATE BY DOING ABOVE SWAP FOR ALL BINS, AND KEEPING BIN OWNER IN ADVANCERT?
+     ! if( .not. fitsOnGPU ) then
+     !    ! The last bin needs to be moved to the host as well, since inside the loop 
+     !    ! before moving DtoH psi, current sweep needs to complete
+     !    istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(batch(current)), 0)
+
+     !    ! Copy d_psi to host psi.
+     !    istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
+     !         d_psi(current)%data(1,1,1), &
+     !         QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream )
+
+     !    istat=cudaEventRecord( Psi_OnHost( batch(current) ), transfer_stream)
+     ! endif
+
 
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
@@ -478,6 +519,7 @@
                    QuadSet%Groups*Size%ncornr, transfer_stream )
 
      ! May need device sync here if time between sweeps decreases.
+     istat = cudaDeviceSynchronize()
 
      call restoreCommOrder(QuadSet)
   endif
