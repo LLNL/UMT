@@ -46,8 +46,8 @@ module GPUhelper_mod
    logical(kind=1) :: scaleVolume
 
    ! Cuda streams overlapping stuff
-   ! (HtoD and DtoH combined stream, and kernel stream)
-   integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream
+   ! (HtoD and DtoH combined stream, and kernel stream) stream1 is primary stream
+   integer(kind=cuda_stream_kind), save :: transfer_stream, kernel_stream, transfer_stream1 
    integer :: Nbatches =  8 !QuadSet%NumBin
    ! movement events:
    type(cudaEvent), allocatable :: Psi_OnDevice(:), Psi_OnHost(:)

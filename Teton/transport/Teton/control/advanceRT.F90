@@ -106,12 +106,12 @@
    ! GPU tranfer related stuff:
    if (first_time) then
       ! Create streams that can overlap 
+      istat = cudaStreamCreate(transfer_stream1)
       istat = cudaStreamCreate(transfer_stream)
       istat = cudaStreamCreate(kernel_stream)
 
       call InitDeviceBuffers()
-      ! NEED TO DESTROY BUFFERS TOO
-      ! OR SET OWNED=0 AGAIN HERE EVEN WHEN NOT FIRSTTIME.
+
       first_time = .false.
    endif
 
@@ -282,14 +282,14 @@
    
    
    ! transfer stream waits for snmoments calc to be finished (the last one)
-   istat = cudaStreamWaitEvent(transfer_stream, snmomentsFinished(batch(current)), 0)
+   istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
    
    ! move d_phi data to host:
    istat=cudaMemcpyAsync(phi(1,1), &
         d_phi(1,1), &
-        QuadSet%Groups*Size%ncornr, transfer_stream )
+        QuadSet%Groups*Size%ncornr, transfer_stream1 )
 
-   istat=cudaEventRecord( phi_OnHost, transfer_stream )
+   istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
    ! Actually could just do a synchronize on event phi on host...
    !istat = cudaDeviceSynchronize()
 

@@ -502,7 +502,7 @@
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
 
      ! needed? I think I can get rid of this.
-     istat = cudaDeviceSynchronize()
+     !istat = cudaDeviceSynchronize()
 
 
      if (ipath == 'sweep') then
@@ -526,19 +526,26 @@
   !  Update the scaler flux
 
   if (ipath == 'sweep') then
+
+     
+     ! transfer stream1 waits for snmoments calc to be finished (the last current one)
+     istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
+
+     
+
      ! move d_phi data to host:
      istat=cudaMemcpyAsync(phi(1,1), &
                    d_phi(1,1), &
-                   QuadSet%Groups*Size%ncornr, transfer_stream )
+                   QuadSet%Groups*Size%ncornr, transfer_stream1 )
      
-     istat=cudaEventRecord( phi_OnHost, transfer_stream )
+     istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
      
      ! CPU code should wait until phi is on the host before using it
      istat=cudaEventSynchronize( phi_OnHost )
 
 
      ! May need device sync here if time between sweeps decreases.
-     istat = cudaDeviceSynchronize()
+     ! istat = cudaDeviceSynchronize()
 
      call restoreCommOrder(QuadSet)
   endif
