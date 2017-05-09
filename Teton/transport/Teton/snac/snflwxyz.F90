@@ -429,6 +429,16 @@
            !      d_STime(current)%data(1,1,1), &
            !      QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream ) 
 
+           if ( binRecv == QuadSet% NumBin ) then
+              ! move next batch STime anyway since it is for batch 1 of next flux iteration:
+
+              ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
+              call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, next, mm1, &
+                   QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
+                   STimeFinished)
+              
+           endif
+
 
         else
 

@@ -42,7 +42,7 @@
    parameter (ipath='sweep')
 
 !  Add Scattering Source to total
-
+   !$omp parallel do private(Z,nCorner,c0,c)
    do zone=1,Size%nzones
      Z => getZoneData(Geom, zone)
      nCorner   = Z% nCorner
