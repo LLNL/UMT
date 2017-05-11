@@ -268,6 +268,7 @@
              d_psibBatch(1,1,1,current), &
              QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
 
+        istat=cudaEventRecord(psib_OnHost( batch(current) ), transfer_stream )
         
         ! transfer stream waits for STime to be computed:
         istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch(current)), 0)

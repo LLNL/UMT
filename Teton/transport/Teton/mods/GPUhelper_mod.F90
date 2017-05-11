@@ -38,12 +38,10 @@ module GPUhelper_mod
    integer :: previous_batch, previous_binSend, previous_buffer
 
    ! Batchsize in number of angles (currently best to set to NangBin as some parts assume this for convenience)
-   integer, parameter :: batchsize=32
+   integer, parameter :: batchsize=56
 
    ! flag to determine if STime needs to be computed from tau*psi
    logical(kind=1) :: calcSTime
-   ! flag to determine if scaleVolume needs to be done
-   logical(kind=1) :: scaleVolume
 
    ! Cuda streams overlapping stuff
    ! (HtoD and DtoH combined stream, and kernel stream) stream1 is primary stream

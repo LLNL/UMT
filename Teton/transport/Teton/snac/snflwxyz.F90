@@ -72,7 +72,8 @@
    ! print *, ncornr
    ! NangBin = maxval(QuadSet%NangBinList(:))
    NumBin = QuadSet%NumBin
-   !call mpi_comm_rank(mpi_comm_world, myrank, info)
+   
+   call mpi_comm_rank(mpi_comm_world, myrank, info)
 
 
    
@@ -160,22 +161,26 @@
 
      ! If this is first temp and intensity iteration, several things should be done that were previously done in other routines:
      ! 1. need to calculate STime (was done in rtstrsn.F90). Now done for each storage buffer as they are loaded in.
-     ! 2. need to scale phi and psi by the ratio of the volume change.
+
      if (intensityIter == 1 .and. tempIter == 1 .and. fluxIter==1) then
         ! compute STime from initial d_psi
         calcSTime = .true.
-        scaleVolume = .true.
 
-        ! ! Mark all the psi buffers as stale and needing update (trying to find bug)
-        ! do buffer=1,8
-        !    d_psi(buffer)% owner = 0
-        ! enddo
 
      else
         ! STime already computed,
         calcSTime = .false.
-        scaleVolume = .false.
+
      endif
+
+
+!     if(myrank == 0 ) print *, "NumBins = ", QuadSet% NumBin
+!     if(myrank == 0 ) print *, "binSend(1) = ", QuadSet% SendOrder(1)
+!     if(myrank == 0 ) print *, "binSend(NumBin) = ", QuadSet% SendOrder(QuadSet%NumBin)
+
+     if(myrank == 0 ) print *, "--------------"
+     if(myrank == 0 ) print *, "SendOrder(:) = ", QuadSet% SendOrder(1:8)
+     if(myrank == 0 ) print *, "--------------"
 
 
      call timer_beg('_anglebins')     
@@ -254,7 +259,7 @@
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
                 Psi_OnDevice )
 
-           if( d_STime(current)%owner /= batch(current) ) print *, "I was called, batch = ", batch(current)
+           !if( d_STime(current)%owner /= batch(current) ) print *, "I was called, batch = ", batch(current)
            ! I think this is not needed either (always a no-op)
            call checkDataOnDevice(d_STime, Geom%ZDataSoA%STime, batch, current, mm1, &
                 QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
@@ -354,6 +359,10 @@
 
         if ( .not. fitsOnGPU ) then
 !           if ( binRecv /= 1 ) then
+
+           ! Find out which bin 
+
+
               ! take the previous batch of psi off the device (have previous, current, and next)
               previous = 1+ modulo(binRecv-2,numGPUbuffers) ! gives 2,1,2,1...  or 8,1,2...6,7
 
@@ -374,7 +383,10 @@
                    QuadSet%Groups*Size%ncornr*anglebatch(previous), transfer_stream )
 
               istat=cudaEventRecord( Psi_OnHost( previous_batch ), transfer_stream)
-
+              !if(myrank == 0 ) print *, "binRecv        = ", binRecv
+              !if(myrank == 0 ) print *, "binSend(previous) = ", QuadSet% SendOrder(previous_batch)
+              !if(myrank == 0 ) print *, "binSend(current)  = ", QuadSet% SendOrder(batch(current))
+              !if(myrank == 0 ) print *, "binSend(next)     = ", QuadSet% SendOrder(batch(next))
 
 
               !  pre-stage next batch of psi into the device
@@ -460,7 +472,7 @@
 
            ! if this is the last bin, just move phi to the host 
            ! (only need to move when converged, but it is small and this allows better overlap)
-           if (binRecv == 8 ) then
+           if (binRecv == QuadSet% NumBin ) then
               ! transfer stream1 waits for snmoments calc to be finished (the last current one)
               istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
 
@@ -541,6 +553,7 @@
      endif
 
      if ( FluxConverged ) then
+        if(myrank == 0) print *, "True flux iterations = ", fluxIter
         exit FluxIteration
      else
         call setCommOrder(QuadSet)

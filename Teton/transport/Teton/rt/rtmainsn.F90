@@ -215,6 +215,9 @@
 !  Sweep all angles in all groups in this "batch"
 
  
+         ! CPU code should wait until psib is on the host before exchanging.
+         istat=cudaEventSynchronize( psib_OnHost( batch(current) ) )
+
          call timer_beg('exch')
          call nvtxStartRange("exch all bins")
          call InitExchange
