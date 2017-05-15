@@ -216,7 +216,7 @@
 
  
          ! CPU code should wait until psib is on the host before exchanging.
-         istat=cudaEventSynchronize( psib_OnHost( batch(current) ) )
+         istat=cudaEventSynchronize( psib_OnHost( current%batch ) )
 
          call timer_beg('exch')
          call nvtxStartRange("exch all bins")

@@ -41,7 +41,7 @@
 !  Local
 
    logical(kind=1), save :: first_time = .true.
-   integer    :: buffer, binRecv, mm1, mm2
+   integer    :: slot, binRecv, mm1
 
 
    integer    :: ia, ic, ig
@@ -112,8 +112,43 @@
 
       call InitDeviceBuffers()
 
+      ! Set up dummy previous to prime the loop for first time.
+      binRecv = 1 !loop goes from 8..1, so when current is 8, previous is 1.
+      previous%bin       = QuadSet%SendOrder(binRecv) ! same as old binSend
+      previous%batch     = binRecv    ! batch 1,2,3... sequentual ordering
+      previous%NangBin   = QuadSet% NangBinList( previous%bin )
+      previous%anglebatch =previous%NangBin ! later can be subset of angles in a bin.
+      !previous%Angles=QuadSet%AngleOrder(mm1,previous%bin)
+      
+      ! set previous pointers to fist slot, but slots remain unowned because there is no data in them yet.
+      slot=1
+      previous%psi => psi_storage(slot)
+      previous%psib => psib_storage(slot)
+      previous%STime => STime_storage(slot)
+      previous%omega_A_fp => omega_A_fp_storage(slot)
+      previous%omega_A_ez => omega_A_ez_storage(slot)
+
       first_time = .false.
    endif
+
+
+      ! Set up dummy previous to prime the loop for first time.
+      binRecv = 1 !loop goes from 8..1, so when current is 8, previous is 1.
+      previous%bin       = QuadSet%SendOrder(binRecv) ! same as old binSend
+      previous%batch     = binRecv    ! batch 1,2,3... sequentual ordering
+      previous%NangBin   = QuadSet% NangBinList( previous%bin )
+      previous%anglebatch =previous%NangBin ! later can be subset of angles in a bin.
+      !previous%Angles=QuadSet%AngleOrder(mm1,previous%bin)
+      
+      ! set previous pointers to fist slot, but slots remain unowned because there is no data in them yet.
+      slot=1
+      previous%psi => psi_storage(slot)
+      previous%psib => psib_storage(slot)
+      previous%STime => STime_storage(slot)
+      previous%omega_A_fp => omega_A_fp_storage(slot)
+      previous%omega_A_ez => omega_A_ez_storage(slot)
+
+
 
    ! phi has to be set to zero before being used to accumultate. This
    ! used to happen in snmoments in the original code, but since we
@@ -126,71 +161,82 @@
    call CreateEvents()
    call nvtxEndRange
 
-   do buffer=1, numGPUbuffers
+   do slot=1, numSTime_buffers
       ! mark the data as un-owned since a new timestep has made device version stale:
       !d_psi(buffer)% owner = 0
-      d_STime(buffer)% owner = 0
+      STime_storage(slot)% owner = 0
    enddo
 
-   ! but actually buffer 8
 
+   print *, "--------------"
+   print *, "SendOrder(:) = ", QuadSet% SendOrder(1:8)
+   print *, "--------------"
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
 
    call timer_beg('_snmoments1')
 
    ! step through the bins from top to bottom, so when sweep starts at bottom data will be on GPU.
    do binRecv=NumBin, 1, -1
-        ! cycle the buffers used to hold the batches.
-        ! there will be either 2 buffers if the problem does not fit in GPU, or NumBin if it fits.
-        current = 1 + mod(binRecv-1,numGPUbuffers) ! gives 1,2,1,2...  or 1,2,3...7,8
-        !next = 1+mod(binRecv,numGPUbuffers)        ! gives 2,1,2,1...  or 2,3,4...8,1 
-        next = 1+mod(binRecv-2,numGPUbuffers)  ! next bin is really the previous since index counts down.
 
-        ! each batch corresponds to an angle bin.
-        batch(current) = binRecv
-        !batch(next) = 1 + mod(binRecv,QuadSet% NumBin)
-        batch(next) = 1 + mod(binRecv-2,QuadSet% NumBin) ! next is previous
+      ! which bin is the current bin being worked on?
+      current%bin       = QuadSet%SendOrder(binRecv) ! The bin being worked on
+      current%batch     = binRecv    ! batch 1,2,3... sequentual ordering
+      current%NangBin   = QuadSet% NangBinList( current%bin )
+      current%anglebatch =current%NangBin ! later can be subset of angles in a bin.
+      
+      print *, "current%bin       =", current%bin
+      print *, "current%batch     =", current%batch
 
+      !   lower angle index for this batch
+      mm1=1
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! get a pointer to where current bin of psi should be moved (or already exists) on GPU
+      call checkDataOnDevice(current%psi, psi_storage, current%bin, previous%psi%slot)
+
+      ! check/move current batch of psi to GPU
+      call MoveDataOnDevice(current%psi, psi_storage, psi, current%bin, current%batch, &
+           previous%psi%slot,mm1, QuadSet%Groups*Size%ncornr*current%anglebatch, transfer_stream, &
+           Psi_OnDevice )
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! setup pointers to omega_A stuff.
+      call checkDataOnDeviceDot(current%omega_A_fp,omega_A_fp_storage, current%bin, previous%omega_A_fp%slot)
+      call checkDataOnDeviceDot(current%omega_A_ez,omega_A_ez_storage, current%bin, previous%omega_A_ez%slot)
+
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! while this is transferring in, compute mesh normal stuff
         
-        binSend(current) = QuadSet% SendOrder(binRecv)
-        binSend(next) = QuadSet% SendOrder(batch(next)) ! binSend on next iteration
-        NangBin(current) = QuadSet% NangBinList(binSend(current))
-        NangBin(next) = QuadSet% NangBinList(binSend(next))
-
-        !   lower angle index for this batch
-        mm1=1
-        !   get the angles upper index for this batch
-        mm2=NangBin(current)
-        !   ! True size of the batch (not always BATCHSIZE for last batch if not nicely divisible)
-        anglebatch(current)=mm2-mm1+1
-        anglebatch(next)=NangBin(next)
-
-
-        ! check/move current batch of psi to GPU
-        call checkDataOnDevice(d_psi, psi, batch, current, mm1, &
-             QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream, &
-             Psi_OnDevice )
-
-
-        ! while this is transferring in, compute mesh normal stuff
-        
-        call fp_ez_c(     anglebatch(current),                     &
+      call fp_ez_c(     current%anglebatch,                     &
              Size%nzones,               &
              QuadSet%Groups,            &
              Size%ncornr,               &
              QuadSet%NumAngles,         &
-             QuadSet%d_AngleOrder(mm1,binSend(current)),        & ! only need angle batch portion
+             QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need angle batch portion
              Size%maxCorner,            &
              Size%maxcf,                &
-             Nangbin(current),                   &
+             current%NangBin,                   &
              Size%nbelem,                &
              QuadSet%d_omega,             &
              Geom%ZDataSoA%nCorner,                &
              Geom%ZDataSoA%nCFaces,                &
              Geom%ZDataSoA%c0,                &
              Geom%ZDataSoA%A_fp,                &
-             d_omega_A_fp,                &
+             current%omega_A_fp%data,                &
              Geom%ZDataSoA%A_ez,                &
-             d_omega_A_ez,                &
+             current%omega_A_ez%data,                &
              Geom%ZDataSoA%Connect,             &
              Geom%ZDataSoA%Connect_reorder,             &
              QuadSet%d_next,              &
@@ -199,92 +245,177 @@
              kernel_stream           &
              )
 
-        istat=cudaEventRecord(AfpFinished( batch(current) ), kernel_stream )
-
-        ! transfer stream should wait until Afp is done calculating.
-        istat = cudaStreamWaitEvent(transfer_stream, AfpFinished( batch(current) ), 0)
+   ! debug1
+   istat = cudaDeviceSynchronize()
 
 
-        ! need to move fp stuff back to host.
-        istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             d_omega_A_fp(1,1,1,1), &
-             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
+      ! Better mark that these fp are owned
+      current%omega_A_fp%owner = current%bin
+      current%omega_A_ez%owner = current%bin
 
-        ! need to move ez stuff back to host here.
-        istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             d_omega_A_ez(1,1,1,1), &
-             Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(current), transfer_stream)
+      istat=cudaEventRecord(AfpFinished( current%batch ), kernel_stream )
 
-
-        ! have kernel stream wait until transfer of psi to device
-        istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice( batch(current) ), 0)
-
-        call timer_beg('__snmoments')
-        ! snmoments only reads d_psi, produces d_phi
-        call snmomentsD(d_psi(current)%data(1,1,1), d_phi, QuadSet%d_Weight,     &
-             QuadSet%d_AngleOrder(mm1,binSend(current)),      &
-             anglebatch(current), kernel_stream) ! GPU version, one batch at a time
-        call timer_end('__snmoments')
-
-        ! Record when snmoments finishes
-        istat=cudaEventRecord(snmomentsFinished( batch(current) ), kernel_stream )
-
-        ! scale current batch of psi
-        call scalePsibyVolume(d_psi(current)%data(1,1,1), Geom%ZDataSoA%volumeRatio, anglebatch(current), kernel_stream )  
-
-        ! don't start Stime until previous Stime is on host. (not needed because transfer stream blocks)
+      ! transfer stream should wait until Afp is done calculating.
+      istat = cudaStreamWaitEvent(transfer_stream, AfpFinished( current%batch ), 0)
 
 
-        ! compute STime from initial d_psi
-        ! (this is done again in snflw, but does not hurt now as transfer dominates here anyway, and better when data fits)
-        call computeSTime(d_psi(current)%data(1,1,1), d_STime(current)%data(1,1,1), anglebatch(current), kernel_stream )
+   ! debug1
+   istat = cudaDeviceSynchronize()
 
-        istat=cudaEventRecord(STimeFinished( batch(current) ), kernel_stream )
+
+      ! need to move fp stuff back to host.
+      istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+             current%omega_A_fp%data(1,1,1,1), &
+             Size% nzones*Size% maxCorner*Size% maxcf*current%anglebatch, transfer_stream)
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! need to move ez stuff back to host here.
+      istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+             current%omega_A_ez%data(1,1,1,1), &
+             Size% nzones*Size% maxCorner*Size% maxcf*current%anglebatch, transfer_stream)
+
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! have kernel stream wait until transfer of psi to device
+      istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice( current%batch ), 0)
+
+      call timer_beg('__snmoments')
+      ! snmoments only reads d_psi, produces d_phi
+      call snmomentsD(current%psi%data(1,1,1), d_phi, QuadSet%d_Weight,     &
+             QuadSet%d_AngleOrder(mm1,current%bin),      &
+             current%anglebatch, kernel_stream) ! GPU version, one batch at a time
+      call timer_end('__snmoments')
+
+      ! Record when snmoments finishes
+      istat=cudaEventRecord(snmomentsFinished( current%batch ), kernel_stream )
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! scale current batch of psi
+      call scalePsibyVolume(current%psi%data(1,1,1), Geom%ZDataSoA%volumeRatio, current%anglebatch, kernel_stream )  
+
+      ! print *, "called scalebyvolume"
+
+      ! don't start Stime until previous Stime is on host. (not needed because transfer stream blocks)
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+      ! set up STime pointers before computing STime
+      call checkDataOnDevice(current%STime, STime_storage, current%bin, previous%STime%slot)
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+
+      ! compute STime from initial d_psi
+      ! (this is done again in snflw, but does not hurt now as transfer dominates here anyway, and better when data fits)
+      call computeSTime(current%psi%data(1,1,1), current%STime%data(1,1,1), current%anglebatch, kernel_stream )
+
+      istat=cudaEventRecord(STimeFinished( current%batch ), kernel_stream )
         
-        ! need to record who's batch of STime is held in this device buffer:
-        d_STime(current)% owner = batch(current)
+      ! need to record who's batch of STime is held in this device buffer:
+      current%STime% owner = current%bin
 
-        ! better not set the boundary until previous batch psib is on host,
-        ! but I think this is enforced automatically.
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+      ! better not set the boundary until previous batch psib is on host,
+      ! but I think this is enforced automatically.
+      !istat = cudaStreamWaitEvent(kernel_stream, psib_OnHost( previous%batch ), 0)        
+
+      ! setup pointer for psib
+      call checkDataOnDevice(current%psib, psib_storage, current%bin, previous%psib%slot)
+
+      ! set the boundary here
+      call setbdyD(current%anglebatch, QuadSet%d_AngleOrder(mm1,current%bin), &
+             current%psi%data(1,1,1), &
+             current%psib%data(1,1,1), kernel_stream)
+
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
+      ! only prestage next batch psi if not the last bin, 
+      ! because we want psi 2 and 1 on device, not 1 and 8
+      if(binRecv /= 1) then
+
+         ! numbin is used instead of numBatches because actually don't always do all 8 batches.
+         next%batch     = 1+modulo(binRecv-2,QuadSet% NumBin)  ! next bin is really the previous since index counts down.
+         next%bin       = QuadSet%SendOrder(next%batch) ! same as old binSend
+         next%NangBin   = QuadSet% NangBinList( next%bin )
+         next%anglebatch = next%NangBin ! later can be subset of angles in a bin.
+
+         !print *, "next%bin       =", next%bin
+         !print *, "next%batch     =", next%batch
+
+
+         call checkDataOnDevice(next%psi, psi_storage, next%bin, current%psi%slot)
+
+         ! move next batch of psi to GPU (will happen while above kernels are running)
+         call MoveDataOnDevice(next%psi, psi_storage, psi, next%bin, next%batch, &
+              current%psi%slot, mm1, QuadSet%Groups*Size%ncornr*next%anglebatch, transfer_stream, &
+              Psi_OnDevice )
+
+
+      endif
+
+      ! Do not move psib out until setbdyD has finished
+      istat = cudaDeviceSynchronize()
+
+      ! move current batch psib to host
+      istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+             current%psib%data(1,1,1), &
+             QuadSet%Groups*Size%nbelem*current%anglebatch, transfer_stream ) 
+
+      istat=cudaEventRecord(psib_OnHost( current%batch ), transfer_stream )
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
         
-        ! set the boundary here
-        call setbdyD(anglebatch(current), QuadSet%d_AngleOrder(mm1,binSend(current)), &
-             d_psi(current)%data(1,1,1), &
-             d_psibBatch(1,1,1,current), kernel_stream)
+      ! transfer stream waits for STime to be computed:
+      istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(current%batch), 0)
+      ! move current batch STime to host
+      istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+             current%STime%data(1,1,1), &
+             QuadSet%Groups*Size%ncornr*current%anglebatch, transfer_stream ) 
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
 
 
-        ! only prestage next batch psi if not the last bin, 
-        ! because we want psi 2 and 1 on device, not 1 and 8
-        if(binRecv /= 1) then
-           ! check/move next batch of psi to GPU (will happen while above kernels are running)
-           call checkDataOnDevice(d_psi, psi, batch, next, mm1, &
-                QuadSet%Groups*Size%ncornr*anglebatch(next), transfer_stream, &
-                Psi_OnDevice )
-        endif
-
-
-        ! move current batch psib to host
-        istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             d_psibBatch(1,1,1,current), &
-             QuadSet%Groups*Size%nbelem*anglebatch(current), transfer_stream ) 
-
-        istat=cudaEventRecord(psib_OnHost( batch(current) ), transfer_stream )
-        
-        ! transfer stream waits for STime to be computed:
-        istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(batch(current)), 0)
-        ! move current batch STime to host
-        istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-             d_STime(current)%data(1,1,1), &
-             QuadSet%Groups*Size%ncornr*anglebatch(current), transfer_stream ) 
-
-
+      if(binRecv /= 1) then
+         ! when loop cycles, current becomes previous
+         previous=current
+         ! did this even work?
+         !print *, "previous%psi%slot = ", previous%psi%slot
+      else
+         ! on the last loop, current stays what it is, and previous is batch 2
+      endif
+         
 
    enddo
+
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
    
    
    ! transfer stream waits for snmoments calc to be finished (the last one)
-   istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(batch(current)), 0)
+   istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(current%batch), 0)
    
+   print *, "moving d_phi to host"
+
    ! move d_phi data to host:
    istat=cudaMemcpyAsync(phi(1,1), &
         d_phi(1,1), &
@@ -292,11 +423,13 @@
 
    istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
    ! Actually could just do a synchronize on event phi on host...
-   !istat = cudaDeviceSynchronize()
+   istat = cudaDeviceSynchronize()
 
    ! CPU code should wait until phi is on the host before using it
    istat=cudaEventSynchronize( phi_OnHost )
 
+
+   print *, "d_phi finished move"
 
    call timer_end('_snmoments1')
 
