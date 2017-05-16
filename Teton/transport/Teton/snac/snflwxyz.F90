@@ -76,6 +76,10 @@
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
 
+
+   ! debug1
+   istat = cudaDeviceSynchronize()
+
    
    ! This sets up to allow zero copy use of phi directly on the device:
    ! Get a device pointer for phi, put it to d_phi_p
@@ -235,34 +239,34 @@
    istat = cudaDeviceSynchronize()
 
 
-        ! If this is first temp and intensity iteration, can calculate STime while above is copying in
-        if (calcSTime == .true.) then
-           ! have kernel stream wait until transfer of psi to device (calc depends on psi)
-           istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(current%batch), 0)
+        ! ! If this is first temp and intensity iteration, can calculate STime while above is copying in
+        ! if (calcSTime == .true.) then
+        !    ! have kernel stream wait until transfer of psi to device (calc depends on psi)
+        !    istat = cudaStreamWaitEvent(kernel_stream, Psi_OnDevice(current%batch), 0)
 
-           ! scalePsiby Volume and compute STime is also done in advanceRT
-           ! so is already done for as many psi slots as fit on the GPU
-           if( current%batch > numPsi_buffers ) then
-              ! scale current batch of psi
-              call scalePsibyVolume(current%psi%data(1,1,1), Geom%ZDataSoA%volumeRatio, current%anglebatch, kernel_stream )  
+        !    ! scalePsiby Volume and compute STime is also done in advanceRT
+        !    ! so is already done for as many psi slots as fit on the GPU
+        !    if( current%batch > numPsi_buffers ) then
+        !       ! scale current batch of psi
+        !       call scalePsibyVolume(current%psi%data(1,1,1), Geom%ZDataSoA%volumeRatio, current%anglebatch, kernel_stream )  
               
-           endif
+        !    endif
 
-           if( current%batch > numSTime_buffers ) then
+        !    if( current%batch > numSTime_buffers ) then
 
-              ! set up STime pointers before computing STime
-              call checkDataOnDevice(current%STime, STime_storage, current%bin, previous%STime%slot)
+        !       ! set up STime pointers before computing STime
+        !       call checkDataOnDevice(current%STime, STime_storage, current%bin, previous%STime%slot)
 
-              ! compute current batch STime from current batch d_psi (only possible first sweep of the timestep)
-              call computeSTime(current%psi%data(1,1,1), current%STime%data(1,1,1), current%anglebatch, kernel_stream )
+        !       ! compute current batch STime from current batch d_psi (only possible first sweep of the timestep)
+        !       call computeSTime(current%psi%data(1,1,1), current%STime%data(1,1,1), current%anglebatch, kernel_stream )
 
-              ! need to record that current batch of STime is held in this storage slot (so it does not need to be copied in)
-              current%STime% owner = current%bin
+        !       ! need to record that current batch of STime is held in this storage slot (so it does not need to be copied in)
+        !       current%STime% owner = current%bin
 
-           endif
+        !    endif
 
-           istat=cudaEventRecord(STimeFinished( current%batch ), kernel_stream )
-        endif
+        !    istat=cudaEventRecord(STimeFinished( current%batch ), kernel_stream )
+        ! endif
 
    ! debug1
    istat = cudaDeviceSynchronize()
@@ -334,6 +338,10 @@
    ! debug1
    istat = cudaDeviceSynchronize()
 
+        Stime_temp = current%STime%data(1,33,1)
+        volumeRatio_temp = Geom%ZDataSoA%volumeRatio(33)
+        print *, "STime(1,33,1) = ", Stime_temp
+        print *, "volumeRatio = ", volumeRatio_temp
 
         ! YOU SHOULD BE ABLE TO MOVE STIME OFF THE DEVICE HERE IF CALCSTIME=TRUE
         ! THIS WILL OVERLAP WITH SWEEP KERNEL
@@ -539,10 +547,33 @@
            if ( binRecv == QuadSet% NumBin ) then
               ! move next batch STime anyway since it is for batch 1 of next flux iteration:
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
+              ! debug1
+              istat = cudaDeviceSynchronize()
+              
+              ! ! get the number of slots in storage container
+              ! numslots = size(STime_storage) 
+              ! !print *, "numslots = ", numslots
 
+              ! ! check each slot to see if the bin is already stored on the device
+              ! CheckBuffer: do slot = 1, numslots
+              !    if(STime_storage(slot)%owner == current%bin) then
+              !       ! found a slot with the data on it
+              !       ! point at this slot
+              !       !p_storage => STime_storage(slot)
+              !       print *, "STime found bin ", current%bin, "in slot ", slot
+              !       return 
+              !    endif
+              ! enddo CheckBuffer
 
+              ! ! there was not a slot already assigned for this bin, so pick a slot:
+              ! ! use a different slot than was used last time (because the data in that slot may still be in use)
+              ! slot = 1+modulo(previous,numslots)
+              ! !print *, "slot selected inside checkdata = ", slot
+
+              ! ! point p_storage to the storage spot
+              ! p_storage => storage(slot)
+
+   
               call checkDataOnDevice(next%STime, STime_storage, next%bin, current%STime%slot)
 
               ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
