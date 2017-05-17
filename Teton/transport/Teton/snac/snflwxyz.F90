@@ -268,8 +268,6 @@
         !    istat=cudaEventRecord(STimeFinished( current%batch ), kernel_stream )
         ! endif
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
         ! Do not launch snreflect kernel until psib is on GPU.
         istat = cudaStreamWaitEvent(kernel_stream, Psib_OnDevice( current%batch ), 0)
@@ -279,9 +277,6 @@
         ! relfected angles could be done on CPU or GPU, both steal CPU bandwidth needed from copies.
         call snreflectD(current%anglebatch, QuadSet%d_AngleOrder(mm1,current%bin), &
              current%psib%data(1,1,1), pinned_psib, kernel_stream)
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
 
         ! make sure omega_A stuff is on the GPU: (often will not be called)
@@ -307,8 +302,6 @@
              AfpFinished )
 
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
         ! this is not often called, but is needed because sometimes the order of bins change and bin that was staged in at
         ! the end of the last fluxiter was not the bin we actually start with.
@@ -323,8 +316,6 @@
                 previous%psi%slot,mm1, QuadSet%Groups*Size%ncornr*current%anglebatch, transfer_stream, &
                 Psi_OnDevice )
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
            call checkDataOnDevice(current%STime, STime_storage, current%bin, previous%STime%slot)
            !if( d_STime(current)%owner /= current%batch ) print *, "I was called, batch = ", current%batch
@@ -334,9 +325,6 @@
 
 
         endif
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
         Stime_temp = current%STime%data(1,33,1)
         volumeRatio_temp = Geom%ZDataSoA%volumeRatio(33)
@@ -426,9 +414,6 @@
         istat=cudaEventRecord(SweepFinished( current%batch ), kernel_stream )
 
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
         !!!!! Start of things that will overlap sweep kernel !!!!!
 
         ! DO ME:::::
@@ -484,10 +469,6 @@
 
 
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
-
         !!!!! End of things that will overlap sweep kernel  !!!!
 
 
@@ -502,9 +483,6 @@
         !      QuadSet%d_iExit, groups, ncornr, nbelem)
 
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
 
         ! When setExitFluxD is done, record it has finished in kernel stream
         istat=cudaEventRecord(ExitFluxDFinished( current%batch ), kernel_stream )
@@ -518,10 +496,6 @@
              QuadSet%Groups*Size%nbelem*current%anglebatch, transfer_stream1 ) 
         
         istat=cudaEventRecord(psib_OnHost( current%batch ), transfer_stream1 )
-
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
 
         !!!!! Start of things that will overlap exchange !!!!
@@ -546,9 +520,6 @@
 
            if ( binRecv == QuadSet% NumBin ) then
               ! move next batch STime anyway since it is for batch 1 of next flux iteration:
-
-              ! debug1
-              istat = cudaDeviceSynchronize()
               
               ! ! get the number of slots in storage container
               ! numslots = size(STime_storage) 
@@ -587,9 +558,6 @@
 
         else
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
 
            call checkDataOnDevice(next%STime, STime_storage, next%bin, current%STime%slot)
 
@@ -600,9 +568,6 @@
 
         endif
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
         
         if (ipath == 'sweep') then
            call timer_beg('__snmoments')
@@ -612,9 +577,6 @@
                 current%anglebatch, kernel_stream) ! GPU version, one batch at a time
 
            istat=cudaEventRecord(snmomentsFinished( current%batch ), kernel_stream )
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
 
            ! if this is the last bin, just move phi to the host 
@@ -636,10 +598,6 @@
            call timer_end('__snmoments')
         endif
 
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
         ! before moving DtoH omega_A, previous sweep needs to complete
         istat=cudaStreamWaitEvent(transfer_stream, SweepFinished( current%batch ), 0)
 
@@ -653,9 +611,6 @@
              next%bin, next%batch, current%omega_A_fp%slot, &
              mm1, Size% nzones*Size% maxCorner*Size% maxcf*next%anglebatch, transfer_stream, &
              AfpFinished )
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
 
         ! stage omega_A_ez into GPU
         call moveDataOnDeviceDot(next%omega_A_ez, omega_A_ez_storage, &
@@ -664,9 +619,6 @@
              mm1, Size% nzones*Size% maxCorner*Size% maxcf*next%anglebatch, transfer_stream, &
              AfpFinished )
 
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
 
         ! istat = cudaMemcpyAsync( d_omega_A_ez(1,1,1,1), &
@@ -689,8 +641,6 @@
         call timer_end('__exch')
 
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
         ! end of loop, so set previous to the current.
         previous = current
@@ -720,10 +670,6 @@
 
      ! not needed because psib is on host in order to do exchange
      !istat = cudaDeviceSynchronize()
-
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
 
      if (ipath == 'sweep') then
@@ -766,8 +712,6 @@
      call restoreCommOrder(QuadSet)
 
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
 
      ! CPU code should wait until phi is on the host before using it
      istat=cudaEventSynchronize( phi_OnHost )

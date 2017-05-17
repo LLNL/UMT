@@ -22,8 +22,8 @@ module GPUhelper_mod
    logical(kind=1) :: fitsOnGPU = .false. ! default is false
 
    !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
-   integer :: numPsi_buffers = 7 ! double buffers for psi
-   integer :: numSTime_buffers = 7 ! only need 1 STime buffer the way the code is written
+   integer :: numPsi_buffers = 2 ! double buffers for psi
+   integer :: numSTime_buffers = 1 ! only need 1 STime buffer the way the code is written
    integer :: numPsib_buffers = 1 !should only need 1 psib buffer
    integer :: numDot_buffers = 1 ! for omega A ez and fp precomputed dot products.
 
