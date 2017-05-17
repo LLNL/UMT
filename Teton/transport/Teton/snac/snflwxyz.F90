@@ -76,10 +76,6 @@
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
 
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
    
    ! This sets up to allow zero copy use of phi directly on the device:
    ! Get a device pointer for phi, put it to d_phi_p
@@ -221,9 +217,6 @@
            psib_storage(slot)%owner=0
         enddo
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
 
         ! setup pointers to psib storage
         call checkDataOnDevice(current%psib, psib_storage, current%bin, previous%psib%slot)
@@ -234,11 +227,6 @@
              Psib_OnDevice)
 
         
-
-   ! debug1
-   istat = cudaDeviceSynchronize()
-
-
         ! ! If this is first temp and intensity iteration, can calculate STime while above is copying in
         ! if (calcSTime == .true.) then
         !    ! have kernel stream wait until transfer of psi to device (calc depends on psi)
