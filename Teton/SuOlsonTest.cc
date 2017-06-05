@@ -29,9 +29,9 @@ extern "C" void trace_start(void);
 extern "C" void trace_stop(void);
 extern "C" void HPM_Prof_start(void);
 extern "C" void HPM_Prof_stop(void);
-extern "C" void Timer_beg(const char *);
-extern "C" void Timer_end(const char *);
-extern "C" void Timer_print(void);
+extern "C" void Timer_Beg(const char *);
+extern "C" void Timer_End(const char *);
+extern "C" void Timer_Print(void);
 void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>& myPartList,
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
 
@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
     double cumulativeWorkTime = 0.0;
 
 //  trace_start();
-    Timer_beg("work");
+    Timer_Beg("work");
     //summary_start(); // YKT
 //  HPM_Prof_start();
     
@@ -250,8 +250,8 @@ int main(int argc, char* argv[])
 
 //  HPM_Prof_stop();
     //summary_stop(); // YKT
-    Timer_end("work");
-    Timer_print();
+    Timer_End("work");
+    Timer_Print();
     fflush(stdout);
 //  trace_stop();
 
