@@ -24,6 +24,7 @@
    use radconstant_mod
 
    use cudafor
+   use nvtx_mod
    !use GPUhelper_mod
 
 
@@ -67,37 +68,41 @@
    nangSN   = Size%nangSN
 
 
+   call nvtxStartRange("Pin Arrays",6)
+
 !  Photon Intensities on the problem boundary, and pin psi and phi
 
    if (.not. allocated(psib) ) then
      allocate( psib(ngr,nbelem,nangSN) )
      print *, "sizeof(psib): ", sizeof(psib)
 
-     print *, "pinning psir"
-     !istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
-     istat = cudaHostRegister(C_LOC(psir(1,1,1)), int(Size%ngr,KIND=8)&
-          *int(Size%ncornr,KIND=8)&
-          *int(Size%nangSN,KIND=8)*8, cudaHostRegisterMapped)
-     print *, "size of psir: ", sizeof(psir)
-     print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
-     print *, "Correct size used is:", int(Size%ngr,KIND=8)&
-          *int(Size%ncornr,KIND=8)&
-          *int(Size%nangSN,KIND=8)*8
-     if(istat .ne. 0) then
-        print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
-        !print *, cudaGetErrorString(istat)
-     endif
+     ! print *, "pinning psir"
+     ! !istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
+     ! istat = cudaHostRegister(C_LOC(psir(1,1,1)), int(Size%ngr,KIND=8)&
+     !      *int(Size%ncornr,KIND=8)&
+     !      *int(Size%nangSN,KIND=8)*8, cudaHostRegisterMapped)
+     ! print *, "size of psir: ", sizeof(psir)
+     ! print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
+     ! print *, "Correct size used is:", int(Size%ngr,KIND=8)&
+     !      *int(Size%ncornr,KIND=8)&
+     !      *int(Size%nangSN,KIND=8)*8
+     ! if(istat .ne. 0) then
+     !    print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
+     !    !print *, cudaGetErrorString(istat)
+     ! endif
 
 
-     print *, "pinning phi, sizeof(phi) = ", sizeof(phi)
-     istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
+     ! print *, "pinning phi, sizeof(phi) = ", sizeof(phi)
+     ! istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
    endif
 
-
+   call nvtxEndRange
 
 !***********************************************************************
 !     UPDATE DEVICE ZONE DATA (once only)                              *
 !***********************************************************************
+
+   call nvtxStartRange("Setup ZData",5)
 
    ! this gives a device valid way to reference ZData%d_member where 
    ! d_member is a device memory location. It copies the addresses of device 
@@ -107,6 +112,8 @@
      istat = cudaMemcpyAsync(C_DEVLOC(Geom%d_ZData), C_LOC(Geom%ZData), sizeof(Geom%ZData), 0)
      Geom%d_ZData_uptodate = .true.
    endif
+
+   call nvtxEndRange
 
 !***********************************************************************
 !     ADD TIME-ABSORPTION TO THE TOTAL CROSS SECTION ARRAY             *
@@ -120,6 +127,8 @@
      Size%tau = zero
    endif
 
+   call nvtxStartRange("Sigt and Inv",5)
+
 !$omp parallel do
    do zone=1,Size%nzones
      Z => getZoneData(Geom, zone)
@@ -127,6 +136,8 @@
      Z% Sigt(:)    = Mat%siga(:,zone) + Mat%sigs(:,zone) + Size%tau
      Z% SigtInv(:) = one/Z% Sigt(:)
    enddo
+
+   call nvtxEndRange
 
 !***********************************************************************
 !     INTERPOLATE SOURCE PROFILES                                      *
@@ -190,3 +201,61 @@
    return
    end subroutine radtr
 
+
+
+   
+   subroutine pinmem(PSIR, PHI)
+     
+     !  Include
+     
+     use, intrinsic :: iso_c_binding
+     use kind_mod
+     use Size_mod
+     !use Material_mod
+     !use Geometry_mod
+     !use TimeStepControls_mod
+
+     !use ZoneData_mod
+     !use constant_mod
+     !use radconstant_mod
+
+     use cudafor
+     use nvtx_mod
+
+     implicit none
+
+     !  Arguments
+
+     real(adqt), intent(inout) :: psir(Size%ngr,Size%ncornr,Size%nangSN),  &
+          Phi(Size%ngr,Size%ncornr)
+
+     !  Local
+
+     integer    :: istat
+
+
+     call nvtxStartRange("Pin Arrays",6)
+
+     ! pin psi and phi
+
+     istat = cudaHostRegister(C_LOC(psir(1,1,1)), int(Size%ngr,KIND=8)&
+          *int(Size%ncornr,KIND=8)&
+          *int(Size%nangSN,KIND=8)*8, cudaHostRegisterMapped)
+     print *, "size of psir: ", sizeof(psir)
+     print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
+     print *, "Correct size used is:", int(Size%ngr,KIND=8)&
+          *int(Size%ncornr,KIND=8)&
+          *int(Size%nangSN,KIND=8)*8
+     if(istat .ne. 0) then
+        print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
+        !print *, cudaGetErrorString(istat)
+     endif
+
+
+     print *, "pinning phi, sizeof(phi) = ", sizeof(phi)
+     istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
+
+
+     call nvtxEndRange
+
+   end subroutine pinmem

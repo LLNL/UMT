@@ -129,6 +129,19 @@ extern "C"
           double *,   // RadEnergyDensity 
           double *);  // angleLoopTime
 
+    void
+    F77_ID(pinmem_, pinmem, PINMEM)
+      ( double *, // psir
+        double *); // Phi
+
+
+    void 
+    F77_ID(radtr_, radtr, RADTR)
+        ( double *,   // PSIR
+          double *,   // PHIR
+          double *,   // RadEnergyDensity 
+          double *);  // angleLoopTime
+
 }
 
 template <typename Mesh>
@@ -252,6 +265,7 @@ Teton<Mesh>::resize() {
     rho.resize(D_nzones);
     SMatEff.resize(D_nzones);
     gnu.resize(D_ngr1);
+
 }
 
 // ------------------------------------------------------------
@@ -1379,7 +1393,16 @@ Teton<Mesh>::linkKull(Teton<Mesh>::MeshType &M,
     std::vector<int>().swap(ctoface);
     std::vector<int>().swap(zonetosrc);
    
-   
+
+    cout<<"pinning psi and phi in C code"<<endl;
+    // Pin the memory (psi should be pinned when created in kull, not in Teton/radtr)
+    F77_ID(pinmem_, pinmem, PINMEM)
+      ( &psir[0],               // double *
+        &Phi[0] );               // double *
+    
+
+
+
 }
 
 template <typename Mesh>

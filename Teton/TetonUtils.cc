@@ -7,6 +7,7 @@
 #include <map>
 #include <cmath>
 #include <vector>
+#include "nvToolsExt.h"
 
 #ifdef USE_OPENMP
 #include <omp.h>
@@ -151,12 +152,17 @@ double advance(MeshBase& theMesh, Teton<MeshBase>& theTeton, PartList<MeshBase> 
     
     gettimeofday( &theStartTime, &theTimeZone );
     
+    nvtxRangePushA("CrelinkMesh");
     theTeton.CrelinkMesh( );
+    nvtxRangePop();
     
+    nvtxRangePushA("CupdateSn");
     theTeton.CupdateSn( );
+    nvtxRangePop();
 
+    nvtxRangePushA("UpdateOpacity");
     theTeton.UpdateOpacity( );
-    
+    nvtxRangePop();
 //     for(int i=0;i<theTeton.nzones;i++)
 //         cout<<" trz["<<i<<"]="<<theTeton.trz[i]<<endl;
     
@@ -166,10 +172,14 @@ double advance(MeshBase& theMesh, Teton<MeshBase>& theTeton, PartList<MeshBase> 
 //         for(int g=0;g<theTeton.ngr;g++)
 //             cout<<"RadEnergyDensity["<<i<<","<<g<<"]="<<theTeton.RadEnergyDensity[g+i*theTeton.ngr]<<endl;
     
-    theTeton.cxxRadtr();
-    
-    theTeton.CupdateSpecificEnergy( addedEnergy, theMesh, thePartList );
 
+    nvtxRangePushA("cxxRadtr");
+    theTeton.cxxRadtr();
+    nvtxRangePop();
+
+    nvtxRangePushA("CupdateSpecificEnergy");
+    theTeton.CupdateSpecificEnergy( addedEnergy, theMesh, thePartList );
+    nvtxRangePop();
 //     for(int i=0;i<theTeton.nzones;i++)
 //         cout<<" trz["<<i<<"]="<<theTeton.trz[i]<<endl;
 //     for(int i=0;i<theTeton.nzones;i++)

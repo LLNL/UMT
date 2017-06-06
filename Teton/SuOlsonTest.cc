@@ -376,10 +376,10 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
          
     theTeton.linkKull(myMesh, freqData, boundaryData, volSourceData);
     
-  cout<<"linkKull"<<endl;
+    cout<<"linkKull"<<endl;
     
     theTeton.CInitMaterial(myPartList);
-  cout<<"set CInitMaterial"<<endl;
+    cout<<"set CInitMaterial"<<endl;
     theTeton.CsetControls();
 
     for(PartList<MeshBase>::iterator pIt = myPartList.begin();

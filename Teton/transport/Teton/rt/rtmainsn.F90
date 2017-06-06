@@ -96,7 +96,9 @@
 !  Calculate ordering for grid sweeps
 
    call timer_beg('rtorder')
+   call nvtxStartRange("rtorder",5)
    call rtorder 
+   call nvtxEndRange
    call timer_end('rtorder')
 
 !***********************************************************************
@@ -109,9 +111,12 @@
 
 
 !  Establish angle order for transport sweeps
+   ! once angle order is established, could move in psi(first_angle)
 
    call timer_beg('scheduler')
+   call nvtxStartRange("scheduler",7)
    call SweepScheduler
+   call nvtxEndRange
    call timer_end('scheduler')
 
 !***********************************************************************

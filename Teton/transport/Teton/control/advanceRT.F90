@@ -363,7 +363,7 @@
       endif
          
       ! debug1
-      istat = cudaDeviceSynchronize()
+      !istat = cudaDeviceSynchronize()
       
       print *, "STime on host = ", Geom%ZDataSoA%STime(1,33,QuadSet%AngleOrder(mm1,current%bin))
 
@@ -386,7 +386,7 @@
 
    istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
    ! Actually could just do a synchronize on event phi on host...
-   istat = cudaDeviceSynchronize()
+   !istat = cudaDeviceSynchronize()
 
    ! CPU code should wait until phi is on the host before using it
    istat=cudaEventSynchronize( phi_OnHost )
