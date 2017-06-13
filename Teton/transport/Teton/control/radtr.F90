@@ -68,32 +68,13 @@
    nangSN   = Size%nangSN
 
 
-   call nvtxStartRange("Pin Arrays",6)
+   call nvtxStartRange("Allocate psib",6)
 
 !  Photon Intensities on the problem boundary, and pin psi and phi
 
    if (.not. allocated(psib) ) then
      allocate( psib(ngr,nbelem,nangSN) )
      print *, "sizeof(psib): ", sizeof(psib)
-
-     ! print *, "pinning psir"
-     ! !istat = cudaHostRegister(C_LOC(psir(1,1,1)), sizeof(psir), cudaHostRegisterMapped)
-     ! istat = cudaHostRegister(C_LOC(psir(1,1,1)), int(Size%ngr,KIND=8)&
-     !      *int(Size%ncornr,KIND=8)&
-     !      *int(Size%nangSN,KIND=8)*8, cudaHostRegisterMapped)
-     ! print *, "size of psir: ", sizeof(psir)
-     ! print *, "dimensions of psir: ", Size%ngr,Size%ncornr,Size%nangSN
-     ! print *, "Correct size used is:", int(Size%ngr,KIND=8)&
-     !      *int(Size%ncornr,KIND=8)&
-     !      *int(Size%nangSN,KIND=8)*8
-     ! if(istat .ne. 0) then
-     !    print *, "pinning error, istat = ", istat , LOC(psir(1,1,1))
-     !    !print *, cudaGetErrorString(istat)
-     ! endif
-
-
-     ! print *, "pinning phi, sizeof(phi) = ", sizeof(phi)
-     ! istat = cudaHostRegister(C_LOC(phi(1,1)), sizeof(phi), cudaHostRegisterMapped)
    endif
 
    call nvtxEndRange
@@ -211,13 +192,6 @@
      use, intrinsic :: iso_c_binding
      use kind_mod
      use Size_mod
-     !use Material_mod
-     !use Geometry_mod
-     !use TimeStepControls_mod
-
-     !use ZoneData_mod
-     !use constant_mod
-     !use radconstant_mod
 
      use cudafor
      use nvtx_mod

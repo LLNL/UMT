@@ -314,10 +314,10 @@
 
         endif
 
-        Stime_temp = current%STime%data(1,33,1)
-        volumeRatio_temp = Geom%ZDataSoA%volumeRatio(33)
-        print *, "STime(1,33,1) = ", Stime_temp
-        print *, "volumeRatio = ", volumeRatio_temp
+        !Stime_temp = current%STime%data(1,33,1)
+        !volumeRatio_temp = Geom%ZDataSoA%volumeRatio(33)
+        !print *, "STime(1,33,1) = ", Stime_temp
+        !print *, "volumeRatio = ", volumeRatio_temp
 
         ! YOU SHOULD BE ABLE TO MOVE STIME OFF THE DEVICE HERE IF CALCSTIME=TRUE
         ! THIS WILL OVERLAP WITH SWEEP KERNEL

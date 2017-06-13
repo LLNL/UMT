@@ -6,7 +6,7 @@
 #include "DBC.hh"
 #include <stdexcept>
 #include <iostream>
-
+#include "nvToolsExt.h"
 #include "transport/TetonInterface/Teton.hh"
 #include "transport/TetonInterface/TetonNT.hh"
 //#include "transport/EIPhysics/Rad3T/Rad3TCommon.hh"
@@ -18,6 +18,10 @@ using std::endl;
 // using namespace KullEICoupling;
 
 #undef max
+
+extern "C" void Timer_Beg(const char *);
+extern "C" void Timer_End(const char *);
+extern "C" void Timer_Print(void);
 
 extern "C"
 {
@@ -1756,8 +1760,12 @@ Teton<Mesh>::CrelinkMesh() {
         }
     }
 
+    Timer_Beg("getgeometry");
+    nvtxRangePushA("getgeometry");
     F77_ID(getgeometry_, getgeometry, GETGEOMETRY)
         ();
+    nvtxRangePop();
+    Timer_End("getgeometry");
       
 }
 

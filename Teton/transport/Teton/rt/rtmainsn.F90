@@ -90,7 +90,9 @@
 !  Find reflected angles on all reflecting boundaries 
 
    call timer_beg('reflect')
+   call nvtxStartRange("reflect",6)
    call findReflectedAngles
+   call nvtxEndRange
    call timer_end('reflect')
 
 !  Calculate ordering for grid sweeps
@@ -124,9 +126,11 @@
 !*********************************************************************** 
 
    call timer_beg('advanceRT')
+   call nvtxStartRange("advanceRT",5)
    ! calls snmoments to consume psir, produce phi
    ! scales psi (and phi too).
    call advanceRT(dtrad, PSIR, PHI, psib)
+   call nvtxEndRange
    call timer_end('advanceRT')
 
 
@@ -283,13 +287,17 @@
 !  Calculate new electron temperature and energy change
  
      call timer_beg('material')
+     call nvtxStartRange("material")
      call UpdateMaterialCoupling(dtrad)
+     call nvtxEndRange
      call timer_end('material')
 
 !  Check convergence of electron temperature
  
      call timer_beg('rtconv')
+     call nvtxStartRange("rtconv")
      call rtconv(maxTempError) 
+     call nvtxEndRange
      call timer_end('rtconv')
 
      if ((maxTempError <  getEpsilonPoint(temperatureControl) .and.  &
@@ -358,8 +366,10 @@
 !***********************************************************************
 
    call timer_beg('bdyedt')
+   call nvtxStartRange("bdyedt")
    ! in: psib
    call bdyedt(psib)
+   call nvtxEndRange
    call timer_end('bdyedt')
 
 !***********************************************************************

@@ -54,7 +54,7 @@
      A_set(:) =  Bdy% A_bdy(:,1)
      A_mag    =  DOT_PRODUCT( A_set(:),A_set(:) ) 
      A_set(:) =  A_set(:)/sqrt(A_mag)
-
+     !!!$omp parallel do private(ib,Area,A_mag,delta_A,idim)
      do ib=1,nBdyElem
 
        Area(:) = Bdy% A_bdy(:,ib)
@@ -80,7 +80,7 @@
      AngleSetLoop: do set=1,NumQuadSets
 
        QuadSet => getQuadrature(Quad, set)
-
+       !!!!$omp parallel do private(Angle, OmegaDotA,nreflect,ReflAngle,mRef)
        AngleLoop: do Angle=1,QuadSet% NumAngles
 
          OmegaDotA =  DOT_PRODUCT( QuadSet% omega(:,Angle),Area(:) )
