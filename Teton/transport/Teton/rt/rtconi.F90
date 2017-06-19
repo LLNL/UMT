@@ -60,7 +60,7 @@
    intensityControl => getIterationControl(IterControls,"intensity")
 
 !  Find the zone-average energy density 
-
+!$omp parallel do private(zone,nCorner,c0,c,sum,ig)
    do zone=1,nzones
      Z => getZoneData(Geom, zone)
 

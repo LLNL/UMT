@@ -1,3 +1,5 @@
+export PATH=/opt/ibm/spectrum_mpi/bin/:$PATH
+
 #export OMPI_CC=xlc
 #export OMPI_CXX=xlc++
 export OMPI_CC=gcc
