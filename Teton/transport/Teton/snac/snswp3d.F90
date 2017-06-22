@@ -111,7 +111,7 @@ contains
     !real(adqt), shared :: A_ez(3,3,NZONEPAR) ! (ndim,maxcf)
     !integer,    shared :: Connect(3,3,NZONEPAR) ! (3,maxcf)
 
-    integer    :: ez_exit(3) ! (maxcf)
+    !integer    :: ez_exit(3) ! (maxcf)
 
     real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
     real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
@@ -124,6 +124,10 @@ contains
     real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
     real(adqt) :: psifp(3)    ! (maxCorner)
     real(adqt) :: tpsic(8)    ! (maxCorner)
+
+    ! shared memory:
+    integer, shared    :: ez_exit(maxcf,blockDim%z) ! (maxcf) 3*32 *4 bytes
+
 
     !  Constants
 
@@ -226,7 +230,7 @@ contains
                       nxez           = nxez + 1
                       !cez            = Connect(3,icface,c,zone)
                       cez            = Connect_ro(icface,c,3,zone)
-                      ez_exit(nxez)  = cez
+                      ez_exit(nxez,threadIdx%z)  = cez
                       coefpsic(nxez,threadIdx%z) = aez
 
                       if (nCFaces == 3) then
@@ -296,7 +300,7 @@ contains
                 !  Zone Interior or "EZ" Faces
 
                 do icface=1,nxez
-                   cez      = ez_exit(icface)
+                   cez      = ez_exit(icface,threadIdx%z)
                    !r_coefpsic = coefpsic(icface,thread
                    src(cez) = src(cez) + coefpsic(icface,threadIdx%z)*tpsic(c)
                 enddo
@@ -577,7 +581,8 @@ end subroutine setExitFlux
 
    ! shared memory needs:
    shmem = &
-        maxcf*NZONEPAR*8 ! coefpsic
+        maxcf*NZONEPAR*8 + & ! coefpsic
+        maxcf*NZONEPAR*4     ! ez_exit
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
