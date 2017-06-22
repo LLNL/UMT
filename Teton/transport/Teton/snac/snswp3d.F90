@@ -181,11 +181,11 @@ contains
 
                 do icface=1,ncfaces
 
-                   afpm(icface) = omega(1,Angle)* A_fp(1,icface,c,zone) + &
-                        omega(2,Angle)* A_fp(2,icface,c,zone) + &
-                        omega(3,Angle)* A_fp(3,icface,c,zone)
+                   ! afpm(icface) = omega(1,Angle)* A_fp(1,icface,c,zone) + &
+                   !      omega(2,Angle)* A_fp(2,icface,c,zone) + &
+                   !      omega(3,Angle)* A_fp(3,icface,c,zone)
 
-                   !afpm(icface) = omega_A_fp(icface,c,zone,mm)
+                   afpm(icface) = omega_A_fp(icface,c,zone,mm)
 
                    icfp    =  Connect(1,icface,c,zone)
                    ib      =  Connect(2,icface,c,zone)
@@ -212,11 +212,11 @@ contains
 
                 do icface=1,nCFaces
 
-                   aez = omega(1,Angle)* A_ez(1,icface,c,zone) + &
-                        omega(2,Angle)* A_ez(2,icface,c,zone) + &
-                        omega(3,Angle)* A_ez(3,icface,c,zone) 
+                   ! aez = omega(1,Angle)* A_ez(1,icface,c,zone) + &
+                   !      omega(2,Angle)* A_ez(2,icface,c,zone) + &
+                   !      omega(3,Angle)* A_ez(3,icface,c,zone) 
 
-                   !aez = omega_A_ez(icface,c,zone,mm)
+                   aez = omega_A_ez(icface,c,zone,mm)
 
                    if (aez > zero ) then
 
