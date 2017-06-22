@@ -54,7 +54,7 @@ contains
                               next,              &
                               nextZ,             &
                               SigtArray,                &
- !                             SigtInv,             &
+                              SigtInvArray,             &
                               passZstart             )
     implicit none
 
@@ -94,7 +94,7 @@ contains
    integer,    device, intent(in) :: next(ncornr+1,NumAngles)
    integer,    device, intent(in) :: nextZ(nzones,NumAngles)
    real(adqt), device, intent(in)    :: SigtArray(Groups, nzones)
-!   real(adqt), device, intent(in)    :: SigtInv(Groups, nzones)
+   real(adqt), device, intent(in)    :: SigtInvArray(Groups, nzones)
    integer,    device, intent(in) :: passZstart(nzones,NumAngles)   
 
 
@@ -120,7 +120,8 @@ contains
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
     real(adqt) :: afpm(3)     ! (maxcf)
-    real(adqt) :: coefpsic(3) ! (maxcf)
+    !real(adqt) :: coefpsic(3) ! (maxcf)
+    real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
     real(adqt) :: psifp(3)    ! (maxCorner)
     real(adqt) :: tpsic(8)    ! (maxCorner)
 
@@ -153,15 +154,15 @@ contains
              nCorner = nCornerArray(zone)
              nCFaces =   nCFacesArray(zone)
              c0      =   c0Array(zone)
+
              Sigt    =  SigtArray(ig,zone)
-             SigtInv = one/Sigt !need to thread?
+             !SigtInv = one/Sigt !need to thread?
+             SigtInv = SigtInvArray(ig,zone)
 
              !  Contributions from volume terms
 
              do c=1,nCorner
-                !do ig= threadIdx%x, Groups, blockDim%x
                 source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
-                !enddo
                 Q(c)       = SigtInv*source 
                 src(c)     =  Volume(c,zone)*source
              enddo
@@ -187,7 +188,7 @@ contains
 
                    afpm(icface) = omega_A_fp(icface,c,zone,mm)
 
-                   icfp    =  Connect(1,icface,c,zone)
+                   !icfp    =  Connect(1,icface,c,zone)
                    !ib      =  Connect(2,icface,c,zone)
 
                    icfp    =  Connect_ro(icface,c,1,zone)
@@ -226,7 +227,7 @@ contains
                       !cez            = Connect(3,icface,c,zone)
                       cez            = Connect_ro(icface,c,3,zone)
                       ez_exit(nxez)  = cez
-                      coefpsic(nxez) = aez
+                      coefpsic(nxez,threadIdx%z) = aez
 
                       if (nCFaces == 3) then
 
@@ -296,7 +297,8 @@ contains
 
                 do icface=1,nxez
                    cez      = ez_exit(icface)
-                   src(cez) = src(cez) + coefpsic(icface)*tpsic(c)
+                   !r_coefpsic = coefpsic(icface,thread
+                   src(cez) = src(cez) + coefpsic(icface,threadIdx%z)*tpsic(c)
                 enddo
 
              enddo CornerLoop
@@ -544,15 +546,10 @@ end subroutine setExitFlux
    real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    integer, device, intent(in):: d_Connect(3,maxcf,maxCorner,nzones) 
 
-   !real(adqt), device, intent(in)    :: d_omega_A_fp(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: d_omega_A_fp(maxcf ,maxCorner, nzones, anglebatch) 
-
-
-   !real(adqt), device, intent(in)    :: d_omega_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: d_omega_A_ez(maxcf ,maxCorner, nzones, anglebatch)  
-
-   
    integer, device, intent(in):: d_Connect_ro(maxcf,maxCorner,3,nzones) 
+
    real(adqt), device, intent(in)    :: d_STotal(Groups, maxCorner, nzones)
    real(adqt), device, intent(in)    :: d_STimeBatch(Groups, ncornr, anglebatch)
    real(adqt), device, intent(in)    :: d_Volume(maxCorner, nzones)
@@ -570,14 +567,19 @@ end subroutine setExitFlux
    integer    :: mm, Angle,istat,i,ib,ic
 
    type(dim3) :: threads,blocks
-
+   
+   integer    :: shmem !amount of shared memory need by GPU sweep kernel.
 
    ! groups*NZONEPAR must be .le. 1024 on K80 hardware
    !threads=dim3(QuadSet%Groups,NZONEPAR,1) 
    threads=dim3(THREADX,1,NZONEPAR) 
    blocks=dim3(anglebatch,1,1)
 
-   call GPU_sweep<<<blocks,threads,0,streamid>>>( anglebatch,                     &
+   ! shared memory needs:
+   shmem = &
+        maxcf*NZONEPAR*8 ! coefpsic
+
+   call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
                               Groups,            &
                               ncornr,               &
@@ -606,7 +608,7 @@ end subroutine setExitFlux
                               d_next,              &
                               d_nextZ,             &
                               d_Sigt,                &
-!                              d_SigtInv,             &
+                              d_SigtInv,             &
                               d_passZstart             )
 
 
