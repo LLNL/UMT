@@ -243,8 +243,8 @@ extern "C"
   
 	    //       int icfp    = soa_Connect(0,icface,c,zone) - 1;
 	    //       int ib      = soa_Connect(1,icface,c,zone) - 1;
-	    int icfp= __shfl(connect0,icface+size_maxcf*c);
-	    int ib= __shfl(connect1,icface+size_maxcf*c);
+	    int icfp= __shfl(connect0,icface+size_maxcf*c) - 1;
+	    int ib= __shfl(connect1,icface+size_maxcf*c) - 1;
   
 	    if ( r_afpm >= 0.0 )
 	    { 
@@ -284,7 +284,7 @@ extern "C"
 	      sumArea        = sumArea + aez;
 	      area_opp       = .0;
 	      //           cez            = soa_Connect(2,icface,c,zone) - 1;
-	      cez            = __shfl(connect2,icface+size_maxcf*c);
+	      cez            = __shfl(connect2,icface+size_maxcf*c) - 1;
 	      ez_exit[nxez]  = cez;
 	      coefpsic[nxez] = aez;
 	      nxez           = nxez + 1;
@@ -478,9 +478,9 @@ extern "C"
 	      omega1*soa_A_fp(1,icface,c,zone) + 
 	      omega2*soa_A_fp(2,icface,c,zone);
 	    // could get rid of below if new order was used originally?
-	    int icfp    = soa_Connect(0,icface,c,zone) - 1;
-	    int ib      = soa_Connect(1,icface,c,zone) - 1;
-	    int cez     = soa_Connect(2,icface,c,zone) - 1;
+	    int icfp    = soa_Connect(0,icface,c,zone);
+	    int ib      = soa_Connect(1,icface,c,zone);
+	    int cez     = soa_Connect(2,icface,c,zone);
 	    soa_Connect_ro(0,icface,c,zone) = icfp;
 	    soa_Connect_ro(1,icface,c,zone) = ib  ;
 	    soa_Connect_ro(2,icface,c,zone) = cez ;
