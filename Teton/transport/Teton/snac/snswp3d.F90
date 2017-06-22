@@ -188,10 +188,10 @@ contains
                    afpm(icface) = omega_A_fp(icface,c,zone,mm)
 
                    icfp    =  Connect(1,icface,c,zone)
-                   ib      =  Connect(2,icface,c,zone)
+                   !ib      =  Connect(2,icface,c,zone)
 
-                   ! icfp    =  Connect_ro(icface,c,1,zone)
-                   ! ib      =  Connect_ro(icface,c,2,zone)
+                   icfp    =  Connect_ro(icface,c,1,zone)
+                   ib      =  Connect_ro(icface,c,2,zone)
 
                    if ( afpm(icface) >= zero ) then
                       sumArea = sumArea + afpm(icface)
@@ -223,8 +223,8 @@ contains
                       sumArea        = sumArea + aez
                       area_opp       = zero
                       nxez           = nxez + 1
-                      cez            = Connect(3,icface,c,zone)
-                      !cez            = Connect_ro(icface,c,3,zone)
+                      !cez            = Connect(3,icface,c,zone)
+                      cez            = Connect_ro(icface,c,3,zone)
                       ez_exit(nxez)  = cez
                       coefpsic(nxez) = aez
 
