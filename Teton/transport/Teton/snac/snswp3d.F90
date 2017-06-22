@@ -116,18 +116,21 @@ contains
     real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
     real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
     real(adqt) :: Sigt, SigtInv
+    
+    real(adqt) :: r_afpm
 
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
-    real(adqt) :: afpm(3)     ! (maxcf)
+    !real(adqt) :: afpm(3)     ! (maxcf)
     !real(adqt) :: coefpsic(3) ! (maxcf)
-    real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
+
     real(adqt) :: psifp(3)    ! (maxCorner)
     real(adqt) :: tpsic(8)    ! (maxCorner)
 
     ! shared memory:
+    real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
     integer, shared    :: ez_exit(maxcf,blockDim%z) ! (maxcf) 3*32 *4 bytes
-
+    real(adqt), shared :: afpm(maxcf, blockDim%z)     ! (maxcf) 3*32 *8 bytes
 
     !  Constants
 
@@ -184,13 +187,19 @@ contains
 
                 sumArea = zero
 
+                if(threadIdx%x <= ncfaces) then
+                   ! coalesced load into shared memory array
+                   afpm(threadIdx%x,threadIdx%z) = omega_A_fp(threadIdx%x,c,zone,mm)
+                endif
+
                 do icface=1,ncfaces
 
                    ! afpm(icface) = omega(1,Angle)* A_fp(1,icface,c,zone) + &
                    !      omega(2,Angle)* A_fp(2,icface,c,zone) + &
                    !      omega(3,Angle)* A_fp(3,icface,c,zone)
 
-                   afpm(icface) = omega_A_fp(icface,c,zone,mm)
+                   !afpm(icface) = omega_A_fp(icface,c,zone,mm)
+                   r_afpm = afpm(icface,threadIdx%z)
 
                    !icfp    =  Connect(1,icface,c,zone)
                    !ib      =  Connect(2,icface,c,zone)
@@ -198,8 +207,8 @@ contains
                    icfp    =  Connect_ro(icface,c,1,zone)
                    ib      =  Connect_ro(icface,c,2,zone)
 
-                   if ( afpm(icface) >= zero ) then
-                      sumArea = sumArea + afpm(icface)
+                   if ( r_afpm >= zero ) then
+                      sumArea = sumArea + r_afpm
                    else
                       if (icfp == 0) then
                          psifp(icface) = psib(ig,ib,mm)
@@ -207,7 +216,7 @@ contains
                          psifp(icface) = psicbatch(ig,icfp,mm)
                       endif
 
-                      src(c) = src(c) - afpm(icface)*psifp(icface)
+                      src(c) = src(c) - r_afpm*psifp(icface)
                    endif
                 enddo
 
@@ -235,10 +244,13 @@ contains
 
                       if (nCFaces == 3) then
 
-                         ifp = mod(icface,nCFaces) + 1
+                         ifp = mod(icface,nCFaces) + 1                         
 
-                         if ( afpm(ifp) < zero ) then
-                            area_opp   = -afpm(ifp)
+                         ! need to do r_afpm = r_afpm(ifp)
+                         r_afpm = afpm(ifp,threadIdx%z)
+
+                         if ( r_afpm < zero ) then
+                            area_opp   = -r_afpm
                             psi_opp    =  psifp(ifp)
                          endif
 
@@ -250,9 +262,10 @@ contains
 
                          do k=1,nCFaces-2
                             ifp = mod(ifp,nCFaces) + 1
-                            if ( afpm(ifp) < zero ) then
-                               area_opp   = area_opp   - afpm(ifp)
-                               psi_opp    = psi_opp    - afpm(ifp)*psifp(ifp)
+                            r_afpm = afpm(ifp,threadIdx%z)
+                            if ( r_afpm < zero ) then
+                               area_opp   = area_opp   - r_afpm
+                               psi_opp    = psi_opp    - r_afpm*psifp(ifp)
                             endif
                          enddo
 
@@ -582,7 +595,8 @@ end subroutine setExitFlux
    ! shared memory needs:
    shmem = &
         maxcf*NZONEPAR*8 + & ! coefpsic
-        maxcf*NZONEPAR*4     ! ez_exit
+        maxcf*NZONEPAR*4 + & ! ez_exit
+        maxcf*NZONEPAR*8  ! afpm
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
