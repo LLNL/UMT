@@ -329,7 +329,44 @@
         !        Sweep the mesh, calculating PSI for each corner; the
         !        boundary flux array PSIB is also updated here.
         !        Mesh cycles are fixed automatically.
-        if(0) then ! call CUDA fortran version
+        if(1) then ! call CUDA fortran version
+           call snswp3d_f(     current%anglebatch,                     &
+                Size%nzones,               &
+                QuadSet%Groups,            &
+                Size%ncornr,               &
+                QuadSet%NumAngles,         &
+                QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need a bin of angles at a time
+                Size%maxCorner,            &
+                Size%maxcf,                &
+                binRecv,                   &
+                current%NangBin,                   &
+                Size%nbelem,                &
+                QuadSet%d_omega,             &
+                Geom%ZDataSoA%nCorner,                &
+                Geom%ZDataSoA%nCFaces,                &
+                Geom%ZDataSoA%c0,                &
+                Geom%ZDataSoA%A_fp,                &
+                Geom%ZDataSoA%A_ez,                &
+                Geom%ZDataSoA%Connect,             &
+                current%omega_A_fp%data,                &
+                current%omega_A_ez%data,                &
+                Geom%ZDataSoA%Connect_reorder,             &
+                Geom%ZDataSoA%STotal,              &
+                                !Geom%ZDataSoA%STime,               &
+                current%STime%data(1,1,1),          &
+                Geom%ZDataSoA%Volume,             &
+                current%psi%data(1,1,1),                      &  ! only want angle batch portion
+                current%psib%data(1,1,1),                      &
+                QuadSet%d_next,              &
+                QuadSet%d_nextZ,             &
+                Geom%ZDataSoA%Sigt,                &
+                Geom%ZDataSoA%SigtInv,             &
+                QuadSet%d_passZstart,        &
+                !calcSTime,                  &
+                !Size%tau,             &
+                kernel_stream           &
+                )
+
            ! call snswp3d(     anglebatch,                     &
            !      Size%nzones,               &
            !      QuadSet%Groups,            &
@@ -401,6 +438,8 @@
         ! record when sweep is finished for this batch
         istat=cudaEventRecord(SweepFinished( current%batch ), kernel_stream )
 
+
+        print *, "Sweep finished", fluxiter
 
         !!!!! Start of things that will overlap sweep kernel !!!!!
 
