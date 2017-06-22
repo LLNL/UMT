@@ -60,9 +60,9 @@ module ZoneData_mod
      integer,    device, allocatable  :: Connect(:,:,:,:)   ! nearest neighbor connectivity 
 
      ! create device versions
-     real(adqt), pinned, allocatable :: omega_A_fp(:,:,:,:) ! size: nZ*mC*mF*nA
-     real(adqt), pinned, allocatable :: omega_A_ez(:,:,:,:) ! size: nZ*mC*mF*nA
-     integer, device, allocatable :: Connect_reorder(:,:,:,:) ! 3,nZ,mC,mF
+     real(adqt), pinned, allocatable :: omega_A_fp(:,:,:,:) ! size: mF*mC*nZ*nA
+     real(adqt), pinned, allocatable :: omega_A_ez(:,:,:,:) ! size: mF*mC*nZ*nA
+     integer, device, allocatable :: Connect_reorder(:,:,:,:) ! mF,mC,3,nZ
      
 
   end type ZoneData_SoA
@@ -179,9 +179,8 @@ contains
     allocate( self % A_ez(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
     
 
-    allocate( self% omega_A_fp(Size% nzones,Size% maxCorner,Size% maxcf, Size% nangSN) )
-    allocate( self% omega_A_ez(Size% nzones,Size% maxCorner,Size% maxcf, Size% nangSN) )
-
+    allocate( self% omega_A_fp(Size% maxcf, Size% maxCorner,Size% nzones, Size% nangSN) )
+    allocate( self% omega_A_ez(Size% maxcf, Size% maxCorner,Size% nzones, Size% nangSN) )
 
 
     allocate( self % Connect(3,Size% maxcf,Size% maxCorner,Size% nzones) )
