@@ -185,7 +185,8 @@ contains
 
 
     allocate( self % Connect(3,Size% maxcf,Size% maxCorner,Size% nzones) )
-    allocate( self % Connect_reorder(3,Size% nzones,Size% maxCorner,Size% maxcf) )
+    !allocate( self % Connect_reorder(3,Size% nzones,Size% maxCorner,Size% maxcf) )
+    allocate( self % Connect_reorder(Size% maxcf, Size% maxCorner,3,Size% nzones) )
     
     allocate( self % STotal(Size% ngr, Size% maxCorner, Size% nzones) )
     allocate( self % STime(Size% ngr, Size%ncornr, Size% nangSN ) )
