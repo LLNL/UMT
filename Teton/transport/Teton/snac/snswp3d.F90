@@ -15,6 +15,8 @@
 #define NZONEPAR 32
 ! number of threads available for groups (must be >= groups)
 #define THREADX 32
+! the number of corners that can be processed at a time in shared memory
+#define CORNERCHUNK 8
 
 module snswp3d_mod
   use kind_mod
@@ -54,7 +56,7 @@ contains
                               next,              &
                               nextZ,             &
                               SigtArray,                &
-                              SigtInvArray,             &
+!                              SigtInvArray,             &
                               passZstart             )
     implicit none
 
@@ -94,7 +96,7 @@ contains
    integer,    device, intent(in) :: next(ncornr+1,NumAngles)
    integer,    device, intent(in) :: nextZ(nzones,NumAngles)
    real(adqt), device, intent(in)    :: SigtArray(Groups, nzones)
-   real(adqt), device, intent(in)    :: SigtInvArray(Groups, nzones)
+!   real(adqt), device, intent(in)    :: SigtInvArray(Groups, nzones)
    integer,    device, intent(in) :: passZstart(nzones,NumAngles)   
 
 
@@ -115,7 +117,7 @@ contains
 
     real(adqt) :: fouralpha, fouralpha4, aez, aez2, area_opp, psi_opp
     real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
-    real(adqt) :: Sigt, SigtInv
+    real(adqt) :: Sigt!, SigtInv
     
     real(adqt) :: r_afpm, temp
 
@@ -135,7 +137,7 @@ contains
     integer, shared    :: ez_exit(maxcf,blockDim%z) ! (maxcf) 3*32 *4 bytes
     real(adqt), shared :: afpm(maxcf,maxCorner, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
     integer, shared    :: Connect_ro(maxcf,maxCorner,3,blockDim%z) !(maxcf*maxCorner*ndim) 3*8*3*32 *4 bytes
-
+    !real(adqt), shared :: Volume(maxCorner, blockDim%z) !maxCorner 8*32 *8 bytes
 
 
     !  Constants
@@ -170,16 +172,14 @@ contains
 
              Sigt    =  SigtArray(ig,zone)
              !SigtInv = one/Sigt !need to thread?
-             SigtInv = SigtInvArray(ig,zone)
+             !SigtInv = SigtInvArray(ig,zone)
 
-             !  Contributions from volume terms
 
-             do c=1,nCorner
-                source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
-                Q(c)       = SigtInv*source 
-                src(c)     =  Volume(c,zone)*source
-                SigtVol(c) = Sigt*Volume(c,zone)
-             enddo
+             ! ! coalesced load into volume shared memory
+             ! c = threadIdx%x
+             ! if(c <= nCorner) then
+             !    Volume(c,threadIdx%z) = soaVolume(c,zone)
+             ! endif
 
              ! could loop over chunks of ncfaces and nCorner that fit with threadidx.
              ! Could use more shared memory, or could work on set of ncfaces*nCorner at a time?
@@ -197,6 +197,17 @@ contains
                 enddo
 
              endif
+
+
+             !  Contributions from volume terms
+
+             do c=1,nCorner
+                source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
+                !Q(c)       = SigtInv*source 
+                Q(c)       = source/Sigt 
+                src(c)     =  Volume(c,zone)*source
+                !SigtVol(c) = Sigt*Volume(c,zone)
+             enddo
 
 
              CornerLoop: do i=1,nCorner
@@ -299,7 +310,8 @@ contains
                       TestOppositeFace: if (area_opp > zero) then
 
                          aez2 = aez*aez
-                         sigv    = SigtVol(c)
+                         !sigv    = SigtVol(c)
+                         sigv    = Sigt*Volume(c,zone)
                          sigv2        = sigv*sigv
                          gnum         = aez2*( fouralpha*sigv2 +              &
                               aez*(four*sigv + three*aez) )
@@ -310,16 +322,16 @@ contains
 
                          sez          = gtau*sigv*( psi_opp - Q(c) ) +   &
                               (one - gtau)*temp
-                         src(c)       = src(c)   + sez
-                         src(cez)     = src(cez) - sez
 
                       else
 
                          sez          = temp
-                         src(c)       = src(c)   + sez
-                         src(cez)     = src(cez) - sez
 
                       endif TestOppositeFace
+
+                      src(c)       = src(c)   + sez
+                      src(cez)     = src(cez) - sez
+
 
                    endif
 
@@ -327,7 +339,7 @@ contains
 
                 !  Corner angular flux
 
-                tpsic = src(c)/(sumArea + SigtVol(c) )
+                tpsic = src(c)/(sumArea + Sigt*Volume(c,zone) )
 
                 !  Calculate the angular flux exiting all "FP" surfaces
                 !  and the current exiting all "EZ" surfaces.
@@ -623,8 +635,9 @@ end subroutine setExitFlux
    shmem = &
         maxcf*NZONEPAR*8 + & ! coefpsic
         maxcf*NZONEPAR*4 + & ! ez_exit
-        maxcf*8*NZONEPAR*8 + & ! afpm with cf and c
-        maxcf*8*3*NZONEPAR*4  ! connect_ro
+        maxcf*maxCorner*NZONEPAR*8 + & ! afpm with cf and c
+        maxcf*maxCorner*3*NZONEPAR*4 + & ! connect_ro
+        0!maxCorner*NZONEPAR*8           ! volume
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
@@ -655,7 +668,7 @@ end subroutine setExitFlux
                               d_next,              &
                               d_nextZ,             &
                               d_Sigt,                &
-                              d_SigtInv,             &
+!                              d_SigtInv,             &
                               d_passZstart             )
 
 
