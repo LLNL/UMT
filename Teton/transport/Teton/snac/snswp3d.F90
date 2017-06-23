@@ -123,7 +123,7 @@ contains
 
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
-    real(adqt) :: SigtVol(8)  ! (maxCorner)
+    !real(adqt) :: SigtVol(8)  ! (maxCorner)
 
     !real(adqt) :: afpm(3)     ! (maxcf)
     !real(adqt) :: coefpsic(3) ! (maxcf)
@@ -135,7 +135,8 @@ contains
     ! shared memory:
     real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
     integer, shared    :: ez_exit(maxcf,blockDim%z) ! (maxcf) 3*32 *4 bytes
-    real(adqt), shared :: afpm(maxcf,maxCorner, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
+    real(adqt), shared :: sh_omega_A_fp(maxcf,maxCorner, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
+    real(adqt), shared :: sh_omega_A_ez(maxcf,maxCorner, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
     integer, shared    :: Connect_ro(maxcf,maxCorner,3,blockDim%z) !(maxcf*maxCorner*ndim) 3*8*3*32 *4 bytes
     real(adqt), shared :: Volume(maxCorner, blockDim%z) !maxCorner 8*32 *8 bytes
 
@@ -176,27 +177,29 @@ contains
 
 
              ! coalesced load into volume shared memory
-             c = threadIdx%x
-             if(c <= nCorner) then
+             do c = threadIdx%x, nCorner, blockDim%x
                 Volume(c,threadIdx%z) = soa_Volume(c,zone)
-             endif
+             enddo
 
              ! could loop over chunks of ncfaces and nCorner that fit with threadidx.
              ! Could use more shared memory, or could work on set of ncfaces*nCorner at a time?
-             if(threadIdx%x <= ncfaces*nCorner) then
+             !if(threadIdx%x <= ncfaces*nCorner) then
+             do k = threadIdx%x, ncfaces*nCorner, blockDim%x
 
-                c = (threadIdx%x-1)/maxcf + 1 ! split thread block x-dimension loop into two dims
-                icface = threadIdx%x - ((c-1)*maxcf) ! remainder
+                c = (k-1)/maxcf + 1 ! split thread block x-dimension loop into two dims
+                icface = k - ((c-1)*maxcf) ! remainder
                 ! this gives c = 1,1,1, 2,2,2, 3,3,3
                 !       icface = 1,2,3, 1,2,3, 1,2,3
 
-                ! coalesced load into shared memory array
-                afpm(icface,c,threadIdx%z) = omega_A_fp(icface,c,zone,mm)
+                ! coalesced loads into shared memory array
+                sh_omega_A_fp(icface,c,threadIdx%z) = omega_A_fp(icface,c,zone,mm)
+                sh_omega_A_ez(icface,c,threadIdx%z) = omega_A_ez(icface,c,zone,mm)                
+
                 do i=1,3 !ndim
                    Connect_ro(icface,c,i,threadIdx%z) = soa_connect_ro(icface,c,i,zone)
                 enddo
 
-             endif
+             enddo
 
 
              !  Contributions from volume terms
@@ -231,7 +234,7 @@ contains
                    !      omega(3,Angle)* A_fp(3,icface,c,zone)
 
                    !afpm(icface) = omega_A_fp(icface,c,zone,mm)
-                   r_afpm = afpm(icface,c,threadIdx%z)
+                   r_afpm = sh_omega_A_fp(icface,c,threadIdx%z)
 
                    !icfp    =  Connect(1,icface,c,zone)
                    !ib      =  Connect(2,icface,c,zone)
@@ -262,7 +265,7 @@ contains
                    !      omega(2,Angle)* A_ez(2,icface,c,zone) + &
                    !      omega(3,Angle)* A_ez(3,icface,c,zone) 
 
-                   aez = omega_A_ez(icface,c,zone,mm)
+                   aez = sh_omega_A_ez(icface,c,threadIdx%z)
 
                    if (aez > zero ) then
 
@@ -279,7 +282,7 @@ contains
                          ifp = mod(icface,nCFaces) + 1                         
 
                          ! need to do r_afpm = r_afpm(ifp)
-                         r_afpm = afpm(ifp,c,threadIdx%z)
+                         r_afpm = sh_omega_A_fp(ifp,c,threadIdx%z)
 
                          if ( r_afpm < zero ) then
                             area_opp   = -r_afpm
@@ -294,7 +297,7 @@ contains
 
                          do k=1,nCFaces-2
                             ifp = mod(ifp,nCFaces) + 1
-                            r_afpm = afpm(ifp,c,threadIdx%z)
+                            r_afpm = sh_omega_A_fp(ifp,c,threadIdx%z)
                             if ( r_afpm < zero ) then
                                area_opp   = area_opp   - r_afpm
                                psi_opp    = psi_opp    - r_afpm*psifp(ifp)
@@ -636,8 +639,11 @@ end subroutine setExitFlux
         maxcf*NZONEPAR*8 + & ! coefpsic
         maxcf*NZONEPAR*4 + & ! ez_exit
         maxcf*maxCorner*NZONEPAR*8 + & ! afpm with cf and c
+        maxcf*maxCorner*NZONEPAR*8 + & ! aez with cf and c
         maxcf*maxCorner*3*NZONEPAR*4 + & ! connect_ro
         maxCorner*NZONEPAR*8           ! volume
+
+   print *, "shared memory size = ", real(shmem)/real(1024), " kb"
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
