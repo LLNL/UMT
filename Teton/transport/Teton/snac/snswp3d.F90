@@ -121,6 +121,8 @@ contains
 
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
+    real(adqt) :: SigtVol(8)  ! (maxCorner)
+
     !real(adqt) :: afpm(3)     ! (maxcf)
     !real(adqt) :: coefpsic(3) ! (maxcf)
 
@@ -176,6 +178,7 @@ contains
                 source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
                 Q(c)       = SigtInv*source 
                 src(c)     =  Volume(c,zone)*source
+                SigtVol(c) = Sigt*Volume(c,zone)
              enddo
 
              ! could loop over chunks of ncfaces and nCorner that fit with threadidx.
@@ -296,7 +299,7 @@ contains
                       TestOppositeFace: if (area_opp > zero) then
 
                          aez2 = aez*aez
-                         sigv    = Sigt* Volume(c,zone)
+                         sigv    = SigtVol(c)
                          sigv2        = sigv*sigv
                          gnum         = aez2*( fouralpha*sigv2 +              &
                               aez*(four*sigv + three*aez) )
@@ -324,7 +327,7 @@ contains
 
                 !  Corner angular flux
 
-                tpsic = src(c)/(sumArea + Sigt* Volume(c,zone) )
+                tpsic = src(c)/(sumArea + SigtVol(c) )
 
                 !  Calculate the angular flux exiting all "FP" surfaces
                 !  and the current exiting all "EZ" surfaces.
