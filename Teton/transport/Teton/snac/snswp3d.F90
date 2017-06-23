@@ -195,9 +195,11 @@ contains
                 sh_omega_A_fp(icface,c,threadIdx%z) = omega_A_fp(icface,c,zone,mm)
                 sh_omega_A_ez(icface,c,threadIdx%z) = omega_A_ez(icface,c,zone,mm)                
 
-                do i=1,3 !ndim
-                   Connect_ro(icface,c,i,threadIdx%z) = soa_connect_ro(icface,c,i,zone)
-                enddo
+                !do i=1,3 !ndim
+                Connect_ro(icface,c,1,threadIdx%z) = soa_connect_ro(icface,c,1,zone)
+                Connect_ro(icface,c,2,threadIdx%z) = soa_connect_ro(icface,c,2,zone)
+                Connect_ro(icface,c,3,threadIdx%z) = soa_connect_ro(icface,c,3,zone)
+                !enddo
 
              enddo
 
@@ -217,8 +219,6 @@ contains
 
                 ic      = next(ndone+i,Angle)
                 c       = ic - c0
-
-                !sigv    = Sigt* Volume(c,zone)
 
                 !  Calculate Area_CornerFace dot Omega to determine the 
                 !  contributions from incident fluxes across external 
