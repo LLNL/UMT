@@ -42,10 +42,10 @@ contains
                               c0Array,                &
                               A_fp, &
                               A_ez, &
-                              Connect, &
+                              soa_Connect, &
                               omega_A_fp,                &
                               omega_A_ez,                &
-                              Connect_ro,             &
+                              soa_Connect_ro,             &
                               STotal,              &
                               STimeBatch,               & ! only angle batch portion
                               Volume,             &
@@ -80,12 +80,12 @@ contains
 
    real(adqt), device, intent(in)    :: A_fp(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   integer, device, intent(in):: Connect(3,maxcf,maxCorner,nzones) 
+   integer, device, intent(in):: soa_Connect(3,maxcf,maxCorner,nzones) 
 
    real(adqt), device, intent(in)    :: omega_A_fp(maxcf,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(in)    :: omega_A_ez(maxcf,maxCorner,nzones, anglebatch) 
 
-   integer, device, intent(in):: Connect_ro(maxcf,maxCorner,3,nzones) 
+   integer, device, intent(in):: soa_Connect_ro(maxcf,maxCorner,3,nzones) 
    real(adqt), device, intent(in)    :: STotal(Groups, maxCorner, nzones)
    real(adqt), device, intent(in)    :: STimeBatch(Groups, ncornr, anglebatch)
    real(adqt), device, intent(in)    :: Volume(maxCorner, nzones)
@@ -117,21 +117,24 @@ contains
     real(adqt) :: source, sigv, sigv2, gnum, gtau, sez, sumArea
     real(adqt) :: Sigt, SigtInv
     
-    real(adqt) :: r_afpm
+    real(adqt) :: r_afpm, temp
 
     real(adqt) :: src(8)      ! (maxCorner)
     real(adqt) :: Q(8)        ! (maxCorner)
     !real(adqt) :: afpm(3)     ! (maxcf)
     !real(adqt) :: coefpsic(3) ! (maxcf)
 
-    real(adqt) :: psifp(3)    ! (maxCorner)
+    real(adqt) :: psifp(3)    ! (maxcf)
     !real(adqt) :: tpsic(8)    ! (maxCorner)
     real(adqt) :: tpsic
 
     ! shared memory:
     real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
     integer, shared    :: ez_exit(maxcf,blockDim%z) ! (maxcf) 3*32 *4 bytes
-    real(adqt), shared :: afpm(maxcf,8, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
+    real(adqt), shared :: afpm(maxcf,maxCorner, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
+    integer, shared    :: Connect_ro(maxcf,maxCorner,3,blockDim%z) !(maxcf*maxCorner*ndim) 3*8*3*32 *4 bytes
+
+
 
     !  Constants
 
@@ -175,7 +178,8 @@ contains
                 src(c)     =  Volume(c,zone)*source
              enddo
 
-
+             ! could loop over chunks of ncfaces and nCorner that fit with threadidx.
+             ! Could use more shared memory, or could work on set of ncfaces*nCorner at a time?
              if(threadIdx%x <= ncfaces*nCorner) then
 
                 c = (threadIdx%x-1)/maxcf + 1 ! split thread block x-dimension loop into two dims
@@ -185,6 +189,10 @@ contains
 
                 ! coalesced load into shared memory array
                 afpm(icface,c,threadIdx%z) = omega_A_fp(icface,c,zone,mm)
+                do i=1,3 !ndim
+                   Connect_ro(icface,c,i,threadIdx%z) = soa_connect_ro(icface,c,i,zone)
+                enddo
+
              endif
 
 
@@ -193,7 +201,7 @@ contains
                 ic      = next(ndone+i,Angle)
                 c       = ic - c0
 
-                sigv    = Sigt* Volume(c,zone)
+                !sigv    = Sigt* Volume(c,zone)
 
                 !  Calculate Area_CornerFace dot Omega to determine the 
                 !  contributions from incident fluxes across external 
@@ -214,8 +222,8 @@ contains
                    !icfp    =  Connect(1,icface,c,zone)
                    !ib      =  Connect(2,icface,c,zone)
 
-                   icfp    =  Connect_ro(icface,c,1,zone)
-                   ib      =  Connect_ro(icface,c,2,zone)
+                   icfp    =  Connect_ro(icface,c,1,threadIdx%z)
+                   ib      =  Connect_ro(icface,c,2,threadIdx%z)
 
                    if ( r_afpm >= zero ) then
                       sumArea = sumArea + r_afpm
@@ -248,7 +256,7 @@ contains
                       area_opp       = zero
                       nxez           = nxez + 1
                       !cez            = Connect(3,icface,c,zone)
-                      cez            = Connect_ro(icface,c,3,zone)
+                      cez            = Connect_ro(icface,c,3,threadIdx%z)
                       ez_exit(nxez,threadIdx%z)  = cez
                       coefpsic(nxez,threadIdx%z) = aez
 
@@ -283,10 +291,12 @@ contains
 
                       endif
 
+                      temp = half*aez*( Q(c) - Q(cez) )
+                      
                       TestOppositeFace: if (area_opp > zero) then
 
                          aez2 = aez*aez
-
+                         sigv    = Sigt* Volume(c,zone)
                          sigv2        = sigv*sigv
                          gnum         = aez2*( fouralpha*sigv2 +              &
                               aez*(four*sigv + three*aez) )
@@ -296,13 +306,13 @@ contains
                               two*aez*(two*sigv + aez)) ) 
 
                          sez          = gtau*sigv*( psi_opp - Q(c) ) +   &
-                              half*aez*(one - gtau)*( Q(c) - Q(cez) )
+                              (one - gtau)*temp
                          src(c)       = src(c)   + sez
                          src(cez)     = src(cez) - sez
 
                       else
 
-                         sez          = half*aez*( Q(c) - Q(cez) )
+                         sez          = temp
                          src(c)       = src(c)   + sez
                          src(cez)     = src(cez) - sez
 
@@ -314,7 +324,7 @@ contains
 
                 !  Corner angular flux
 
-                tpsic = src(c)/(sumArea + sigv)
+                tpsic = src(c)/(sumArea + Sigt* Volume(c,zone) )
 
                 !  Calculate the angular flux exiting all "FP" surfaces
                 !  and the current exiting all "EZ" surfaces.
@@ -611,7 +621,7 @@ end subroutine setExitFlux
         maxcf*NZONEPAR*8 + & ! coefpsic
         maxcf*NZONEPAR*4 + & ! ez_exit
         maxcf*8*NZONEPAR*8 + & ! afpm with cf and c
-        0
+        maxcf*8*3*NZONEPAR*4  ! connect_ro
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
