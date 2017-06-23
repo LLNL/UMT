@@ -853,7 +853,8 @@ Teton<Mesh>::linkKull(Teton<Mesh>::MeshType &M,
         }
     }
     
-    cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+    // YKT experiment:
+    //cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
 // Allocate persistant arrays
     resize();

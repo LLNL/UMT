@@ -146,8 +146,8 @@ contains
     parameter (fouralpha=1.82d0)
     parameter (fouralpha4=5.82d0)
 
-
-    ig = threadIdx%x
+    ! best if threadIdx is 16 or 32, and multiples of these groups are done by block y.
+    ig = threadIdx%x + blockDim%x*(blockIdx%y-1)
     mm = blockIdx%x
     Angle = AngleOrder(mm)
 
@@ -623,16 +623,19 @@ end subroutine setExitFlux
 
 !  Local Variables
 
-   integer    :: mm, Angle,istat,i,ib,ic
+   integer    :: mm, Angle,istat,i,ib,ic, groupset
 
    type(dim3) :: threads,blocks
    
    integer    :: shmem !amount of shared memory need by GPU sweep kernel.
 
-   ! groups*NZONEPAR must be .le. 1024 on K80 hardware
+   ! Groups are done in chunks of THREADX size, and groupset is number of those chunks.
+   groupset = QuadSet%Groups/THREADX
+
+   ! THREADX*NZONEPAR must be .le. 1024 on P100 hardware
    !threads=dim3(QuadSet%Groups,NZONEPAR,1) 
    threads=dim3(THREADX,1,NZONEPAR) 
-   blocks=dim3(anglebatch,1,1)
+   blocks=dim3(anglebatch,groupset,1)
 
    ! shared memory needs:
    shmem = &
