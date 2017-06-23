@@ -125,7 +125,8 @@ contains
     !real(adqt) :: coefpsic(3) ! (maxcf)
 
     real(adqt) :: psifp(3)    ! (maxCorner)
-    real(adqt) :: tpsic(8)    ! (maxCorner)
+    !real(adqt) :: tpsic(8)    ! (maxCorner)
+    real(adqt) :: tpsic
 
     ! shared memory:
     real(adqt), shared :: coefpsic(maxcf,blockDim%z) ! (maxcf) 3*32 *8 bytes
@@ -313,7 +314,7 @@ contains
 
                 !  Corner angular flux
 
-                tpsic(c) = src(c)/(sumArea + sigv)
+                tpsic = src(c)/(sumArea + sigv)
 
                 !  Calculate the angular flux exiting all "FP" surfaces
                 !  and the current exiting all "EZ" surfaces.
@@ -324,22 +325,26 @@ contains
                 do icface=1,nxez
                    cez      = ez_exit(icface,threadIdx%z)
                    !r_coefpsic = coefpsic(icface,thread
-                   src(cez) = src(cez) + coefpsic(icface,threadIdx%z)*tpsic(c)
+                   src(cez) = src(cez) + coefpsic(icface,threadIdx%z)*tpsic
                 enddo
+
+                psicbatch(ig,c0+c,mm) = tpsic
 
              enddo CornerLoop
 
              !  Copy temporary flux into the global array
 
              !print *, "ig, c0, Angle", ig, c0, Angle
-             do c=1,nCorner
-                psicbatch(ig,c0+c,mm) = tpsic(c)
+             !do c=1,nCorner
+
+                !!!!psicbatch(ig,c0+c,mm) = tpsic(c)
+
                 !if(ig>Groups .or. c0+c > ncornr .or. Angle > NumAngles) then
                 !   print *, "ig, c0, c, Angle", ig, c0, c, Angle
                 !endif
                 !psic(ig,c0+c,Angle) = tpsic(c)
                 !psic(ig,c0+c,Angle) = tpsic(c)
-             enddo
+             !enddo
 
           enddo ZoneLoop
        !endif ! ig .le. groups
