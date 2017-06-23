@@ -50,7 +50,7 @@ contains
                               soa_Connect_ro,             &
                               STotal,              &
                               STimeBatch,               & ! only angle batch portion
-                              Volume,             &
+                              soa_Volume,             &
                               psicbatch,                      &  ! only angle batch portion
                               psib,                      &
                               next,              &
@@ -90,7 +90,7 @@ contains
    integer, device, intent(in):: soa_Connect_ro(maxcf,maxCorner,3,nzones) 
    real(adqt), device, intent(in)    :: STotal(Groups, maxCorner, nzones)
    real(adqt), device, intent(in)    :: STimeBatch(Groups, ncornr, anglebatch)
-   real(adqt), device, intent(in)    :: Volume(maxCorner, nzones)
+   real(adqt), device, intent(in)    :: soa_Volume(maxCorner, nzones)
    real(adqt), device, intent(inout) :: psicbatch(Groups,ncornr,anglebatch)
    real(adqt), device, intent(inout) :: psib(Groups,nbelem,anglebatch)
    integer,    device, intent(in) :: next(ncornr+1,NumAngles)
@@ -137,7 +137,7 @@ contains
     integer, shared    :: ez_exit(maxcf,blockDim%z) ! (maxcf) 3*32 *4 bytes
     real(adqt), shared :: afpm(maxcf,maxCorner, blockDim%z)     ! (maxcf*maxCorner) 3*8*32 *8 bytes
     integer, shared    :: Connect_ro(maxcf,maxCorner,3,blockDim%z) !(maxcf*maxCorner*ndim) 3*8*3*32 *4 bytes
-    !real(adqt), shared :: Volume(maxCorner, blockDim%z) !maxCorner 8*32 *8 bytes
+    real(adqt), shared :: Volume(maxCorner, blockDim%z) !maxCorner 8*32 *8 bytes
 
 
     !  Constants
@@ -175,11 +175,11 @@ contains
              !SigtInv = SigtInvArray(ig,zone)
 
 
-             ! ! coalesced load into volume shared memory
-             ! c = threadIdx%x
-             ! if(c <= nCorner) then
-             !    Volume(c,threadIdx%z) = soaVolume(c,zone)
-             ! endif
+             ! coalesced load into volume shared memory
+             c = threadIdx%x
+             if(c <= nCorner) then
+                Volume(c,threadIdx%z) = soa_Volume(c,zone)
+             endif
 
              ! could loop over chunks of ncfaces and nCorner that fit with threadidx.
              ! Could use more shared memory, or could work on set of ncfaces*nCorner at a time?
@@ -205,7 +205,7 @@ contains
                 source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
                 !Q(c)       = SigtInv*source 
                 Q(c)       = source/Sigt 
-                src(c)     =  Volume(c,zone)*source
+                src(c)     =  Volume(c,threadIdx%z)*source
                 !SigtVol(c) = Sigt*Volume(c,zone)
              enddo
 
@@ -311,7 +311,7 @@ contains
 
                          aez2 = aez*aez
                          !sigv    = SigtVol(c)
-                         sigv    = Sigt*Volume(c,zone)
+                         sigv    = Sigt*Volume(c,threadIdx%z)
                          sigv2        = sigv*sigv
                          gnum         = aez2*( fouralpha*sigv2 +              &
                               aez*(four*sigv + three*aez) )
@@ -339,7 +339,7 @@ contains
 
                 !  Corner angular flux
 
-                tpsic = src(c)/(sumArea + Sigt*Volume(c,zone) )
+                tpsic = src(c)/(sumArea + Sigt*Volume(c,threadIdx%z) )
 
                 !  Calculate the angular flux exiting all "FP" surfaces
                 !  and the current exiting all "EZ" surfaces.
@@ -637,7 +637,7 @@ end subroutine setExitFlux
         maxcf*NZONEPAR*4 + & ! ez_exit
         maxcf*maxCorner*NZONEPAR*8 + & ! afpm with cf and c
         maxcf*maxCorner*3*NZONEPAR*4 + & ! connect_ro
-        0!maxCorner*NZONEPAR*8           ! volume
+        maxCorner*NZONEPAR*8           ! volume
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &
