@@ -338,7 +338,7 @@
                 QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need a bin of angles at a time
                 Size%maxCorner,            &
                 Size%maxcf,                &
-                binRecv,                   &
+                !binRecv,                   &
                 current%NangBin,                   &
                 Size%nbelem,                &
                 QuadSet%d_omega,             &

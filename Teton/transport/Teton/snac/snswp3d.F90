@@ -27,6 +27,145 @@ module snswp3d_mod
 
 contains
 
+
+  attributes(global) subroutine GPU_fp_ez_hplane_f( &
+                              anglebatch,                     &
+                              nzones,               &
+                              ncornr,               &
+                              NumAngles,         &
+                              AngleOrder,        & ! only angle batch portion
+                              maxCorner,            &
+                              maxcf,                &
+                              NangBin,                   &
+                              nbelem,                &
+                              omega,             &
+                              nCornerArray,                &
+                              nCFacesArray,                &
+                              c0Array,                &
+                              A_fp, &
+                              A_ez, &
+                              Connect, &
+                              omega_A_fp,                &
+                              omega_A_ez,                &
+                              Connect_ro,             &
+                              next,              &
+                              nextZ,             &
+                              passZstart             )
+    implicit none
+
+    !  Arguments
+
+   integer, value,    intent(in)    :: anglebatch
+   integer, value,    intent(in)    :: nzones
+   integer, value,    intent(in)    :: ncornr
+   integer, value,    intent(in)    :: NumAngles
+
+   integer,    device, intent(in) :: AngleOrder(anglebatch)
+
+   integer, value,    intent(in)    :: maxCorner
+   integer, value,    intent(in)    :: maxcf
+   integer, value,    intent(in)    :: NangBin
+   integer, value,    intent(in)    :: nbelem
+   real(adqt), device, intent(in)    :: omega(3,NumAngles)
+   integer, device, intent(in):: nCornerArray(nzones)
+   integer, device, intent(in):: nCFacesArray(nzones)
+   integer, device, intent(in):: c0Array(nzones)
+
+   real(adqt), device, intent(in)    :: A_fp(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
+   real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
+   integer, device, intent(in):: Connect(3,maxcf,maxCorner,nzones) 
+
+   real(adqt), device, intent(out)    :: omega_A_fp(maxcf,maxCorner, nzones, anglebatch) 
+   real(adqt), device, intent(out)    :: omega_A_ez(maxcf,maxCorner,nzones, anglebatch) 
+   integer, device, intent(out):: Connect_ro(maxcf,maxCorner,3,nzones) 
+
+   integer,    device, intent(in) :: next(ncornr+1,NumAngles)
+   integer,    device, intent(in) :: nextZ(nzones,NumAngles)
+   integer,    device, intent(in) :: passZstart(nzones,NumAngles)   
+
+    !  Local Variables
+
+    integer    :: Angle, i, ib, ic, icfp, icface
+    integer    :: zone, c, cez, ii, mm, ndone
+    integer    :: p, ndoneZ, passZcount
+    integer    :: nCorner, nCFaces, c0
+
+    !  Constants
+
+    mm = blockIdx%x
+    Angle = AngleOrder(mm)
+
+    p = 0
+    ndoneZ = 0
+    PassLoop: do while (ndoneZ < nzones)
+       p = p + 1
+       ! number of zones in this hyperplane:
+       passZcount = passZstart(p+1,Angle) - passZstart(p,Angle)
+       
+
+       ZoneLoop: do ii=threadIdx%x,passZcount,blockDim%x
+
+             !!FIXME: simplifying assumption that all zones have same nCorner values
+             !! (they're all 8 from what we've seen). If this isn't true in general,
+             !! just convert this into a table lookup
+          ndone = (ndoneZ+ii-1) * maxCorner
+
+          zone = nextZ(ndoneZ+ii,Angle)
+
+          nCorner = nCornerArray(zone)
+          nCFaces =   nCFacesArray(zone)
+          c0      =   c0Array(zone)
+
+          CornerLoop: do i=1,nCorner
+
+             ic      = next(ndone+i,Angle)
+             c       = ic - c0
+
+             !  Calculate Area_CornerFace dot Omega to determine the 
+             !  contributions from incident fluxes across external 
+             !  corner faces (FP faces)
+
+             do icface=1,ncfaces
+
+                omega_A_fp(icface,c,zone,blockIdx%x) = omega(1,Angle)*A_fp(1,icface,c,zone) + &
+                     omega(2,Angle)* A_fp(2,icface,c,zone) + &
+                     omega(3,Angle)* A_fp(3,icface,c,zone)
+                
+                icfp    =  Connect(1,icface,c,zone)
+                ib      =  Connect(2,icface,c,zone)
+                cez     =  Connect(3,icface,c,zone)
+                
+                Connect_ro(icface,c,1,zone) = icfp
+                Connect_ro(icface,c,2,zone) = ib
+                Connect_ro(icface,c,3,zone) = cez
+                
+             enddo
+
+             !  Contributions from interior corner faces (EZ faces)
+
+             do icface=1,nCFaces
+
+                omega_A_ez(icface,c,zone,blockIdx%x) = omega(1,Angle)* A_ez(1,icface,c,zone) + &
+                     omega(2,Angle)* A_ez(2,icface,c,zone) + &
+                     omega(3,Angle)* A_ez(3,icface,c,zone) 
+
+             enddo
+
+          enddo CornerLoop
+
+       enddo ZoneLoop
+
+       ndoneZ = ndoneZ + passZcount
+
+       call syncthreads
+
+    enddo PassLoop
+
+  end subroutine GPU_fp_ez_hplane_f
+
+
+
+
   attributes(global) subroutine GPU_sweep(anglebatch,                     &
                               nzones,               &
                               Groups,            &
@@ -35,7 +174,6 @@ contains
                               AngleOrder,        & ! only angle batch portion
                               maxCorner,            &
                               maxcf,                &
-                              binRecv,                   &
                               NangBin,                   &
                               nbelem,                &
                               omega,             &
@@ -72,7 +210,6 @@ contains
 
    integer, value,    intent(in)    :: maxCorner
    integer, value,    intent(in)    :: maxcf
-   integer, value,    intent(in)    :: binRecv
    integer, value,    intent(in)    :: NangBin
    integer, value,    intent(in)    :: nbelem
    real(adqt), device, intent(in)    :: omega(3,NumAngles)
@@ -102,7 +239,7 @@ contains
 
     !  Local Variables
 
-    integer    :: Angle, i, ib, ic, icfp, icface, id, ifp, ig, k, nxez
+    integer    :: Angle, i, ib, ic, icfp, icface, ifp, ig, k, nxez
     integer    :: zone, c, cez, ii, mm, ndone
     integer    :: p, ndoneZ, passZcount
     integer    :: nCorner, nCFaces, c0
@@ -532,9 +669,131 @@ end subroutine setExitFlux
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Caller
+! fp_ez Caller
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    subroutine fp_ez_f ( &
+          anglebatch, &
+          nzones, &
+          ncornr, &
+          numAngles, &
+          d_AngleOrder, &
+          maxCorner, &
+          maxcf, &
+          NangBin, &
+          nbelem, &
+          d_omega, &
+          d_nCorner, &
+          d_nCFaces, &
+          d_c0, &
+          d_A_fp , &
+          d_omega_A_fp , &
+          d_A_ez , &
+          d_omega_A_ez , &
+          d_Connect , &
+          d_Connect_ro, &
+          d_next, &
+          d_nextZ, &   
+          d_passZstart, &
+          streamid &
+          ) 
+
+
+   use kind_mod
+   use constant_mod
+   use Size_mod
+   use Geometry_mod
+   use Quadrature_mod
+   use Material_mod
+   use ZoneData_mod
+   use cudafor
+
+   implicit none
+
+!  Arguments
+   integer, parameter :: ndim=3
+
+   integer,    intent(in)    :: anglebatch
+   integer,    intent(in)    :: nzones
+   integer,    intent(in)    :: ncornr
+   integer,    intent(in)    :: NumAngles
+
+   integer,    device, intent(in) :: d_AngleOrder(anglebatch)
+
+   integer,    intent(in)    :: maxCorner
+   integer,    intent(in)    :: maxcf
+   integer,    intent(in)    :: NangBin
+   integer,    intent(in)    :: nbelem
+   real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
+   integer, device, intent(in):: d_nCorner(nzones)
+   integer, device, intent(in):: d_nCFaces(nzones)
+   integer, device, intent(in):: d_c0(nzones)
+
+   real(adqt), device, intent(in)    :: d_A_fp(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
+   real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
+   integer, device, intent(in):: d_Connect(3,maxcf,maxCorner,nzones) 
+
+   real(adqt), device, intent(out)    :: d_omega_A_fp(maxcf ,maxCorner, nzones, anglebatch) 
+   real(adqt), device, intent(out)    :: d_omega_A_ez(maxcf ,maxCorner, nzones, anglebatch)  
+   integer, device, intent(out):: d_Connect_ro(maxcf,maxCorner,3,nzones) 
+
+   integer,    device, intent(in) :: d_next(Size%ncornr+1,QuadSet%NumAngles)
+   integer,    device, intent(in) :: d_nextZ(Size%nzones,QuadSet%NumAngles)
+   integer,    device, intent(in) :: d_passZstart(Size%nzones,QuadSet%NumAngles)   
+   integer(kind=cuda_stream_kind), intent(in) :: streamid   
+
+!  Local Variables
+
+   integer    :: mm, Angle,istat,i,ib,ic
+
+   type(dim3) :: threads,blocks
+   
+   !integer    :: shmem !amount of shared memory need by GPU sweep kernel.
+
+   
+   !threads=dim3(QuadSet%Groups,NZONEPAR,1) 
+   threads=dim3(128,1,1) 
+   blocks=dim3(anglebatch,1,1)
+
+   call GPU_fp_ez_hplane_f<<<blocks,threads,0,streamid>>>( anglebatch,                     &
+                              nzones,               &
+                              ncornr,               &
+                              NumAngles,         &
+                              d_AngleOrder,        & ! only angle batch portion
+                              maxCorner,            &
+                              maxcf,                &
+                              NangBin,                   &
+                              nbelem,                &
+                              d_omega,             &
+                              d_nCorner,                &
+                              d_nCFaces,                &
+                              d_c0,                &
+                              d_A_fp, &
+                              d_A_ez, &
+                              d_Connect, &
+                              d_omega_A_fp,                &
+                              d_omega_A_ez,                &
+                              d_Connect_ro,             &
+                              d_next,              &
+                              d_nextZ,             &
+                              d_passZstart             )
+
+
+
+   return
+ end subroutine fp_ez_f
+
+
+ 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! snswp3d Caller
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
    subroutine snswp3d_f(     anglebatch,                     &
                               nzones,               &
@@ -544,7 +803,6 @@ end subroutine setExitFlux
                               d_AngleOrder,        & ! only angle batch portion
                               maxCorner,            &
                               maxcf,                &
-                              binRecv,                   &
                               NangBin,                   &
                               nbelem,                &
                               d_omega,             &
@@ -593,7 +851,6 @@ end subroutine setExitFlux
 
    integer,    intent(in)    :: maxCorner
    integer,    intent(in)    :: maxcf
-   integer,    intent(in)    :: binRecv
    integer,    intent(in)    :: NangBin
    integer,    intent(in)    :: nbelem
    real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
@@ -656,7 +913,6 @@ end subroutine setExitFlux
                               d_AngleOrder,        & ! only angle batch portion
                               maxCorner,            &
                               maxcf,                &
-                              binRecv,                   &
                               NangBin,                   &
                               nbelem,                &
                               d_omega,             &

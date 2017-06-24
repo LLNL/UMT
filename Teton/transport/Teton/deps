@@ -379,7 +379,9 @@ control/advanceRT.o : \
         mods/Material_mod.o\
         mods/Quadrature_mod.o\
         mods/Editor_mod.o\
-        mods/ZoneData_mod.o
+        mods/ZoneData_mod.o\
+	mods/GPUhelper_mod.o\
+	snac/snswp3d.o
 control/RadMoments.o : \
         mods/constant_mod.o\
         mods/radconstant_mod.o\

@@ -27,6 +27,7 @@
    use ZoneData_mod
 
    use GPUhelper_mod
+   use snswp3d_mod
 
    implicit none
 
@@ -207,32 +208,61 @@
 
 
       ! while this is transferring in, compute mesh normal stuff
-        
-      call fp_ez_c(     current%anglebatch,                     &
-             Size%nzones,               &
-             QuadSet%Groups,            &
-             Size%ncornr,               &
-             QuadSet%NumAngles,         &
-             QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need angle batch portion
-             Size%maxCorner,            &
-             Size%maxcf,                &
-             current%NangBin,                   &
-             Size%nbelem,                &
-             QuadSet%d_omega,             &
-             Geom%ZDataSoA%nCorner,                &
-             Geom%ZDataSoA%nCFaces,                &
-             Geom%ZDataSoA%c0,                &
-             Geom%ZDataSoA%A_fp,                &
-             current%omega_A_fp%data,                &
-             Geom%ZDataSoA%A_ez,                &
-             current%omega_A_ez%data,                &
-             Geom%ZDataSoA%Connect,             &
-             Geom%ZDataSoA%Connect_reorder,             &
-             QuadSet%d_next,              &
-             QuadSet%d_nextZ,             &
-             QuadSet%d_passZstart,        &
-             kernel_stream           &
-             )
+      if(1) then
+         ! CUDA fortran version
+         call fp_ez_f(     current%anglebatch,                     &
+              Size%nzones,               &
+
+              Size%ncornr,               &
+              QuadSet%NumAngles,         &
+              QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need angle batch portion
+              Size%maxCorner,            &
+              Size%maxcf,                &
+              current%NangBin,                   &
+              Size%nbelem,                &
+              QuadSet%d_omega,             &
+              Geom%ZDataSoA%nCorner,                &
+              Geom%ZDataSoA%nCFaces,                &
+              Geom%ZDataSoA%c0,                &
+              Geom%ZDataSoA%A_fp,                &
+              current%omega_A_fp%data,                &
+              Geom%ZDataSoA%A_ez,                &
+              current%omega_A_ez%data,                &
+              Geom%ZDataSoA%Connect,             &
+              Geom%ZDataSoA%Connect_reorder,             &
+              QuadSet%d_next,              &
+              QuadSet%d_nextZ,             &
+              QuadSet%d_passZstart,        &
+              kernel_stream           &
+              )
+      else
+         ! CUDA C version
+         call fp_ez_c(     current%anglebatch,                     &
+              Size%nzones,               &
+              QuadSet%Groups,            &
+              Size%ncornr,               &
+              QuadSet%NumAngles,         &
+              QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need angle batch portion
+              Size%maxCorner,            &
+              Size%maxcf,                &
+              current%NangBin,                   &
+              Size%nbelem,                &
+              QuadSet%d_omega,             &
+              Geom%ZDataSoA%nCorner,                &
+              Geom%ZDataSoA%nCFaces,                &
+              Geom%ZDataSoA%c0,                &
+              Geom%ZDataSoA%A_fp,                &
+              current%omega_A_fp%data,                &
+              Geom%ZDataSoA%A_ez,                &
+              current%omega_A_ez%data,                &
+              Geom%ZDataSoA%Connect,             &
+              Geom%ZDataSoA%Connect_reorder,             &
+              QuadSet%d_next,              &
+              QuadSet%d_nextZ,             &
+              QuadSet%d_passZstart,        &
+              kernel_stream           &
+              )
+      endif
 
       ! Better mark that these fp are owned
       current%omega_A_fp%owner = current%bin
