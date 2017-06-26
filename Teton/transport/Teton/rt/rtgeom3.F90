@@ -220,7 +220,7 @@
      Geom%d_ZData_uptodate = .true.
    endif
 
-
+   ! THIS IS ALSO DONE IN RT/RADTR? WHY TWICE--MAYBE ACCIDENT DUPLICATION
 
    call setZones_SoA_mesh(Geom%d_ZDataSoA, Geom%d_ZData)
 

@@ -176,8 +176,9 @@ contains
                               maxcf,                &
                               NangBin,                   &
                               nbelem,                &
+                              ZData,      &
                               omega,             &
-                              nCornerArray,                &
+!                              nCornerArray,                &
                               nCFacesArray,                &
                               c0Array,                &
                               A_fp, &
@@ -212,8 +213,11 @@ contains
    integer, value,    intent(in)    :: maxcf
    integer, value,    intent(in)    :: NangBin
    integer, value,    intent(in)    :: nbelem
+
+   type(ZoneData), device, intent(in) :: ZData(nzones)
+
    real(adqt), device, intent(in)    :: omega(3,NumAngles)
-   integer, device, intent(in):: nCornerArray(nzones)
+   !integer, device, intent(in):: nCornerArray(nzones)
    integer, device, intent(in):: nCFacesArray(nzones)
    integer, device, intent(in):: c0Array(nzones)
 
@@ -304,7 +308,8 @@ contains
 
              zone = nextZ(ndoneZ+ii,Angle)
 
-             nCorner = nCornerArray(zone)
+             !nCorner = nCornerArray(zone)
+             nCorner = ZData(zone)%nCorner
              nCFaces =   nCFacesArray(zone)
              c0      =   c0Array(zone)
 
@@ -915,8 +920,9 @@ end subroutine setExitFlux
                               maxcf,                &
                               NangBin,                   &
                               nbelem,                &
+                              Geom%d_ZData,    &
                               d_omega,             &
-                              d_nCorner,                &
+!                              d_nCorner,                &
                               d_nCFaces,                &
                               d_c0,                &
                               d_A_fp, &
