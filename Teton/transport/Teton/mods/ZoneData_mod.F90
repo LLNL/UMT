@@ -10,7 +10,7 @@ module ZoneData_mod
 
 ! public interfaces
 
-  public constructZone, constructGPUZone, constructZones_SoA, setZones_SoA_mesh, setZones_SoA_STotal
+  public constructZone, constructGPUZone, constructZones_SoA, setZones_GPU_mesh, setZones_GPU_STotal
                                                                                  
   type, public :: ZoneData 
 
@@ -50,7 +50,7 @@ module ZoneData_mod
 
 
      real(adqt), device, allocatable  :: Volume(:)          ! corner volume
-     real(adqt), pinned, allocatable  :: volumeRatio(:)
+     real(adqt), device, allocatable  :: volumeRatio(:)
      real(adqt), device, allocatable  :: Sigt(:)            ! total opacity
      real(adqt), device, allocatable  :: SigtInv(:)         ! reciprocal of total opacity
      real(adqt), device, allocatable  :: STotal(:,:)        ! fixed + scattering source
@@ -64,26 +64,26 @@ module ZoneData_mod
 
   type, public :: ZoneData_SoA
 
-     integer, device, allocatable :: nCorner(:)
-     integer, device, allocatable :: nCFaces(:)
-     integer, device, allocatable :: c0(:)
+     ! integer, device, allocatable :: nCorner(:)
+     ! integer, device, allocatable :: nCFaces(:)
+     ! integer, device, allocatable :: c0(:)
 
-     real(adqt), device, allocatable  :: Volume(:,:)        ! corner volume
-     real(adqt), device, allocatable  :: volumeRatio(:,:)        ! old corner volume just needed to scale by volume changes
-     real(adqt), device, allocatable  :: Sigt(:,:)          ! total opacity
-     real(adqt), device, allocatable  :: SigtInv(:,:)       ! reciprocal of total opacity
-     real(adqt), device, allocatable  :: STotal(:,:,:)      ! fixed + scattering source
+     ! real(adqt), device, allocatable  :: Volume(:,:)        ! corner volume
+     ! real(adqt), device, allocatable  :: volumeRatio(:,:)        ! old corner volume just needed to scale by volume changes
+     ! real(adqt), device, allocatable  :: Sigt(:,:)          ! total opacity
+     ! real(adqt), device, allocatable  :: SigtInv(:,:)       ! reciprocal of total opacity
+     ! real(adqt), device, allocatable  :: STotal(:,:,:)      ! fixed + scattering source
 !     real(adqt), device, allocatable  :: STime(:,:,:)     ! time dependent source new layout:(ig,c0+c,zone)
      real(adqt), pinned, allocatable  :: STime(:,:,:)     ! time dependent source new layout:(ig,c0+c,zone)
 
-     real(adqt), device, allocatable  :: A_fp(:,:,:,:)      ! outward normals on corner faces 
-     real(adqt), device, allocatable  :: A_ez(:,:,:,:)      !
-     integer,    device, allocatable  :: Connect(:,:,:,:)   ! nearest neighbor connectivity 
+     !real(adqt), device, allocatable  :: A_fp(:,:,:,:)      ! outward normals on corner faces 
+     !real(adqt), device, allocatable  :: A_ez(:,:,:,:)      !
+     !integer,    device, allocatable  :: Connect(:,:,:,:)   ! nearest neighbor connectivity 
 
-     ! create device versions
+     ! create CPU memory area to hold these stored dot products:
      real(adqt), pinned, allocatable :: omega_A_fp(:,:,:,:) ! size: mF*mC*nZ*nA
      real(adqt), pinned, allocatable :: omega_A_ez(:,:,:,:) ! size: mF*mC*nZ*nA
-     integer, device, allocatable :: Connect_reorder(:,:,:,:) ! mF,mC,3,nZ
+     !integer, device, allocatable :: Connect_reorder(:,:,:,:) ! mF,mC,3,nZ
      
 
   end type ZoneData_SoA
@@ -100,12 +100,13 @@ module ZoneData_mod
     module procedure ZoneData_SoA_ctor
   end interface
 
-  interface setZones_SoA_mesh
-    module procedure ZoneData_SoA_init_mesh
+  interface setZones_GPU_mesh
+    module procedure ZoneData_GPU_init_mesh
   end interface
 
-  interface setZones_SoA_STotal
-    module procedure ZoneData_SoA_update_STotal
+
+  interface setZones_GPU_STotal
+    module procedure ZoneData_GPU_update_STotal
   end interface
 
 
@@ -217,7 +218,7 @@ contains
     allocate( self % Volume(self% nCorner) )
     allocate( self % volumeRatio(self% nCorner) )
     allocate( self % Sigt(Size% ngr) )
-    allocate( self % SigtInv(Size% ngr) )
+    allocate( self % SigtInv(Size% ngr) ) ! this not needed.
     allocate( self % A_fp(Size% ndim,self% nCFaces,self% nCorner) )
     allocate( self % A_ez(Size% ndim,self% nCFaces,self% nCorner) )
     !allocate( self % Connect(3,self% nCFaces,self% nCorner) )
@@ -252,27 +253,26 @@ contains
 
 !   Set Properties
 
-    allocate( self % nCorner(Size% nzones))
-    allocate( self % nCFaces(Size% nzones))
-    allocate( self % c0(Size% nzones))
+    !allocate( self % nCorner(Size% nzones))
+    !allocate( self % nCFaces(Size% nzones))
+    !allocate( self % c0(Size% nzones))
 
-    allocate( self % Volume(Size% maxCorner ,Size% nzones) )
-    allocate( self % volumeRatio(Size% maxCorner ,Size% nzones) )
-    allocate( self % Sigt(Size% ngr,Size% nzones) )
-    allocate( self % SigtInv(Size% ngr,Size% nzones) )
-    allocate( self % A_fp(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
-    allocate( self % A_ez(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
+    !allocate( self % Volume(Size% maxCorner ,Size% nzones) )
+    !allocate( self % volumeRatio(Size% maxCorner ,Size% nzones) )
+    !allocate( self % Sigt(Size% ngr,Size% nzones) )
+    !allocate( self % SigtInv(Size% ngr,Size% nzones) )
+    !allocate( self % A_fp(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
+    !allocate( self % A_ez(Size% ndim,Size% maxcf,Size% maxCorner,Size% nzones) )
     
 
     allocate( self% omega_A_fp(Size% maxcf, Size% maxCorner,Size% nzones, Size% nangSN) )
     allocate( self% omega_A_ez(Size% maxcf, Size% maxCorner,Size% nzones, Size% nangSN) )
 
 
-    allocate( self % Connect(3,Size% maxcf,Size% maxCorner,Size% nzones) )
-    !allocate( self % Connect_reorder(3,Size% nzones,Size% maxCorner,Size% maxcf) )
-    allocate( self % Connect_reorder(Size% maxcf, Size% maxCorner,3,Size% nzones) )
+    !allocate( self % Connect(3,Size% maxcf,Size% maxCorner,Size% nzones) )
+    !allocate( self % Connect_reorder(Size% maxcf, Size% maxCorner,3,Size% nzones) )
     
-    allocate( self % STotal(Size% ngr, Size% maxCorner, Size% nzones) )
+    !allocate( self % STotal(Size% ngr, Size% maxCorner, Size% nzones) )
     allocate( self % STime(Size% ngr, Size%ncornr, Size% nangSN ) )
 
     return
@@ -281,7 +281,184 @@ contains
 
 
 
-  attributes(global) subroutine ZoneData_SoA_update_STotal_kernel(self,ZData,nzones,maxCorner,&
+!   attributes(global) subroutine ZoneData_SoA_update_STotal_kernel(self,ZData,nzones,maxCorner,&
+!        ngr,ndim,maxcf,nangsn)
+    
+!     ! this routine sets STotal, sigt, sigtinv on the GPU. 
+!     ! It uses zero copy to populate the data on the GPU.
+
+!     use Size_mod
+
+!     implicit none
+
+! !   Passed variables
+
+!     type(ZoneData_SoA), device, intent(inout)    :: self
+!     type(ZoneData),     device, intent(in)       :: ZData(nzones)
+
+!     integer, value, intent(in) :: nzones,maxCorner,ngr,ndim,maxcf,nangsn
+
+! !   Local
+
+!     integer :: i,zone,c,ic,id,mic,mnd,nCorner, angle
+
+!     i = threadIdx%x
+!     zone = (blockIdx%y-1)*blockDim%y + threadIdx%y
+
+!     if (zone <= nzones) then
+
+!       !nCorner = ZData(zone)% nCorner
+!       nCorner = self % nCorner(zone)
+
+!       if (i <= ngr) then
+!         self % Sigt(i,zone) = ZData(zone)% Sigt(i)
+!         self % SigtInv(i,zone) = ZData(zone)% SigtInv(i)
+!         do c=1,nCorner
+!           self % STotal(i,c,zone) = ZData(zone)% STotal(i,c)
+!         enddo
+!       endif
+  
+!     endif
+!   end subroutine ZoneData_SoA_update_STotal_kernel
+
+
+
+!   attributes(global) &
+!   subroutine ZoneData_SoA_init_mesh_kernel(self,ZData,nzones,maxCorner,ngr,ndim,maxcf,nangsn)
+
+!     ! This routine sets up the mesh description on the GPU.
+
+!     use Size_mod
+
+!     implicit none
+
+! !   Passed variables
+
+!     type(ZoneData_SoA), device, intent(inout)    :: self
+!     type(ZoneData),     device, intent(in)       :: ZData(nzones)
+
+!     integer, value, intent(in) :: nzones,maxCorner,ngr,ndim,maxcf,nangsn
+
+! !   Local
+
+!     integer :: i,zone,c,ic,id,mic,mnd,nCorner, angle
+
+!     i = threadIdx%x
+!     zone = (blockIdx%y-1)*blockDim%y + threadIdx%y
+
+!     if (zone <= nzones) then
+
+!       nCorner = ZData(zone)% nCorner
+!       self % nCorner(zone) = nCorner
+
+!       self % nCFaces(zone) = ZData(zone)% nCFaces
+!       self % c0(zone) = ZData(zone)% c0
+
+!       if (i <= nCorner) then
+!         self % Volume(i,zone) = ZData(zone)% Volume(i)
+!         self % volumeRatio(i,zone) = ZData(zone)% VolumeOld(i)/ZData(zone)% Volume(i) 
+!         ! try below later:
+!         !self % volumeRatio(i+c0) = ZData(zone)% volumeRatio(i) ! only needed for first iteration in the set.
+!       endif
+
+!       ! if (i <= ngr) then
+!       !   self % Sigt(i,zone) = ZData(zone)% Sigt(i)
+!       !   self % SigtInv(i,zone) = ZData(zone)% SigtInv(i)
+!       !   do c=1,nCorner
+!       !     self % STotal(i,c,zone) = ZData(zone)% STotal(i,c)
+!       !   enddo
+!       ! endif
+  
+!       mnd = max(ndim,3)
+!       mic = mnd * maxcf
+
+!       if (i <= mic) then
+!         ic = (i-1)/mnd + 1 ! split thread block x-dimension loop into two dims
+!         id = i - ((ic-1)*mnd) ! remainder
+
+!         do c=1,nCorner
+!           if (id <= ndim) then
+!             self % A_fp(id,ic,c,zone) = ZData(zone)% A_fp(id,ic,c)
+!             self % A_ez(id,ic,c,zone) = ZData(zone)% A_ez(id,ic,c)
+!           endif
+!           if (id <= 3) then
+!             self % Connect(id,ic,c,zone) = ZData(zone)% Connect(id,ic,c)
+!           endif
+!         enddo
+!       endif
+
+!     endif
+!   end subroutine ZoneData_SoA_init_mesh_kernel
+
+
+!   subroutine ZoneData_SoA_init_mesh(self,ZData)
+
+!     use Size_mod
+
+!     implicit none
+
+! !   Passed variables
+
+!     type(ZoneData_SoA), device, intent(inout)    :: self
+!     type(ZoneData),     device, intent(in)       :: ZData(:) ! (nzones)
+
+! !   Local
+
+!     type(dim3) :: threads,blocks
+
+! !   Function
+
+!     !threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),16,1)
+!     threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),4,1)
+!     ! Number of threads as implemented will not give correct results when > 1024
+!     if (max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf) .GT. 1024) then
+!        print *,"ERROR: requested threads.x = ",  max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf)
+!     endif
+!     blocks  = dim3(1,(Size%nzones+threads%y-1)/threads%y,1)
+
+!     call ZoneData_SoA_init_mesh_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &
+!                                                       Size%maxCorner,Size%ngr,&
+!                                                       Size%ndim,Size%maxcf,Size%nangsn)
+
+
+!   end subroutine ZoneData_SoA_init_mesh
+
+
+!   subroutine ZoneData_SoA_update_STotal(self,ZData)
+
+!     use Size_mod
+
+!     implicit none
+
+! !   Passed variables
+
+!     type(ZoneData_SoA), device, intent(inout)    :: self
+!     type(ZoneData),     device, intent(in)       :: ZData(:) ! (nzones)
+
+! !   Local
+
+!     type(dim3) :: threads,blocks
+
+! !   Function
+
+!     !threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),16,1)
+!     threads = dim3(max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf),4,1)
+!     ! Number of threads as implemented will not give correct results when > 1024
+!     if (max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf) .GT. 1024) then
+!        print *,"ERROR: requested threads.x = ",  max(Size%maxCorner,Size%ngr,max(Size%ndim,3)*Size%maxcf)
+!     endif
+!     blocks  = dim3(1,(Size%nzones+threads%y-1)/threads%y,1)
+
+!     call ZoneData_SoA_update_STotal_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &
+!                                                       Size%maxCorner,Size%ngr,&
+!                                                       Size%ndim,Size%maxcf,Size%nangsn)
+
+
+!   end subroutine ZoneData_SoA_update_STotal
+
+
+
+  attributes(global) subroutine ZoneData_GPU_update_STotal_kernel(self,ZData,nzones,maxCorner,&
        ngr,ndim,maxcf,nangsn)
     
     ! this routine sets STotal, sigt, sigtinv on the GPU. 
@@ -293,7 +470,7 @@ contains
 
 !   Passed variables
 
-    type(ZoneData_SoA), device, intent(inout)    :: self
+    type(GPU_ZoneData), device, intent(inout)    :: self(nzones)
     type(ZoneData),     device, intent(in)       :: ZData(nzones)
 
     integer, value, intent(in) :: nzones,maxCorner,ngr,ndim,maxcf,nangsn
@@ -307,24 +484,23 @@ contains
 
     if (zone <= nzones) then
 
-      !nCorner = ZData(zone)% nCorner
-      nCorner = self % nCorner(zone)
+      nCorner = self(zone) % nCorner
 
       if (i <= ngr) then
-        self % Sigt(i,zone) = ZData(zone)% Sigt(i)
-        self % SigtInv(i,zone) = ZData(zone)% SigtInv(i)
+        self(zone) % Sigt(i) = ZData(zone)% Sigt(i)
+        self(zone) % SigtInv(i) = ZData(zone)% SigtInv(i)
         do c=1,nCorner
-          self % STotal(i,c,zone) = ZData(zone)% STotal(i,c)
+          self(zone) % STotal(i,c) = ZData(zone)% STotal(i,c)
         enddo
       endif
   
     endif
-  end subroutine ZoneData_SoA_update_STotal_kernel
+  end subroutine ZoneData_GPU_update_STotal_kernel
 
 
 
   attributes(global) &
-  subroutine ZoneData_SoA_init_mesh_kernel(self,ZData,nzones,maxCorner,ngr,ndim,maxcf,nangsn)
+  subroutine ZoneData_GPU_init_mesh_kernel(self,ZData,nzones,maxCorner,ngr,ndim,maxcf,nangsn)
 
     ! This routine sets up the mesh description on the GPU.
 
@@ -334,7 +510,7 @@ contains
 
 !   Passed variables
 
-    type(ZoneData_SoA), device, intent(inout)    :: self
+    type(GPU_ZoneData), device, intent(inout)    :: self(nzones)
     type(ZoneData),     device, intent(in)       :: ZData(nzones)
 
     integer, value, intent(in) :: nzones,maxCorner,ngr,ndim,maxcf,nangsn
@@ -349,26 +525,14 @@ contains
     if (zone <= nzones) then
 
       nCorner = ZData(zone)% nCorner
-      self % nCorner(zone) = nCorner
-
-      self % nCFaces(zone) = ZData(zone)% nCFaces
-      self % c0(zone) = ZData(zone)% c0
-
+      
       if (i <= nCorner) then
-        self % Volume(i,zone) = ZData(zone)% Volume(i)
-        self % volumeRatio(i,zone) = ZData(zone)% VolumeOld(i)/ZData(zone)% Volume(i) 
+        self(zone) % Volume(i) = ZData(zone)% Volume(i)
+        self(zone) % volumeRatio(i) = ZData(zone)% VolumeOld(i)/ZData(zone)% Volume(i) 
         ! try below later:
         !self % volumeRatio(i+c0) = ZData(zone)% volumeRatio(i) ! only needed for first iteration in the set.
       endif
 
-      ! if (i <= ngr) then
-      !   self % Sigt(i,zone) = ZData(zone)% Sigt(i)
-      !   self % SigtInv(i,zone) = ZData(zone)% SigtInv(i)
-      !   do c=1,nCorner
-      !     self % STotal(i,c,zone) = ZData(zone)% STotal(i,c)
-      !   enddo
-      ! endif
-  
       mnd = max(ndim,3)
       mic = mnd * maxcf
 
@@ -378,20 +542,19 @@ contains
 
         do c=1,nCorner
           if (id <= ndim) then
-            self % A_fp(id,ic,c,zone) = ZData(zone)% A_fp(id,ic,c)
-            self % A_ez(id,ic,c,zone) = ZData(zone)% A_ez(id,ic,c)
-          endif
-          if (id <= 3) then
-            self % Connect(id,ic,c,zone) = ZData(zone)% Connect(id,ic,c)
+            self(zone) % A_fp(id,ic,c) = ZData(zone)% A_fp(id,ic,c)
+            self(zone) % A_ez(id,ic,c) = ZData(zone)% A_ez(id,ic,c)
           endif
         enddo
       endif
 
     endif
-  end subroutine ZoneData_SoA_init_mesh_kernel
+  end subroutine ZoneData_GPU_init_mesh_kernel
 
 
-  subroutine ZoneData_SoA_init_mesh(self,ZData)
+
+
+  subroutine ZoneData_GPU_init_mesh(self,ZData)
 
     use Size_mod
 
@@ -399,7 +562,7 @@ contains
 
 !   Passed variables
 
-    type(ZoneData_SoA), device, intent(inout)    :: self
+    type(GPU_ZoneData), device, intent(inout)    :: self(:)
     type(ZoneData),     device, intent(in)       :: ZData(:) ! (nzones)
 
 !   Local
@@ -416,16 +579,18 @@ contains
     endif
     blocks  = dim3(1,(Size%nzones+threads%y-1)/threads%y,1)
 
-    call ZoneData_SoA_init_mesh_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &
+    call ZoneData_GPU_init_mesh_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &
                                                       Size%maxCorner,Size%ngr,&
                                                       Size%ndim,Size%maxcf,Size%nangsn)
 
 
-  end subroutine ZoneData_SoA_init_mesh
+  end subroutine ZoneData_GPU_init_mesh
 
 
 
-  subroutine ZoneData_SoA_update_STotal(self,ZData)
+
+
+  subroutine ZoneData_GPU_update_STotal(self,ZData)
 
     use Size_mod
 
@@ -433,7 +598,7 @@ contains
 
 !   Passed variables
 
-    type(ZoneData_SoA), device, intent(inout)    :: self
+    type(GPU_ZoneData), device, intent(inout)    :: self(:)
     type(ZoneData),     device, intent(in)       :: ZData(:) ! (nzones)
 
 !   Local
@@ -450,12 +615,12 @@ contains
     endif
     blocks  = dim3(1,(Size%nzones+threads%y-1)/threads%y,1)
 
-    call ZoneData_SoA_update_STotal_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &
+    call ZoneData_GPU_update_STotal_kernel<<<blocks,threads>>>(self,ZData,Size%nzones, &
                                                       Size%maxCorner,Size%ngr,&
                                                       Size%ndim,Size%maxcf,Size%nangsn)
 
 
-  end subroutine ZoneData_SoA_update_STotal
+  end subroutine ZoneData_GPU_update_STotal
 
 
 !=======================================================================

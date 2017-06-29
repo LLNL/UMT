@@ -52,9 +52,9 @@
      enddo
    enddo
 
-!  Update device-memory SoA copies of STotal, sigt, sigtinv
+!  Update device-memory copies of STotal, sigt, sigtinv
 
-   call setZones_SoA_STotal(Geom%d_ZDataSoA, Geom%d_ZData)
+   call setZones_GPU_STotal(Geom%d_GPU_ZData, Geom%d_ZData)
 
 !  Follow particles through the mesh:
 

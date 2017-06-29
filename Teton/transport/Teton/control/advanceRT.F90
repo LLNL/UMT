@@ -212,7 +212,6 @@
          ! CUDA fortran version
          call fp_ez_f(     current%anglebatch,                     &
               Size%nzones,               &
-
               Size%ncornr,               &
               QuadSet%NumAngles,         &
               QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need angle batch portion
@@ -221,12 +220,8 @@
               current%NangBin,                   &
               Size%nbelem,                &
               QuadSet%d_omega,             &
-              Geom%ZDataSoA%A_fp,                &
               current%omega_A_fp%data,                &
-              Geom%ZDataSoA%A_ez,                &
               current%omega_A_ez%data,                &
-              Geom%ZDataSoA%Connect,             &
-              Geom%ZDataSoA%Connect_reorder,             &
               QuadSet%d_next,              &
               QuadSet%d_nextZ,             &
               QuadSet%d_passZstart,        &
@@ -298,7 +293,7 @@
       istat=cudaEventRecord(snmomentsFinished( current%batch ), kernel_stream )
 
       ! scale current batch of psi
-      call scalePsibyVolume(current%psi%data(1,1,1), Geom%ZDataSoA%volumeRatio, current%anglebatch, kernel_stream )  
+      call scalePsibyVolume(current%psi%data(1,1,1), Geom%d_GPU_ZData, current%anglebatch, kernel_stream )  
 
       ! print *, "called scalebyvolume"
 
@@ -392,9 +387,6 @@
       ! debug1
       !istat = cudaDeviceSynchronize()
       
-      print *, "STime on host = ", Geom%ZDataSoA%STime(1,33,QuadSet%AngleOrder(mm1,current%bin))
-
-
 
    enddo
 

@@ -40,12 +40,8 @@ contains
                               nbelem,                &
                               ZData,       &
                               omega,             &
-                              A_fp, &
-                              A_ez, &
-                              Connect, &
                               omega_A_fp,                &
                               omega_A_ez,                &
-                              Connect_ro,             &
                               next,              &
                               nextZ,             &
                               passZstart             )
@@ -69,13 +65,8 @@ contains
 
    real(adqt), device, intent(in)    :: omega(3,NumAngles)
 
-   real(adqt), device, intent(in)    :: A_fp(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   integer, device, intent(in):: Connect(3,maxcf,maxCorner,nzones) 
-
    real(adqt), device, intent(out)    :: omega_A_fp(maxcf,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(out)    :: omega_A_ez(maxcf,maxCorner,nzones, anglebatch) 
-   integer, device, intent(out):: Connect_ro(maxcf,maxCorner,3,nzones) 
 
    integer,    device, intent(in) :: next(ncornr+1,NumAngles)
    integer,    device, intent(in) :: nextZ(nzones,NumAngles)
@@ -130,9 +121,9 @@ contains
 
              do icface=1,ncfaces
 
-                omega_A_fp(icface,c,zone,blockIdx%x) = omega(1,Angle)*A_fp(1,icface,c,zone) + &
-                     omega(2,Angle)* A_fp(2,icface,c,zone) + &
-                     omega(3,Angle)* A_fp(3,icface,c,zone)
+                omega_A_fp(icface,c,zone,blockIdx%x) = omega(1,Angle)*ZData(zone)%A_fp(1,icface,c) + &
+                     omega(2,Angle)* ZData(zone)%A_fp(2,icface,c) + &
+                     omega(3,Angle)* ZData(zone)%A_fp(3,icface,c)
                 
                 ! Reorder is now done when GPU_ZData is initialized, so following is not needed.
                 !icfp    =  Connect(1,icface,c,zone)
@@ -149,9 +140,9 @@ contains
 
              do icface=1,nCFaces
 
-                omega_A_ez(icface,c,zone,blockIdx%x) = omega(1,Angle)* A_ez(1,icface,c,zone) + &
-                     omega(2,Angle)* A_ez(2,icface,c,zone) + &
-                     omega(3,Angle)* A_ez(3,icface,c,zone) 
+                omega_A_ez(icface,c,zone,blockIdx%x) = omega(1,Angle)* ZData(zone)%A_ez(1,icface,c) + &
+                     omega(2,Angle)* ZData(zone)%A_ez(2,icface,c) + &
+                     omega(3,Angle)* ZData(zone)%A_ez(3,icface,c) 
 
              enddo
 
@@ -182,21 +173,13 @@ contains
                               nbelem,                &
                               ZData,      &
                               omega,             &
-                              A_fp, &
-                              A_ez, &
-                              soa_Connect, &
                               omega_A_fp,                &
                               omega_A_ez,                &
-                              soa_Connect_ro,             &
-                              STotal,              &
                               STimeBatch,               & ! only angle batch portion
-                              soa_Volume,             &
                               psicbatch,                      &  ! only angle batch portion
                               psib,                      &
                               next,              &
                               nextZ,             &
-                              SigtArray,                &
-!                              SigtInvArray,             &
                               passZstart             )
     implicit none
 
@@ -219,23 +202,14 @@ contains
 
    real(adqt), device, intent(in)    :: omega(3,NumAngles)
 
-   real(adqt), device, intent(in)    :: A_fp(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   integer, device, intent(in):: soa_Connect(3,maxcf,maxCorner,nzones) 
-
    real(adqt), device, intent(in)    :: omega_A_fp(maxcf,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(in)    :: omega_A_ez(maxcf,maxCorner,nzones, anglebatch) 
 
-   integer, device, intent(in):: soa_Connect_ro(maxcf,maxCorner,3,nzones) 
-   real(adqt), device, intent(in)    :: STotal(Groups, maxCorner, nzones)
    real(adqt), device, intent(in)    :: STimeBatch(Groups, ncornr, anglebatch)
-   real(adqt), device, intent(in)    :: soa_Volume(maxCorner, nzones)
    real(adqt), device, intent(inout) :: psicbatch(Groups,ncornr,anglebatch)
    real(adqt), device, intent(inout) :: psib(Groups,nbelem,anglebatch)
    integer,    device, intent(in) :: next(ncornr+1,NumAngles)
    integer,    device, intent(in) :: nextZ(nzones,NumAngles)
-   real(adqt), device, intent(in)    :: SigtArray(Groups, nzones)
-!   real(adqt), device, intent(in)    :: SigtInvArray(Groups, nzones)
    integer,    device, intent(in) :: passZstart(nzones,NumAngles)   
 
 
@@ -311,14 +285,14 @@ contains
              c0      =   ZData(zone)%c0
 
 
-             Sigt    =  SigtArray(ig,zone)
+             Sigt    =  ZData(zone)%Sigt(ig)
              !SigtInv = one/Sigt !need to thread?
              !SigtInv = SigtInvArray(ig,zone)
 
 
              ! coalesced load into volume shared memory
              do c = threadIdx%x, nCorner, blockDim%x
-                Volume(c,threadIdx%z) = soa_Volume(c,zone)
+                Volume(c,threadIdx%z) = ZData(zone)%Volume(c)
              enddo
 
              ! could loop over chunks of ncfaces and nCorner that fit with threadidx.
@@ -347,7 +321,7 @@ contains
              !  Contributions from volume terms
 
              do c=1,nCorner
-                source     =  STotal(ig,c,zone) +  STimeBatch(ig,c0+c,mm)
+                source     =  ZData(zone)%STotal(ig,c) +  STimeBatch(ig,c0+c,mm)
                 !Q(c)       = SigtInv*source 
                 Q(c)       = source/Sigt 
                 src(c)     =  Volume(c,threadIdx%z)*source
@@ -687,12 +661,8 @@ end subroutine setExitFlux
           NangBin, &
           nbelem, &
           d_omega, &
-          d_A_fp , &
           d_omega_A_fp , &
-          d_A_ez , &
           d_omega_A_ez , &
-          d_Connect , &
-          d_Connect_ro, &
           d_next, &
           d_nextZ, &   
           d_passZstart, &
@@ -727,13 +697,9 @@ end subroutine setExitFlux
    integer,    intent(in)    :: nbelem
    real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
 
-   real(adqt), device, intent(in)    :: d_A_fp(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   integer, device, intent(in):: d_Connect(3,maxcf,maxCorner,nzones) 
-
    real(adqt), device, intent(out)    :: d_omega_A_fp(maxcf ,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(out)    :: d_omega_A_ez(maxcf ,maxCorner, nzones, anglebatch)  
-   integer, device, intent(out):: d_Connect_ro(maxcf,maxCorner,3,nzones) 
+
 
    integer,    device, intent(in) :: d_next(Size%ncornr+1,QuadSet%NumAngles)
    integer,    device, intent(in) :: d_nextZ(Size%nzones,QuadSet%NumAngles)
@@ -764,12 +730,8 @@ end subroutine setExitFlux
                               nbelem,                &
                               Geom%d_GPU_ZData,    &
                               d_omega,             &
-                              d_A_fp, &
-                              d_A_ez, &
-                              d_Connect, &
                               d_omega_A_fp,                &
                               d_omega_A_ez,                &
-                              d_Connect_ro,             &
                               d_next,              &
                               d_nextZ,             &
                               d_passZstart             )
@@ -801,21 +763,13 @@ end subroutine setExitFlux
                               NangBin,                   &
                               nbelem,                &
                               d_omega,             &
-                              d_A_fp, &
-                              d_A_ez, &
-                              d_Connect, &
                               d_omega_A_fp,                &
                               d_omega_A_ez,                &
-                              d_Connect_ro,             &
-                              d_STotal,              &
                               d_STimeBatch,               & ! only angle batch portion
-                              d_Volume,             &
                               d_psicbatch,                      &  ! only angle batch portion
                               d_psib,                      &
                               d_next,              &
                               d_nextZ,             &
-                              d_Sigt,                &
-                              d_SigtInv,             &
                               d_passZstart,              &
                               streamid)
 
@@ -847,23 +801,15 @@ end subroutine setExitFlux
    integer,    intent(in)    :: nbelem
    real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
 
-   real(adqt), device, intent(in)    :: d_A_fp(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
-   integer, device, intent(in):: d_Connect(3,maxcf,maxCorner,nzones) 
-
    real(adqt), device, intent(in)    :: d_omega_A_fp(maxcf ,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(in)    :: d_omega_A_ez(maxcf ,maxCorner, nzones, anglebatch)  
-   integer, device, intent(in):: d_Connect_ro(maxcf,maxCorner,3,nzones) 
 
-   real(adqt), device, intent(in)    :: d_STotal(Groups, maxCorner, nzones)
+
    real(adqt), device, intent(in)    :: d_STimeBatch(Groups, ncornr, anglebatch)
-   real(adqt), device, intent(in)    :: d_Volume(maxCorner, nzones)
    real(adqt), device, intent(inout) :: d_psicbatch(QuadSet%Groups,Size%ncornr,anglebatch)
    real(adqt), device, intent(inout) :: d_psib(QuadSet%Groups,Size%nbelem,anglebatch)
    integer,    device, intent(in) :: d_next(Size%ncornr+1,QuadSet%NumAngles)
    integer,    device, intent(in) :: d_nextZ(Size%nzones,QuadSet%NumAngles)
-   real(adqt), device, intent(in)    :: d_Sigt(Groups, nzones)
-   real(adqt), device, intent(in)    :: d_SigtInv(Groups, nzones)
    integer,    device, intent(in) :: d_passZstart(Size%nzones,QuadSet%NumAngles)   
    integer(kind=cuda_stream_kind), intent(in) :: streamid   
 
@@ -906,21 +852,13 @@ end subroutine setExitFlux
                               nbelem,                &
                               Geom%d_GPU_ZData,    &
                               d_omega,             &
-                              d_A_fp, &
-                              d_A_ez, &
-                              d_Connect, &
                               d_omega_A_fp,                &
                               d_omega_A_ez,                &
-                              d_Connect_ro,             &
-                              d_STotal,              &
                               d_STimeBatch,               &  ! only angle batch portion
-                              d_Volume,             &
                               d_psicbatch,                      &  ! only angle batch portion
                               d_psib,                      &
                               d_next,              &
                               d_nextZ,             &
-                              d_Sigt,                &
-!                              d_SigtInv,             &
                               d_passZstart             )
 
 

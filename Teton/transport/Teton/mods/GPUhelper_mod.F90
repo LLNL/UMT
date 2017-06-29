@@ -690,11 +690,12 @@ contains
 
 
 
-   subroutine scalePsibyVolume(psir, volumeRatio, anglebatch, streamid)
+   subroutine scalePsibyVolume(psir, ZData, anglebatch, streamid)
      ! scaling by change in mesh volume that used to be done in advanceRT is done here
      use kind_mod
      use constant_mod
      use Quadrature_mod
+     use ZoneData_mod
      use Size_mod
      use cudafor
      
@@ -703,24 +704,36 @@ contains
      !  Arguments
 
      real(adqt), device, intent(inout)  :: psir(QuadSet%Groups,Size%ncornr,anglebatch) 
-     real(adqt), device, intent(in) :: volumeRatio(Size%ncornr)
+     type(GPU_ZoneData), device, intent(in) :: ZData(Size%nzones)
+     !real(adqt), device, intent(in) :: volumeRatio(Size%ncornr)
      integer, intent(in)  :: anglebatch 
      integer(kind=cuda_stream_kind), intent(in) :: streamid
 
      !  Local
 
-     integer    :: ia, ic, ig, ncornr, Groups
+     integer    :: ia, zone,c, ig, nzones,maxCorner,nCorner, Groups
+     integer    :: c0, ic
      real(adqt) :: tau
 
 
-     ncornr = Size%ncornr
+     nzones = Size%nzones
+     !ncornr = Size%ncornr
      Groups = QuadSet% Groups   
 
-     !$cuf kernel do(3) <<< *, *, stream=streamid >>>
+     maxCorner = Size% maxCorner
+
+     !$cuf kernel do(4) <<< *, *, stream=streamid >>>
      do ia=1,anglebatch
-        do ic=1,ncornr
-           do ig=1, Groups
-             psir(ig,ic,ia) = psir(ig,ic,ia)*volumeRatio(ic)
+        do zone=1, nzones
+           do c=1,maxCorner 
+              do ig=1, Groups
+                 nCorner = ZData(zone)%nCorner
+                 if(c<nCorner) then
+                    c0 = ZData(zone)%c0
+                    ic = c0+c
+                    psir(ig,ic,ia) = psir(ig,ic,ia)*ZData(zone)%volumeRatio(c)
+                 endif
+              enddo
           enddo
        enddo
      enddo

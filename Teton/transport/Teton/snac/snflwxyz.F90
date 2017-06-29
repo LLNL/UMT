@@ -342,22 +342,14 @@
                 current%NangBin,                   &
                 Size%nbelem,                &
                 QuadSet%d_omega,             &
-                Geom%ZDataSoA%A_fp,                &
-                Geom%ZDataSoA%A_ez,                &
-                Geom%ZDataSoA%Connect,             &
                 current%omega_A_fp%data,                &
                 current%omega_A_ez%data,                &
-                Geom%ZDataSoA%Connect_reorder,             &
-                Geom%ZDataSoA%STotal,              &
                                 !Geom%ZDataSoA%STime,               &
                 current%STime%data(1,1,1),          &
-                Geom%ZDataSoA%Volume,             &
                 current%psi%data(1,1,1),                      &  ! only want angle batch portion
                 current%psib%data(1,1,1),                      &
                 QuadSet%d_next,              &
                 QuadSet%d_nextZ,             &
-                Geom%ZDataSoA%Sigt,                &
-                Geom%ZDataSoA%SigtInv,             &
                 QuadSet%d_passZstart,        &
                 !calcSTime,                  &
                 !Size%tau,             &
