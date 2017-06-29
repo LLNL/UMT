@@ -38,10 +38,8 @@ contains
                               maxcf,                &
                               NangBin,                   &
                               nbelem,                &
+                              ZData,       &
                               omega,             &
-                              nCornerArray,                &
-                              nCFacesArray,                &
-                              c0Array,                &
                               A_fp, &
                               A_ez, &
                               Connect, &
@@ -66,10 +64,10 @@ contains
    integer, value,    intent(in)    :: maxcf
    integer, value,    intent(in)    :: NangBin
    integer, value,    intent(in)    :: nbelem
+
+   type(GPU_ZoneData), device, intent(in) :: ZData(nzones)
+
    real(adqt), device, intent(in)    :: omega(3,NumAngles)
-   integer, device, intent(in):: nCornerArray(nzones)
-   integer, device, intent(in):: nCFacesArray(nzones)
-   integer, device, intent(in):: c0Array(nzones)
 
    real(adqt), device, intent(in)    :: A_fp(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
@@ -112,9 +110,14 @@ contains
 
           zone = nextZ(ndoneZ+ii,Angle)
 
-          nCorner = nCornerArray(zone)
-          nCFaces =   nCFacesArray(zone)
-          c0      =   c0Array(zone)
+          !nCorner = nCornerArray(zone)
+          !nCFaces =   nCFacesArray(zone)
+          !c0      =   c0Array(zone)
+
+          nCorner =   ZData(zone)%nCorner
+          nCFaces =   ZData(zone)%nCFaces
+          c0      =   ZData(zone)%c0
+
 
           CornerLoop: do i=1,nCorner
 
@@ -131,13 +134,14 @@ contains
                      omega(2,Angle)* A_fp(2,icface,c,zone) + &
                      omega(3,Angle)* A_fp(3,icface,c,zone)
                 
-                icfp    =  Connect(1,icface,c,zone)
-                ib      =  Connect(2,icface,c,zone)
-                cez     =  Connect(3,icface,c,zone)
+                ! Reorder is now done when GPU_ZData is initialized, so following is not needed.
+                !icfp    =  Connect(1,icface,c,zone)
+                !ib      =  Connect(2,icface,c,zone)
+                !cez     =  Connect(3,icface,c,zone)
                 
-                Connect_ro(icface,c,1,zone) = icfp
-                Connect_ro(icface,c,2,zone) = ib
-                Connect_ro(icface,c,3,zone) = cez
+                !Connect_ro(icface,c,1,zone) = icfp
+                !Connect_ro(icface,c,2,zone) = ib
+                !Connect_ro(icface,c,3,zone) = cez
                 
              enddo
 
@@ -178,9 +182,6 @@ contains
                               nbelem,                &
                               ZData,      &
                               omega,             &
-!                              nCornerArray,                &
-                              nCFacesArray,                &
-                              c0Array,                &
                               A_fp, &
                               A_ez, &
                               soa_Connect, &
@@ -214,12 +215,9 @@ contains
    integer, value,    intent(in)    :: NangBin
    integer, value,    intent(in)    :: nbelem
 
-   type(ZoneData), device, intent(in) :: ZData(nzones)
+   type(GPU_ZoneData), device, intent(in) :: ZData(nzones)
 
    real(adqt), device, intent(in)    :: omega(3,NumAngles)
-   !integer, device, intent(in):: nCornerArray(nzones)
-   integer, device, intent(in):: nCFacesArray(nzones)
-   integer, device, intent(in):: c0Array(nzones)
 
    real(adqt), device, intent(in)    :: A_fp(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: A_ez(3,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
@@ -308,10 +306,10 @@ contains
 
              zone = nextZ(ndoneZ+ii,Angle)
 
-             !nCorner = nCornerArray(zone)
-             nCorner = ZData(zone)%nCorner
-             nCFaces =   nCFacesArray(zone)
-             c0      =   c0Array(zone)
+             nCorner =   ZData(zone)%nCorner
+             nCFaces =   ZData(zone)%nCFaces
+             c0      =   ZData(zone)%c0
+
 
              Sigt    =  SigtArray(ig,zone)
              !SigtInv = one/Sigt !need to thread?
@@ -338,9 +336,9 @@ contains
                 sh_omega_A_ez(icface,c,threadIdx%z) = omega_A_ez(icface,c,zone,mm)                
 
                 !do i=1,3 !ndim
-                Connect_ro(icface,c,1,threadIdx%z) = soa_connect_ro(icface,c,1,zone)
-                Connect_ro(icface,c,2,threadIdx%z) = soa_connect_ro(icface,c,2,zone)
-                Connect_ro(icface,c,3,threadIdx%z) = soa_connect_ro(icface,c,3,zone)
+                Connect_ro(icface,c,1,threadIdx%z) = ZData(zone)%connect_reorder(icface,c,1)
+                Connect_ro(icface,c,2,threadIdx%z) = ZData(zone)%connect_reorder(icface,c,2)
+                Connect_ro(icface,c,3,threadIdx%z) = ZData(zone)%connect_reorder(icface,c,3)
                 !enddo
 
              enddo
@@ -689,9 +687,6 @@ end subroutine setExitFlux
           NangBin, &
           nbelem, &
           d_omega, &
-          d_nCorner, &
-          d_nCFaces, &
-          d_c0, &
           d_A_fp , &
           d_omega_A_fp , &
           d_A_ez , &
@@ -731,9 +726,6 @@ end subroutine setExitFlux
    integer,    intent(in)    :: NangBin
    integer,    intent(in)    :: nbelem
    real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
-   integer, device, intent(in):: d_nCorner(nzones)
-   integer, device, intent(in):: d_nCFaces(nzones)
-   integer, device, intent(in):: d_c0(nzones)
 
    real(adqt), device, intent(in)    :: d_A_fp(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
@@ -770,10 +762,8 @@ end subroutine setExitFlux
                               maxcf,                &
                               NangBin,                   &
                               nbelem,                &
+                              Geom%d_GPU_ZData,    &
                               d_omega,             &
-                              d_nCorner,                &
-                              d_nCFaces,                &
-                              d_c0,                &
                               d_A_fp, &
                               d_A_ez, &
                               d_Connect, &
@@ -811,9 +801,6 @@ end subroutine setExitFlux
                               NangBin,                   &
                               nbelem,                &
                               d_omega,             &
-                              d_nCorner,                &
-                              d_nCFaces,                &
-                              d_c0,                &
                               d_A_fp, &
                               d_A_ez, &
                               d_Connect, &
@@ -859,9 +846,6 @@ end subroutine setExitFlux
    integer,    intent(in)    :: NangBin
    integer,    intent(in)    :: nbelem
    real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
-   integer, device, intent(in):: d_nCorner(nzones)
-   integer, device, intent(in):: d_nCFaces(nzones)
-   integer, device, intent(in):: d_c0(nzones)
 
    real(adqt), device, intent(in)    :: d_A_fp(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
    real(adqt), device, intent(in)    :: d_A_ez(ndim,maxcf,maxCorner,nzones) !ndim,maxcf,maxCorner,nzones
@@ -920,11 +904,8 @@ end subroutine setExitFlux
                               maxcf,                &
                               NangBin,                   &
                               nbelem,                &
-                              Geom%d_ZData,    &
+                              Geom%d_GPU_ZData,    &
                               d_omega,             &
-!                              d_nCorner,                &
-                              d_nCFaces,                &
-                              d_c0,                &
                               d_A_fp, &
                               d_A_ez, &
                               d_Connect, &

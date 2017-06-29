@@ -220,6 +220,13 @@
      Geom%d_ZData_uptodate = .true.
    endif
 
+
+   ! Then need to have d_GPU_ZData pointers and scalars be the same,
+   ! so that d_GPU_ZData can be used.
+   istat = cudaMemcpyAsync(C_DEVLOC(Geom%d_GPU_ZData), C_LOC(Geom%GPU_ZData), sizeof(Geom%GPU_ZData), 0)
+
+
+
    ! THIS IS ALSO DONE IN RT/RADTR? WHY TWICE--MAYBE ACCIDENT DUPLICATION
 
    call setZones_SoA_mesh(Geom%d_ZDataSoA, Geom%d_ZData)

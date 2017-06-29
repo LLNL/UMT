@@ -39,6 +39,8 @@
 
    call constructZone( Z, nCorner, ncfaces, corner0, numFaces, Connect )
 
+   ! Host version of GPU_ZData structure is used for allocating
+   call constructGPUZone(Geom%GPU_ZData(zoneID), nCorner, ncfaces, corner0, numFaces, Connect )
 
    return
    end subroutine setZone 

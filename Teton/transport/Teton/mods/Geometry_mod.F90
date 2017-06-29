@@ -32,6 +32,10 @@ module Geometry_mod
 
      type(ZoneData), pointer :: ZData(:)      ! zone data pointers
      type(ZoneData), device, allocatable :: d_ZData(:)
+
+     type(GPU_ZoneData), pinned, allocatable :: GPU_ZData(:)
+     type(GPU_ZoneData), device, allocatable :: d_GPU_ZData(:)
+
      type(ZoneData_SoA), allocatable :: ZDataSoA ! is this host version really needed?
      type(ZoneData_SoA), device, allocatable :: d_ZDataSoA
 
@@ -97,16 +101,22 @@ contains
 !   Pointers
 
     allocate( self % ZData(Size%nzones) )
-    allocate( self % d_ZData(Size%nzones) ) !should be able to eliminate this later?
+    allocate( self % d_ZData(Size%nzones) ) 
+
+    allocate( self % GPU_ZData(Size%nzones) )
+    allocate( self % d_GPU_ZData(Size%nzones) )
+    
     allocate( self % ZDataSoA )
     allocate( self % d_ZDataSoA )
 
-	! Pin the array pointed to by ZData:
+    ! Pin the array pointed to by ZData:
     istat = cudaHostRegister(C_LOC(self%ZData(1)), sizeof(self%ZData), cudaHostRegisterMapped)
 
-	! is host version of ZDataSoA really needed?
+    ! is host version of ZDataSoA really needed?
     call constructZones_SoA(self % ZDataSoA)
     istat = cudaMemcpyAsync(C_DEVLOC(self%d_ZDataSoA), C_LOC(self%ZDataSoA), sizeof(self%ZDataSoA), 0)
+    ! still not up to date, because ZDataSoA now just points to correct places, but those places have not been
+    ! popluated with data yet.
     self % d_ZData_uptodate = .false.
 
     return

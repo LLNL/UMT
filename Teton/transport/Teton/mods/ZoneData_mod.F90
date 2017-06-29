@@ -10,7 +10,7 @@ module ZoneData_mod
 
 ! public interfaces
 
-  public constructZone, constructZones_SoA, setZones_SoA_mesh, setZones_SoA_STotal
+  public constructZone, constructGPUZone, constructZones_SoA, setZones_SoA_mesh, setZones_SoA_STotal
                                                                                  
   type, public :: ZoneData 
 
@@ -41,6 +41,27 @@ module ZoneData_mod
   type(ZoneData), pointer, public :: Z
 !$OMP threadprivate(Z)
 
+  type, public :: GPU_ZoneData
+
+     integer              :: nCorner            ! number of corners
+     integer              :: nCFaces            ! number of corner faces 
+     integer              :: c0                 ! global corner ID of first corner
+     integer              :: nFaces             ! number of zone faces
+
+
+     real(adqt), device, allocatable  :: Volume(:)          ! corner volume
+     real(adqt), pinned, allocatable  :: volumeRatio(:)
+     real(adqt), device, allocatable  :: Sigt(:)            ! total opacity
+     real(adqt), device, allocatable  :: SigtInv(:)         ! reciprocal of total opacity
+     real(adqt), device, allocatable  :: STotal(:,:)        ! fixed + scattering source
+     real(adqt), device, allocatable  :: A_fp(:,:,:)        ! outward normals on corner faces 
+     real(adqt), device, allocatable  :: A_ez(:,:,:)        !
+     integer,    device, allocatable  :: Connect_reorder(:,:,:)     ! nearest neighbor connectivity 
+
+  end type GPU_ZoneData
+
+
+
   type, public :: ZoneData_SoA
 
      integer, device, allocatable :: nCorner(:)
@@ -69,6 +90,10 @@ module ZoneData_mod
 
   interface constructZone
     module procedure ZoneData_ctor
+  end interface
+
+  interface constructGPUZone
+    module procedure GPU_ZoneData_ctor
   end interface
 
   interface constructZones_SoA
@@ -154,6 +179,66 @@ contains
     return
 
   end subroutine ZoneData_ctor
+
+
+
+  subroutine GPU_ZoneData_ctor(self,        &
+                           nCorner,     &
+                           nCFaces,     &
+                           corner0,     &
+                           nFaces,      &
+                           Connect)
+
+    use Size_mod
+
+    implicit none
+
+!   Passed variables
+
+    type(GPU_ZoneData), intent(inout)    :: self
+
+    integer, intent(in)              :: nCorner
+    integer, intent(in)              :: nCFaces       
+    integer, intent(in)              :: corner0
+    integer, intent(in)              :: nFaces
+    integer, intent(in)              :: Connect(3,Size%maxcf,Size%maxCorner) 
+
+!   Local
+
+    integer          :: cID, i 
+
+!   Set Properties
+
+    self% nCorner = nCorner 
+    self% nCFaces = nCFaces
+    self% c0      = corner0
+    self% nFaces  = nFaces
+
+    allocate( self % Volume(self% nCorner) )
+    allocate( self % volumeRatio(self% nCorner) )
+    allocate( self % Sigt(Size% ngr) )
+    allocate( self % SigtInv(Size% ngr) )
+    allocate( self % A_fp(Size% ndim,self% nCFaces,self% nCorner) )
+    allocate( self % A_ez(Size% ndim,self% nCFaces,self% nCorner) )
+    !allocate( self % Connect(3,self% nCFaces,self% nCorner) )
+    allocate( self % Connect_reorder(self%nCFaces, self%nCorner,3) )
+    allocate( self % STotal(Size% ngr,self% nCorner) )
+
+    do cID=1,self% nCorner
+      do i=1,self% nCFaces
+        ! Different order than ZData, better to load coalesced into shared memory 
+        self % Connect_reorder(i,cID,1) = Connect(1,i,cID)
+        self % Connect_reorder(i,cID,2) = Connect(2,i,cID)
+        self % Connect_reorder(i,cID,3) = Connect(3,i,cID) - corner0
+      enddo
+    enddo
+
+    return
+
+  end subroutine GPU_ZoneData_ctor
+
+
+
 
   subroutine ZoneData_SoA_ctor(self)
 

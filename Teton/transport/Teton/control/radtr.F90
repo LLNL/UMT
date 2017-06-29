@@ -70,7 +70,7 @@
 
    call nvtxStartRange("Allocate psib",6)
 
-!  Photon Intensities on the problem boundary, and pin psi and phi
+!  Photon Intensities on the problem boundary
 
    if (.not. allocated(psib) ) then
      allocate( psib(ngr,nbelem,nangSN) )

@@ -342,9 +342,6 @@
                 current%NangBin,                   &
                 Size%nbelem,                &
                 QuadSet%d_omega,             &
-                Geom%ZDataSoA%nCorner,                &
-                Geom%ZDataSoA%nCFaces,                &
-                Geom%ZDataSoA%c0,                &
                 Geom%ZDataSoA%A_fp,                &
                 Geom%ZDataSoA%A_ez,                &
                 Geom%ZDataSoA%Connect,             &
@@ -397,42 +394,42 @@
            !      QuadSet%d_passZstart,              &
            !      kernel_stream)
         else ! Call CUDA c version
-           call snswp3d_c(     current%anglebatch,                     &
-                Size%nzones,               &
-                QuadSet%Groups,            &
-                Size%ncornr,               &
-                QuadSet%NumAngles,         &
-                QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need a bin of angles at a time
-                Size%maxCorner,            &
-                Size%maxcf,                &
-                binRecv,                   &
-                current%NangBin,                   &
-                Size%nbelem,                &
-                QuadSet%d_omega,             &
-                Geom%ZDataSoA%nCorner,                &
-                Geom%ZDataSoA%nCFaces,                &
-                Geom%ZDataSoA%c0,                &
-                Geom%ZDataSoA%A_fp,                &
-                current%omega_A_fp%data,                &
-                Geom%ZDataSoA%A_ez,                &
-                current%omega_A_ez%data,                &
-                Geom%ZDataSoA%Connect,             &
-                Geom%ZDataSoA%Connect_reorder,             &
-                Geom%ZDataSoA%STotal,              &
-                                !Geom%ZDataSoA%STime,               &
-                current%STime%data(1,1,1),          &
-                Geom%ZDataSoA%Volume,             &
-                current%psi%data(1,1,1),                      &  ! only want angle batch portion
-                current%psib%data(1,1,1),                      &
-                QuadSet%d_next,              &
-                QuadSet%d_nextZ,             &
-                Geom%ZDataSoA%Sigt,                &
-                Geom%ZDataSoA%SigtInv,             &
-                QuadSet%d_passZstart,        &
-                calcSTime,                  &
-                Size%tau,             &
-                kernel_stream           &
-                )
+           ! call snswp3d_c(     current%anglebatch,                     &
+           !      Size%nzones,               &
+           !      QuadSet%Groups,            &
+           !      Size%ncornr,               &
+           !      QuadSet%NumAngles,         &
+           !      QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need a bin of angles at a time
+           !      Size%maxCorner,            &
+           !      Size%maxcf,                &
+           !      binRecv,                   &
+           !      current%NangBin,                   &
+           !      Size%nbelem,                &
+           !      QuadSet%d_omega,             &
+           !      Geom%ZDataSoA%nCorner,                &
+           !      Geom%ZDataSoA%nCFaces,                &
+           !      Geom%ZDataSoA%c0,                &
+           !      Geom%ZDataSoA%A_fp,                &
+           !      current%omega_A_fp%data,                &
+           !      Geom%ZDataSoA%A_ez,                &
+           !      current%omega_A_ez%data,                &
+           !      Geom%ZDataSoA%Connect,             &
+           !      Geom%ZDataSoA%Connect_reorder,             &
+           !      Geom%ZDataSoA%STotal,              &
+           !                      !Geom%ZDataSoA%STime,               &
+           !      current%STime%data(1,1,1),          &
+           !      Geom%ZDataSoA%Volume,             &
+           !      current%psi%data(1,1,1),                      &  ! only want angle batch portion
+           !      current%psib%data(1,1,1),                      &
+           !      QuadSet%d_next,              &
+           !      QuadSet%d_nextZ,             &
+           !      Geom%ZDataSoA%Sigt,                &
+           !      Geom%ZDataSoA%SigtInv,             &
+           !      QuadSet%d_passZstart,        &
+           !      calcSTime,                  &
+           !      Size%tau,             &
+           !      kernel_stream           &
+           !      )
         endif
 
         ! record when sweep is finished for this batch
