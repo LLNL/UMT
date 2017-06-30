@@ -265,18 +265,21 @@
       ! transfer stream should wait until Afp is done calculating.
       istat = cudaStreamWaitEvent(transfer_stream, AfpFinished( current%batch ), 0)
 
+      if(numDot_buffers /= 8) then
+         ! not enough buffers to keep A_fp on device throughout computation.
+         ! need to move fp stuff back to host.
+         istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+              current%omega_A_fp%data(1,1,1,1), &
+              Size% nzones*Size% maxCorner*Size% maxcf*current%anglebatch, transfer_stream)
 
-      ! need to move fp stuff back to host.
-      istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_fp(1,1,1,QuadSet%AngleOrder(mm1,current%bin)), &
-             current%omega_A_fp%data(1,1,1,1), &
-             Size% nzones*Size% maxCorner*Size% maxcf*current%anglebatch, transfer_stream)
 
 
+         ! need to move ez stuff back to host here.
+         istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+              current%omega_A_ez%data(1,1,1,1), &
+              Size% nzones*Size% maxCorner*Size% maxcf*current%anglebatch, transfer_stream)
 
-      ! need to move ez stuff back to host here.
-      istat = cudaMemcpyAsync(Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,current%bin)), &
-             current%omega_A_ez%data(1,1,1,1), &
-             Size% nzones*Size% maxCorner*Size% maxcf*current%anglebatch, transfer_stream)
+      endif
 
 
       ! have kernel stream wait until transfer of psi to device
@@ -366,14 +369,18 @@
         
       ! transfer stream waits for STime to be computed:
       istat = cudaStreamWaitEvent(transfer_stream, STimeFinished(current%batch), 0)
-      ! move current batch STime to host
-      istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,current%bin)), &
-             current%STime%data(1,1,1), &
-             QuadSet%Groups*Size%ncornr*current%anglebatch, transfer_stream ) 
 
-      print *, "moving STime to host for bin ", current%bin
-      print *, "the owner was ", current%STime%owner
+      if ( .not. fitsOnGPU ) then
 
+         ! move current batch STime to host
+         istat=cudaMemcpyAsync(Geom%ZDataSoA%STime(1,1,QuadSet%AngleOrder(mm1,current%bin)), &
+              current%STime%data(1,1,1), &
+              QuadSet%Groups*Size%ncornr*current%anglebatch, transfer_stream ) 
+         
+         print *, "moving STime to host for bin ", current%bin
+         print *, "the owner was ", current%STime%owner
+         
+      endif
 
       if(binRecv /= 1) then
          ! when loop cycles, current becomes previous
