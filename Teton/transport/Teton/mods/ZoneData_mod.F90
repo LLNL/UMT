@@ -225,14 +225,17 @@ contains
     allocate( self % Connect_reorder(self%nCFaces, self%nCorner,3) )
     allocate( self % STotal(Size% ngr,self% nCorner) )
 
-    do cID=1,self% nCorner
-      do i=1,self% nCFaces
-        ! Different order than ZData, better to load coalesced into shared memory 
-        self % Connect_reorder(i,cID,1) = Connect(1,i,cID)
-        self % Connect_reorder(i,cID,2) = Connect(2,i,cID)
-        self % Connect_reorder(i,cID,3) = Connect(3,i,cID) - corner0
-      enddo
-    enddo
+
+    ! think this is where the problem of too many tiny transfers comes in
+
+    ! do cID=1,self% nCorner
+    !   do i=1,self% nCFaces
+    !     ! Different order than ZData, better to load coalesced into shared memory 
+    !     self % Connect_reorder(i,cID,1) = Connect(1,i,cID)
+    !     self % Connect_reorder(i,cID,2) = Connect(2,i,cID)
+    !     self % Connect_reorder(i,cID,3) = Connect(3,i,cID) - corner0
+    !   enddo
+    ! enddo
 
     return
 
@@ -517,7 +520,7 @@ contains
 
 !   Local
 
-    integer :: i,zone,c,ic,id,mic,mnd,nCorner, angle
+    integer :: i,zone,c,icf,idim,mic,mnd,nCorner, angle
 
     i = threadIdx%x
     zone = (blockIdx%y-1)*blockDim%y + threadIdx%y
@@ -537,13 +540,16 @@ contains
       mic = mnd * maxcf
 
       if (i <= mic) then
-        ic = (i-1)/mnd + 1 ! split thread block x-dimension loop into two dims
-        id = i - ((ic-1)*mnd) ! remainder
+        icf = (i-1)/mnd + 1 ! split thread block x-dimension loop into two dims
+        idim = i - ((icf-1)*mnd) ! remainder
 
         do c=1,nCorner
-          if (id <= ndim) then
-            self(zone) % A_fp(id,ic,c) = ZData(zone)% A_fp(id,ic,c)
-            self(zone) % A_ez(id,ic,c) = ZData(zone)% A_ez(id,ic,c)
+          if (idim <= ndim) then
+            self(zone) % A_fp(idim,icf,c) = ZData(zone)% A_fp(idim,icf,c)
+            self(zone) % A_ez(idim,icf,c) = ZData(zone)% A_ez(idim,icf,c)
+          endif
+          if (idim <= 3) then
+             self(zone) % Connect_reorder(icf,c,idim) = ZData(zone)% Connect(idim,icf,c)
           endif
         enddo
       endif
