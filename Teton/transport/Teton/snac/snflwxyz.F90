@@ -341,7 +341,6 @@
                 !binRecv,                   &
                 current%NangBin,                   &
                 Size%nbelem,                &
-                QuadSet%d_omega,             &
                 current%omega_A_fp%data,                &
                 current%omega_A_ez%data,                &
                                 !Geom%ZDataSoA%STime,               &

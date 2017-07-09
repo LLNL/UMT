@@ -172,7 +172,6 @@ contains
                               NangBin,                   &
                               nbelem,                &
                               ZData,      &
-                              omega,             &
                               omega_A_fp,                &
                               omega_A_ez,                &
                               STimeBatch,               & ! only angle batch portion
@@ -199,8 +198,6 @@ contains
    integer, value,    intent(in)    :: nbelem
 
    type(GPU_ZoneData), device, intent(in) :: ZData(nzones)
-
-   real(adqt), device, intent(in)    :: omega(3,NumAngles)
 
    real(adqt), device, intent(in)    :: omega_A_fp(maxcf,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(in)    :: omega_A_ez(maxcf,maxCorner,nzones, anglebatch) 
@@ -762,7 +759,6 @@ end subroutine setExitFlux
                               maxcf,                &
                               NangBin,                   &
                               nbelem,                &
-                              d_omega,             &
                               d_omega_A_fp,                &
                               d_omega_A_ez,                &
                               d_STimeBatch,               & ! only angle batch portion
@@ -799,7 +795,6 @@ end subroutine setExitFlux
    integer,    intent(in)    :: maxcf
    integer,    intent(in)    :: NangBin
    integer,    intent(in)    :: nbelem
-   real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
 
    real(adqt), device, intent(in)    :: d_omega_A_fp(maxcf ,maxCorner, nzones, anglebatch) 
    real(adqt), device, intent(in)    :: d_omega_A_ez(maxcf ,maxCorner, nzones, anglebatch)  
@@ -851,7 +846,6 @@ end subroutine setExitFlux
                               NangBin,                   &
                               nbelem,                &
                               Geom%d_GPU_ZData,    &
-                              d_omega,             &
                               d_omega_A_fp,                &
                               d_omega_A_ez,                &
                               d_STimeBatch,               &  ! only angle batch portion
