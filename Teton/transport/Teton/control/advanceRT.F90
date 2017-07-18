@@ -110,6 +110,14 @@
       istat = cudaStreamCreate(transfer_stream1)
       istat = cudaStreamCreate(transfer_stream)
       istat = cudaStreamCreate(kernel_stream)
+      
+      call GPUmemRequirements(&
+           psib, &
+           psi, &
+           phi, &
+           Geom%ZDataSoA%STime, &
+           QuadSet%next, &
+           Geom%ZDataSoA%omega_a_fp)
 
       call InitDeviceBuffers()
 

@@ -264,6 +264,49 @@ module GPUhelper_mod
 
 contains
 
+  subroutine GPUmemRequirements(psib,psi,phi,STime,next,omega_a_fp)
+    implicit none
+    
+    real(adqt), intent(in) :: psib(:,:,:), psi(:,:,:), phi(:,:), STime(:,:,:), omega_a_fp(:,:,:,:)
+    integer, intent(in) :: next(:,:)
+
+    
+    
+    integer(kind=8) :: psib_mem, psi_mem, phi_mem, stime_mem, next_mem, omega_a_fp_mem, sweep_mem
+
+    ! calculate sizes of large arrays that will go on the GPU.
+      psib_mem = size(psib,kind=8)*8
+      psi_mem = size(psi,kind=8)*8
+      phi_mem = size(phi,kind=8)*8
+      stime_mem = size(Geom%ZDataSoA%STime, kind=8)*8
+      next_mem = size(QuadSet%next,kind=8)*4
+      omega_a_fp_mem = size(Geom%ZDataSoA%omega_a_fp,kind=8)*8
+
+
+      ! figure out if this problem fits on the GPU.
+      print *,"size(psib) =", psib_mem
+      print *,"size(psi) =", psi_mem
+      print *,"size(phi) =", phi_mem
+      print *,"size(stime) = ", stime_mem
+      print *,"size(next_mem) = ", next_mem
+      print *,"size(omega_A_fp) =", omega_a_fp_mem
+
+      ! estimate for the total memory requirements of the sweep:
+      sweep_mem = &
+           psib_mem + &
+           psi_mem + &
+           phi_mem + &
+           stime_mem + &
+           next_mem + &
+           2*omega_a_fp_mem
+
+      print *,"sweep_mem =",sweep_mem
+
+
+    
+  end subroutine GPUmemRequirements
+
+
   subroutine InitDeviceBuffers()
     use Size_mod
     implicit none
