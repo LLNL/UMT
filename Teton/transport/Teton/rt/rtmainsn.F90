@@ -207,6 +207,8 @@
 !     BEGIN PHOTON INTENSITY ITERATION (INNER)                         *
 !***********************************************************************
 
+! it looks like only 1 inner per outer for SuOlson, i.e. this loop is not a loop.
+
      intensityIter = 0
  
      IntensityIteration: do

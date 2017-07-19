@@ -30,6 +30,7 @@
    use snswp3d_mod
 
    implicit none
+   include 'mpif.h'
 
 !  Arguments
 
@@ -43,7 +44,8 @@
 
    logical(kind=1), save :: first_time = .true.
    integer    :: slot, binRecv, mm1
-
+   integer    :: myrank, info
+   integer(kind=8) :: sweep_mem 
 
    integer    :: ia, ic, ig
    integer    :: c, c0, nCorner, zone
@@ -104,6 +106,8 @@
 !  Set the scaler intensity                                            *
 !***********************************************************************
 
+   call mpi_comm_rank(mpi_comm_world, myrank, info)
+
    ! GPU tranfer related stuff:
    if (first_time) then
       ! Create streams that can overlap 
@@ -117,7 +121,10 @@
            phi, &
            Geom%ZDataSoA%STime, &
            QuadSet%next, &
-           Geom%ZDataSoA%omega_a_fp)
+           Geom%ZDataSoA%omega_a_fp,&
+           sweep_mem)
+
+      if(myrank == 0) print *,"sweep_mem =",sweep_mem
 
       call InitDeviceBuffers()
 
