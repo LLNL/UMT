@@ -14,7 +14,7 @@
 ! number of zones that will be processed in parallel from each batch
 #define NZONEPAR 32
 ! number of threads available for groups (must be >= groups)
-#define THREADX 32
+#define THREADX 16
 ! the number of corners that can be processed at a time in shared memory
 #define CORNERCHUNK 8
 

@@ -92,7 +92,7 @@
    ! endif
 
    
-   ! sets of zero copy of psib needed for snrefelctD on device.
+   ! sets up zero copy of psib needed for snrefelctD on device.
    istat = cudaHostGetDevicePointer(d_psib_p, C_LOC(psib(1,1,1)), 0)
    ! Translate that C pointer to the fortran array with given dimensions
    call c_f_pointer(d_psib_p, pinned_psib, [QuadSet%Groups, Size%nbelem, QuadSet%NumAngles] )
