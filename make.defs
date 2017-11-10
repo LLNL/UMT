@@ -23,15 +23,18 @@ MPI_HOME=/opt/ibm/spectrum_mpi
 # dd2 witherspoon nodes do not have spectrum mpi yet:
 #MPI_HOME=/shared/comms/openmpi-2.0.1/gnu
 
-#CUDA_HOME=/usr/local/cuda-9.0
-CUDA_HOME=/opt/pgi/linuxpower/2017/cuda/9.0
+CUDA_HOME=/usr/local/cuda-9.1
+#CUDA_HOME=/opt/pgi/linuxpower/2017/cuda/9.0
 #PGI_VERSION=16.10
 #PGI_VERSION=17.5
 PGI_VERSION=17.9
 
+# kepler version:
 #COMPUTE_CAPABILITY=35
-# r92 version:
+# pascal version:
 COMPUTE_CAPABILITY=60
+# volta version:
+#COMPUTE_CAPABILITY=70
 
 CFLAGS_CMG     += 
 
@@ -47,8 +50,11 @@ FLIBS = ../ibmtimers/libtimers.a
 
 
 FLIBS += -L/opt/pgi/linuxpower/$(PGI_VERSION)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
-       -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass -lmass_simdp8 \
+       -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass \
        -lcudapgi -lcudafor -lcudart -lcudaforblas
+
+FLIBS += -lmass_simdp8
+#FLIBS += -lmass_simdp9
 
 CLIBS = -L$(CUDA_HOME)/lib64
 
@@ -79,7 +85,7 @@ FPP             = pgf90
 
 # Munixlogical makes pgf90 use 0 for false instead of 0xff.
 
-F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
+F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
 #F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
@@ -92,7 +98,7 @@ LIB_EXT         = so
 LDFLAGS         =  -shared -fpic 
 
 LINK            = $(CXX)
-LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERSION)/lib:$(CUDA_HOME)/lib64 \
+LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERSION)/lib:$(CUDA_HOME)/lib64 #CUDAROOT=$(CUDA_HOME) \
 		
 
 #

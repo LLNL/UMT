@@ -178,9 +178,9 @@
 !     if(myrank == 0 ) print *, "binSend(1) = ", QuadSet% SendOrder(1)
 !     if(myrank == 0 ) print *, "binSend(NumBin) = ", QuadSet% SendOrder(QuadSet%NumBin)
 
-     if(myrank == 0 ) print *, "--------------"
-     if(myrank == 0 ) print *, "SendOrder(:) = ", QuadSet% SendOrder(1:8)
-     if(myrank == 0 ) print *, "--------------"
+!     if(myrank == 0 ) print *, "--------------"
+!     if(myrank == 0 ) print *, "SendOrder(:) = ", QuadSet% SendOrder(1:8)
+!     if(myrank == 0 ) print *, "--------------"
 
 
      call timer_beg('_anglebins')     
@@ -427,7 +427,7 @@
         istat=cudaEventRecord(SweepFinished( current%batch ), kernel_stream )
 
 
-        print *, "Sweep finished", fluxiter
+        !print *, "Sweep finished", fluxiter
 
         !!!!! Start of things that will overlap sweep kernel !!!!!
 
@@ -480,7 +480,7 @@
         endif
 
 
-        print *, "bin: (prev, current, next) = ", previous%bin, current%bin, next%bin
+        !print *, "bin: (prev, current, next) = ", previous%bin, current%bin, next%bin
 
 
 

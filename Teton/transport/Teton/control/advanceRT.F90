@@ -184,12 +184,12 @@
    enddo
 
 
-   print *, "--------------"
-   print *, "SendOrder(:) = ", QuadSet% SendOrder(1:8)
-   print *, "--------------"
+   ! print *, "--------------"
+   ! print *, "SendOrder(:) = ", QuadSet% SendOrder(1:8)
+   ! print *, "--------------"
 
-   ! debug1
-   istat = cudaDeviceSynchronize()
+   ! debug1 REMOVE ME?
+   !istat = cudaDeviceSynchronize()
 
    call timer_beg('_snmoments1')
 
@@ -202,8 +202,8 @@
       current%NangBin   = QuadSet% NangBinList( current%bin )
       current%anglebatch =current%NangBin ! later can be subset of angles in a bin.
       
-      print *, "current%bin       =", current%bin
-      print *, "current%batch     =", current%batch
+      !print *, "current%bin       =", current%bin
+      !print *, "current%batch     =", current%batch
 
       !   lower angle index for this batch
       mm1=1
@@ -318,12 +318,12 @@
       ! don't start Stime until previous Stime is on host. (not needed because transfer stream blocks)
 
 
-      print *, "setting up pointers for STime bin ", current%bin
+      !print *, "setting up pointers for STime bin ", current%bin
 
       ! set up STime pointers before computing STime
       call checkDataOnDevice(current%STime, STime_storage, current%bin, previous%STime%slot)
 
-      print *, "current%STime points to slot", current%STime%slot
+      !print *, "current%STime points to slot", current%STime%slot
 
       ! compute STime from initial d_psi
       ! (this is done again in snflw, but does not hurt now as transfer dominates here anyway, and better when data fits)
@@ -392,8 +392,8 @@
               current%STime%data(1,1,1), &
               QuadSet%Groups*Size%ncornr*current%anglebatch, transfer_stream ) 
          
-         print *, "moving STime to host for bin ", current%bin
-         print *, "the owner was ", current%STime%owner
+         !print *, "moving STime to host for bin ", current%bin
+         !print *, "the owner was ", current%STime%owner
          
       endif
 
@@ -418,7 +418,7 @@
    ! transfer stream waits for snmoments calc to be finished (the last one)
    istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(current%batch), 0)
    
-   print *, "moving d_phi to host"
+   !print *, "moving d_phi to host"
 
    ! move d_phi data to host:
    istat=cudaMemcpyAsync(phi(1,1), &
@@ -433,7 +433,7 @@
    istat=cudaEventSynchronize( phi_OnHost )
 
 
-   print *, "d_phi finished move"
+   !print *, "d_phi finished move"
 
    call timer_end('_snmoments1')
 
