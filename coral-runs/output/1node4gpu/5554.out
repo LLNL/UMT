@@ -1,0 +1,441 @@
+Sender: LSF System <lsfadmin@c699c074.c699.net>
+Subject: Job 5554: <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -R "span[ptile=4]";#BSUB -R "rusage[ngpus_shared=4]";#BSUB -n 4;#BSUB -x;##BSUB -q excl;#BSUB -q excl_ws_dd21;#BSUB -R "select[fr=5]";##BSUB -W 30;#BSUB -env "all,LSF_CPU_ISOLATION=on,LSF_IRQ_ISOLATION=on, LSF_START_JOBS_MPS=N";#BSUB -R "select[hname!='c699c019']";#BSUB -R "select[hname!='c699c032']";#BSUB -R "select[hname!='c699c037']";#BSUB -R "select[hname!='c699c040']";#BSUB -R "select[hname!='c699c071']";#BSUB -R "select[hname!='c699c082']";#BSUB -R "select[hname!='c699c083']";#BSUB -R "select[hname!='c699c084']";#BSUB -R "select[hname!='c699c085']";#BSUB -R "select[hname!='c699c086']";#BSUB -R "select[hname!='c699c092']";#BSUB -R "select[hname!='c699c094']";#BSUB -R "select[hname!='c699c095']";#BSUB -R "select[hname!='c699c098']";#BSUB -R "select[hname!='c699c110']";#BSUB -R "select[hname!='c699c117']";#BSUB -R "select[hname!='c699c128']";#BSUB -R "select[hname!='c699c130']";#BSUB -R "select[hname!='c699c134']";#BSUB -R "select[hname!='c699c145']";#BSUB -R "select[hname!='c699c172']"; #---------------------------------------;#export OMP_NUM_THREADS=22;export OMP_WAIT_POLICY=active;#export HPM_GROUP_LIST=10,21; export PROFILE_RANK=-1; export TMPDIR=/tmp; df -h /tmp;echo 'starting mpirun'; ls /dev/cpuset; mpirun --bind-to none -np 4 ./p9_helper_4gpu.sh ../Teton/SuOlsonTest 2x2x1_36.cmg 16 2 16 8 4> in cluster <wsclsf> Done
+
+Job <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -R "span[ptile=4]";#BSUB -R "rusage[ngpus_shared=4]";#BSUB -n 4;#BSUB -x;##BSUB -q excl;#BSUB -q excl_ws_dd21;#BSUB -R "select[fr=5]";##BSUB -W 30;#BSUB -env "all,LSF_CPU_ISOLATION=on,LSF_IRQ_ISOLATION=on, LSF_START_JOBS_MPS=N";#BSUB -R "select[hname!='c699c019']";#BSUB -R "select[hname!='c699c032']";#BSUB -R "select[hname!='c699c037']";#BSUB -R "select[hname!='c699c040']";#BSUB -R "select[hname!='c699c071']";#BSUB -R "select[hname!='c699c082']";#BSUB -R "select[hname!='c699c083']";#BSUB -R "select[hname!='c699c084']";#BSUB -R "select[hname!='c699c085']";#BSUB -R "select[hname!='c699c086']";#BSUB -R "select[hname!='c699c092']";#BSUB -R "select[hname!='c699c094']";#BSUB -R "select[hname!='c699c095']";#BSUB -R "select[hname!='c699c098']";#BSUB -R "select[hname!='c699c110']";#BSUB -R "select[hname!='c699c117']";#BSUB -R "select[hname!='c699c128']";#BSUB -R "select[hname!='c699c130']";#BSUB -R "select[hname!='c699c134']";#BSUB -R "select[hname!='c699c145']";#BSUB -R "select[hname!='c699c172']"; #---------------------------------------;#export OMP_NUM_THREADS=22;export OMP_WAIT_POLICY=active;#export HPM_GROUP_LIST=10,21; export PROFILE_RANK=-1; export TMPDIR=/tmp; df -h /tmp;echo 'starting mpirun'; ls /dev/cpuset; mpirun --bind-to none -np 4 ./p9_helper_4gpu.sh ../Teton/SuOlsonTest 2x2x1_36.cmg 16 2 16 8 4> was submitted from host <c699c121.c699.net> by user <dappelh> in cluster <wsclsf> at Tue Nov 28 12:57:13 2017.
+Job was executed on host(s) <4*c699c074>, in queue <excl_ws_dd21>, as user <dappelh> in cluster <wsclsf> at Tue Nov 28 12:57:13 2017.
+</home/dappelh> was used as the home directory.
+</home/dappelh/codes/coral/umt2016-optimized/nov-runs> was used as the working directory.
+Started at Tue Nov 28 12:57:13 2017.
+Terminated at Tue Nov 28 13:05:25 2017.
+Results reported at Tue Nov 28 13:05:25 2017.
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -o %J.out
+#BSUB -e %J.err
+#BSUB -R "span[ptile=4]"
+#BSUB -R "rusage[ngpus_shared=4]"
+#BSUB -n 4
+#BSUB -x
+##BSUB -q excl
+#BSUB -q excl_ws_dd21
+#BSUB -R "select[fr=5]"
+##BSUB -W 30
+#BSUB -env "all,LSF_CPU_ISOLATION=on,LSF_IRQ_ISOLATION=on, LSF_START_JOBS_MPS=N"
+#BSUB -R "select[hname!='c699c019']"
+#BSUB -R "select[hname!='c699c032']"
+#BSUB -R "select[hname!='c699c037']"
+#BSUB -R "select[hname!='c699c040']"
+#BSUB -R "select[hname!='c699c071']"
+#BSUB -R "select[hname!='c699c082']"
+#BSUB -R "select[hname!='c699c083']"
+#BSUB -R "select[hname!='c699c084']"
+#BSUB -R "select[hname!='c699c085']"
+#BSUB -R "select[hname!='c699c086']"
+#BSUB -R "select[hname!='c699c092']"
+#BSUB -R "select[hname!='c699c094']"
+#BSUB -R "select[hname!='c699c095']"
+#BSUB -R "select[hname!='c699c098']"
+#BSUB -R "select[hname!='c699c110']"
+#BSUB -R "select[hname!='c699c117']"
+#BSUB -R "select[hname!='c699c128']"
+#BSUB -R "select[hname!='c699c130']"
+#BSUB -R "select[hname!='c699c134']"
+#BSUB -R "select[hname!='c699c145']"
+#BSUB -R "select[hname!='c699c172']"
+
+#---------------------------------------
+#export OMP_NUM_THREADS=22
+export OMP_WAIT_POLICY=active
+#export HPM_GROUP_LIST=10,21
+
+export PROFILE_RANK=-1
+
+export TMPDIR=/tmp
+
+df -h /tmp
+echo 'starting mpirun'
+
+ls /dev/cpuset
+
+mpirun --bind-to none -np 4 ./p9_helper_4gpu.sh ../Teton/SuOlsonTest 2x2x1_36.cmg 16 2 16 8 4
+
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   76344.13 sec.
+    Max Memory :                                 20747 MB
+    Average Memory :                             9508.58 MB
+    Total Requested Memory :                     -
+    Delta Memory :                               -
+    Max Swap :                                   2 MB
+    Max Processes :                              13
+    Max Threads :                                190
+    Run time :                                   492 sec.
+    Turnaround time :                            492 sec.
+
+The output (if any) follows:
+
+Filesystem      Size  Used Avail Use% Mounted on
+rootfs          256G   24G  232G  10% /
+starting mpirun
+cgroup.clone_children
+cgroup.procs
+cgroup.sane_behavior
+cpuset.cpu_exclusive
+cpuset.cpus
+cpuset.effective_cpus
+cpuset.effective_mems
+cpuset.mem_exclusive
+cpuset.mem_hardwall
+cpuset.memory_migrate
+cpuset.memory_pressure
+cpuset.memory_pressure_enabled
+cpuset.memory_spread_page
+cpuset.memory_spread_slab
+cpuset.mems
+cpuset.sched_load_balance
+cpuset.sched_relax_domain_level
+notify_on_release
+release_agent
+system
+tasks
+user
+rank 0  using device  0
+rank 1  using device  1
+rank 2  using device  3
+rank 3  using device  4
+ Executing UMT2015 Number of ranks =4
+ and number of OMP threads  =40
+ myrank = 1GPU number = 0istat =0
+Check the device: no error
+ myrank = 0GPU number = 0istat =0
+Check the device: no error
+ gridFileName: 2x2x1_36.cmg
+ setting the number of groups=16
+ Running with Product Quadrature 
+ setting number of polar angles     = 8
+ setting number of azimuthal angles = 4
+ Building mesh...
+ myrank = 3GPU number = 0istat =0
+Check the device: no error
+ myrank = 2GPU number = 0istat =0
+Check the device: no error
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 597216
+ncornr =597216npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 9555456
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 597216
+ncornr =597216npsi =4096
+temp = 2446196736
+D_ncornr_npsi =2446196736
+temp = 9555456
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 597216
+ncornr =597216npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 9555456
+ Mesh complete.
+ Initializing Teton object...
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 597216
+ncornr =597216npsi =4096
+temp = 2446196736
+D_ncornr_npsi =2446196736
+temp = 9555456
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ncornr = 597216
+ncornr =597216npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 9555456
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 597216
+ncornr =597216npsi =4096
+temp = 2446196736
+D_ncornr_npsi =2446196736
+temp = 9555456
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 597216
+ncornr =597216npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 9555456
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 597216
+ncornr =597216npsi =4096
+temp = 2446196736
+D_ncornr_npsi =2446196736
+temp = 9555456
+UUUSING Allinged allocator 
+
+
+
+
+
+
+pinning psi and phi in C code
+ size of psir:   -1905262592
+ dimensions of psir:            16       597216          256
+ Correct size used is:              19569573888
+ pinning error, istat =            11           17598615912448
+ pinning phi, sizeof(phi) =      76443648
+linkKull
+pinning psi and phi in C code
+ size of psir:   -1905262592
+ dimensions of psir:            16       597216          256
+ Correct size used is:              19569573888
+ pinning error, istat =            11           17598618009600
+ pinning phi, sizeof(phi) =      76443648
+linkKull
+pinning psi and phi in C code
+ size of psir:   -1905262592
+ dimensions of psir:            16       597216          256
+ Correct size used is:              19569573888
+ pinning error, istat =            11           17598618009600
+ pinning phi, sizeof(phi) =      76443648
+linkKull
+pinning psi and phi in C code
+ size of psir:   -1905262592
+ dimensions of psir:            16       597216          256
+ Correct size used is:              19569573888
+ pinning error, istat =            11           17598615912448
+ pinning phi, sizeof(phi) =      76443648
+linkKull
+calling rtinit. ownedZones = 74652
+calling rtinit. ownedZones = 74652
+calling rtinit. ownedZones = 74652
+calling rtinit. ownedZones = 74652
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+    done.
+ Starting time advance...
+ sizeof(psib):    1019215872
+ sizeof(psib):    1019215872
+ sizeof(psib):    1019215872
+ sizeof(psib):    1019215872
+ size(psib) =               1019215872
+ size(psi) =              19569573888
+ size(phi) =                 76443648
+ size(stime) =               19569573888
+ size(psib) =               1019215872
+ size(psi) =              19569573888
+ size(phi) =                 76443648
+ size(stime) =               19569573888
+ size(psib) =               1019215872
+ size(psi) =              19569573888
+ size(phi) =                 76443648
+ size(next_mem) =                 611550208
+ size(omega_A_fp) =               3669295104
+ sweep_mem =              48184947712
+ size(next_mem) =                 611550208
+ size(omega_A_fp) =               3669295104
+ size(psib) =               1019215872
+ size(psi) =              19569573888
+ size(phi) =                 76443648
+ size(stime) =               19569573888
+ size(next_mem) =                 611550208
+ size(omega_A_fp) =               3669295104
+ size(stime) =               19569573888
+ size(next_mem) =                 611550208
+ size(omega_A_fp) =               3669295104
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 1 timerad = 3e-06
+ 
+TempIters = 3 FluxIters = 3 GTAIters = 0
+TrMax =     0.0031622776601684 in Zone 19 on Node 3
+TeMax =     0.0031622776601684 in Zone 65512 on Node 3
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 10.728629             4.132884303006
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 2 timerad = 6.3e-05
+ 
+TempIters = 3 FluxIters = 3 GTAIters = 0
+TrMax =     0.364592199725 in Zone 66631 on Node 2
+TeMax =     0.0075234782306743 in Zone 66631 on Node 2
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 11.968487             9.6786364759901
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 3 timerad = 0.000123
+ 
+TempIters = 5 FluxIters = 5 GTAIters = 0
+TrMax =     0.4326370294875 in Zone 68431 on Node 3
+TeMax =     0.14207129578951 in Zone 68431 on Node 3
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 14.934061             17.994685874
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 4 timerad = 0.000183
+ 
+TempIters = 5 FluxIters = 5 GTAIters = 0
+TrMax =     0.47777565112855 in Zone 68431 on Node 3
+TeMax =     0.18768964085171 in Zone 68431 on Node 3
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 14.9807             26.312619953998
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 5 timerad = 0.000243
+ 
+TempIters = 5 FluxIters = 5 GTAIters = 0
+TrMax =     0.51233672654046 in Zone 68431 on Node 3
+TeMax =     0.22394100235626 in Zone 68431 on Node 3
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 14.964139             34.630577150994
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 6 timerad = 0.000303
+ 
+TempIters = 5 FluxIters = 5 GTAIters = 0
+TrMax =     0.54062904633627 in Zone 64057 on Node 2
+TeMax =     0.25504594781238 in Zone 64057 on Node 2
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 15.009706             42.934197583003
+ 
+ SuOlson setting last step's dt=3.1e-05
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 7 timerad = 0.000334
+ 
+TempIters = 4 FluxIters = 4 GTAIters = 0
+TrMax =     0.55355936063036 in Zone 68431 on Node 3
+TeMax =     0.2704484165738 in Zone 68431 on Node 3
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 13.51494             49.881719517012
+ 
+ SuOlson Test version 1.0 completed at time= 0.000334  goalTime= 0.000334
+ Computing error check along x=0.00694444, y=0.0208333
+ z=     0.1 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653763
+ z= 0.17783 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653759
+ z= 0.31623 tInterpolated=  0.00533217 tExact=    0.00468 error=0.000652172
+ z=    0.45 tInterpolated=  0.00495973 tExact=    0.00455 error=0.000409726
+ z=     0.5 tInterpolated=  0.00291847 tExact=    0.00234 error=0.000578473
+ z= 0.56234 tInterpolated= 0.000248795 tExact=      5e-05 error=0.000198795
+ z=    0.75 tInterpolated= 1.08604e-07 tExact=          0 error=1.08604e-07
+ngroups = 16
+nangsn = 256
+tot zones = 298608
+numUnknowns = 9.78479e+09
+cumulativeIterationCount= 30 cumulativeWorkTime=96.1007 s.
+figure of merit = 3.05454e+09
+
+
+PS:
+
+Read file <5554.err> for stderr output of this job.
+

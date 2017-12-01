@@ -1,0 +1,1335 @@
+Sender: LSF System <lsfadmin@c699c099.c699.net>
+Subject: Job 5570: <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -R "span[ptile=6]";#BSUB -R "rusage[ngpus_shared=6]";#BSUB -n 24;#BSUB -x;##BSUB -q excl_short;#BSUB -q excl;##BSUB -W 30;##BSUB -env "all,LSF_START_JOB_MPS=N";#BSUB -env "all,LSF_CPU_ISOLATION=on,LSF_IRQ_ISOLATION=on, LSF_START_JOBS_MPS=N";#BSUB -R "select[hname!='c699c019']";#BSUB -R "select[hname!='c699c032']";#BSUB -R "select[hname!='c699c037']";#BSUB -R "select[hname!='c699c040']";#BSUB -R "select[hname!='c699c071']";#BSUB -R "select[hname!='c699c082']";#BSUB -R "select[hname!='c699c083']";#BSUB -R "select[hname!='c699c084']";#BSUB -R "select[hname!='c699c085']";#BSUB -R "select[hname!='c699c086']";#BSUB -R "select[hname!='c699c092']";#BSUB -R "select[hname!='c699c094']";#BSUB -R "select[hname!='c699c095']";#BSUB -R "select[hname!='c699c098']";#BSUB -R "select[hname!='c699c110']";#BSUB -R "select[hname!='c699c117']";#BSUB -R "select[hname!='c699c128']";#BSUB -R "select[hname!='c699c130']";#BSUB -R "select[hname!='c699c134']";#BSUB -R "select[hname!='c699c145']";#BSUB -R "select[hname!='c699c172']";#BSUB -R "select[hname!='c699c151']";#---------------------------------------;#export OMP_NUM_THREADS=22;export OMP_WAIT_POLICY=active;#export HPM_GROUP_LIST=10,21; export PROFILE_RANK=-1; export TMPDIR=/tmp; df -h /tmp;echo 'starting mpirun'; ls /dev/cpuset;  mpirun --bind-to none -np 24 ./p9_helper_6gpu.sh ../Teton/SuOlsonTest 3x2x4_40.cmg 16 2 16 8 4> in cluster <wsclsf> Done
+
+Job <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -R "span[ptile=6]";#BSUB -R "rusage[ngpus_shared=6]";#BSUB -n 24;#BSUB -x;##BSUB -q excl_short;#BSUB -q excl;##BSUB -W 30;##BSUB -env "all,LSF_START_JOB_MPS=N";#BSUB -env "all,LSF_CPU_ISOLATION=on,LSF_IRQ_ISOLATION=on, LSF_START_JOBS_MPS=N";#BSUB -R "select[hname!='c699c019']";#BSUB -R "select[hname!='c699c032']";#BSUB -R "select[hname!='c699c037']";#BSUB -R "select[hname!='c699c040']";#BSUB -R "select[hname!='c699c071']";#BSUB -R "select[hname!='c699c082']";#BSUB -R "select[hname!='c699c083']";#BSUB -R "select[hname!='c699c084']";#BSUB -R "select[hname!='c699c085']";#BSUB -R "select[hname!='c699c086']";#BSUB -R "select[hname!='c699c092']";#BSUB -R "select[hname!='c699c094']";#BSUB -R "select[hname!='c699c095']";#BSUB -R "select[hname!='c699c098']";#BSUB -R "select[hname!='c699c110']";#BSUB -R "select[hname!='c699c117']";#BSUB -R "select[hname!='c699c128']";#BSUB -R "select[hname!='c699c130']";#BSUB -R "select[hname!='c699c134']";#BSUB -R "select[hname!='c699c145']";#BSUB -R "select[hname!='c699c172']";#BSUB -R "select[hname!='c699c151']";#---------------------------------------;#export OMP_NUM_THREADS=22;export OMP_WAIT_POLICY=active;#export HPM_GROUP_LIST=10,21; export PROFILE_RANK=-1; export TMPDIR=/tmp; df -h /tmp;echo 'starting mpirun'; ls /dev/cpuset;  mpirun --bind-to none -np 24 ./p9_helper_6gpu.sh ../Teton/SuOlsonTest 3x2x4_40.cmg 16 2 16 8 4> was submitted from host <c699c121.c699.net> by user <dappelh> in cluster <wsclsf> at Tue Nov 28 14:00:10 2017.
+Job was executed on host(s) <6*c699c099>, in queue <excl>, as user <dappelh> in cluster <wsclsf> at Tue Nov 28 14:00:11 2017.
+                            <6*c699c126>
+                            <6*c699c104>
+                            <6*c699c183>
+</home/dappelh> was used as the home directory.
+</home/dappelh/codes/coral/umt2016-optimized/nov-runs> was used as the working directory.
+Started at Tue Nov 28 14:00:11 2017.
+Terminated at Tue Nov 28 14:16:35 2017.
+Results reported at Tue Nov 28 14:16:35 2017.
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -o %J.out
+#BSUB -e %J.err
+#BSUB -R "span[ptile=6]"
+#BSUB -R "rusage[ngpus_shared=6]"
+#BSUB -n 24
+#BSUB -x
+##BSUB -q excl_short
+#BSUB -q excl
+##BSUB -W 30
+##BSUB -env "all,LSF_START_JOB_MPS=N"
+#BSUB -env "all,LSF_CPU_ISOLATION=on,LSF_IRQ_ISOLATION=on, LSF_START_JOBS_MPS=N"
+#BSUB -R "select[hname!='c699c019']"
+#BSUB -R "select[hname!='c699c032']"
+#BSUB -R "select[hname!='c699c037']"
+#BSUB -R "select[hname!='c699c040']"
+#BSUB -R "select[hname!='c699c071']"
+#BSUB -R "select[hname!='c699c082']"
+#BSUB -R "select[hname!='c699c083']"
+#BSUB -R "select[hname!='c699c084']"
+#BSUB -R "select[hname!='c699c085']"
+#BSUB -R "select[hname!='c699c086']"
+#BSUB -R "select[hname!='c699c092']"
+#BSUB -R "select[hname!='c699c094']"
+#BSUB -R "select[hname!='c699c095']"
+#BSUB -R "select[hname!='c699c098']"
+#BSUB -R "select[hname!='c699c110']"
+#BSUB -R "select[hname!='c699c117']"
+#BSUB -R "select[hname!='c699c128']"
+#BSUB -R "select[hname!='c699c130']"
+#BSUB -R "select[hname!='c699c134']"
+#BSUB -R "select[hname!='c699c145']"
+#BSUB -R "select[hname!='c699c172']"
+#BSUB -R "select[hname!='c699c151']"
+#---------------------------------------
+#export OMP_NUM_THREADS=22
+export OMP_WAIT_POLICY=active
+#export HPM_GROUP_LIST=10,21
+
+export PROFILE_RANK=-1
+
+export TMPDIR=/tmp
+
+df -h /tmp
+echo 'starting mpirun'
+
+ls /dev/cpuset
+
+
+mpirun --bind-to none -np 24 ./p9_helper_6gpu.sh ../Teton/SuOlsonTest 3x2x4_40.cmg 16 2 16 8 4
+
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   649561.94 sec.
+    Max Memory :                                 171709 MB
+    Average Memory :                             71478.40 MB
+    Total Requested Memory :                     -
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              56
+    Max Threads :                                814
+    Run time :                                   983 sec.
+    Turnaround time :                            985 sec.
+
+The output (if any) follows:
+
+Filesystem      Size  Used Avail Use% Mounted on
+rootfs          256G   25G  231G  10% /
+starting mpirun
+cgroup.clone_children
+cgroup.procs
+cgroup.sane_behavior
+cpuset.cpu_exclusive
+cpuset.cpus
+cpuset.effective_cpus
+cpuset.effective_mems
+cpuset.mem_exclusive
+cpuset.mem_hardwall
+cpuset.memory_migrate
+cpuset.memory_pressure
+cpuset.memory_pressure_enabled
+cpuset.memory_spread_page
+cpuset.memory_spread_slab
+cpuset.mems
+cpuset.sched_load_balance
+cpuset.sched_relax_domain_level
+notify_on_release
+release_agent
+system
+tasks
+user
+rank 0  using device  0
+rank 1  using device  1
+rank 0  using device  0
+rank 2  using device  2
+rank 4  using device  4
+rank 2  using device  2
+rank 3  using device  3
+rank 1  using device  1
+rank 1  using device  1
+rank 1  using device  1
+rank 3  using device  3
+rank 0  using device  0
+rank 2  using device  2
+rank 4  using device  4
+rank 4  using device  4
+rank 3  using device  3
+rank 2  using device  2
+rank 4  using device  4
+rank 5  using device  5
+rank 0  using device  0
+rank 3  using device  3
+rank 5  using device  5
+rank 5  using device  5
+rank 5  using device  5
+ Executing UMT2015 Number of ranks =24
+ and number of OMP threads  =28
+ myrank = 21GPU number = 0istat =0
+Check the device: no error
+ myrank = 13GPU number = 0istat =0
+Check the device: no error
+ myrank = 8GPU number = 0istat =0
+Check the device: no error
+ myrank = 0GPU number = 0istat =0
+Check the device: no error
+ gridFileName: 3x2x4_40.cmg
+ setting the number of groups=16
+ Running with Product Quadrature 
+ setting number of polar angles     = 8
+ setting number of azimuthal angles = 4
+ Building mesh...
+ myrank = 20GPU number = 0istat =0
+Check the device: no error
+ myrank = 10GPU number = 0istat =0
+Check the device: no error
+ myrank = 14GPU number = 0istat =0
+Check the device: no error
+ myrank = 5GPU number = 0istat =0
+Check the device: no error
+ myrank = 18GPU number = 0istat =0
+Check the device: no error
+ myrank = 15GPU number = 0istat =0
+Check the device: no error
+ myrank = 7GPU number = 0istat =0
+Check the device: no error
+ myrank = 4GPU number = 0istat =0
+Check the device: no error
+ myrank = 19GPU number = 0istat =0
+Check the device: no error
+ myrank = 16GPU number = 0istat =0
+Check the device: no error
+ myrank = 6GPU number = 0istat =0
+Check the device: no error
+ myrank = 3GPU number = 0istat =0
+Check the device: no error
+ myrank = 23GPU number = 0istat =0
+Check the device: no error
+ myrank = 11GPU number = 0istat =0
+Check the device: no error
+ myrank = 22GPU number = 0istat =0
+Check the device: no error
+ myrank = 12GPU number = 0istat =0
+Check the device: no error
+ myrank = 9GPU number = 0istat =0
+Check the device: no error
+ myrank = 2GPU number = 0istat =0
+Check the device: no error
+ myrank = 17GPU number = 0istat =0
+Check the device: no error
+ myrank = 1GPU number = 0istat =0
+Check the device: no error
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+entered initialize
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+got zone ids
+set vol source
+set frequencies
+set boundary
+ calling rtquad, which will set d_weight
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+entered initialize
+got zone ids
+set vol source
+set frequencies
+ calling rtquad, which will set d_weight
+set boundary
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+set boundary
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+entered initialize
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+got zone ids
+set vol source
+set frequencies
+set boundary
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ Mesh complete.
+ Initializing Teton object...
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+entered initialize
+got zone ids
+set vol source
+set frequencies
+set boundary
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+ncornr = 819200
+ncornr =819200npsi =0
+temp = 0
+D_ncornr_npsi =0
+temp = 13107200
+ calling rtquad, which will set d_weight
+ calling rtquad, which will set d_weight
+ncornr = 819200
+ncornr =819200npsi =4096
+temp = 3355443200
+D_ncornr_npsi =3355443200
+temp = 13107200
+UUUSING Allinged allocator 
+
+
+
+
+
+
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598659952640
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598659952640
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598657855488
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598659952640
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598659952640
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598659952640
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598655758336
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598687215616
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+pinning psi and phi in C code
+ size of psir:    1073741824
+ dimensions of psir:            16       819200          256
+ Correct size used is:              26843545600
+ pinning error, istat =            11           17598653661184
+ pinning phi, sizeof(phi) =     104857600
+linkKull
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+calling rtinit. ownedZones = 102400
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+finished rtinit
+set CInitMaterial
+    done.
+ Starting time advance...
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ sizeof(psib):    1258291200
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(next_mem) =                 838861824
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ sweep_mem =              65955431424
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(omega_A_fp) =               5033164800
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(psib) =               1258291200
+ size(psi) =              26843545600
+ size(phi) =                104857600
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ size(omega_A_fp) =               5033164800
+ size(omega_A_fp) =               5033164800
+ size(omega_A_fp) =               5033164800
+ size(stime) =               26843545600
+ size(next_mem) =                 838861824
+ size(omega_A_fp) =               5033164800
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 1 timerad = 3e-06
+ 
+TempIters = 4 FluxIters = 4 GTAIters = 0
+TrMax =     0.0031622776601684 in Zone 86314 on Node 23
+TeMax =     0.0031622776601684 in Zone 79820 on Node 22
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 20.710331             7.9337573909434
+ 
+ True flux iterations =             2
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 2 timerad = 6.3e-05
+ 
+TempIters = 4 FluxIters = 4 GTAIters = 0
+TrMax =     0.364592199725 in Zone 84963 on Node 12
+TeMax =     0.0075234782306744 in Zone 90903 on Node 12
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 24.28494             19.088472953998
+ 
+ True flux iterations =             2
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 3 timerad = 0.000123
+ 
+TempIters = 8 FluxIters = 8 GTAIters = 0
+TrMax =     0.43263702948756 in Zone 77907 on Node 8
+TeMax =     0.14207129578951 in Zone 84509 on Node 8
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 33.964408             38.133273773943
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 4 timerad = 0.000183
+ 
+TempIters = 6 FluxIters = 6 GTAIters = 0
+TrMax =     0.47777565112922 in Zone 77903 on Node 8
+TeMax =     0.18768964085179 in Zone 77907 on Node 8
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 27.561161             51.971170608886
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 5 timerad = 0.000243
+ 
+TempIters = 6 FluxIters = 6 GTAIters = 0
+TrMax =     0.5123367265457 in Zone 68351 on Node 16
+TeMax =     0.2239410023571 in Zone 77903 on Node 8
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 27.485907             65.812968613696
+ 
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 6 timerad = 0.000303
+ 
+TempIters = 6 FluxIters = 6 GTAIters = 0
+TrMax =     0.54062904636713 in Zone 81119 on Node 20
+TeMax =     0.25504594781813 in Zone 84509 on Node 8
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 27.500062             79.642347160843
+ 
+ SuOlson setting last step's dt=3.1e-05
+ True flux iterations =             2
+ True flux iterations =             1
+ True flux iterations =             1
+ True flux iterations =             1
+CYCLE 7 timerad = 0.000334
+ 
+TempIters = 4 FluxIters = 4 GTAIters = 0
+TrMax =     0.55355936068396 in Zone 84509 on Node 8
+TeMax =     0.27044841658403 in Zone 84509 on Node 8
+Recommended time step for next rad cycle = 6e-05
+ 
+ 
+********** Run Time Statistics **********
+                  Cycle Advance             Accumulated 
+                     Time (sec)         Angle Loop Time (sec)
+RADTR              = 22.407736             89.544482170837
+ 
+ SuOlson Test version 1.0 completed at time= 0.000334  goalTime= 0.000334
+ Computing error check along x=0.00416667, y=  0.00625
+ z=    0.01 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653763
+ z=     0.1 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653763
+ z= 0.17783 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653761
+ z= 0.31623 tInterpolated=  0.00533264 tExact=    0.00468 error=0.000652635
+ z=    0.45 tInterpolated=  0.00501957 tExact=    0.00455 error=0.000469571
+ z=     0.5 tInterpolated=   0.0026724 tExact=    0.00234 error=0.000332402
+ z= 0.56234 tInterpolated= 0.000197625 tExact=      5e-05 error=0.000147625
+ z=    0.75 tInterpolated= 5.37973e-08 tExact=          0 error=5.37973e-08
+ngroups = 16
+nangsn = 256
+tot zones = 2457600
+numUnknowns = 8.05306e+10
+cumulativeIterationCount= 38 cumulativeWorkTime=183.915 s.
+figure of merit = 1.66391e+10
+
+
+PS:
+
+Read file <5570.err> for stderr output of this job.
+

@@ -23,11 +23,42 @@ extern "C" void Timer_Beg(const char *);
 extern "C" void Timer_End(const char *);
 extern "C" void Timer_Print(void);
 
+
+#include <new> // bad_alloc, bad_array_new_length
+
+template <class T> struct Mallocator2 {
+
+  typedef T value_type;
+  Mallocator2() { }; // default ctor not required
+  template <class U> Mallocator2(const Mallocator2<U>&);// noexcept { };
+  template <class U> bool operator==(
+				     const Mallocator2<U>&) const { return true; }
+  template <class U> bool operator!=(
+				     const Mallocator2<U>&) const { return false; }
+
+  T * allocate(const size_t n) const {
+    if (n == 0) { return NULL; }
+    if (n > static_cast<size_t>(-1) / sizeof(T)) {
+      printf ("Error in Mallocator2\n");
+    }
+    printf ("Mallocator2 DIS!\n");
+    void * const pv = malloc(n * sizeof(T));
+    if (!pv) { throw std::bad_alloc(); }
+    return static_cast<T *>(pv);
+  }
+
+  void deallocate(T * const p, size_t) const {
+    free(p);
+  }
+
+};
+
+
 extern "C"
 {
 
     #define cudaFuncCachePreferL1 2
-    extern int cudaDeviceSetCacheConfig(int);
+    extern int cudaDeviceSetCacheConfig2(int);
 
 #if !defined LINUX && !defined BGP
     extern void *
@@ -1399,12 +1430,12 @@ Teton<Mesh>::linkKull(Teton<Mesh>::MeshType &M,
     std::vector<int>().swap(zonetosrc);
    
 
-    cout<<"pinning psi and phi in C code"<<endl;
+    /*cout<<"pinning psi and phi in C code"<<endl;
     // Pin the memory (psi should be pinned when created in kull, not in Teton/radtr)
     F77_ID(pinmem_, pinmem, PINMEM)
       ( &psir[0],               // double *
         &Phi[0] );               // double *
-    
+    */
 
 
 

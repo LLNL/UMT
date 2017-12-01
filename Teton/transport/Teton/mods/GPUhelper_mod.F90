@@ -18,8 +18,8 @@ module GPUhelper_mod
    use nvtx_mod
 
    ! Flag to control if problem fits in GPU memory or has to be batched in.
-   !logical(kind=1) :: fitsOnGPU = .false. ! default is false
    logical(kind=1) :: fitsOnGPU = .false. ! default is false
+   !logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
    !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
    integer :: numPsi_buffers = 2 ! double buffers for psi

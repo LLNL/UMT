@@ -208,6 +208,9 @@
      integer    :: istat
 
 
+     ! DA Nov 2017: no longer pin psi and phi in Fortran,
+     ! instead pin when allocated in C++ stl vector.
+
      call nvtxStartRange("Pin Arrays",6)
 
      ! pin psi and phi
