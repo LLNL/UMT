@@ -18,8 +18,13 @@ module Quadrature_mod
   type, public :: Exit
      integer             :: nExit             ! number of exiting boundary elements
      integer,    pointer :: ListExit(:,:)     ! pairs of boundary element and corner IDs
-     integer, device, pointer :: d_ListExit(:,:)
   end type Exit
+
+  type, public :: GPUExit
+     integer             :: nExit             ! number of exiting boundary elements
+     integer, device, allocatable :: d_ListExit(:,:)   ! pairs of boundary element and corner IDs
+  end type GPUExit
+
 
   type, public :: Quadrature 
 
@@ -84,7 +89,7 @@ module Quadrature_mod
      type(Communicator), pointer :: iComms(:,:) ! Pointers to communicators
      type(Exit),         pointer :: iExit(:)    ! Pointers to exiting boundary lists
 
-     type(Exit), device, pointer :: d_iExit(:)  ! Device valid version of the same.
+     type(GPUExit), managed, allocatable :: m_iExit(:)  ! managed version of the same.
 
   end type Quadrature 
 
@@ -254,7 +259,7 @@ contains
       allocate( self% Converged(self% NumBin) )
 
       allocate( self% iExit(self % NumAngles) )
-      allocate( self% d_iExit(self % NumAngles) )
+      allocate( self% m_iExit(self % NumAngles) )
 
       allocate( self% iComms(Size% ncomm,self% NumBin) )
     endif
@@ -392,7 +397,7 @@ contains
       deallocate( self% Flux )
       deallocate( self% iComms )
       deallocate( self% iExit )
-      deallocate( self% d_iExit)
+      deallocate( self% m_iExit)
     endif
 
 !   Space for angular coefficients
@@ -459,55 +464,28 @@ contains
                                                                                                  
 !   Local
     type(Exit), pointer              :: iExit 
-    type(Exit), device, pointer    :: d_iExit 
-    integer :: istat
+    !type(Exit), device, pointer    :: m_iExit 
+    !integer :: istat
 
 
     iExit => self% iExit(angleID)
-    d_iExit => self% d_iExit(angleID)
+    !m_iExit => self% m_iExit(angleID)
 
     allocate( iExit% ListExit(2,nExit) )
-    allocate( iExit% d_ListExit(2,nExit) )
 
     iExit% nExit               = nExit
     iExit% ListExit(:,1:nExit) = ListExit(:,1:nExit)
 
+
+    allocate( self%m_iExit(angleID)% d_ListExit(2,nExit) )
+
     ! Copy ListExit data to GPU
-    iExit% d_ListExit = ListExit
-
-    ! duplicate memory locations to device valid derived type:
-    istat = cudaMemcpyAsync(C_DEVLOC(d_iExit), C_LOC(iExit), sizeof(iExit), 0)
-
+    self%m_iExit(angleID)% nExit               = nExit
+    self%m_iExit(angleID)% d_ListExit(:,1:nExit) = ListExit(:,1:nExit)
+    
     return
                                                                                                  
   end subroutine Quadrature_ctorExit
-
-
-  subroutine Quadrature_ctor_device_Exit(self, angleID, nExit, ListExit)
-                                                                                                 
-    implicit none
-                                                                                                 
-!   Passed variables
-    type(Quadrature),  intent(inout) :: self
-    integer,           intent(in)    :: angleID
-    integer,           intent(in)    :: nExit
-    integer,           intent(in)    :: ListExit(2,nExit)
-                                                                                                 
-!   Local
-    type(Exit), pointer              :: iExit 
-
-
-    iExit => self% iExit(angleID)
-
-    allocate( iExit% ListExit(2,nExit) )
-
-    iExit% nExit               = nExit
-    iExit% ListExit(:,1:nExit) = ListExit(:,1:nExit)
-
-    return
-                                                                                                 
-  end subroutine Quadrature_ctor_device_Exit
-
 
 
 !=======================================================================

@@ -520,7 +520,7 @@ contains
     ! ALERT--SHOULDN'T THIS BE DEVICE ARRAY:
     real(adqt), device, intent(out) :: psibBatch(Groups,nbelem,anglebatch)
 
-    type(Exit), device, intent(in) :: d_iExit(:) 
+    type(GPUExit), device, intent(in) :: d_iExit(:) 
 
     ! Local variables
 
@@ -564,7 +564,7 @@ subroutine setExitFluxD2(  anglebatch, Angles, psicache, psibBatch, d_iExit, gro
 
    real(adqt), device, intent(out) :: psibBatch(Groups,nbelem,anglebatch)
 
-   type(Exit), device, intent(in) :: d_iExit(:) 
+   type(GPUExit), device, intent(in) :: d_iExit(:) 
 
    integer(kind=cuda_stream_kind), intent(in) :: streamid
 

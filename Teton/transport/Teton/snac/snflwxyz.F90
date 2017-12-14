@@ -490,7 +490,7 @@
         call setExitFluxD2(current%anglebatch, &
              QuadSet%d_AngleOrder(mm1,current%bin),  &
              current%psi%data(1,1,1), current%psib%data(1,1,1),&
-             QuadSet%d_iExit, groups, ncornr, nbelem, kernel_stream )
+             QuadSet%m_iExit, groups, ncornr, nbelem, kernel_stream )
 
         ! call setExitFluxD<<<batchsize,Groups,0,kernel_stream>>>(anglecurrent%batch, &
         !      QuadSet%d_AngleOrder(mm1,binSend(current)),  &
