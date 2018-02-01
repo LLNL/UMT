@@ -171,6 +171,7 @@ void calculateMasterBlockArray( int *masterArray )
   for(ii=0;ii<blocks.numBlocks;ii++){
     SubBlock sblock = blocks.subBlocks[ii];
     if(sblock.on){
+      printf("jj = %d-%d, kk = %d-%d, ll = %d-%d \n", sblock.iRange.min, sblock.iRange.max, sblock.jRange.min, sblock.jRange.max,sblock.kRange.min, sblock.kRange.max);
       for(jj=sblock.iRange.min;jj<=sblock.iRange.max;jj++){
         for(kk=sblock.jRange.min;kk<=sblock.jRange.max;kk++){
           for(ll=sblock.kRange.min;ll<=sblock.kRange.max;ll++){
@@ -181,7 +182,6 @@ void calculateMasterBlockArray( int *masterArray )
             blockId = (jj*sms.j*sms.k)+(kk*sms.k) +ll;
               /*Turn on the given block*/
             masterArray[blockId]=1;
-            
           }
         }
       }

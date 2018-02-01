@@ -174,7 +174,7 @@
 
    call nvtxStartRange("createEvents")
    ! Create events to synchronize among different streams
-   call CreateEvents()
+   call CreateEventsWithFlags()
    call nvtxEndRange
 
    do slot=1, numSTime_buffers

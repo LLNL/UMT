@@ -425,6 +425,33 @@ contains
 
   end subroutine CreateEvents
 
+  subroutine CreateEventsWithFlags()
+    implicit none
+
+    ! create an event for each batch.
+
+    integer :: batch, istat
+
+    do batch = 1, Nbatches
+       istat = cudaEventCreateWithFlags(Psi_OnDevice(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(STimeFinished(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(Psib_OnDevice(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(Psib_OnHost(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(SweepFinished(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(Psi_OnHost(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(ExitFluxDFinished(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(AfpFinished(batch),cudaEventBlockingSync)
+       istat = cudaEventCreateWithFlags(snmomentsFinished(batch),cudaEventBlockingSync)
+
+    enddo
+
+    istat = cudaEventCreateWithFlags(phi_OnHost, cudaEventBlockingSync)
+
+    if(istat .ne. cudaSuccess) write( 0,*) "Error in cuda event creation"
+
+  end subroutine CreateEventsWithFlags
+
+
 
 !  subroutine checkDataOnDevice(p_storage, storage, h_data, bin, batch, prevslot, mm1, numelements, streamid, event)
   subroutine checkDataOnDevice(p_storage, storage, bin, prevslot)

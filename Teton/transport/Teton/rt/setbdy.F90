@@ -111,10 +111,9 @@
      profID   = getProfileID(Bdy)
      do mm=1,anglebatch
         ia=angles(mm)
-!!!!!$omp do
-       do ib=b1,b2
-         psib(:,ib,mm) = SourceProfiles% Psi_Inc(:,ia,profID)
-       enddo
+        do ib=b1,b2
+           psib(:,ib,mm) = SourceProfiles% Psi_Inc(:,ia,profID)
+        enddo
      enddo
    enddo
 

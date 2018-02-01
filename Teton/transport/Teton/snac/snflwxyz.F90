@@ -61,7 +61,9 @@
    integer :: OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
 
-   !integer :: devnum, cacheconfig
+   integer :: t0, t1, timelimit
+
+   timelimit = 30 ! assume hung if event is waiting more than timelimit seconds
 
 !  Convenient Mesh Constants
 
@@ -115,10 +117,10 @@
    ! endif
 
    ! NOT NEEDED?
-   call nvtxStartRange("createEvents")
+   !call nvtxStartRange("createEvents")
    ! Create events to synchronize among different streams
-   call CreateEvents()
-   call nvtxEndRange
+   !call CreateEvents()
+   !call nvtxEndRange
 
 !  Loop over angle bins
 
@@ -501,9 +503,19 @@
 
         ! When setExitFluxD is done, record it has finished in kernel stream
         istat=cudaEventRecord(ExitFluxDFinished( current%batch ), kernel_stream )
+
+        if (istat /= 0) then
+           write(0,*) "CUDA event record API error:",istat
+           stop
+        endif
         
         ! transfer stream should wait for event setExitFluxD to finish
         istat = cudaStreamWaitEvent(transfer_stream1, ExitFluxDFinished( current%batch ), 0)
+
+        if (istat /= 0) then
+           write(0,*) "CUDA StreamWaitEven API error:",istat
+           stop
+        endif
         
         ! need to move psib to Host (or later exchange from GPU).
         istat=cudaMemcpyAsync(psib(1,1,QuadSet%AngleOrder(mm1,current%bin)), &
@@ -534,32 +546,8 @@
            !      QuadSet%Groups*Size%ncornr*anglecurrent%batch, transfer_stream ) 
 
            if ( binRecv == QuadSet% NumBin ) then
+
               ! move next batch STime anyway since it is for batch 1 of next flux iteration:
-              
-              ! ! get the number of slots in storage container
-              ! numslots = size(STime_storage) 
-              ! !print *, "numslots = ", numslots
-
-              ! ! check each slot to see if the bin is already stored on the device
-              ! CheckBuffer: do slot = 1, numslots
-              !    if(STime_storage(slot)%owner == current%bin) then
-              !       ! found a slot with the data on it
-              !       ! point at this slot
-              !       !p_storage => STime_storage(slot)
-              !       print *, "STime found bin ", current%bin, "in slot ", slot
-              !       return 
-              !    endif
-              ! enddo CheckBuffer
-
-              ! ! there was not a slot already assigned for this bin, so pick a slot:
-              ! ! use a different slot than was used last time (because the data in that slot may still be in use)
-              ! slot = 1+modulo(previous,numslots)
-              ! !print *, "slot selected inside checkdata = ", slot
-
-              ! ! point p_storage to the storage spot
-              ! p_storage => storage(slot)
-
-   
               call checkDataOnDevice(next%STime, STime_storage, next%bin, current%STime%slot)
 
               ! check/move next batch of STime onto GPU. This should be done even for last bin to prepare for next iteration
@@ -642,18 +630,39 @@
 
 
         !!!! End of things that will overlap exchange
+        
+        ! I should put a cuda get last error here.
 
-        ! CPU code should wait until psib is on the host before exchanging.
-        istat=cudaEventSynchronize( psib_OnHost( current%batch ) )
+        if(.false.) then ! old way
+           ! CPU code should wait until psib is on the host before exchanging.
+           istat=cudaEventSynchronize( psib_OnHost( current%batch ) )
+        else 
+           t0 = MPI_WTIME()
+           t1 = MPI_WTIME()
+           istat=cudaErrorNotReady
+           do while (istat == cudaErrorNotReady)
+              ! new debug way:
+              istat=cudaEventQuery( psib_OnHost( current%batch ) )
+              t1 = MPI_WTIME()
+              if( t1-t0 > timelimit ) then
+                 ! this mpi rank is hung so end the profiler
+                 !call cudaProfilerStop()
+                 exit ! break out of while loop to see if later gpu call will show crash
+              endif
+           enddo
+           if (istat /= cudaSuccess) print *, "rank: ", myrank, " Event query never succeeded, istat = ", cudaGetErrorString(istat)
+        endif
+
+
 
         !      Exchange Boundary Fluxes
         ! these need to become non-blocking
 
-        call timer_beg('__exch')
-        call nvtxStartRange("exchange")
+        !call timer_beg('__exch')
+        !call nvtxStartRange("exchange")
         call exchange(PSIB, current%bin, binRecv) 
-        call nvtxEndRange
-        call timer_end('__exch')
+        !call nvtxEndRange
+        !call timer_end('__exch')
 
 
 
@@ -686,6 +695,7 @@
      ! not needed because psib is on host in order to do exchange
      !istat = cudaDeviceSynchronize()
 
+!!     ! May need to sync on PHI here though!!! Can't tell if it is used for flux convergence.
 
      if (ipath == 'sweep') then
         call timer_beg('_setflux')

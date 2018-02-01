@@ -24,7 +24,10 @@
    use cudafor
    use GPUhelper_mod
 
+!!#include "cudaProfiler.h"
+
    implicit none
+   
 
 !  Arguments
 
@@ -48,6 +51,7 @@
 
 !  Dynamic Arrays
 
+
 #ifdef PROFILING_ON
    integer profiler(2) / 0, 0 /
    save profiler
@@ -61,6 +65,9 @@
    call TAU_PROFILE_TIMER(profiler, 'rtmainsn')
    call TAU_PROFILE_START(profiler)
 #endif
+
+   ! start cuda profiler
+   call cudaProfilerStart()
 
 
    NumSnSets = getNumSnSets(Quad)
@@ -394,6 +401,8 @@
      call destructExitList(QuadSet)
    enddo
 
+
+   call cudaProfilerStop()
 
 #ifdef PROFILING_ON
    call TAU_PROFILE_STOP(profiler)

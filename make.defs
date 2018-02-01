@@ -9,6 +9,7 @@ USE_TAU         = off
 USE_TAU_PDT     = off
 USE_OPENMP      = on
 STATIC_LINK     = off
+#CFLAGS_CMG      = -DCMGDEBUG
 CFLAGS_CMG      = 
 
 ifeq ($(USE_FAKE_CMG),on)
@@ -32,9 +33,9 @@ PGI_VERSION=17.9
 # kepler version:
 #COMPUTE_CAPABILITY=35
 # pascal version:
-COMPUTE_CAPABILITY=60
+#COMPUTE_CAPABILITY=60
 # volta version:
-#COMPUTE_CAPABILITY=70
+COMPUTE_CAPABILITY=70
 
 CFLAGS_CMG     += 
 

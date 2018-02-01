@@ -29,7 +29,7 @@ module Boundary_mod
 
      character(len=8)     :: Type              ! boundary type 
 
-     integer,         pointer     :: BdyToC(:)         ! BdyToC(NumBdyElem)
+     integer, contiguous, pointer     :: BdyToC(:)         ! BdyToC(NumBdyElem)
      integer, device, allocatable :: d_BdyToC(:)         ! BdyToC(NumBdyElem)
      
 

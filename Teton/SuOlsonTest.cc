@@ -145,6 +145,10 @@ int main(int argc, char* argv[])
         cout<<" Building mesh..."<<endl;
     std::string meshFileName(argv[1]);
     MeshBase myMesh( meshFileName.c_str() );
+
+    // print mesh complete if everyone reaches this point
+    MPI_Barrier(MPI_COMM_WORLD);
+
     if(myRank == 0)
         cout<<" Mesh complete."<<endl;
 
