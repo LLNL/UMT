@@ -22,8 +22,8 @@ module ZoneData_mod
      real(adqt)           :: EnergyDensityOld   ! old energy density
 
 
-     real(adqt), pointer  :: Area(:)            ! corner area
-     real(adqt), pointer  :: Radius(:,:,:)      ! average radius
+     real(adqt), contiguous, pointer  :: Area(:)            ! corner area
+     real(adqt), contiguous, pointer  :: Radius(:,:,:)      ! average radius
 
      real(adqt), pinned, allocatable  :: Volume(:)          ! corner volume
      real(adqt), pinned, allocatable  :: VolumeOld(:)       ! old corner volume

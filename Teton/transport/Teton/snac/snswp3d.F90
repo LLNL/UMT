@@ -94,6 +94,11 @@ contains
 
        ZoneLoop: do ii=threadIdx%x,passZcount,blockDim%x
 
+          ! if(ii .gt. passZcount) then 
+          !    print *, "error"
+          !    exit
+          ! endif
+
              !!FIXME: simplifying assumption that all zones have same nCorner values
              !! (they're all 8 from what we've seen). If this isn't true in general,
              !! just convert this into a table lookup
@@ -105,6 +110,8 @@ contains
           !nCFaces =   nCFacesArray(zone)
           !c0      =   c0Array(zone)
 
+          !write(0,*) zone
+          !print *, "zone = ", zone
           nCorner =   ZData(zone)%nCorner
           nCFaces =   ZData(zone)%nCFaces
           c0      =   ZData(zone)%c0
@@ -315,6 +322,8 @@ contains
              enddo
 
 
+             !call syncthreads
+
              !  Contributions from volume terms
 
              do c=1,nCorner
@@ -343,10 +352,10 @@ contains
                    ! afpm(icface) = omega(1,Angle)* A_fp(1,icface,c,zone) + &
                    !      omega(2,Angle)* A_fp(2,icface,c,zone) + &
                    !      omega(3,Angle)* A_fp(3,icface,c,zone)
-
+                   
                    !afpm(icface) = omega_A_fp(icface,c,zone,mm)
                    r_afpm = sh_omega_A_fp(icface,c,threadIdx%z)
-
+                   
                    !icfp    =  Connect(1,icface,c,zone)
                    !ib      =  Connect(2,icface,c,zone)
 
@@ -375,9 +384,9 @@ contains
                    ! aez = omega(1,Angle)* A_ez(1,icface,c,zone) + &
                    !      omega(2,Angle)* A_ez(2,icface,c,zone) + &
                    !      omega(3,Angle)* A_ez(3,icface,c,zone) 
-
+                   
                    aez = sh_omega_A_ez(icface,c,threadIdx%z)
-
+                   
                    if (aez > zero ) then
 
                       sumArea        = sumArea + aez

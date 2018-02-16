@@ -1,5 +1,31 @@
 module nvtx_mod
 
+! try just a dummy module to see if error is coming from these timers
+
+use iso_c_binding
+implicit none
+
+contains
+
+subroutine nvtxStartRange(name,id)
+  character(kind=c_char,len=*) :: name
+  integer, optional:: id
+
+end subroutine
+
+subroutine nvtxEndRange
+  
+end subroutine
+
+end module nvtx_mod
+
+
+
+
+
+
+module nvtxreal_mod
+
 use iso_c_binding
 implicit none
 
@@ -62,5 +88,5 @@ subroutine nvtxEndRange
   call nvtxRangePop
 end subroutine
 
-end module nvtx_mod
+end module nvtxreal_mod
 

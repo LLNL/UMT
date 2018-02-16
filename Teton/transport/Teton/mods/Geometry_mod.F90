@@ -30,7 +30,7 @@ module Geometry_mod
      integer, pointer :: ZoneToSrc(:)         ! ZoneToSrc(nzones)
      integer, pointer :: nfpc(:)              ! nfpc(ncornr)
 
-     type(ZoneData), pointer :: ZData(:)      ! zone data pointers
+     type(ZoneData), contiguous, pointer :: ZData(:)      ! zone data pointers
      type(ZoneData), device, allocatable :: d_ZData(:)
 
      type(GPU_ZoneData), pinned, allocatable :: GPU_ZData(:)

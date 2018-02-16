@@ -33,9 +33,9 @@ PGI_VERSION=17.9
 # kepler version:
 #COMPUTE_CAPABILITY=35
 # pascal version:
-#COMPUTE_CAPABILITY=60
+COMPUTE_CAPABILITY=60
 # volta version:
-COMPUTE_CAPABILITY=70
+#COMPUTE_CAPABILITY=70
 
 CFLAGS_CMG     += 
 
@@ -86,7 +86,7 @@ FPP             = pgf90
 
 # Munixlogical makes pgf90 use 0 for false instead of 0xff.
 
-F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
+F90FLAGS_OPT    = -g -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
 #F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)

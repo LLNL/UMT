@@ -67,7 +67,7 @@
 #endif
 
    ! start cuda profiler
-   call cudaProfilerStart()
+   !call cudaProfilerStart()
 
 
    NumSnSets = getNumSnSets(Quad)
@@ -402,7 +402,7 @@
    enddo
 
 
-   call cudaProfilerStop()
+   !call cudaProfilerStop()
 
 #ifdef PROFILING_ON
    call TAU_PROFILE_STOP(profiler)
