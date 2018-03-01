@@ -275,7 +275,11 @@ contains
        passZcount = passZstart(p+1,Angle) - passZstart(p,Angle)
        
        !if(ig .le. Groups) then
-          ZoneLoop: do ii=threadIdx%z,passZcount,blockDim%z
+          ZoneLoop: do ii=threadIdx%z, ((passZcount/blockDim%z)+1)*blockDim%z,blockDim%z
+
+             call syncthreads
+
+             if ( ii .le. passZcount ) then
 
              !!FIXME: simplifying assumption that all zones have same nCorner values
              !! (they're all 8 from what we've seen). If this isn't true in general,
@@ -321,8 +325,11 @@ contains
 
              enddo
 
+             endif
 
-             !call syncthreads
+             call syncthreads
+
+             if ( ii .le. passZcount ) then
 
              !  Contributions from volume terms
 
@@ -493,6 +500,8 @@ contains
                 !psic(ig,c0+c,Angle) = tpsic(c)
                 !psic(ig,c0+c,Angle) = tpsic(c)
              !enddo
+             
+             endif
 
           enddo ZoneLoop
        !endif ! ig .le. groups

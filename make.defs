@@ -24,11 +24,20 @@ MPI_HOME=/opt/ibm/spectrum_mpi
 # dd2 witherspoon nodes do not have spectrum mpi yet:
 #MPI_HOME=/shared/comms/openmpi-2.0.1/gnu
 
+PGI_VERSION=17.10
+PGI_HOME=/shared/opt/pgi/linuxpower
 CUDA_HOME=/usr/local/cuda-9.1
+
+
 #CUDA_HOME=/opt/pgi/linuxpower/2017/cuda/9.0
-#PGI_VERSION=16.10
-#PGI_VERSION=17.5
-PGI_VERSION=17.9
+
+
+
+
+#PGI_VERSION=18.1
+#PGI_HOME=/shared/opt/pgi/linuxpower
+#CUDA_HOME=/shared/opt/pgi/linuxpower/2018/cuda/9.1
+
 
 # kepler version:
 #COMPUTE_CAPABILITY=35
@@ -41,18 +50,16 @@ CFLAGS_CMG     +=
 
 OPENMPC_FLAGS    = -fopenmp
 OPENMPF_FLAGS    = -mp
-#OPENMPF_FLAGS    = 
-#FLIBS           = -L/opt/ibm/xlf/15.1.3/lib -lxlf90_r -lxlfmath -lxl \
-#	           -Wl,-rpath=/opt/ibm/lib /gpfs/ess2fs0/walkup/mpitrace/openmpi/nounderscore/libmpihpm_c.so
-
 
 # ibm timers:
 FLIBS = ../ibmtimers/libtimers.a
 
 
-FLIBS += -L/opt/pgi/linuxpower/$(PGI_VERSION)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
+FLIBS += -L$(PGI_HOME)/$(PGI_VERSION)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
        -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass \
-       -lcudapgi -lcudafor -lcudart -lcudaforblas
+       -lcudapgi -lcudafor -lcudart -lcudaforblas 
+
+#FLIBS += -lcudafor2 -lpgm
 
 FLIBS += -lmass_simdp8
 #FLIBS += -lmass_simdp9
@@ -73,6 +80,7 @@ MPI_LIBS        = -lmpi_ibm_mpifh
 
 
 LIBS 	       += $(MPI_LIBS) -lnvToolsExt
+#LIBS           += $(MPI_LIBS) -L/usr/local/cuda-9.1/targets/ppc64le-linux/lib/libnvToolsExt.so
 LIBPATH 	= 
 INCPATH 	= $(MPI_INC_PATH) -I$(CUDA_HOME)/include
 
@@ -88,6 +96,11 @@ FPP             = pgf90
 
 F90FLAGS_OPT    = -g -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
+#F90FLAGS_OPT    = -g -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.0 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
+
+#F90FLAGS_OPT    = -g -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -Kpic $(OPENMPF_FLAGS) -O0 -Munixlogical CUDAROOT=$(CUDA_HOME)
+F90FLAGS_OPT   += -Hx,137,0x40000
+
 #F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
 CFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
@@ -99,7 +112,8 @@ LIB_EXT         = so
 LDFLAGS         =  -shared -fpic 
 
 LINK            = $(CXX)
-LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERSION)/lib:$(CUDA_HOME)/lib64 #CUDAROOT=$(CUDA_HOME) \
+LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=$(PGI_HOME)/$(PGI_VERSION)/lib:$(CUDA_HOME)/lib64
+#LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=$(PGI_HOME)/$(PGI_VERSION)/lib
 		
 
 #

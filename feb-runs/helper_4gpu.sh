@@ -19,7 +19,8 @@ if [ "$USE_MPS" == "yes" ]; then
     declare -a list1=(`seq 88 167`)
     #declare -a mpscpu=(80-83 84-87 168-171 172-175)
     declare -a mpscpu=(80-81 82-83 168-169 170-171)
-    declare -a gpulist=(0 1 3 4)
+    #declare -a gpulist=(0 1 3 4)
+    declare -a gpulist=(0 1 2 3)
 else
     cpus_per_node=160
     declare -a list0=(`seq 0 79`)
