@@ -18,7 +18,9 @@ LIB_OBJECTS := $(LIB_SOURCES:.c=.o)
 ifeq ($(STATIC_LINK),on)
 
 libc2k.$(LIB_EXT): $(LIB_OBJECTS) 
-	$(LD) $(LDFLAGS) $@ $^
+	ar rv $@ $^
+
+#	$(LD) $(LDFLAGS) $@ $^
 
 else # shared libs
 

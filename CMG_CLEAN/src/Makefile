@@ -21,7 +21,9 @@ LIB_OBJECTS :=$(LIB_SOURCES:.c=.o)
 #	bison -d cmgparse.y
 
 libcmgp.$(LIB_EXT): $(LIB_OBJECTS)
-	$(LD) $(LDFLAGS) -o $@ $^
+	ar rv $@ $^
+
+#$(LD) $(LDFLAGS) -o $@ $^
 
 
 clean:

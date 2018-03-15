@@ -124,8 +124,6 @@ INFRASTRUCTURE_OBJECTS=communication/DomainNeighborMapInst.o communication/CommA
 	transport/Teton/snac/snpnmset.o \
 	transport/Teton/snac/snreflect.o \
 	transport/Teton/snac/snswp3d.o \
-	transport/Teton/snac/cu_snswp3d.o \
-	transport/Teton/snac/GPU_sweep.o \
 	transport/Teton/snac/snynmset.o\
 	utilities/VERIFY.o\
 	utilities/DBC.o\
@@ -139,10 +137,15 @@ all: subdirs libInfrastructure.$(LIB_EXT) libTetonUtils.$(LIB_EXT) TetonTest.o
 
 ifeq ($(STATIC_LINK),on)
 libInfrastructure.$(LIB_EXT):$(INFRASTRUCTURE_OBJECTS)
-	$(LD) $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)
+	ar rv $@ $^
+
+#$(LD) $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)
 
 libTetonUtils.$(LIB_EXT):$(UTILS_OBJECTS)
-	$(LD) $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_TetonUtils_EXTRAS)
+	ar rv $@ $^
+
+#	$(LD) $(LDFLAGS) $@ $^ $(LIBPATH) $(PLATFORM_TetonUtils_EXTRAS)
+
 else
 libInfrastructure.$(LIB_EXT):$(INFRASTRUCTURE_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBPATH) $(PLATFORM_Infrastructure_EXTRAS)

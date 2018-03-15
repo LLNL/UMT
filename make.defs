@@ -8,7 +8,7 @@ USE_GPROF       = off
 USE_TAU         = off
 USE_TAU_PDT     = off
 USE_OPENMP      = on
-STATIC_LINK     = off
+STATIC_LINK     = on
 #CFLAGS_CMG      = -DCMGDEBUG
 CFLAGS_CMG      = 
 
@@ -19,41 +19,49 @@ else
 endif
 
 #------------------------------------------------ IBM ----------------------------------------------------------
-MPI_HOME=/opt/ibm/spectrum_mpi
+#MPI_HOME=/opt/ibm/spectrum_mpi
 
-# dd2 witherspoon nodes do not have spectrum mpi yet:
-#MPI_HOME=/shared/comms/openmpi-2.0.1/gnu
+MPI_HOME=${OLCF_SPECTRUM_MPI_ROOT}
 
-CUDA_HOME=/usr/local/cuda-9.1
+
+#CUDA_HOME=/usr/local/cuda-9.1
+
+# this works for 17.9 and hopefully for 18.1 
+CUDA_HOME=${OLCF_CUDA_ROOT}
+#CUDA_HOME=${OLCF_PGI_ROOT}/linuxpower/2018/cuda/9.1
+
 #CUDA_HOME=/opt/pgi/linuxpower/2017/cuda/9.0
-#PGI_VERSION=16.10
-#PGI_VERSION=17.5
-PGI_VERSION=17.9
+
+
+
+PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/17.9
+
+#PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/18.1
 
 # kepler version:
 #COMPUTE_CAPABILITY=35
 # pascal version:
-COMPUTE_CAPABILITY=60
+#COMPUTE_CAPABILITY=60
 # volta version:
-#COMPUTE_CAPABILITY=70
+COMPUTE_CAPABILITY=70
 
 CFLAGS_CMG     += 
 
 OPENMPC_FLAGS    = -fopenmp
 OPENMPF_FLAGS    = -mp
-#OPENMPF_FLAGS    = 
-#FLIBS           = -L/opt/ibm/xlf/15.1.3/lib -lxlf90_r -lxlfmath -lxl \
-#	           -Wl,-rpath=/opt/ibm/lib /gpfs/ess2fs0/walkup/mpitrace/openmpi/nounderscore/libmpihpm_c.so
-
 
 # ibm timers:
 FLIBS = ../ibmtimers/libtimers.a
 
 
-FLIBS += -L/opt/pgi/linuxpower/$(PGI_VERSION)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
-       -lpgftnrtl -lpgkomp -lpgompstub -lpgc -lrt -ldl -lpthread -lm -lmass \
-       -lcudapgi -lcudafor -lcudart -lcudaforblas
+FLIBS += -L$(PGI_HOME)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
+       -lpgftnrtl -lpgkomp -lcudapgi -lcudafor -lcudart -lcudaforblas 
 
+# needed for pgi 18.1
+#FLIBS += -lcudafor2 -lpgm
+
+# other needed libraries (pgi 18.1 bug, pgc needs to link after all cuda links)
+FLIBS += -lpgc  -lrt -ldl -lpthread -lmass -lm
 FLIBS += -lmass_simdp8
 #FLIBS += -lmass_simdp9
 
@@ -76,30 +84,32 @@ LIBS 	       += $(MPI_LIBS) -lnvToolsExt
 LIBPATH 	= 
 INCPATH 	= $(MPI_INC_PATH) -I$(CUDA_HOME)/include
 
-CXX		= mpicxx
-CC		= mpicc
+CXX		= mpig++
+CC		= mpigcc
 F90             = pgf90
 FPP             = pgf90
 
-#F90FLAGS_OPT    =  -Mcuda=cc3+,nordc,maxregcount:64,ptxinfo -O2 -Kpic $(OPENMPF_FLAGS)
-#F90FLAGS_OPT    =  -g -Mcuda=cc35,nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS)
 
 # Munixlogical makes pgf90 use 0 for false instead of 0xff.
 
-F90FLAGS_OPT    = -g -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
+F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
-#F90FLAGS_OPT    =  -Mcuda=cc35,nordc,maxregcount:64,ptxinfo -g -fast -O2 -Kpic $(OPENMPF_FLAGS)
+#F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
+
+# cuda launch fix for pgi 17.10, 18.1
+#F90FLAGS_OPT   += -Hx,137,0x40000
+
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
 CFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
 
 
 
 LD              = $(CXX)
-LIB_EXT         = so
-LDFLAGS         =  -shared -fpic 
+LIB_EXT         = a
+LDFLAGS         = 
 
 LINK            = $(CXX)
-LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=/opt/pgi/linuxpower/$(PGI_VERSION)/lib:$(CUDA_HOME)/lib64 #CUDAROOT=$(CUDA_HOME) \
+LINKFLAGS       = $(CXXFLAGS) -lomp -g -Wl,-rpath=$(PGI_HOME)/lib:$(CUDA_HOME)/lib64 
 		
 
 #
@@ -158,7 +168,9 @@ endif
 	#$(CXX) -c $(CFLAGS_CMG) $(CPPFLAGS) $(INCPATH) $< -MM -MF $@
 
 %.o : %.cu
-	nvcc --maxrregcount=64 -gencode=arch=compute_$(COMPUTE_CAPABILITY),code=sm_$(COMPUTE_CAPABILITY) --resource-usage -Xptxas -v -O3 -c $< -o $@
+#	nvcc --maxrregcount=64 -gencode=arch=compute_$(COMPUTE_CAPABILITY),code=sm_$(COMPUTE_CAPABILITY) --resource-usage -Xptxas -v -O0 -c $< -o $@
+
+#	nvcc --maxrregcount=64 -gencode=arch=compute_$(COMPUTE_CAPABILITY),code=sm_$(COMPUTE_CAPABILITY) --resource-usage -Xptxas -v -O3 -c $< -o $@
 
 
 

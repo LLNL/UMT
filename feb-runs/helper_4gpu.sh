@@ -54,7 +54,7 @@ if [ $odd_ranks = 1 ]; then
 fi
 
 export CUDA_CACHE_PATH=/dev/shm/$USER/nvcache_$local_rank
-
+echo CUDA CACHE PATH = $CUDA_CACHE_PATH
 
 #---------------------------------------------
 # set CUDA device for each MPI rank
