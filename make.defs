@@ -54,6 +54,7 @@ OPENMPF_FLAGS    = -mp
 FLIBS = ../ibmtimers/libtimers.a
 
 
+
 FLIBS += -L$(PGI_HOME)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl \
        -lpgftnrtl -lpgkomp -lcudapgi -lcudafor -lcudart -lcudaforblas 
 
@@ -81,6 +82,7 @@ MPI_LIBS        = -lmpi_ibm_mpifh
 
 
 LIBS 	       += $(MPI_LIBS) -lnvToolsExt
+#LIBS           += $(MPI_LIBS) -L/usr/local/cuda-9.1/targets/ppc64le-linux/lib/libnvToolsExt.so
 LIBPATH 	= 
 INCPATH 	= $(MPI_INC_PATH) -I$(CUDA_HOME)/include
 
