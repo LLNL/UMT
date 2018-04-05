@@ -41,13 +41,13 @@ PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/17.9
 # kepler version:
 #COMPUTE_CAPABILITY=35
 # pascal version:
-#COMPUTE_CAPABILITY=60
+COMPUTE_CAPABILITY=60
 # volta version:
-COMPUTE_CAPABILITY=70
+#COMPUTE_CAPABILITY=70
 
 CFLAGS_CMG     += 
 
-OPENMPC_FLAGS    = -fopenmp
+OPENMPC_FLAGS    = -mp
 OPENMPF_FLAGS    = -mp
 
 # ibm timers:
@@ -86,8 +86,8 @@ LIBS 	       += $(MPI_LIBS) -lnvToolsExt
 LIBPATH 	= 
 INCPATH 	= $(MPI_INC_PATH) -I$(CUDA_HOME)/include
 
-CXX		= mpig++
-CC		= mpigcc
+CXX		= mpicxx
+CC		= mpicc
 F90             = pgf90
 FPP             = pgf90
 

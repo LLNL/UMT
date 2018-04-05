@@ -94,14 +94,9 @@ contains
 
        ZoneLoop: do ii=threadIdx%x,passZcount,blockDim%x
 
-          ! if(ii .gt. passZcount) then 
-          !    print *, "error"
-          !    exit
-          ! endif
-
-             !!FIXME: simplifying assumption that all zones have same nCorner values
-             !! (they're all 8 from what we've seen). If this isn't true in general,
-             !! just convert this into a table lookup
+          !!FIXME: simplifying assumption that all zones have same nCorner values
+          !! (they're all 8 from what we've seen). If this isn't true in general,
+          !! just convert this into a table lookup
           ndone = (ndoneZ+ii-1) * maxCorner
 
           zone = nextZ(ndoneZ+ii,Angle)

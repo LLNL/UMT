@@ -21,7 +21,7 @@ module GPUhelper_mod
    logical(kind=1) :: fitsOnGPU = .false. ! default is false
    !logical(kind=1) :: fitsOnGPU = .true. ! default is false
 
-   !integer :: numGPUbuffers = 2 ! will be deterimined based on if it fits.
+   !integer :: numPsi_buffers = 8 ! will be deterimined based on if it fits.
    integer :: numPsi_buffers = 2 ! double buffers for psi
    integer :: numSTime_buffers = 1 ! only need 1 STime buffer the way the code is written
    integer :: numPsib_buffers = 1 !should only need 1 psib buffer
@@ -30,8 +30,6 @@ module GPUhelper_mod
 
    real(adqt) :: Stime_temp
    real(adqt) :: volumeRatio_temp
-
-   !integer :: numGPUbuffers = 8 ! will be deterimined based on if it fits.
 
    ! create a type for the GPU buffers (3 dimensional arrays)
    type :: gpuStorage
@@ -285,12 +283,12 @@ contains
 
 
       ! figure out if this problem fits on the GPU.
-      print *,"size(psib) =", psib_mem
-      print *,"size(psi) =", psi_mem
-      print *,"size(phi) =", phi_mem
-      print *,"size(stime) = ", stime_mem
-      print *,"size(next_mem) = ", next_mem
-      print *,"size(omega_A_fp) =", omega_a_fp_mem
+      !print *,"size(psib) =", psib_mem
+      !print *,"size(psi) =", psi_mem
+      !print *,"size(phi) =", phi_mem
+      !print *,"size(stime) = ", stime_mem
+      !print *,"size(next_mem) = ", next_mem
+      !print *,"size(omega_A_fp) =", omega_a_fp_mem
 
       ! estimate for the total memory requirements of the sweep:
       sweep_mem = &

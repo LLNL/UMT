@@ -12,8 +12,8 @@ fi
 let device=$local_rank/$RANKS_PER_GPU
     
 #echo "nvidia-smi -L = $(nvidia-smi -L)"
-echo "local_size = $local_size"
-echo "local_rank = $local_rank, device = $device"
+#echo "local_size = $local_size"
+#echo "local_rank = $local_rank, device = $device"
 
 export CUDA_VISIBLE_DEVICES=$device
 

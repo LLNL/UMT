@@ -77,7 +77,7 @@
    
    call mpi_comm_rank(mpi_comm_world, myrank, info)
 
-
+   istat = cudaDeviceSynchronize() ! strangely seems to be needed to prevent hangs.
    
    ! This sets up to allow zero copy use of phi directly on the device:
    ! Get a device pointer for phi, put it to d_phi_p
@@ -100,27 +100,7 @@
    call c_f_pointer(d_psib_p, pinned_psib, [QuadSet%Groups, Size%nbelem, QuadSet%NumAngles] )
 
 
-   theOMPLoopTime=0.0
-
-   !call mpi_comm_rank(mpi_comm_world, myrank, info)
-   
-   
-
-   ! if (first_time) then
-   !    ! Create streams that can overlap 
-   !    istat = cudaStreamCreate(transfer_stream)
-   !    istat = cudaStreamCreate(kernel_stream)
-
-   !    call InitDeviceBuffers()
-
-   !    first_time = .false.
-   ! endif
-
-   ! NOT NEEDED?
-   !call nvtxStartRange("createEvents")
-   ! Create events to synchronize among different streams
-   !call CreateEvents()
-   !call nvtxEndRange
+   theOMPLoopTime=0.0   
 
 !  Loop over angle bins
 
@@ -331,8 +311,8 @@
         !        Sweep the mesh, calculating PSI for each corner; the
         !        boundary flux array PSIB is also updated here.
         !        Mesh cycles are fixed automatically.
-        if(1) then ! call CUDA fortran version
-           call snswp3d_f(     current%anglebatch,                     &
+        ! call CUDA fortran sweep version
+        call snswp3d_f(     current%anglebatch,                     &
                 Size%nzones,               &
                 QuadSet%Groups,            &
                 Size%ncornr,               &
@@ -357,73 +337,6 @@
                 kernel_stream           &
                 )
 
-           ! call snswp3d(     anglebatch,                     &
-           !      Size%nzones,               &
-           !      QuadSet%Groups,            &
-           !      Size%ncornr,               &
-           !      QuadSet%NumAngles,         &
-           !      QuadSet%d_AngleOrder(mm1,binSend),        & ! only need angle batch portion
-           !      Size%maxCorner,            &
-           !      Size%maxcf,                &
-           !      NangBin,                   &
-           !      Size%nbelem,                &
-           !      QuadSet%d_omega,             &
-           !      Geom%ZDataSoA%nCorner,                &
-           !      Geom%ZDataSoA%nCFaces,                &
-           !      Geom%ZDataSoA%c0,                &
-           !      Geom%ZDataSoA%A_fp,                &
-           !      Geom%ZDataSoA%A_ez,                &
-           !      Geom%ZDataSoA%Connect,             &
-           !      Geom%ZDataSoA%STotal,              &
-           !                      !Geom%ZDataSoA%STime,               &
-           !      d_STimeBatch, &
-           !      Geom%ZDataSoA%Volume,             &
-           !      d_psi,                      &  ! only want angle batch portion
-           !      d_psib,                      &
-           !      QuadSet%d_next,              &
-           !      QuadSet%d_nextZ,             &
-           !      Geom%ZDataSoA%Sigt,                &
-           !      Geom%ZDataSoA%SigtInv,             &
-           !      QuadSet%d_passZstart,              &
-           !      kernel_stream)
-        else ! Call CUDA c version
-           ! call snswp3d_c(     current%anglebatch,                     &
-           !      Size%nzones,               &
-           !      QuadSet%Groups,            &
-           !      Size%ncornr,               &
-           !      QuadSet%NumAngles,         &
-           !      QuadSet%d_AngleOrder(mm1,current%bin),        & ! only need a bin of angles at a time
-           !      Size%maxCorner,            &
-           !      Size%maxcf,                &
-           !      binRecv,                   &
-           !      current%NangBin,                   &
-           !      Size%nbelem,                &
-           !      QuadSet%d_omega,             &
-           !      Geom%ZDataSoA%nCorner,                &
-           !      Geom%ZDataSoA%nCFaces,                &
-           !      Geom%ZDataSoA%c0,                &
-           !      Geom%ZDataSoA%A_fp,                &
-           !      current%omega_A_fp%data,                &
-           !      Geom%ZDataSoA%A_ez,                &
-           !      current%omega_A_ez%data,                &
-           !      Geom%ZDataSoA%Connect,             &
-           !      Geom%ZDataSoA%Connect_reorder,             &
-           !      Geom%ZDataSoA%STotal,              &
-           !                      !Geom%ZDataSoA%STime,               &
-           !      current%STime%data(1,1,1),          &
-           !      Geom%ZDataSoA%Volume,             &
-           !      current%psi%data(1,1,1),                      &  ! only want angle batch portion
-           !      current%psib%data(1,1,1),                      &
-           !      QuadSet%d_next,              &
-           !      QuadSet%d_nextZ,             &
-           !      Geom%ZDataSoA%Sigt,                &
-           !      Geom%ZDataSoA%SigtInv,             &
-           !      QuadSet%d_passZstart,        &
-           !      calcSTime,                  &
-           !      Size%tau,             &
-           !      kernel_stream           &
-           !      )
-        endif
 
         ! record when sweep is finished for this batch
         istat=cudaEventRecord(SweepFinished( current%batch ), kernel_stream )
@@ -624,10 +537,6 @@
 
 
 
-        ! istat = cudaMemcpyAsync( d_omega_A_ez(1,1,1,1), &
-        !      Geom%ZDataSoA%omega_A_ez(1,1,1,QuadSet%AngleOrder(mm1,binSend(next))), &
-        !      Size% nzones*Size% maxCorner*Size% maxcf*anglebatch(next), transfer_stream)
-
 
         !!!! End of things that will overlap exchange
         
@@ -674,28 +583,8 @@
      call timer_end('_anglebins')
 
 
-     ! ELIMINATE BY DOING ABOVE SWAP FOR ALL BINS, AND KEEPING BIN OWNER IN ADVANCERT?
-     ! if( .not. fitsOnGPU ) then
-     !    ! The last bin needs to be moved to the host as well, since inside the loop 
-     !    ! before moving DtoH psi, current sweep needs to complete
-     !    istat=cudaStreamWaitEvent(transfer_stream, SweepFinished(current%batch), 0)
-
-     !    ! Copy d_psi to host psi.
-     !    istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(current))), &
-     !         d_psi(current)%data(1,1,1), &
-     !         QuadSet%Groups*Size%ncornr*anglecurrent%batch, transfer_stream )
-
-     !    istat=cudaEventRecord( Psi_OnHost( current%batch ), transfer_stream)
-     ! endif
-
-
      endOMPLoopTime = MPI_WTIME()
      theOMPLoopTime = theOMPLoopTime + (endOMPLoopTime-startOMPLoopTime)
-
-     ! not needed because psib is on host in order to do exchange
-     !istat = cudaDeviceSynchronize()
-
-!!     ! May need to sync on PHI here though!!! Can't tell if it is used for flux convergence.
 
      if (ipath == 'sweep') then
         call timer_beg('_setflux')
@@ -719,56 +608,13 @@
   !  Update the scaler flux
 
   if (ipath == 'sweep') then
-
      
-     ! ! transfer stream1 waits for snmoments calc to be finished (the last current one)
-     ! istat = cudaStreamWaitEvent(transfer_stream1, snmomentsFinished(current%batch), 0)
-
-     
-     ! ! move d_phi data to host:
-     ! istat=cudaMemcpyAsync(phi(1,1), &
-     !               d_phi(1,1), &
-     !               QuadSet%Groups*Size%ncornr, transfer_stream1 )
-     
-     ! istat=cudaEventRecord( phi_OnHost, transfer_stream1 )
-     
-     
-
      call restoreCommOrder(QuadSet)
-
-
 
      ! CPU code should wait until phi is on the host before using it
      istat=cudaEventSynchronize( phi_OnHost )
 
   endif
-
-
-
-  ! There are still some routines (advanceRT) that expect a host psi.
-  ! so for now, once converged, move psi back from the device
-  ! if( fitsOnGPU ) then
-  !    ! Copy d_psi to host psi.
-  !    do buffer=1, QuadSet% NumBin0 
-  !       binSend(buffer) = QuadSet% SendOrder0(buffer)
-  !       !print *, "QuadSet% NumBin = ", QuadSet% NumBin
-  !       !print *, "binSend(buffer) = ", binSend(buffer)
-  !       !print *, "mm1 = ", mm1
-  !       !print *, "buffer = ", buffer
-  !       !print *, "anglebatch(buffer) = ", anglebatch(buffer)
-  !       istat=cudaMemcpyAsync(psi(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
-  !            d_psi(buffer)%data(1,1,1), &
-  !            QuadSet%Groups*Size%ncornr*batchsize, 0 )
-
-  !       ! mark the data as un-owned since host will change it, making device version stale:
-  !       d_psi(buffer)% owner = 0
-  !       ! CHECKME: STime may be marked as stale more often than necessary.
-  !       !d_STime(buffer)% owner = 0
-
-  !    enddo
-
-  ! endif
-
 
 
   angleLoopTime = angleLoopTime + theOMPLoopTime

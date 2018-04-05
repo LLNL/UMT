@@ -9,7 +9,7 @@
 #include "mpi.h"
 #include "omp.h"
 #include "cuda_runtime.h"
-#define NUMGPUS 4
+
 
 // #ifdef BGP
 #if 0
@@ -95,10 +95,10 @@ int main(int argc, char* argv[])
 
     // If setting GPU device through setting cuda visible devices, this print may say all devices are GPU 0
     // which is relatively true (but not absolutly)
-    int devnum;
-    istat = cudaGetDevice(&devnum);
-    cout<<" myrank = "<<myRank<<"GPU number = "<<devnum<<"istat ="<<istat<<endl;
-    printf("Check the device: %s\n", cudaGetErrorString(istat));
+    //int devnum;
+    //istat = cudaGetDevice(&devnum);
+    //cout<<" myrank = "<<myRank<<"GPU number = "<<devnum<<"istat ="<<istat<<endl;
+    //printf("Check the device: %s\n", cudaGetErrorString(istat));
 
 
     if( argc >= 3 )
@@ -292,7 +292,7 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
     //
     // ugh.  accessing public data of Teton
 
-  cout<<"entered initialize"<<endl;
+    // cout<<"entered initialize"<<endl;
     
     strncpy(theTeton.igeom.data,"xyz     ", 8);
     strncpy(theTeton.iaccel.data,"off     ", 8);  // iterative acceleration: gda, or off
@@ -307,7 +307,7 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
     // time history
     getZoneIDs('z',0.5, myMesh, theSourceZones);
 
-  cout<<"got zone ids"<<endl;
+    //cout<<"got zone ids"<<endl;
 
     double theSourceTemp = 1.0;
     
@@ -329,12 +329,12 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
     TetonVolumeSource theVolSource(theSourceZones, theSrcName, theType, theShape, 1.0, theTimeTemps);
     volSourceData[0]=theVolSource;
 
-  cout<<"set vol source"<<endl;
+    //cout<<"set vol source"<<endl;
 
     // set group boundaries
     setFrequencies( theNumGroups, quadType, theOrder, Npolar, Nazimu, freqData);
 
-  cout<<"set frequencies"<<endl;
+    //cout<<"set frequencies"<<endl;
 
     // set boundary information
     std::vector<std::string> tagNames(6),typeNames(6),shapeNames(6);
@@ -355,7 +355,7 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
 
     setBoundary( myMesh, boundaryData, tagNames, typeNames, shapeNames);
     
-  cout<<"set boundary"<<endl;
+    //cout<<"set boundary"<<endl;
 
     //
     // ugh.  again accessing public data of Teton
@@ -380,10 +380,10 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
          
     theTeton.linkKull(myMesh, freqData, boundaryData, volSourceData);
     
-    cout<<"linkKull"<<endl;
+    //cout<<"linkKull"<<endl;
     
     theTeton.CInitMaterial(myPartList);
-    cout<<"set CInitMaterial"<<endl;
+    //cout<<"set CInitMaterial"<<endl;
     theTeton.CsetControls();
 
     for(PartList<MeshBase>::iterator pIt = myPartList.begin();

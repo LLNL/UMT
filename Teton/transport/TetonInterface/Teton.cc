@@ -251,16 +251,16 @@ Teton<Mesh>::resize() {
 
 
     D_ncornr            = std::max(ncornr, 0);
-    cout<<"ncornr = "<<ncornr<<endl;
+    //cout<<"ncornr = "<<ncornr<<endl;
     D_nzones            = std::max(nzones, 0);
-    cout<<"ncornr ="<<ncornr<<"npsi ="<<npsi<<endl;
+    //cout<<"ncornr ="<<ncornr<<"npsi ="<<npsi<<endl;
     long temp = (long)ncornr*(long)npsi;
-    cout<<"temp = "<<temp<<endl;
+    //cout<<"temp = "<<temp<<endl;
     D_ncornr_npsi       = temp; //std::max(temp, 0); //ncornr*npsi overflows int
-    cout<<"D_ncornr_npsi ="<<D_ncornr_npsi<<endl;
+    //cout<<"D_ncornr_npsi ="<<D_ncornr_npsi<<endl;
 
     temp = (long)ncornr*(long)ngr;
-    cout<<"temp = "<<temp<<endl;
+    //cout<<"temp = "<<temp<<endl;
     
     D_ncornr_ngr        = temp;//std::max(temp, 0);
     D_ncornr_ndim       = std::max(ncornr * ndim, 0);
@@ -1516,12 +1516,12 @@ Teton<Mesh>::CInitMaterial(PartList<Mesh> &partList)
 
 // Initialize corner radiation variables
 
-    cout<<"calling rtinit. ownedZones = "<<ownedZones<<endl;
+    //cout<<"calling rtinit. ownedZones = "<<ownedZones<<endl;
 
     F77_ID(rtinit_, rtinit, RTINIT)
         (&EnergyRadiation, &psir[0]);
 
-    cout<<"finished rtinit"<<endl;
+    //cout<<"finished rtinit"<<endl;
 
     F77_ID(setenergyedits_, setenergyedits, SETENERGYEDITS)
         (&EnergyRadiation, &EnergyMaterial, &EnergyIncident, 

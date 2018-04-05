@@ -67,7 +67,7 @@
 #endif
 
    ! start cuda profiler
-   !call cudaProfilerStart()
+   call cudaProfilerStart()
 
 
    NumSnSets = getNumSnSets(Quad)
@@ -329,37 +329,6 @@
  
    enddo TemperatureIteration
 
-   ! don't need to move psi back to host now, because I will port the routines that use psi.
-
-
-   ! ! Here is where psi should be moved back to the host (only at the end of each timestep).
-   ! if( fitsOnGPU ) then 
-   !    mm1 = 1
-   !    ! Copy d_psi to host psi.
-   !    do buffer=1, QuadSet% NumBin0 
-   !       binSend(buffer) = QuadSet% SendOrder0(buffer)
-   !       !print *, "QuadSet% NumBin = ", QuadSet% NumBin
-   !       !print *, "binSend(buffer) = ", binSend(buffer)
-   !       !print *, "mm1 = ", mm1
-   !       !print *, "buffer = ", buffer
-   !       !print *, "anglebatch(buffer) = ", anglebatch(buffer)
-   !       istat=cudaMemcpyAsync(psir(1,1,QuadSet%AngleOrder(mm1,binSend(buffer))), &
-   !            d_psi(buffer)%data(1,1,1), &
-   !            QuadSet%Groups*Size%ncornr*batchsize, 0 )
-
-   !       ! THIS WAS THE FIX!!!
-   !       istat = cudaDeviceSynchronize()
-
-   !       ! mark the data as un-owned since host will change it, making device version stale:
-   !       d_psi(buffer)% owner = 0
-   !       ! CHECKME: STime may be marked as stale more often than necessary.
-   !       !d_STime(buffer)% owner = 0
-
-   !    enddo
-
-   ! endif ! if not fits on GPU, it will have already been moved back.
-
-
 !  Update Iteration Counts
 
    call setNumberOfIterations(temperatureControl,noutrt)
@@ -402,7 +371,7 @@
    enddo
 
 
-   !call cudaProfilerStop()
+   call cudaProfilerStop()
 
 #ifdef PROFILING_ON
    call TAU_PROFILE_STOP(profiler)

@@ -158,7 +158,18 @@
          call MPI_Irecv(buffer(1,ishared), nsend, MPI_INTEGER, &
                         neighbor, 500, MPI_COMM_WORLD,         &
                         request(2*ishared), ierr)
+         if ( ierr .ne. 0 ) then
+            print *, "MPI error 06"
+         end if
+         
+
        enddo
+
+       call MPI_Barrier(MPI_COMM_WORLD, ierr)
+       if ( ierr .ne. 0 ) then
+          print *, "MPI error 07"
+       end if
+
 
 !  Sort
 
@@ -182,19 +193,41 @@
                         neighbor, 500, MPI_COMM_WORLD,  &
                         request(2*ishared-1), ierr)
 
+         if ( ierr .ne. 0 ) then
+            print *, "MPI error 01"
+         end if
+
          call MPI_Wait(request(2*ishared-1), status, ierr)
+         if ( ierr .ne. 0 ) then
+            print *, "MPI error 02"
+         end if
+
        enddo
 
        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+       if ( ierr .ne. 0 ) then
+          print *, "MPI error 03"
+       end if
+
 
 
        do ishared=1,nShared
          call MPI_Wait(request(2*ishared), status, ierr)
+         if ( ierr .ne. 0 ) then
+            print *, "MPI error 04"
+         end if
+
          do i=1,NumBin
            QuadSet% RecvOrder0(i,ishared) = buffer(i,ishared)
            QuadSet% RecvOrder(i,ishared)  = buffer(i,ishared)
          enddo
        enddo
+
+       call MPI_Barrier(MPI_COMM_WORLD, ierr)
+       if ( ierr .ne. 0 ) then
+          print *, "MPI error 05"
+       end if
+
 
      endif
 

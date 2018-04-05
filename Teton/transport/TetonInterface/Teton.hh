@@ -135,7 +135,7 @@ public:
       }
  
     // Mallocator wraps malloc().
-    printf ("USING Allinged allocator \n");
+    // printf ("USING Aligned allocator \n");
     //void * const pv = malloc(n * sizeof(T));
     void * pv = NULL;
     //cudaMallocHost (&pv, n * sizeof(T) );
