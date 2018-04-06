@@ -20,7 +20,8 @@ echo "used cores per socket = $cores_per_socket"
 echo "threads per rank = $threads_per_rank"
 #--------------------------------------
 #grid=3x2x1_32.cmg
-grid=1x2x3_32.cmg
+grid=1x2x3_38.cmg
+#grid=1x2x3_40.cmg
 order=16
 groups=16
 type=2

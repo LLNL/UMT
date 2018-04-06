@@ -34,9 +34,9 @@ CUDA_HOME=${OLCF_CUDA_ROOT}
 
 
 
-PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/17.9
+#PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/17.9
 
-#PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/18.1
+PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/18.3
 
 # kepler version:
 #COMPUTE_CAPABILITY=35
@@ -59,7 +59,7 @@ FLIBS += -L$(PGI_HOME)/lib -L$(CUDA_HOME)/lib64 -lpgf90rtl -lpgf90 -lpgf90_rpm1 
        -lpgftnrtl -lpgkomp -lcudapgi -lcudafor -lcudart -lcudaforblas 
 
 # needed for pgi 18.1
-#FLIBS += -lcudafor2 -lpgm
+FLIBS += -lcudafor2 -lpgm
 
 # other needed libraries (pgi 18.1 bug, pgc needs to link after all cuda links)
 FLIBS += -lpgc  -lrt -ldl -lpthread -lmass -lm
@@ -94,9 +94,9 @@ FPP             = pgf90
 
 # Munixlogical makes pgf90 use 0 for false instead of 0xff.
 
-F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
+#F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
-#F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
+F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
 
 # cuda launch fix for pgi 17.10, 18.1
 #F90FLAGS_OPT   += -Hx,137,0x40000

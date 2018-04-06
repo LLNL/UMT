@@ -101,7 +101,7 @@
 
 !  Loop over exiting angle, boundary element pairs for this communicator
 
-!!!!$omp parallel do private(Angle,nsend,ib,message) reduction(+:nsend0)
+!$omp parallel do private(Angle,nsend,ib,message) reduction(+:nsend0)
            do ia=1,NangBin
              Angle = QuadSet% AngleOrder(ia,bin)
              nsend = Comm% nsend(ia)
@@ -172,7 +172,7 @@
 
 !  Loop over boundary elements that are incident for this communicator
 
-!!!!$omp parallel do private(Angle,nrecv,ib,message) reduction(+:nrecv0)
+!$omp parallel do private(Angle,nrecv,ib,message) reduction(+:nrecv0)
            do ia=1,NangBin
              Angle = QuadSet% AngleOrder(ia,mybin)
              nrecv = Comm% nrecv(ia)

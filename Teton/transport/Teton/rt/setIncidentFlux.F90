@@ -63,7 +63,7 @@
            nrecv0 = nrecv0 + Comm% nrecv(ia)
          end do
 
-!!!!$omp parallel do private(Angle,nrecv,ib,dot,mysum) reduction(+:sumdot) schedule(static)
+!$omp parallel do private(Angle,nrecv,ib,dot,mysum) reduction(+:sumdot) schedule(static)
          do ia=1,NangBin
            Angle = QuadSet% AngleOrder(ia,bin)
            nrecv = Comm% nrecv(ia)
