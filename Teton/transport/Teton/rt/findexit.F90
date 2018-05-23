@@ -113,6 +113,8 @@
 !  dot products for half of the boundary elements and then
 !  the results are exchanged.
 
+! YKT: should probably put a OpenMP parallel do here:
+
        CommunicatorLoop1: do ishared=1,nShared
 
          Bdy          => getShared(RadBoundary, ishared)

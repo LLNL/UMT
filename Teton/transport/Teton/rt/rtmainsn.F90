@@ -115,9 +115,11 @@
 !***********************************************************************
 
 !  Create an incident and exiting list for shared boundary elements
-
+   call timer_beg('findexit')
+   call nvtxStartRange("findexit",6)
    call findexit
-
+   call nvtxEndRange
+   call timer_end('findexit')
 
 !  Establish angle order for transport sweeps
    ! once angle order is established, could move in psi(first_angle)

@@ -23,6 +23,10 @@ executable=$1
 
 shift
 
-$executable "$@"
+if [ $world_rank == $PROFILE_RANK ]; then
+    nvprof -f -o $PROFILE_PATH $executable "$@"
+else
+    $executable "$@"
+fi
 
 rm -rf /dev/shm/$USER/nvcache_$PMIX_RANK

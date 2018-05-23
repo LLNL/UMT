@@ -1,4 +1,4 @@
-module nvtx_mod
+module nvtxdummy_mod
 
 ! try just a dummy module to see if error is coming from these timers
 
@@ -17,14 +17,14 @@ subroutine nvtxEndRange
   
 end subroutine
 
-end module nvtx_mod
+end module nvtxdummy_mod
 
 
 
 
 
 
-module nvtxreal_mod
+module nvtx_mod
 
 use iso_c_binding
 implicit none
@@ -88,5 +88,5 @@ subroutine nvtxEndRange
   call nvtxRangePop
 end subroutine
 
-end module nvtxreal_mod
+end module nvtx_mod
 

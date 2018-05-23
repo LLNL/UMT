@@ -79,10 +79,16 @@
 
 !  Find largest error among all processes
 
+! YKT: this compares largest errors which differ only in 16th digit...
+! small rounding errors lead to differences in 
+
    maxError(:) = QuadSet% relError(:)
    call MPIAllReduceT(maxError, "max", MPI_COMM_WORLD)
 
    maxFluxError = maxval( maxError(1:QuadSet% NumBin0) )
+
+   ! YKT force max number of flux iterations
+   ! fluxTolerance=0
 
    nConv = 0
    do bin=1,QuadSet% NumBin0

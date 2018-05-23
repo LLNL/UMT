@@ -1,7 +1,7 @@
 #!/bin/bash
-px=1
-py=2
-pz=3
+px=9
+py=12
+pz=12
 let pxm1=$px-1
 let pym1=$py-1
 let pzm1=$pz-1

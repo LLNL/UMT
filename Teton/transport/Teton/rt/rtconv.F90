@@ -100,6 +100,9 @@
 !  If spatial decomposition is on, find the largest error in the
 !  entire mesh
 
+! YKT: these errors can differ only in the last digit, 
+! leading to dynamic behaviour determined by round off error...
+
    relerr = maxTempError 
    call MPIAllReduceT(maxTempError, "max", MPI_COMM_WORLD)
 

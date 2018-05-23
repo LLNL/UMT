@@ -20,6 +20,7 @@
    use BoundaryList_mod
    use Boundary_mod
    use cudafor
+   use nvtx_mod
 
    implicit none
 
@@ -61,8 +62,9 @@
 
 !$OMP PARALLEL DO  PRIVATE(ia)
      OMPAngleLoop: do ia=1,QuadSet% NumAngles
-
-       call snnext(ia) 
+        call nvtxStartRange("snnext",3)
+        call snnext(ia) 
+        call nvtxEndRange
 
      enddo OMPAngleLoop
 

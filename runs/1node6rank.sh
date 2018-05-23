@@ -5,8 +5,7 @@ nodes=1
 gpus_per_socket=3 # number of gpus to use per socket
 ranks_per_gpu=1 # ranks per gpu. If greater than 1, should use mps.
 let ranks_per_socket=$gpus_per_socket*$ranks_per_gpu # needs to be evenly divisible by gpus_per_socket. 
-#let cores_per_rank=21/$ranks_per_socket # 21 avail cores divided into the ranks.
-let cores_per_rank=18/$ranks_per_socket # 21 avail cores divided into the ranks.
+let cores_per_rank=21/$ranks_per_socket # 21 avail cores divided into the ranks.
 let nmpi=2*$ranks_per_socket*$nodes  # total number of mpi ranks
 let cores_per_socket=$cores_per_rank*$ranks_per_socket # this is used cores per socket (not necessarily 21)
 let num_sockets=$nodes*2 #nmpi/ranks_per_socket # total number of sockets
@@ -32,7 +31,7 @@ cat >batch.job <<EOF
 #BSUB -o %J.out
 #BSUB -e %J.err
 #BSUB -nnodes ${nodes}
-##BSUB -alloc_flags gpumps
+###BSUB -alloc_flags gpumps
 #BSUB -alloc_flags smt2
 #BSUB -P VEN201
 #BSUB -q batch
@@ -42,6 +41,10 @@ ulimit -s 10240
 
 export OMP_NUM_THREADS=$threads_per_rank
 export CUDA_LAUNCH_BLOCKING=0
+
+export OMP_STACKSIZE=64M
+export PAMI_ENABLE_STRIPING=1
+export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so
 
 echo 'starting jsrun with'
 echo "nodes = $nodes"
@@ -54,7 +57,15 @@ echo "threads per rank = $threads_per_rank"
 export RANKS_PER_SOCKET=$ranks_per_socket
 export RANKS_PER_GPU=$ranks_per_gpu
 
-jsrun --smpiargs="-mxm --mca btl_openib_warn_default_gid_prefix 0 --mca mpi_warn_on_fork 0" \
+# profiling stuff:
+export PROFILE_RANK=3  #rank where device-bind will run nvprof
+export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof"
+echo "nvprof output at $PROFILE_PATH"
+
+
+# -mxm
+
+jsrun --smpiargs=" --mca btl_openib_warn_default_gid_prefix 0 --mca mpi_warn_on_fork 0" \
   --nrs ${num_sockets}  --tasks_per_rs ${ranks_per_socket} --cpu_per_rs ${cores_per_socket} \
   --gpu_per_rs ${gpus_per_socket} --bind=proportional-packed:${cores_per_rank} -d plane:${ranks_per_socket}  \
   ./device-bind.sh ../Teton/SuOlsonTest $grid $groups $type $order $polar $azim

@@ -165,8 +165,10 @@
 !     if(myrank == 0 ) print *, "--------------"
 
 
-     call timer_beg('_anglebins')     
+     !call timer_beg('_anglebins')     
      AngleBin: do binRecv=1,QuadSet% NumBin
+
+        call timer_beg('_sweepoct')
 
         ! which bin is the current bin being worked on?
         current%bin       = QuadSet%SendOrder(binRecv) ! same as old binSend
@@ -567,20 +569,22 @@
         !      Exchange Boundary Fluxes
         ! these need to become non-blocking
 
-        !call timer_beg('__exch')
-        !call nvtxStartRange("exchange")
+        call timer_beg('__exch')
+        call nvtxStartRange("exchange")
         call exchange(PSIB, current%bin, binRecv) 
-        !call nvtxEndRange
-        !call timer_end('__exch')
+        call nvtxEndRange
+        call timer_end('__exch')
 
 
 
         ! end of loop, so set previous to the current.
         previous = current
 
+        call timer_end('_sweepoct')
+
      enddo AngleBin
 
-     call timer_end('_anglebins')
+     !call timer_end('_anglebins')
 
 
      endOMPLoopTime = MPI_WTIME()
