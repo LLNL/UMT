@@ -58,7 +58,7 @@ export RANKS_PER_SOCKET=$ranks_per_socket
 export RANKS_PER_GPU=$ranks_per_gpu
 
 # profiling stuff:
-export PROFILE_RANK=3  #rank where device-bind will run nvprof
+export PROFILE_RANK=-1  #rank where device-bind will run nvprof
 export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof"
 echo "nvprof output at $PROFILE_PATH"
 

@@ -1,0 +1,27 @@
+#BSUB -o %J.out
+#BSUB -e %J.err
+#BSUB -nnodes 4
+###BSUB -alloc_flags gpumps
+#BSUB -alloc_flags smt2
+#BSUB -P VEN201
+#BSUB -q batch
+#BSUB -core_isolation 1
+#BSUB -W 60
+#---------------------------------------
+ulimit -s 10240
+
+export OMP_NUM_THREADS=14
+export CUDA_LAUNCH_BLOCKING=0
+
+export OMP_STACKSIZE=64M
+export PAMI_ENABLE_STRIPING=1
+
+#export LD_PRELOAD=/gpfs/wscgpfs01/walkup/mpitrace/spectrum_mpi/libhpmprof.so
+#export SAVE_LIST="1"
+
+export PROFILE_RANK=-1
+#export PROFILE_PATH="./nvp4_1.prof"
+
+jsrun --stdio_mode=prepend -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=14 --nrs 24  --tasks_per_rs 1 --cpu_per_rs 7   --gpu_per_rs 1 --bind=proportional-packed:7 -d plane:1 ./profile-helper.sh ../Teton/SuOlsonTest 4x2x3_38.cmg 16 2 16 8 4
+
+
