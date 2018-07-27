@@ -1,5 +1,5 @@
 #!/bin/bash
-px=9
+px=12
 py=12
 pz=12
 let pxm1=$px-1

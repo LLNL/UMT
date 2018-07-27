@@ -62,6 +62,7 @@
    integer NumAngles, nbelem, ncornr, NumBin, myrank, info
 
    integer :: t0, t1, timelimit
+   integer :: shared_mem
 
    timelimit = 30 ! assume hung if event is waiting more than timelimit seconds
 
@@ -79,6 +80,22 @@
 
    istat = cudaDeviceSynchronize() ! strangely seems to be needed to prevent hangs.
    
+   ! attempt to set the shared mem/cache config for GPU_sweep:
+
+   shared_mem = 38*1024 ! 96 Kb
+   istat = cudaFuncSetAttribute(GPU_sweep,cudaFuncAttributeMaxDynamicSharedMemorySize, shared_mem)
+   if(myrank .eq. 0) then
+      !if(istat .ne. 0) print *, cudaGetErrorString(istat)
+      print *, "set the func attribute with error = ", cudaGetErrorString(istat)
+   endif
+
+
+   !istat = cudafuncsetcacheconfig(GPU_sweep,cudaFuncCachePreferShared)
+   !if(myrank .eq. 0) then
+   !   if(istat .ne. 0) print *, cudaGetErrorString(istat)
+   !endif
+
+
    ! This sets up to allow zero copy use of phi directly on the device:
    ! Get a device pointer for phi, put it to d_phi_p
    !istat = cudaHostGetDevicePointer(d_phi_p, C_LOC(phi(1,1)), 0)

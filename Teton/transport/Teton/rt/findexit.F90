@@ -114,7 +114,10 @@
 !  the results are exchanged.
 
 ! YKT: should probably put a OpenMP parallel do here:
-
+!!$omp parallel do private(ishared,Bdy,neighbor,NbdyElem,FirstBdyElem, & 
+!!$omp b0, HalfBdyElem,LastBdyElem,istartL,istartN,ifinishL,ifinishN, &
+!!$omp Nbl, lensend, lenrecv...
+       call timer_beg('_CommLoop1')
        CommunicatorLoop1: do ishared=1,nShared
 
          Bdy          => getShared(RadBoundary, ishared)
@@ -174,7 +177,7 @@
        idot(:,istartN:ifinishN) = -idot(:,istartN:ifinishN)
 
      enddo CommunicatorLoop1
-
+     call timer_end('_CommLoop1')
 
 !  Now create the lists of incident and exiting boundary elements 
 !  for each angle in the quadrature set
@@ -184,7 +187,7 @@
      AngleBin: do bin=1,NumBin
 
        NangBin = QuadSet% NangBinList(bin) 
-
+       call timer_beg('_CommLoop2')
        CommunicatorLoop2: do ishared=1,nShared
 
          Comm => getMessage(QuadSet, bin, ishared)
@@ -227,7 +230,7 @@
          Comm%ListSend(1:lensend) = ListSend(1:lensend)
  
        enddo CommunicatorLoop2
-
+       call timer_end('_CommLoop2')
        angle0 = angle0 + NangBin 
 
      enddo AngleBin

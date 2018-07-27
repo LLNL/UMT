@@ -57,8 +57,10 @@ template <class T> struct Mallocator2 {
 extern "C"
 {
 
-    #define cudaFuncCachePreferL1 2
-    extern int cudaDeviceSetCacheConfig2(int);
+  //#define cudaFuncCachePreferShared 1
+  //#define cudaFuncCachePreferL1 2
+  //extern int cudaDeviceSetCacheConfig2(int);
+  //extern int cudaDeviceSetCacheConfig(int);
 
 #if !defined LINUX && !defined BGP
     extern void *
@@ -271,9 +273,12 @@ Teton<Mesh>::resize() {
     D_nzones_ngr        = std::max(nzones * ngr, 0);
     D_zones_ndim        = std::max(nzones * ndim, 0);
     D_ngr1              = std::max(ngr+1, 0);
-
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    //printf("[%d] Starting allocating pinned host memory...%ld\n", myrank, (D_ncornr_npsi+D_ncornr_ngr)*8 );
     psir.resize(D_ncornr_npsi);
     Phi.resize(D_ncornr_ngr);
+    //printf("[%d] Done with allocating pinned host memory...\n", myrank);
     RadEnergyDensity.resize(D_nzones_ngr);
     RadiationForce.resize(D_ncornr_ndim);
     RadiationFlux.resize(D_zones_ndim);
@@ -301,6 +306,7 @@ Teton<Mesh>::resize() {
     SMatEff.resize(D_nzones);
     gnu.resize(D_ngr1);
 
+printf("[%d] Done with resize!\n", myrank);
 }
 
 // ------------------------------------------------------------
@@ -713,7 +719,6 @@ void Teton<Mesh>::setCommunication(Teton<Mesh>::MeshType &M,
                 faceGIDList[index] = maxFace + 1;
                 sharedCtr          = sharedCtr + numCNRface[index];
             }
-             
         }
        
         faceGIDList.resize(0);
@@ -886,6 +891,9 @@ Teton<Mesh>::linkKull(Teton<Mesh>::MeshType &M,
     
     // YKT experiment:
     //cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+    //cudaFuncCache cachesetting = cudaFuncCachePreferShared;
+    //cudaDeviceSetCacheConfig(cachesetting);
+
 
 // Allocate persistant arrays
     resize();

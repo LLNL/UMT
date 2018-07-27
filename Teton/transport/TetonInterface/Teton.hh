@@ -144,6 +144,7 @@ public:
     // Allocators should throw std::bad_alloc in the case of memory allocation failure.
     if (pv == NULL)
       {
+        printf("!!! cudaMallocHost return NULL with size %ld!!!\n", n*sizeof(T));
 	throw std::bad_alloc();
       }
  
@@ -192,7 +193,7 @@ public:
     printf ("constructing !!!! \n");
     abort();
     
-  };  
+  }  
   template <class U> bool operator==(
                                      const Mallocator<U>&) const { return true; }
   template <class U> bool operator!=(
@@ -412,7 +413,9 @@ public:
    // ------------------------------------------------------------
    //std::vector<double> psir;         // [ngr,ncornr,nangsn] (E/A/t/ster) Angle-dependent flux
    std::vector<double, aligned_allocator<double> > psir;         // [ngr,ncornr,nangsn] (E/A/t/ster) Angle-dependent flux
-  std::vector<double, aligned_allocator<double> > Phi;          // [ngr,ncornr] (E/A/t) scalar intensity 
+   std::vector<double, aligned_allocator<double> > Phi;          // [ngr,ncornr] (E/A/t) scalar intensity 
+   //std::vector<double> psir;         // [ngr,ncornr,nangsn] (E/A/t/ster) Angle-dependent flux
+   //std::vector<double> Phi;          // [ngr,ncornr] (E/A/t) scalar intensity 
    std::vector<double> RadEnergyDensity; // [nzones,ngr] the zone-averaged energy density by Enrgy group
    std::vector<double> RadiationForce; // [ndim,ncornr] radiation force on the matter
    std::vector<double> RadiationFlux; // [ndim,nzones] radiation flux [E/A/t]

@@ -21,9 +21,9 @@ endif
 #------------------------------------------------ IBM ----------------------------------------------------------
 
 # wsc paths:
-MPI_HOME=/opt/ibm/spectrum_mpi
-CUDA_HOME=/usr/local/cuda-9.2
-PGI_HOME=/shared/opt/pgi/linuxpower/18.3
+#MPI_HOME=/opt/ibm/spectrum_mpi
+#CUDA_HOME=/usr/local/cuda-9.2
+#PGI_HOME=/shared/opt/pgi/linuxpower/18.3
 
 # summit paths:
 #MPI_HOME=${OLCF_SPECTRUM_MPI_ROOT}
@@ -31,13 +31,17 @@ PGI_HOME=/shared/opt/pgi/linuxpower/18.3
 #PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/18.3
 
 
+# sierra paths:
+MPI_HOME=${MPI_ROOT}
+#CUDA_HOME=${CUDA_HOME}
+#PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/18.3
 
 # kepler version:
 #COMPUTE_CAPABILITY=35
 # pascal version:
-COMPUTE_CAPABILITY=60
+#COMPUTE_CAPABILITY=60
 # volta version:
-#COMPUTE_CAPABILITY=70
+COMPUTE_CAPABILITY=70
 
 CFLAGS_CMG     += 
 
@@ -90,10 +94,8 @@ FPP             = pgf90
 
 #F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
-F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical
+F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:80,ptxinfo,loadcache:L1,cuda9.2 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical 
 
-# cuda launch fix for pgi 17.10, 18.1
-#F90FLAGS_OPT   += -Hx,137,0x40000
 
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
 CFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)

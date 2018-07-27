@@ -260,7 +260,280 @@ module GPUhelper_mod
 
 
 
+! Interface to CUDA-C api for setting 
+
+INTERFACE
+
+    INTEGER FUNCTION CUDAFUNCSETATTRIBUTE(func, attr, avalue) &
+
+            BIND(C, NAME='cudaFuncSetAttribute')
+
+      EXTERNAL func
+
+      INTEGER, value :: attr
+
+      INTEGER, value :: avalue
+
+    END FUNCTION
+
+END INTERFACE
+
+ 
+
+enum, bind(c)
+
+  enumerator :: cudaFuncAttributeMaxDynamicSharedMemorySize = 8
+
+  !enumerator cudaFuncAttributePreferredSharedMemoryCarveout
+
+  !enumerator cudaFuncAttributeMax
+
+end enum
+
+ 
+
+enum, bind(c)
+
+  enumerator :: cudaSharedmemCarveoutDefault   = -1
+
+  enumerator :: cudaSharedmemCarveoutMaxShared = 100
+
+end enum
+
 contains
+
+
+  attributes(global) subroutine GPU_fp_ez_hplane_f( &
+                              anglebatch,                     &
+                              nzones,               &
+                              ncornr,               &
+                              NumAngles,         &
+                              AngleOrder,        & ! only angle batch portion
+                              maxCorner,            &
+                              maxcf,                &
+                              NangBin,                   &
+                              nbelem,                &
+                              ZData,       &
+                              omega,             &
+                              omega_A_fp,                &
+                              omega_A_ez,                &
+                              next,              &
+                              nextZ,             &
+                              passZstart             )
+    implicit none
+
+    !  Arguments
+
+   integer, value,    intent(in)    :: anglebatch
+   integer, value,    intent(in)    :: nzones
+   integer, value,    intent(in)    :: ncornr
+   integer, value,    intent(in)    :: NumAngles
+
+   integer,    device, intent(in) :: AngleOrder(anglebatch)
+
+   integer, value,    intent(in)    :: maxCorner
+   integer, value,    intent(in)    :: maxcf
+   integer, value,    intent(in)    :: NangBin
+   integer, value,    intent(in)    :: nbelem
+
+   type(GPU_ZoneData), device, intent(in) :: ZData(nzones)
+
+   real(adqt), device, intent(in)    :: omega(3,NumAngles)
+
+   real(adqt), device, intent(out)    :: omega_A_fp(maxcf,maxCorner, nzones, anglebatch) 
+   real(adqt), device, intent(out)    :: omega_A_ez(maxcf,maxCorner,nzones, anglebatch) 
+
+   integer,    device, intent(in) :: next(ncornr+1,NumAngles)
+   integer,    device, intent(in) :: nextZ(nzones,NumAngles)
+   integer,    device, intent(in) :: passZstart(nzones,NumAngles)   
+
+    !  Local Variables
+
+    integer    :: Angle, i, ib, ic, icfp, icface
+    integer    :: zone, c, cez, ii, mm, ndone
+    integer    :: p, ndoneZ, passZcount
+    integer    :: nCorner, nCFaces, c0
+
+    !  Constants
+
+    mm = blockIdx%x
+    Angle = AngleOrder(mm)
+
+    p = 0
+    ndoneZ = 0
+    PassLoop: do while (ndoneZ < nzones)
+       p = p + 1
+       ! number of zones in this hyperplane:
+       passZcount = passZstart(p+1,Angle) - passZstart(p,Angle)
+       
+
+       ZoneLoop: do ii=threadIdx%x,passZcount,blockDim%x
+
+          !!FIXME: simplifying assumption that all zones have same nCorner values
+          !! (they're all 8 from what we've seen). If this isn't true in general,
+          !! just convert this into a table lookup
+          ndone = (ndoneZ+ii-1) * maxCorner
+
+          zone = nextZ(ndoneZ+ii,Angle)
+
+          !nCorner = nCornerArray(zone)
+          !nCFaces =   nCFacesArray(zone)
+          !c0      =   c0Array(zone)
+
+          !write(0,*) zone
+          !print *, "zone = ", zone
+          nCorner =   ZData(zone)%nCorner
+          nCFaces =   ZData(zone)%nCFaces
+          c0      =   ZData(zone)%c0
+
+
+          CornerLoop: do i=1,nCorner
+
+             ic      = next(ndone+i,Angle)
+             c       = ic - c0
+
+             !  Calculate Area_CornerFace dot Omega to determine the 
+             !  contributions from incident fluxes across external 
+             !  corner faces (FP faces)
+
+             do icface=1,ncfaces
+
+                omega_A_fp(icface,c,zone,blockIdx%x) = omega(1,Angle)*ZData(zone)%A_fp(1,icface,c) + &
+                     omega(2,Angle)* ZData(zone)%A_fp(2,icface,c) + &
+                     omega(3,Angle)* ZData(zone)%A_fp(3,icface,c)
+                
+                ! Reorder is now done when GPU_ZData is initialized, so following is not needed.
+                !icfp    =  Connect(1,icface,c,zone)
+                !ib      =  Connect(2,icface,c,zone)
+                !cez     =  Connect(3,icface,c,zone)
+                
+                !Connect_ro(icface,c,1,zone) = icfp
+                !Connect_ro(icface,c,2,zone) = ib
+                !Connect_ro(icface,c,3,zone) = cez
+                
+             enddo
+
+             !  Contributions from interior corner faces (EZ faces)
+
+             do icface=1,nCFaces
+
+                omega_A_ez(icface,c,zone,blockIdx%x) = omega(1,Angle)* ZData(zone)%A_ez(1,icface,c) + &
+                     omega(2,Angle)* ZData(zone)%A_ez(2,icface,c) + &
+                     omega(3,Angle)* ZData(zone)%A_ez(3,icface,c) 
+
+             enddo
+
+          enddo CornerLoop
+
+       enddo ZoneLoop
+
+       ndoneZ = ndoneZ + passZcount
+
+       call syncthreads
+
+    enddo PassLoop
+
+  end subroutine GPU_fp_ez_hplane_f
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! fp_ez Caller
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    subroutine fp_ez_f ( &
+          anglebatch, &
+          nzones, &
+          ncornr, &
+          numAngles, &
+          d_AngleOrder, &
+          maxCorner, &
+          maxcf, &
+          NangBin, &
+          nbelem, &
+          d_omega, &
+          d_omega_A_fp , &
+          d_omega_A_ez , &
+          d_next, &
+          d_nextZ, &   
+          d_passZstart, &
+          streamid &
+          ) 
+
+
+   use kind_mod
+   use constant_mod
+   use Size_mod
+   use Geometry_mod
+   use Quadrature_mod
+   use Material_mod
+   use ZoneData_mod
+   use cudafor
+
+   implicit none
+
+!  Arguments
+   integer, parameter :: ndim=3
+
+   integer,    intent(in)    :: anglebatch
+   integer,    intent(in)    :: nzones
+   integer,    intent(in)    :: ncornr
+   integer,    intent(in)    :: NumAngles
+
+   integer,    device, intent(in) :: d_AngleOrder(anglebatch)
+
+   integer,    intent(in)    :: maxCorner
+   integer,    intent(in)    :: maxcf
+   integer,    intent(in)    :: NangBin
+   integer,    intent(in)    :: nbelem
+   real(adqt), device, intent(in)    :: d_omega(3,NumAngles)
+
+   real(adqt), device, intent(out)    :: d_omega_A_fp(maxcf ,maxCorner, nzones, anglebatch) 
+   real(adqt), device, intent(out)    :: d_omega_A_ez(maxcf ,maxCorner, nzones, anglebatch)  
+
+
+   integer,    device, intent(in) :: d_next(Size%ncornr+1,QuadSet%NumAngles)
+   integer,    device, intent(in) :: d_nextZ(Size%nzones,QuadSet%NumAngles)
+   integer,    device, intent(in) :: d_passZstart(Size%nzones,QuadSet%NumAngles)   
+   integer(kind=cuda_stream_kind), intent(in) :: streamid   
+
+!  Local Variables
+
+   integer    :: mm, Angle,istat,i,ib,ic
+
+   type(dim3) :: threads,blocks
+   
+   !integer    :: shmem !amount of shared memory need by GPU sweep kernel.
+
+   
+   !threads=dim3(QuadSet%Groups,NZONEPAR,1) 
+   threads=dim3(128,1,1) 
+   blocks=dim3(anglebatch,1,1)
+
+   call GPU_fp_ez_hplane_f<<<blocks,threads,0,streamid>>>( anglebatch,                     &
+                              nzones,               &
+                              ncornr,               &
+                              NumAngles,         &
+                              d_AngleOrder,        & ! only angle batch portion
+                              maxCorner,            &
+                              maxcf,                &
+                              NangBin,                   &
+                              nbelem,                &
+                              Geom%d_GPU_ZData,    &
+                              d_omega,             &
+                              d_omega_A_fp,                &
+                              d_omega_A_ez,                &
+                              d_next,              &
+                              d_nextZ,             &
+                              d_passZstart             )
+
+
+
+   return
+ end subroutine fp_ez_f
+
+
 
   subroutine GPUmemRequirements(psib,psi,phi,STime,next,omega_a_fp,sweep_mem)
     implicit none

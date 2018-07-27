@@ -36,6 +36,7 @@ void initialize(MeshBase& myMesh, Teton<MeshBase>& theTeton, PartList<MeshBase>&
                 int theNumGroups, int quadType, int theOrder, int Npolar, int Nazimu);
 
 extern"C" {
+  //void snswp3d_mod_gpu_sweep_;
 //void pgf90_compiled();
 }
 
@@ -73,8 +74,52 @@ int main(int argc, char* argv[])
         exit(1);
     }    
 
+    // Get some device info for setting share memory configuration
     int numDevices;
     cudaError_t istat;
+    cudaDeviceAttr devattr;
+    int value;
+    // things we want to query: 
+    // cudaDevAttrMaxSharedMemoryPerBlock
+    
+    //Maximum per block shared memory size on the device. This value can be opted into when using cudaFuncSetAttribute
+    // cudaDevAttrMaxSharedMemoryPerBlockOptin 
+
+    devattr = cudaDevAttrMaxSharedMemoryPerMultiprocessor;
+
+    istat = cudaDeviceGetAttribute ( &value, devattr, 0);
+
+    if(myRank == 0)
+      cout<<"cudaDevAttrMaxSharedMemoryPerMultiprocessor = "<< value << endl;
+
+
+    devattr = cudaDevAttrMaxSharedMemoryPerBlock;
+
+    istat = cudaDeviceGetAttribute ( &value, devattr, 0);
+
+    if(myRank == 0)
+      cout<<"cudaDevAttrMaxSharedMemoryPerBlock = "<< value << endl;
+
+
+    devattr = cudaDevAttrMaxSharedMemoryPerBlockOptin;
+
+    istat = cudaDeviceGetAttribute ( &value, devattr, 0);
+
+    if(myRank == 0)
+      cout<<"cudaDevAttrMaxSharedMemoryPerBlockOptin = "<< value << endl;
+
+
+    // now need to set the cudaFuncAttributeMaxDynamicSharedMemorySize for my sweep function:
+    cudaFuncAttribute funcattr;
+    funcattr = cudaFuncAttributeMaxDynamicSharedMemorySize;
+    value = 98304;
+    //attributes(global) subroutine GPU_sweep(...)
+    //istat = cudaFuncSetAttribute ( snswp3d_mod_gpu_sweep_, funcattr, value );
+
+    if(myRank == 0)
+      cout<<cudaGetErrorName(istat)<<endl;
+
+
     //istat = cudaGetDeviceCount(&numDevices);
     //cout<<"myRank = "<< myRank <<"numDevices = "<<numDevices<<"istat = "<<istat<<endl;
     // Using mps pipe directories to set device
@@ -138,11 +183,27 @@ int main(int argc, char* argv[])
     TAU_PROFILE("main()","",TAU_DEFAULT);
     TAU_PROFILE_SET_NODE(myRank);
 #endif
+
+    long N = 2000000000;
+
+    if(myRank == 0) 
+      cout<<" Allocating and filling 16 GB dummy array to simulate gpfs"<<endl;
     
+    if((myRank+1)%4 == 0) {
+      double * gpfs = new double[N];
+      for(int i=0; i<N; ++i){
+	gpfs[i] = i; // fill with dummy data
+      }
+    }
+
+
+
     //
     // build a MeshBase
-    if(myRank == 0)
-        cout<<" Building mesh..."<<endl;
+    if(myRank == 0) {
+      cout<<" gpfs simulated size is "<<N<<"*8 GB"<<endl;
+      cout<<" Building mesh..."<<endl;
+    }
     std::string meshFileName(argv[1]);
     MeshBase myMesh( meshFileName.c_str() );
 
