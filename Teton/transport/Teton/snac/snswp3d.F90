@@ -620,6 +620,8 @@ end subroutine setExitFlux
         maxCorner*NZONEPAR*8           ! volume
 
    !print *, "shared memory size = ", real(shmem)/real(1024), " kb"
+   !print *, "blocks = ", blocks
+   !print *, "threads = ", threads
 
    call GPU_sweep<<<blocks,threads,shmem,streamid>>>( anglebatch,                     &
                               nzones,               &

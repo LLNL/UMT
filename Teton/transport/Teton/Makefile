@@ -122,6 +122,10 @@ all: $(OBJECTS)
 
 include deps
 
+snac/snswp3d.o : snac/snswp3d.F90
+	$(F90) $(SWEEPFLAGS) -c $< -o $@
+
+
 ifeq ($(USE_TAU),on)
 snac/snflwxyz.o:snac/snflwxyz.F90
 	$(F90) -WF,-DPROFILING_ON $(F90FLAGS) -c $< -o $@

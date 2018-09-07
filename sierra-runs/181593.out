@@ -1,0 +1,929 @@
+starting jsrun with
+nodes = 64
+gpus used per socket = 2
+ranks_per_socket = 2
+cores_per_rank = 10
+used cores per socket = 20
+threads per rank = 20
+nvprof output at 
+1: 0: cudaDevAttrMaxSharedMemoryPerMultiprocessor = 98304
+1: 0: cudaDevAttrMaxSharedMemoryPerBlock = 49152
+1: 0: cudaDevAttrMaxSharedMemoryPerBlockOptin = 98304
+1: 0: cudaSuccess
+1: 0:  Executing UMT2015 Number of ranks =256
+1: 0:  and number of OMP threads  =20
+1: 0:  gridFileName: 8x8x4_32.cmg
+1: 0:  setting the number of groups=16
+1: 0:  Running with Product Quadrature 
+1: 0:  setting number of polar angles     = 8
+1: 0:  setting number of azimuthal angles = 4
+1: 0:  Building mesh...
+1: 0:  Mesh complete.
+1: 0:  Initializing Teton object...
+1: 0: [0] Done with resize!
+1: 0: [0] Done with resize!
+1: 0:     done.
+1: 0:  Starting time advance...
+1: 0:  sweep_mem =              33931000832
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 1 timerad = 3e-06
+1: 0:  
+1: 0: TempIters = 4 FluxIters = 4 GTAIters = 0
+1: 0: TrMax =     0.0031622776601684 in Zone 2 on Node 255
+1: 0: TeMax =     0.0031622776601684 in Zone 32775 on Node 255
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 9.05804             3.472230639949
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 2 timerad = 6.3e-05
+1: 0:  
+1: 0: TempIters = 5 FluxIters = 5 GTAIters = 0
+1: 0: TrMax =     0.364592199725 in Zone 41499 on Node 4
+1: 0: TeMax =     0.0075234782306745 in Zone 6145 on Node 4
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 12.184276             9.6675312889856
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 3 timerad = 0.000123
+1: 0:  
+1: 0: TempIters = 8 FluxIters = 8 GTAIters = 0
+1: 0: TrMax =     0.43263702948757 in Zone 51465 on Node 224
+1: 0: TeMax =     0.14207129578951 in Zone 41499 on Node 0
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 15.489604             18.471887334978
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 4 timerad = 0.000183
+1: 0:  
+1: 0: TempIters = 8 FluxIters = 8 GTAIters = 0
+1: 0: TrMax =     0.47777565112925 in Zone 51465 on Node 224
+1: 0: TeMax =     0.1876896408518 in Zone 51465 on Node 224
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 15.040913             26.8928821359
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 5 timerad = 0.000243
+1: 0:  
+1: 0: TempIters = 8 FluxIters = 8 GTAIters = 0
+1: 0: TrMax =     0.51233672654575 in Zone 47985 on Node 4
+1: 0: TeMax =     0.22394100235712 in Zone 51465 on Node 224
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 15.172997             35.30572650081
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 6 timerad = 0.000303
+1: 0:  
+1: 0: TempIters = 8 FluxIters = 8 GTAIters = 0
+1: 0: TrMax =     0.54062904636743 in Zone 48861 on Node 224
+1: 0: TeMax =     0.25504594781823 in Zone 48861 on Node 224
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 15.305245             43.740667801845
+1: 0:  
+1: 0:  SuOlson setting last step's dt=3.1e-05
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 7 timerad = 0.000334
+1: 0:  
+1: 0: TempIters = 5 FluxIters = 5 GTAIters = 0
+1: 0: TrMax =     0.55355936068459 in Zone 48861 on Node 224
+1: 0: TeMax =     0.27044841658418 in Zone 48861 on Node 224
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 11.017045             48.992051073874
+1: 0:  
+1: 0:  SuOlson Test version 1.0 completed at time= 0.000334  goalTime= 0.000334
+1: 3: [3] Done with resize!
+1: 3: [3] Done with resize!
+1: 136: [136] Done with resize!
+1: 136: [136] Done with resize!
+1: 11: [11] Done with resize!
+1: 11: [11] Done with resize!
+1: 232: [232] Done with resize!
+1: 232: [232] Done with resize!
+1: 74: [74] Done with resize!
+1: 74: [74] Done with resize!
+1: 2: [2] Done with resize!
+1: 2: [2] Done with resize!
+1: 202: [202] Done with resize!
+1: 202: [202] Done with resize!
+1: 123: [123] Done with resize!
+1: 123: [123] Done with resize!
+1: 18: [18] Done with resize!
+1: 18: [18] Done with resize!
+1: 35: [35] Done with resize!
+1: 35: [35] Done with resize!
+1: 58: [58] Done with resize!
+1: 58: [58] Done with resize!
+1: 248: [248] Done with resize!
+1: 248: [248] Done with resize!
+1: 170: [170] Done with resize!
+1: 170: [170] Done with resize!
+1: 219: [219] Done with resize!
+1: 219: [219] Done with resize!
+1: 192: [192] Done with resize!
+1: 192: [192] Done with resize!
+1: 177: [177] Done with resize!
+1: 177: [177] Done with resize!
+1: 163: [163] Done with resize!
+1: 163: [163] Done with resize!
+1: 225: [225] Done with resize!
+1: 225: [225] Done with resize!
+1: 154: [154] Done with resize!
+1: 154: [154] Done with resize!
+1: 242: [242] Done with resize!
+1: 242: [242] Done with resize!
+1: 137: [137] Done with resize!
+1: 137: [137] Done with resize!
+1: 42: [42] Done with resize!
+1: 42: [42] Done with resize!
+1: 99: [99] Done with resize!
+1: 99: [99] Done with resize!
+1: 50: [50] Done with resize!
+1: 50: [50] Done with resize!
+1: 114: [114] Done with resize!
+1: 114: [114] Done with resize!
+1: 9: [9] Done with resize!
+1: 9: [9] Done with resize!
+1: 66: [66] Done with resize!
+1: 66: [66] Done with resize!
+1: 27: [27] Done with resize!
+1: 27: [27] Done with resize!
+1: 83: [83] Done with resize!
+1: 83: [83] Done with resize!
+1: 91: [91] Done with resize!
+1: 91: [91] Done with resize!
+1: 131: [131] Done with resize!
+1: 131: [131] Done with resize!
+1: 185: [185] Done with resize!
+1: 185: [185] Done with resize!
+1: 106: [106] Done with resize!
+1: 106: [106] Done with resize!
+1: 144: [144] Done with resize!
+1: 144: [144] Done with resize!
+1: 210: [210] Done with resize!
+1: 210: [210] Done with resize!
+1: 234: [234] Done with resize!
+1: 234: [234] Done with resize!
+1: 73: [73] Done with resize!
+1: 73: [73] Done with resize!
+1: 1: [1] Done with resize!
+1: 1: [1] Done with resize!
+1: 203: [203] Done with resize!
+1: 203: [203] Done with resize!
+1: 122: [122] Done with resize!
+1: 122: [122] Done with resize!
+1: 19: [19] Done with resize!
+1: 19: [19] Done with resize!
+1: 32: [32] Done with resize!
+1: 32: [32] Done with resize!
+1: 56: [56] Done with resize!
+1: 56: [56] Done with resize!
+1: 250: [250] Done with resize!
+1: 250: [250] Done with resize!
+1: 171: [171] Done with resize!
+1: 171: [171] Done with resize!
+1: 195: [195] Done with resize!
+1: 195: [195] Done with resize!
+1: 216: [216] Done with resize!
+1: 216: [216] Done with resize!
+1: 178: [178] Done with resize!
+1: 178: [178] Done with resize!
+1: 161: [161] Done with resize!
+1: 161: [161] Done with resize!
+1: 224: [224] Done with resize!
+1: 224: [224] Done with resize!
+1: 155: [155] Done with resize!
+1: 155: [155] Done with resize!
+1: 243: [243] Done with resize!
+1: 243: [243] Done with resize!
+1: 139: [139] Done with resize!
+1: 139: [139] Done with resize!
+1: 97: [97] Done with resize!
+1: 97: [97] Done with resize!
+1: 49: [49] Done with resize!
+1: 49: [49] Done with resize!
+1: 113: [113] Done with resize!
+1: 113: [113] Done with resize!
+1: 8: [8] Done with resize!
+1: 8: [8] Done with resize!
+1: 64: [64] Done with resize!
+1: 64: [64] Done with resize!
+1: 25: [25] Done with resize!
+1: 25: [25] Done with resize!
+1: 211: [211] Done with resize!
+1: 211: [211] Done with resize!
+1: 46: [46] Done with resize!
+1: 46: [46] Done with resize!
+1: 6: [6] Done with resize!
+1: 6: [6] Done with resize!
+1: 201: [201] Done with resize!
+1: 201: [201] Done with resize!
+1: 121: [121] Done with resize!
+1: 121: [121] Done with resize!
+1: 90: [90] Done with resize!
+1: 90: [90] Done with resize!
+1: 80: [80] Done with resize!
+1: 80: [80] Done with resize!
+1: 17: [17] Done with resize!
+1: 17: [17] Done with resize!
+1: 132: [132] Done with resize!
+1: 132: [132] Done with resize!
+1: 33: [33] Done with resize!
+1: 33: [33] Done with resize!
+1: 59: [59] Done with resize!
+1: 59: [59] Done with resize!
+1: 249: [249] Done with resize!
+1: 249: [249] Done with resize!
+1: 184: [184] Done with resize!
+1: 184: [184] Done with resize!
+1: 217: [217] Done with resize!
+1: 217: [217] Done with resize!
+1: 193: [193] Done with resize!
+1: 193: [193] Done with resize!
+1: 107: [107] Done with resize!
+1: 107: [107] Done with resize!
+1: 41: [41] Done with resize!
+1: 41: [41] Done with resize!
+1: 239: [239] Done with resize!
+1: 239: [239] Done with resize!
+1: 75: [75] Done with resize!
+1: 75: [75] Done with resize!
+1: 93: [93] Done with resize!
+1: 93: [93] Done with resize!
+1: 85: [85] Done with resize!
+1: 85: [85] Done with resize!
+1: 129: [129] Done with resize!
+1: 129: [129] Done with resize!
+1: 190: [190] Done with resize!
+1: 190: [190] Done with resize!
+1: 169: [169] Done with resize!
+1: 169: [169] Done with resize!
+1: 148: [148] Done with resize!
+1: 148: [148] Done with resize!
+1: 109: [109] Done with resize!
+1: 109: [109] Done with resize!
+1: 179: [179] Done with resize!
+1: 179: [179] Done with resize!
+1: 162: [162] Done with resize!
+1: 162: [162] Done with resize!
+1: 146: [146] Done with resize!
+1: 146: [146] Done with resize!
+1: 226: [226] Done with resize!
+1: 226: [226] Done with resize!
+1: 241: [241] Done with resize!
+1: 241: [241] Done with resize!
+1: 152: [152] Done with resize!
+1: 152: [152] Done with resize!
+1: 138: [138] Done with resize!
+1: 138: [138] Done with resize!
+1: 103: [103] Done with resize!
+1: 103: [103] Done with resize!
+1: 51: [51] Done with resize!
+1: 51: [51] Done with resize!
+1: 233: [233] Done with resize!
+1: 233: [233] Done with resize!
+1: 112: [112] Done with resize!
+1: 112: [112] Done with resize!
+1: 78: [78] Done with resize!
+1: 78: [78] Done with resize!
+1: 10: [10] Done with resize!
+1: 10: [10] Done with resize!
+1: 70: [70] Done with resize!
+1: 70: [70] Done with resize!
+1: 26: [26] Done with resize!
+1: 26: [26] Done with resize!
+1: 172: [172] Done with resize!
+1: 172: [172] Done with resize!
+1: 182: [182] Done with resize!
+1: 182: [182] Done with resize!
+1: 228: [228] Done with resize!
+1: 228: [228] Done with resize!
+1: 141: [141] Done with resize!
+1: 141: [141] Done with resize!
+1: 96: [96] Done with resize!
+1: 96: [96] Done with resize!
+1: 65: [65] Done with resize!
+1: 65: [65] Done with resize!
+1: 31: [31] Done with resize!
+1: 31: [31] Done with resize!
+1: 38: [38] Done with resize!
+1: 38: [38] Done with resize!
+1: 60: [60] Done with resize!
+1: 60: [60] Done with resize!
+1: 111: [111] Done with resize!
+1: 111: [111] Done with resize!
+1: 176: [176] Done with resize!
+1: 176: [176] Done with resize!
+1: 221: [221] Done with resize!
+1: 221: [221] Done with resize!
+1: 160: [160] Done with resize!
+1: 160: [160] Done with resize!
+1: 208: [208] Done with resize!
+1: 208: [208] Done with resize!
+1: 227: [227] Done with resize!
+1: 227: [227] Done with resize!
+1: 153: [153] Done with resize!
+1: 153: [153] Done with resize!
+1: 145: [145] Done with resize!
+1: 145: [145] Done with resize!
+1: 240: [240] Done with resize!
+1: 240: [240] Done with resize!
+1: 52: [52] Done with resize!
+1: 52: [52] Done with resize!
+1: 0:  Computing error check along x=0.00195312, y=0.00195312
+1: 45: [45] Done with resize!
+1: 45: [45] Done with resize!
+1: 102: [102] Done with resize!
+1: 102: [102] Done with resize!
+1: 48: [48] Done with resize!
+1: 48: [48] Done with resize!
+1: 15: [15] Done with resize!
+1: 15: [15] Done with resize!
+1: 235: [235] Done with resize!
+1: 235: [235] Done with resize!
+1: 5: [5] Done with resize!
+1: 5: [5] Done with resize!
+1: 79: [79] Done with resize!
+1: 79: [79] Done with resize!
+1: 206: [206] Done with resize!
+1: 206: [206] Done with resize!
+1: 115: [115] Done with resize!
+1: 115: [115] Done with resize!
+1: 20: [20] Done with resize!
+1: 20: [20] Done with resize!
+1: 124: [124] Done with resize!
+1: 124: [124] Done with resize!
+1: 200: [200] Done with resize!
+1: 200: [200] Done with resize!
+1: 120: [120] Done with resize!
+1: 120: [120] Done with resize!
+1: 34: [34] Done with resize!
+1: 34: [34] Done with resize!
+1: 215: [215] Done with resize!
+1: 215: [215] Done with resize!
+1: 82: [82] Done with resize!
+1: 82: [82] Done with resize!
+1: 252: [252] Done with resize!
+1: 252: [252] Done with resize!
+1: 24: [24] Done with resize!
+1: 24: [24] Done with resize!
+1: 88: [88] Done with resize!
+1: 88: [88] Done with resize!
+1: 194: [194] Done with resize!
+1: 194: [194] Done with resize!
+1: 71: [71] Done with resize!
+1: 71: [71] Done with resize!
+1: 104: [104] Done with resize!
+1: 104: [104] Done with resize!
+1: 197: [197] Done with resize!
+1: 197: [197] Done with resize!
+1: 164: [164] Done with resize!
+1: 164: [164] Done with resize!
+1: 156: [156] Done with resize!
+1: 156: [156] Done with resize!
+1: 246: [246] Done with resize!
+1: 246: [246] Done with resize!
+1: 116: [116] Done with resize!
+1: 116: [116] Done with resize!
+1: 57: [57] Done with resize!
+1: 57: [57] Done with resize!
+1: 187: [187] Done with resize!
+1: 187: [187] Done with resize!
+1: 251: [251] Done with resize!
+1: 251: [251] Done with resize!
+1: 218: [218] Done with resize!
+1: 218: [218] Done with resize!
+1: 173: [173] Done with resize!
+1: 173: [173] Done with resize!
+1: 28: [28] Done with resize!
+1: 28: [28] Done with resize!
+1: 133: [133] Done with resize!
+1: 133: [133] Done with resize!
+1: 189: [189] Done with resize!
+1: 189: [189] Done with resize!
+1: 140: [140] Done with resize!
+1: 140: [140] Done with resize!
+1: 183: [183] Done with resize!
+1: 183: [183] Done with resize!
+1: 230: [230] Done with resize!
+1: 230: [230] Done with resize!
+1: 238: [238] Done with resize!
+1: 238: [238] Done with resize!
+1: 72: [72] Done with resize!
+1: 72: [72] Done with resize!
+1: 98: [98] Done with resize!
+1: 98: [98] Done with resize!
+1: 86: [86] Done with resize!
+1: 86: [86] Done with resize!
+1: 130: [130] Done with resize!
+1: 130: [130] Done with resize!
+1: 7: [7] Done with resize!
+1: 7: [7] Done with resize!
+1: 16: [16] Done with resize!
+1: 16: [16] Done with resize!
+1: 43: [43] Done with resize!
+1: 43: [43] Done with resize!
+1: 63: [63] Done with resize!
+1: 63: [63] Done with resize!
+1: 67: [67] Done with resize!
+1: 67: [67] Done with resize!
+1: 12: [12] Done with resize!
+1: 12: [12] Done with resize!
+1: 36: [36] Done with resize!
+1: 36: [36] Done with resize!
+1: 21: [21] Done with resize!
+1: 21: [21] Done with resize!
+1: 108: [108] Done with resize!
+1: 108: [108] Done with resize!
+1: 209: [209] Done with resize!
+1: 209: [209] Done with resize!
+1: 147: [147] Done with resize!
+1: 147: [147] Done with resize!
+1: 255: [255] Done with resize!
+1: 255: [255] Done with resize!
+1: 0:  z=    0.01 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653763
+1: 0:  z=     0.1 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653763
+1: 0:  z= 0.17783 tInterpolated=  0.00533376 tExact=    0.00468 error=0.000653761
+1: 0:  z= 0.31623 tInterpolated=  0.00533263 tExact=    0.00468 error=0.000652631
+1: 0:  z=    0.45 tInterpolated=  0.00501882 tExact=    0.00455 error=0.000468815
+1: 0:  z=     0.5 tInterpolated=  0.00267571 tExact=    0.00234 error=0.000335706
+1: 0:  z= 0.56234 tInterpolated= 0.000199227 tExact=      5e-05 error=0.000149227
+1: 0:  z=    0.75 tInterpolated= 5.43071e-08 tExact=          0 error=5.43071e-08
+1: 0: ngroups = 16
+1: 0: nangsn = 256
+1: 0: tot zones = 13422080
+1: 0: numUnknowns = 4.39815e+11
+1: 68: [68] Done with resize!
+1: 68: [68] Done with resize!
+1: 151: [151] Done with resize!
+1: 151: [151] Done with resize!
+1: 77: [77] Done with resize!
+1: 77: [77] Done with resize!
+1: 101: [101] Done with resize!
+1: 101: [101] Done with resize!
+1: 168: [168] Done with resize!
+1: 168: [168] Done with resize!
+1: 47: [47] Done with resize!
+1: 47: [47] Done with resize!
+1: 205: [205] Done with resize!
+1: 205: [205] Done with resize!
+1: 117: [117] Done with resize!
+1: 117: [117] Done with resize!
+1: 81: [81] Done with resize!
+1: 81: [81] Done with resize!
+1: 134: [134] Done with resize!
+1: 134: [134] Done with resize!
+1: 125: [125] Done with resize!
+1: 125: [125] Done with resize!
+1: 212: [212] Done with resize!
+1: 212: [212] Done with resize!
+1: 92: [92] Done with resize!
+1: 92: [92] Done with resize!
+1: 181: [181] Done with resize!
+1: 181: [181] Done with resize!
+1: 89: [89] Done with resize!
+1: 89: [89] Done with resize!
+1: 105: [105] Done with resize!
+1: 105: [105] Done with resize!
+1: 157: [157] Done with resize!
+1: 157: [157] Done with resize!
+1: 231: [231] Done with resize!
+1: 231: [231] Done with resize!
+1: 244: [244] Done with resize!
+1: 244: [244] Done with resize!
+1: 186: [186] Done with resize!
+1: 186: [186] Done with resize!
+1: 220: [220] Done with resize!
+1: 220: [220] Done with resize!
+1: 143: [143] Done with resize!
+1: 143: [143] Done with resize!
+1: 37: [37] Done with resize!
+1: 37: [37] Done with resize!
+1: 174: [174] Done with resize!
+1: 174: [174] Done with resize!
+1: 188: [188] Done with resize!
+1: 188: [188] Done with resize!
+1: 30: [30] Done with resize!
+1: 30: [30] Done with resize!
+1: 69: [69] Done with resize!
+1: 69: [69] Done with resize!
+1: 237: [237] Done with resize!
+1: 237: [237] Done with resize!
+1: 14: [14] Done with resize!
+1: 14: [14] Done with resize!
+1: 87: [87] Done with resize!
+1: 87: [87] Done with resize!
+1: 62: [62] Done with resize!
+1: 62: [62] Done with resize!
+1: 4: [4] Done with resize!
+1: 4: [4] Done with resize!
+1: 128: [128] Done with resize!
+1: 128: [128] Done with resize!
+1: 40: [40] Done with resize!
+1: 40: [40] Done with resize!
+1: 55: [55] Done with resize!
+1: 55: [55] Done with resize!
+1: 110: [110] Done with resize!
+1: 110: [110] Done with resize!
+1: 22: [22] Done with resize!
+1: 22: [22] Done with resize!
+1: 199: [199] Done with resize!
+1: 199: [199] Done with resize!
+1: 167: [167] Done with resize!
+1: 167: [167] Done with resize!
+1: 149: [149] Done with resize!
+1: 149: [149] Done with resize!
+1: 95: [95] Done with resize!
+1: 95: [95] Done with resize!
+1: 44: [44] Done with resize!
+1: 44: [44] Done with resize!
+1: 253: [253] Done with resize!
+1: 253: [253] Done with resize!
+1: 84: [84] Done with resize!
+1: 84: [84] Done with resize!
+1: 119: [119] Done with resize!
+1: 119: [119] Done with resize!
+1: 207: [207] Done with resize!
+1: 207: [207] Done with resize!
+1: 126: [126] Done with resize!
+1: 126: [126] Done with resize!
+1: 214: [214] Done with resize!
+1: 214: [214] Done with resize!
+1: 135: [135] Done with resize!
+1: 135: [135] Done with resize!
+1: 223: [223] Done with resize!
+1: 223: [223] Done with resize!
+1: 76: [76] Done with resize!
+1: 76: [76] Done with resize!
+1: 229: [229] Done with resize!
+1: 229: [229] Done with resize!
+1: 247: [247] Done with resize!
+1: 247: [247] Done with resize!
+1: 54: [54] Done with resize!
+1: 54: [54] Done with resize!
+1: 61: [61] Done with resize!
+1: 61: [61] Done with resize!
+1: 150: [150] Done with resize!
+1: 150: [150] Done with resize!
+1: 13: [13] Done with resize!
+1: 13: [13] Done with resize!
+1: 39: [39] Done with resize!
+1: 39: [39] Done with resize!
+1: 23: [23] Done with resize!
+1: 23: [23] Done with resize!
+1: 118: [118] Done with resize!
+1: 118: [118] Done with resize!
+1: 29: [29] Done with resize!
+1: 29: [29] Done with resize!
+1: 94: [94] Done with resize!
+1: 94: [94] Done with resize!
+1: 180: [180] Done with resize!
+1: 180: [180] Done with resize!
+1: 222: [222] Done with resize!
+1: 222: [222] Done with resize!
+1: 191: [191] Done with resize!
+1: 191: [191] Done with resize!
+1: 159: [159] Done with resize!
+1: 159: [159] Done with resize!
+1: 100: [100] Done with resize!
+1: 100: [100] Done with resize!
+1: 166: [166] Done with resize!
+1: 166: [166] Done with resize!
+1: 196: [196] Done with resize!
+1: 196: [196] Done with resize!
+1: 127: [127] Done with resize!
+1: 127: [127] Done with resize!
+1: 142: [142] Done with resize!
+1: 142: [142] Done with resize!
+1: 175: [175] Done with resize!
+1: 175: [175] Done with resize!
+1: 213: [213] Done with resize!
+1: 213: [213] Done with resize!
+1: 254: [254] Done with resize!
+1: 254: [254] Done with resize!
+1: 204: [204] Done with resize!
+1: 204: [204] Done with resize!
+1: 236: [236] Done with resize!
+1: 236: [236] Done with resize!
+1: 165: [165] Done with resize!
+1: 165: [165] Done with resize!
+1: 53: [53] Done with resize!
+1: 53: [53] Done with resize!
+1: 198: [198] Done with resize!
+1: 198: [198] Done with resize!
+1: 245: [245] Done with resize!
+1: 245: [245] Done with resize!
+1: 158: [158] Done with resize!
+1: 158: [158] Done with resize!
+1: 0: cumulativeIterationCount= 46 cumulativeWorkTime=93.2681 s.
+1: 0: figure of merit = 2.16917e+11
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@sierra4368>
+Subject: Job 181593: <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -nnodes 64;##BSUB -csm y;##BSUB -R "1*{select[LN]} + 1344*{select[CN&&(hname!=c699c250)&&(type==any)]span[ptile=42]}"; ##BSUB -alloc_flags gpumps;##BSUB -alloc_flags smt2;#BSUB -G guests;#BSUB -q pbatch;#BSUB -core_isolation 2;#BSUB -W 20;#---------------------------------------;ulimit -s 10240; export OMP_NUM_THREADS=20;export CUDA_LAUNCH_BLOCKING=0; export OMP_STACKSIZE=64M;export PAMI_ENABLE_STRIPING=1; export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so; #export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so; echo 'starting jsrun with';echo "nodes = 64";echo "gpus used per socket = 2";echo "ranks_per_socket = 2";echo "cores_per_rank = 10";echo "used cores per socket = 20";echo "threads per rank = 20"; export RANKS_PER_SOCKET=2;export RANKS_PER_GPU=1; # profiling stuff:;export PROFILE_RANK=-1  #rank where device-bind will run nvprof;#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof";echo "nvprof output at ";  # -mxm; tstamp=09_07_10_51_39; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 256   --tasks_per_rs 1 --cpu_per_rs 10  --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x8x4_32.cmg 16 2 16 8 4; # jsrun --smpiargs="-mxm --mca btl_openib_warn_default_gid_prefix 0 --mca mpi_warn_on_fork 0" #   --nrs 2  --tasks_per_rs 2 --cpu_per_rs 20 #   --gpu_per_rs 2 --bind=proportional-packed:10 -d plane:2  #   ../../sm60/Teton/SuOlsonTest 2x2x1_34.cmg 16 2 16 8 4> in cluster <sierra> Done
+
+Job <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -nnodes 64;##BSUB -csm y;##BSUB -R "1*{select[LN]} + 1344*{select[CN&&(hname!=c699c250)&&(type==any)]span[ptile=42]}"; ##BSUB -alloc_flags gpumps;##BSUB -alloc_flags smt2;#BSUB -G guests;#BSUB -q pbatch;#BSUB -core_isolation 2;#BSUB -W 20;#---------------------------------------;ulimit -s 10240; export OMP_NUM_THREADS=20;export CUDA_LAUNCH_BLOCKING=0; export OMP_STACKSIZE=64M;export PAMI_ENABLE_STRIPING=1; export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so; #export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so; echo 'starting jsrun with';echo "nodes = 64";echo "gpus used per socket = 2";echo "ranks_per_socket = 2";echo "cores_per_rank = 10";echo "used cores per socket = 20";echo "threads per rank = 20"; export RANKS_PER_SOCKET=2;export RANKS_PER_GPU=1; # profiling stuff:;export PROFILE_RANK=-1  #rank where device-bind will run nvprof;#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof";echo "nvprof output at ";  # -mxm; tstamp=09_07_10_51_39; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 256   --tasks_per_rs 1 --cpu_per_rs 10  --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x8x4_32.cmg 16 2 16 8 4; # jsrun --smpiargs="-mxm --mca btl_openib_warn_default_gid_prefix 0 --mca mpi_warn_on_fork 0" #   --nrs 2  --tasks_per_rs 2 --cpu_per_rs 20 #   --gpu_per_rs 2 --bind=proportional-packed:10 -d plane:2  #   ../../sm60/Teton/SuOlsonTest 2x2x1_34.cmg 16 2 16 8 4> was submitted from host <sierra4359> by user <dappelh> in cluster <sierra> at Fri Sep  7 10:51:39 2018
+Job was executed on host(s) <1*sierra4368>, in queue <pbatch>, as user <dappelh> in cluster <sierra> at Fri Sep  7 10:51:41 2018
+                            <40*sierra2547>
+                            <40*sierra2548>
+                            <40*sierra2549>
+                            <40*sierra3291>
+                            <40*sierra3293>
+                            <40*sierra3294>
+                            <40*sierra3295>
+                            <40*sierra3296>
+                            <40*sierra3297>
+                            <40*sierra3298>
+                            <40*sierra3299>
+                            <40*sierra2550>
+                            <40*sierra2551>
+                            <40*sierra2554>
+                            <40*sierra2555>
+                            <40*sierra2556>
+                            <40*sierra2557>
+                            <40*sierra2558>
+                            <40*sierra2559>
+                            <40*sierra2560>
+                            <40*sierra2561>
+                            <40*sierra2562>
+                            <40*sierra2563>
+                            <40*sierra2564>
+                            <40*sierra2565>
+                            <40*sierra2566>
+                            <40*sierra2567>
+                            <40*sierra2568>
+                            <40*sierra2569>
+                            <40*sierra2570>
+                            <40*sierra2571>
+                            <40*sierra2068>
+                            <40*sierra2572>
+                            <40*sierra2069>
+                            <40*sierra2573>
+                            <40*sierra2574>
+                            <40*sierra2575>
+                            <40*sierra2576>
+                            <40*sierra2577>
+                            <40*sierra2578>
+                            <40*sierra2579>
+                            <40*sierra2070>
+                            <40*sierra2071>
+                            <40*sierra2072>
+                            <40*sierra2073>
+                            <40*sierra2074>
+                            <40*sierra2075>
+                            <40*sierra2076>
+                            <40*sierra2580>
+                            <40*sierra2077>
+                            <40*sierra2581>
+                            <40*sierra2078>
+                            <40*sierra2582>
+                            <40*sierra2079>
+                            <40*sierra2583>
+                            <40*sierra2584>
+                            <40*sierra2585>
+                            <40*sierra2586>
+                            <40*sierra2587>
+                            <40*sierra2588>
+                            <40*sierra2589>
+                            <40*sierra2080>
+                            <40*sierra2081>
+                            <40*sierra2082>
+</g/g19/dappelh> was used as the home directory.
+</g/g19/dappelh/code/umt2016-managed/sierra-runs> was used as the working directory.
+Started at Fri Sep  7 10:51:41 2018
+Terminated at Fri Sep  7 10:56:06 2018
+Results reported at Fri Sep  7 10:56:06 2018
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -o %J.out
+#BSUB -e %J.err
+#BSUB -nnodes 64
+##BSUB -csm y
+##BSUB -R "1*{select[LN]} + 1344*{select[CN&&(hname!=c699c250)&&(type==any)]span[ptile=42]}"
+
+##BSUB -alloc_flags gpumps
+##BSUB -alloc_flags smt2
+#BSUB -G guests
+#BSUB -q pbatch
+#BSUB -core_isolation 2
+#BSUB -W 20
+#---------------------------------------
+ulimit -s 10240
+
+export OMP_NUM_THREADS=20
+export CUDA_LAUNCH_BLOCKING=0
+
+export OMP_STACKSIZE=64M
+export PAMI_ENABLE_STRIPING=1
+
+export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so
+
+#export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so
+
+echo 'starting jsrun with'
+echo "nodes = 64"
+echo "gpus used per socket = 2"
+echo "ranks_per_socket = 2"
+echo "cores_per_rank = 10"
+echo "used cores per socket = 20"
+echo "threads per rank = 20"
+
+export RANKS_PER_SOCKET=2
+export RANKS_PER_GPU=1
+
+# profiling stuff:
+export PROFILE_RANK=-1  #rank where device-bind will run nvprof
+#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof"
+echo "nvprof output at "
+
+
+# -mxm
+
+tstamp=09_07_10_51_39; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 256   --tasks_per_rs 1 --cpu_per_rs 10  --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x8x4_32.cmg 16 2 16 8 4
+
+# jsrun --smpiargs="-mxm --mca btl_openib_warn_default_gid_prefix 0 --mca mpi_warn_on_fork 0" #   --nrs 2  --tasks_per_rs 2 --cpu_per_rs 20 #   --gpu_per_rs 2 --bind=proportional-packed:10 -d plane:2  #   ../../sm60/Teton/SuOlsonTest 2x2x1_34.cmg 16 2 16 8 4
+
+
+
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <181593.err> for stderr output of this job.
+

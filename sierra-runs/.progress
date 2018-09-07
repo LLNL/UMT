@@ -1,0 +1,78 @@
+----- CSM Allocation ID: 128813
+09-07-2018 10:51:55:183: NS  1 (  Launch): Allocating resources for 256 processes
+09-07-2018 10:51:55:222: NS  1 (  Launch): Broadcast launch message to 64 servers (see also progress on server sierra2068)
+09-07-2018 10:51:55:526: NS  1 (  Launch): All 64 servers reported as running
+09-07-2018 10:52:04:239: NS  1 (   Fence):   1.6% [1/64]: Num 1: (Pending) Received data from server sierra2073 (First to report)
+09-07-2018 10:52:05:276: NS  1 (   Fence):   1.6% [1/64]: Num 1: Received data from server sierra2070 (First to report)
+09-07-2018 10:52:08:851: NS  1 (   Fence): Num 1: Broadcast fence release message.
+09-07-2018 10:52:08:851: NS  1 (   Fence): Num 1: Broadcast fence release message. Complete.
+09-07-2018 10:52:09:360: NS  1 (   Fence):   1.6% [1/64]: Num 2: (Pending) Received data from server sierra3298 (First to report)
+09-07-2018 10:52:09:382: NS  1 (   Fence):   1.6% [1/64]: Num 2: Received data from server sierra2070 (First to report)
+09-07-2018 10:52:09:384: NS  1 (   Fence): Num 2: Broadcast fence release message.
+09-07-2018 10:52:09:386: NS  1 (   Fence): Num 2: Broadcast fence release message. Complete.
+09-07-2018 10:52:09:787: NS  1 (   Fence):   1.6% [1/64]: Num 3: (Pending) Received data from server sierra2078 (First to report)
+09-07-2018 10:52:09:787: NS  1 (   Fence):   1.6% [1/64]: Num 3: Received data from server sierra2550 (First to report)
+09-07-2018 10:52:09:991: NS  1 (   Fence): Num 3: Broadcast fence release message.
+09-07-2018 10:52:09:991: NS  1 (   Fence): Num 3: Broadcast fence release message. Complete.
+09-07-2018 10:52:09:993: NS  1 (   Fence):   1.6% [1/64]: Num 4: (Pending) Received data from server sierra2078 (First to report)
+09-07-2018 10:52:09:998: NS  1 (   Fence):   1.6% [1/64]: Num 4: Received data from server sierra2551 (First to report)
+09-07-2018 10:52:10:002: NS  1 (   Fence): Num 4: Broadcast fence release message.
+09-07-2018 10:52:10:002: NS  1 (   Fence): Num 4: Broadcast fence release message. Complete.
+----- CSM Allocation ID: 128814
+09-07-2018 10:53:12:741: NS  1 (  Launch): Allocating resources for 864 processes
+09-07-2018 10:53:12:799: NS  1 (  Launch): Broadcast launch message to 216 servers (see also progress on server sierra2083)
+09-07-2018 10:53:13:796: NS  1 (  Launch): All 216 servers reported as running
+09-07-2018 10:53:51:840: NS  1 (   Fence):   0.5% [1/216]: Num 1: (Pending) Received data from server sierra3311 (First to report)
+09-07-2018 10:53:54:218: NS  1 (   Fence):   0.5% [1/216]: Num 1: Received data from server sierra3824 (First to report)
+09-07-2018 10:53:56:927: NS  1 (   Fence): Num 1: Broadcast fence release message.
+09-07-2018 10:53:56:928: NS  1 (   Fence): Num 1: Broadcast fence release message. Complete.
+09-07-2018 10:53:58:602: NS  1 (   Fence):   0.5% [1/216]: Num 2: (Pending) Received data from server sierra2595 (First to report)
+09-07-2018 10:53:58:662: NS  1 (   Fence):   0.5% [1/216]: Num 2: Received data from server sierra4055 (First to report)
+09-07-2018 10:53:58:844: NS  1 (   Fence): Num 2: Broadcast fence release message.
+09-07-2018 10:53:58:848: NS  1 (   Fence): Num 2: Broadcast fence release message. Complete.
+09-07-2018 10:54:03:422: NS  1 (   Fence):   0.5% [1/216]: Num 3: (Pending) Received data from server sierra2592 (First to report)
+09-07-2018 10:54:03:441: NS  1 (   Fence):   0.5% [1/216]: Num 3: Received data from server sierra3803 (First to report)
+09-07-2018 10:54:05:568: NS  1 (   Fence): Num 3: Broadcast fence release message.
+09-07-2018 10:54:05:568: NS  1 (   Fence): Num 3: Broadcast fence release message. Complete.
+09-07-2018 10:54:05:572: NS  1 (   Fence):   0.5% [1/216]: Num 4: (Pending) Received data from server sierra2090 (First to report)
+09-07-2018 10:54:05:572: NS  1 (   Fence):   0.5% [1/216]: Num 4: Received data from server sierra2090 (First to report)
+09-07-2018 10:54:05:612: NS  1 (   Fence): Num 4: Broadcast fence release message.
+09-07-2018 10:54:05:613: NS  1 (   Fence): Num 4: Broadcast fence release message. Complete.
+09-07-2018 10:55:09:171: NS  1 (   Fence):   1.6% [1/64]: Num 5: (Pending) Received data from server sierra2568 (First to report)
+09-07-2018 10:55:09:182: NS  1 (   Fence):   1.6% [1/64]: Num 5: Received data from server sierra2562 (First to report)
+09-07-2018 10:55:09:182: NS  1 (   Fence): Num 5: Broadcast fence release message.
+09-07-2018 10:55:09:183: NS  1 (   Fence): Num 5: Broadcast fence release message. Complete.
+09-07-2018 10:55:12:320: NS  1 (Shutdown): 4 process(es) exited on server sierra2551 (First to report)
+09-07-2018 10:55:12:589: NS  1 (Shutdown): All 64 servers reported as finished
+09-07-2018 10:58:05:577: NS  1 (   Fence):   0.5% [1/216]: Num 5: (Pending) Received data from server sierra2590 (First to report)
+09-07-2018 10:58:05:606: NS  1 (   Fence):   0.5% [1/216]: Num 5: Received data from server sierra3800 (First to report)
+09-07-2018 10:58:05:606: NS  1 (   Fence): Num 5: Broadcast fence release message.
+09-07-2018 10:58:05:606: NS  1 (   Fence): Num 5: Broadcast fence release message. Complete.
+09-07-2018 10:58:10:120: NS  1 (Shutdown): 4 process(es) exited on server sierra3332 (First to report)
+09-07-2018 10:58:10:427: NS  1 (Shutdown): All 216 servers reported as finished
+----- CSM Allocation ID: 128815
+09-07-2018 10:59:17:348: NS  1 (  Launch): Allocating resources for 256 processes
+09-07-2018 10:59:17:390: NS  1 (  Launch): Broadcast launch message to 64 servers (see also progress on server sierra2068)
+09-07-2018 10:59:17:688: NS  1 (  Launch): All 64 servers reported as running
+09-07-2018 10:59:23:969: NS  1 (   Fence):   1.6% [1/64]: Num 1: (Pending) Received data from server sierra2557 (First to report)
+09-07-2018 10:59:28:768: NS  1 (   Fence):   1.6% [1/64]: Num 1: Received data from server sierra2554 (First to report)
+09-07-2018 10:59:30:834: NS  1 (   Fence): Num 1: Broadcast fence release message.
+09-07-2018 10:59:30:834: NS  1 (   Fence): Num 1: Broadcast fence release message. Complete.
+09-07-2018 10:59:31:343: NS  1 (   Fence):   1.6% [1/64]: Num 2: (Pending) Received data from server sierra2071 (First to report)
+09-07-2018 10:59:31:353: NS  1 (   Fence):   1.6% [1/64]: Num 2: Received data from server sierra2551 (First to report)
+09-07-2018 10:59:31:370: NS  1 (   Fence): Num 2: Broadcast fence release message.
+09-07-2018 10:59:31:370: NS  1 (   Fence): Num 2: Broadcast fence release message. Complete.
+09-07-2018 10:59:31:772: NS  1 (   Fence):   1.6% [1/64]: Num 3: (Pending) Received data from server sierra2555 (First to report)
+09-07-2018 10:59:31:773: NS  1 (   Fence):   1.6% [1/64]: Num 3: Received data from server sierra2080 (First to report)
+09-07-2018 10:59:31:978: NS  1 (   Fence): Num 3: Broadcast fence release message.
+09-07-2018 10:59:31:978: NS  1 (   Fence): Num 3: Broadcast fence release message. Complete.
+09-07-2018 10:59:31:982: NS  1 (   Fence):   1.6% [1/64]: Num 4: (Pending) Received data from server sierra2074 (First to report)
+09-07-2018 10:59:31:991: NS  1 (   Fence):   1.6% [1/64]: Num 4: Received data from server sierra2571 (First to report)
+09-07-2018 10:59:31:996: NS  1 (   Fence): Num 4: Broadcast fence release message.
+09-07-2018 10:59:31:996: NS  1 (   Fence): Num 4: Broadcast fence release message. Complete.
+09-07-2018 11:02:33:605: NS  1 (   Fence):   1.6% [1/64]: Num 5: (Pending) Received data from server sierra2582 (First to report)
+09-07-2018 11:02:33:612: NS  1 (   Fence):   1.6% [1/64]: Num 5: Received data from server sierra2081 (First to report)
+09-07-2018 11:02:33:612: NS  1 (   Fence): Num 5: Broadcast fence release message.
+09-07-2018 11:02:33:612: NS  1 (   Fence): Num 5: Broadcast fence release message. Complete.
+09-07-2018 11:02:36:810: NS  1 (Shutdown): 4 process(es) exited on server sierra2080 (First to report)
+09-07-2018 11:02:37:031: NS  1 (Shutdown): All 64 servers reported as finished

@@ -1,0 +1,2348 @@
+starting jsrun with
+nodes = 216
+gpus used per socket = 2
+ranks_per_socket = 2
+cores_per_rank = 10
+used cores per socket = 20
+threads per rank = 20
+nvprof output at 
+1: 0: cudaDevAttrMaxSharedMemoryPerMultiprocessor = 98304
+1: 0: cudaDevAttrMaxSharedMemoryPerBlock = 49152
+1: 0: cudaDevAttrMaxSharedMemoryPerBlockOptin = 98304
+1: 0: cudaSuccess
+1: 0:  Executing UMT2015 Number of ranks =864
+1: 0:  and number of OMP threads  =20
+1: 0:  gridFileName: 8x9x12_32.cmg
+1: 0:  setting the number of groups=16
+1: 0:  Running with Product Quadrature 
+1: 0:  setting number of polar angles     = 8
+1: 0:  setting number of azimuthal angles = 4
+1: 0:  Building mesh...
+1: 0:  Mesh complete.
+1: 0:  Initializing Teton object...
+1: 0: [0] Done with resize!
+1: 0: [0] Done with resize!
+1: 0:     done.
+1: 0:  Starting time advance...
+1: 0:  sweep_mem =              33931000832
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 1 timerad = 3e-06
+1: 0:  
+1: 0: TempIters = 4 FluxIters = 4 GTAIters = 0
+1: 0: TrMax =     0.0031622776601684 in Zone 33878 on Node 93
+1: 0: TeMax =     0.0031622776601684 in Zone 33860 on Node 862
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 9.438692             3.547240120999
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 2 timerad = 6.3e-05
+1: 0:  
+1: 0: TempIters = 6 FluxIters = 6 GTAIters = 0
+1: 0: TrMax =     0.36459219972341 in Zone 42473 on Node 108
+1: 0: TeMax =     0.0075234782305985 in Zone 42473 on Node 108
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 15.754145             12.198264489067
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 3 timerad = 0.000123
+1: 0:  
+1: 0: TempIters = 11 FluxIters = 11 GTAIters = 0
+1: 0: TrMax =     0.43263702948666 in Zone 51411 on Node 0
+1: 0: TeMax =     0.14207129578859 in Zone 42473 on Node 108
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 21.643311             25.244546735077
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 4 timerad = 0.000183
+1: 0:  
+1: 0: TempIters = 10 FluxIters = 10 GTAIters = 0
+1: 0: TrMax =     0.47777565112893 in Zone 39737 on Node 756
+1: 0: TeMax =     0.18768964084957 in Zone 42473 on Node 108
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 20.542705             37.501797058067
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux ite1: 0: rations =             1
+1: 0: CYCLE 5 timerad = 0.000243
+1: 0:  
+1: 0: TempIters = 20 FluxIters = 20 GTAIters = 0
+1: 0: TrMax =     0.51233402081295 in Zone 37903 on Node 385
+1: 0: TeMax =     0.22394064701626 in Zone 37903 on Node 385
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 35.938753             60.852426027093
+1: 0:  
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             3
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 6 timerad = 0.000303
+1: 0:  
+1: 0: TempIters = 8 FluxIters = 8 GTAIters = 0
+1: 0: TrMax =     0.54062257757946 in Zone 30628 on Node 265
+1: 0: TeMax =     0.25504423276482 in Zone 45871 on Node 577
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 18.958613             72.135050771059
+1: 0:  
+1: 0:  SuOlson setting last step's dt=3.1e-05
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             2
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0:  set the func attribute with error = 
+1: 0:  no error                                                                                                                        
+1: 0:  True flux iterations =             1
+1: 0: CYCLE 7 timerad = 0.000334
+1: 0:  
+1: 0: TempIters = 5 FluxIters = 5 GTAIters = 0
+1: 0: TrMax =     0.55355294694718 in Zone 27783 on Node 397
+1: 0: TeMax =     0.27044610871323 in Zone 51002 on Node 157
+1: 0: Recommended time step for next rad cycle = 6e-05
+1: 0:  
+1: 0:  
+1: 0: ********** Run Time Statistics **********
+1: 0:                   Cycle Advance             Accumulated 
+1: 0:                      Time (sec)         Angle Loop Time (sec)
+1: 0: RADTR              = 11.608361             77.468925866095
+1: 0:  
+1: 0:  SuOlson Test version 1.0 completed at time= 0.000334  goalTime= 0.000334
+1: 1: [1] Done with resize!
+1: 1: [1] Done with resize!
+1: 450: [450] Done with resize!
+1: 450: [450] Done with resize!
+1: 3: [3] Done with resize!
+1: 3: [3] Done with resize!
+1: 199: [199] Done with resize!
+1: 199: [199] Done with resize!
+1: 366: [366] Done with resize!
+1: 366: [366] Done with resize!
+1: 170: [170] Done with resize!
+1: 170: [170] Done with resize!
+1: 843: [843] Done with resize!
+1: 843: [843] Done with resize!
+1: 308: [308] Done with resize!
+1: 308: [308] Done with resize!
+1: 815: [815] Done with resize!
+1: 815: [815] Done with resize!
+1: 703: [703] Done with resize!
+1: 703: [703] Done with resize!
+1: 253: [253] Done with resize!
+1: 253: [253] Done with resize!
+1: 532: [532] Done with resize!
+1: 532: [532] Done with resize!
+1: 731: [731] Done with resize!
+1: 731: [731] Done with resize!
+1: 591: [591] Done with resize!
+1: 591: [591] Done with resize!
+1: 395: [395] Done with resize!
+1: 395: [395] Done with resize!
+1: 507: [507] Done with resize!
+1: 507: [507] Done with resize!
+1: 479: [479] Done with resize!
+1: 479: [479] Done with resize!
+1: 142: [142] Done with resize!
+1: 142: [142] Done with resize!
+1: 756: [756] Done with resize!
+1: 756: [756] Done with resize!
+1: 560: [560] Done with resize!
+1: 560: [560] Done with resize!
+1: 619: [619] Done with resize!
+1: 619: [619] Done with resize!
+1: 58: [58] Done with resize!
+1: 58: [58] Done with resize!
+1: 283: [283] Done with resize!
+1: 283: [283] Done with resize!
+1: 423: [423] Done with resize!
+1: 423: [423] Done with resize!
+1: 31: [31] Done with resize!
+1: 31: [31] Done with resize!
+1: 786: [786] Done with resize!
+1: 786: [786] Done with resize!
+1: 115: [115] Done with resize!
+1: 115: [115] Done with resize!
+1: 226: [226] Done with resize!
+1: 226: [226] Done with resize!
+1: 336: [336] Done with resize!
+1: 336: [336] Done with resize!
+1: 87: [87] Done with resize!
+1: 87: [87] Done with resize!
+1: 647: [647] Done with resize!
+1: 647: [647] Done with resize!
+1: 675: [675] Done with resize!
+1: 675: [675] Done with resize!
+1: 451: [451] Done with resize!
+1: 451: [451] Done with resize!
+1: 2: [2] Done with resize!
+1: 2: [2] Done with resize!
+1: 196: [196] Done with resize!
+1: 196: [196] Done with resize!
+1: 367: [367] Done with resize!
+1: 367: [367] Done with resize!
+1: 168: [168] Done with resize!
+1: 168: [168] Done with resize!
+1: 840: [840] Done with resize!
+1: 840: [840] Done with resize!
+1: 311: [311] Done with resize!
+1: 311: [311] Done with resize!
+1: 702: [702] Done with resize!
+1: 702: [702] Done with resize!
+1: 535: [535] Done with resize!
+1: 535: [535] Done with resize!
+1: 728: [728] Done with resize!
+1: 728: [728] Done with resize!
+1: 393: [393] Done with resize!
+1: 393: [393] Done with resize!
+1: 504: [504] Done with resize!
+1: 504: [504] Done with resize!
+1: 477: [477] Done with resize!
+1: 477: [477] Done with resize!
+1: 758: [758] Done with resize!
+1: 758: [758] Done with resize!
+1: 563: [563] Done with resize!
+1: 563: [563] Done with resize!
+1: 59: [59] Done with resize!
+1: 59: [59] Done with resize!
+1: 787: [787] Done with resize!
+1: 787: [787] Done with resize!
+1: 339: [339] Done with resize!
+1: 339: [339] Done with resize!
+1: 812: [812] Done with resize!
+1: 812: [812] Done with resize!
+1: 276: [276] Done with resize!
+1: 276: [276] Done with resize!
+1: 644: [644] Done with resize!
+1: 644: [644] Done with resize!
+1: 28: [28] Done with resize!
+1: 28: [28] Done with resize!
+1: 816: [816] Done with resize!
+1: 816: [816] Done with resize!
+1: 589: [589] Done with resize!
+1: 589: [589] Done with resize!
+1: 143: [143] Done with resize!
+1: 143: [143] Done with resize!
+1: 197: [197] Done with resize!
+1: 197: [197] Done with resize!
+1: 365: [365] Done with resize!
+1: 365: [365] Done with resize!
+1: 280: [280] Done with resize!
+1: 280: [280] Done with resize!
+1: 611: [611] Done with resize!
+1: 611: [611] Done with resize!
+1: 147: [147] Done with resize!
+1: 147: [147] Done with resize!
+1: 674: [674] Done with resize!
+1: 674: [674] Done with resize!
+1: 617: [617] Done with resize!
+1: 617: [617] Done with resize!
+1: 842: [842] Done with resize!
+1: 842: [842] Done with resize!
+1: 14: [14] Done with resize!
+1: 14: [14] Done with resize!
+1: 178: [178] Done with resize!
+1: 178: [178] Done with resize!
+1: 701: [701] Done with resize!
+1: 701: [701] Done with resize!
+1: 729: [729] Done with resize!
+1: 729: [729] Done with resize!
+1: 543: [543] Done with resize!
+1: 543: [543] Done with resize!
+1: 599: [599] Done with resize!
+1: 599: [599] Done with resize!
+1: 394: [394] Done with resize!
+1: 394: [394] Done with resize!
+1: 505: [505] Done with resize!
+1: 505: [505] Done with resize!
+1: 639: [639] Done with resize!
+1: 639: [639] Done with resize!
+1: 35: [35] Done with resize!
+1: 35: [35] Done with resize!
+1: 757: [757] Done with resize!
+1: 757: [757] Done with resize!
+1: 236: [236] Done with resize!
+1: 236: [236] Done with resize!
+1: 331: [331] Done with resize!
+1: 331: [331] Done with resize!
+1: 690: [690] Done with resize!
+1: 690: [690] Done with resize!
+1: 420: [420] Done with resize!
+1: 420: [420] Done with resize!
+1: 112: [112] Done with resize!
+1: 112: [112] Done with resize!
+1: 20: [20] Done with resize!
+1: 20: [20] Done with resize!
+1: 86: [86] Done with resize!
+1: 86: [86] Done with resize!
+1: 255: [255] Done with resize!
+1: 255: [255] Done with resize!
+1: 562: [562] Done with resize!
+1: 562: [562] Done with resize!
+1: 635: [635] Done with resize!
+1: 635: [635] Done with resize!
+1: 449: [449] Done with resize!
+1: 449: [449] Done with resize!
+1: 446: [446] Done with resize!
+1: 446: [446] Done with resize!
+1: 183: [183] Done with resize!
+1: 183: [183] Done with resize!
+1: 810: [810] Done with resize!
+1: 810: [810] Done with resize!
+1: 343: [343] Done with resize!
+1: 343: [343] Done with resize!
+1: 225: [225] Done with resize!
+1: 225: [225] Done with resize!
+1: 858: [858] Done with resize!
+1: 858: [858] Done with resize!
+1: 533: [533] Done with resize!
+1: 533: [533] Done with resize!
+1: 56: [56] Done with resize!
+1: 56: [56] Done with resize!
+1: 760: [760] Done with resize!
+1: 760: [760] Done with resize!
+1: 291: [291] Done with resize!
+1: 291: [291] Done with resize!
+1: 653: [653] Done with resize!
+1: 653: [653] Done with resize!
+1: 430: [430] Done with resize!
+1: 430: [430] Done with resize!
+1: 622: [622] Done with resize!
+1: 622: [622] Done with resize!
+1: 135: [135] Done with resize!
+1: 135: [135] Done with resize!
+1: 108: [108] Done with resize!
+1: 108: [108] Done with resize!
+1: 271: [271] Done with resize!
+1: 271: [271] Done with resize!
+1: 203: [203] Done with resize!
+1: 203: [203] Done with resize!
+1: 152: [152] Done with resize!
+1: 152: [152] Done with resize!
+1: 564: [564] Done with resize!
+1: 564: [564] Done with resize!
+1: 66: [66] Done with resize!
+1: 66: [66] Done with resize!
+1: 301: [301] Done with resize!
+1: 301: [301] Done with resize!
+1: 424: [424] Done with resize!
+1: 424: [424] Done with resize!
+1: 39: [39] Done with resize!
+1: 39: [39] Done with resize!
+1: 139: [139] Done with resize!
+1: 139: [139] Done with resize!
+1: 233: [233] Done with resize!
+1: 233: [233] Done with resize!
+1: 353: [353] Done with resize!
+1: 353: [353] Done with resize!
+1: 90: [90] Done with resize!
+1: 90: [90] Done with resize!
+1: 310: [310] Done with resize!
+1: 310: [310] Done with resize!
+1: 169: [169] Done with resize!
+1: 169: [169] Done with resize!
+1: 382: [382] Done with resize!
+1: 382: [382] Done with resize!
+1: 785: [785] Done with resize!
+1: 785: [785] Done with resize!
+1: 251: [251] Done with resize!
+1: 251: [251] Done with resize!
+1: 118: [118] Done with resize!
+1: 118: [118] Done with resize!
+1: 104: [104] Done with resize!
+1: 104: [104] Done with resize!
+1: 475: [475] Done with resize!
+1: 475: [475] Done with resize!
+1: 486: [486] Done with resize!
+1: 486: [486] Done with resize!
+1: 813: [813] Done with resize!
+1: 813: [813] Done with resize!
+1: 19: [19] Done with resize!
+1: 19: [19] Done with resize!
+1: 452: [452] Done with resize!
+1: 452: [452] Done with resize!
+1: 332: [332] Done with resize!
+1: 332: [332] Done with resize!
+1: 502: [502] Done with resize!
+1: 502: [502] Done with resize!
+1: 263: [263] Done with resize!
+1: 263: [263] Done with resize!
+1: 559: [559] Done with resize!
+1: 559: [559] Done with resize!
+1: 700: [700] Done with resize!
+1: 700: [700] Done with resize!
+1: 730: [730] Done with resize!
+1: 730: [730] Done with resize!
+1: 695: [695] Done with resize!
+1: 695: [695] Done with resize!
+1: 510: [510] Done with resize!
+1: 510: [510] Done with resize!
+1: 476: [476] Done with resize!
+1: 476: [476] Done with resize!
+1: 781: [781] Done with resize!
+1: 781: [781] Done with resize!
+1: 669: [669] Done with resize!
+1: 669: [669] Done with resize!
+1: 569: [569] Done with resize!
+1: 569: [569] Done with resize!
+1: 74: [74] Done with resize!
+1: 74: [74] Done with resize!
+1: 292: [292] Done with resize!
+1: 292: [292] Done with resize!
+1: 392: [392] Done with resize!
+1: 392: [392] Done with resize!
+1: 470: [470] Done with resize!
+1: 470: [470] Done with resize!
+1: 214: [214] Done with resize!
+1: 214: [214] Done with resize!
+1: 435: [435] Done with resize!
+1: 435: [435] Done with resize!
+1: 376: [376] Done with resize!
+1: 376: [376] Done with resize!
+1: 47: [47] Done with resize!
+1: 47: [47] Done with resize!
+1: 791: [791] Done with resize!
+1: 791: [791] Done with resize!
+1: 126: [126] Done with resize!
+1: 126: [126] Done with resize!
+1: 231: [231] Done with resize!
+1: 231: [231] Done with resize!
+1: 338: [338] Done with resize!
+1: 338: [338] Done with resize!
+1: 97: [97] Done with resize!
+1: 97: [97] Done with resize!
+1: 317: [317] Done with resize!
+1: 317: [317] Done with resize!
+1: 836: [836] Done with resize!
+1: 836: [836] Done with resize!
+1: 258: [258] Done with resize!
+1: 258: [258] Done with resize!
+1: 751: [751] Done with resize!
+1: 751: [751] Done with resize!
+1: 411: [411] Done with resize!
+1: 411: [411] Done with resize!
+1: 506: [506] Done with resize!
+1: 506: [506] Done with resize!
+1: 499: [499] Done with resize!
+1: 499: [499] Done with resize!
+1: 159: [159] Done with resize!
+1: 159: [159] Done with resize!
+1: 665: [665] Done with resize!
+1: 665: [665] Done with resize!
+1: 587: [587] Done with resize!
+1: 587: [587] Done with resize!
+1: 697: [697] Done with resize!
+1: 697: [697] Done with resize!
+1: 82: [82] Done with resize!
+1: 82: [82] Done with resize!
+1: 284: [284] Done with resize!
+1: 284: [284] Done with resize!
+1: 464: [464] Done with resize!
+1: 464: [464] Done with resize!
+1: 8: [8] Done with resize!
+1: 8: [8] Done with resize!
+1: 223: [223] Done with resize!
+1: 223: [223] Done with resize!
+1: 440: [440] Done with resize!
+1: 440: [440] Done with resize!
+1: 372: [372] Done with resize!
+1: 372: [372] Done with resize!
+1: 192: [192] Done with resize!
+1: 192: [192] Done with resize!
+1: 807: [807] Done with resize!
+1: 807: [807] Done with resize!
+1: 131: [131] Done with resize!
+1: 131: [131] Done with resize!
+1: 847: [847] Done with resize!
+1: 847: [847] Done with resize!
+1: 100: [100] Done with resize!
+1: 100: [100] Done with resize!
+1: 834: [834] Done with resize!
+1: 834: [834] Done with resize!
+1: 726: [726] Done with resize!
+1: 726: [726] Done with resize!
+1: 272: [272] Done with resize!
+1: 272: [272] Done with resize!
+1: 539: [539] Done with resize!
+1: 539: [539] Done with resize!
+1: 732: [732] Done with resize!
+1: 732: [732] Done with resize!
+1: 606: [606] Done with resize!
+1: 606: [606] Done with resize!
+1: 402: [402] Done with resize!
+1: 402: [402] Done with resize!
+1: 519: [519] Done with resize!
+1: 519: [519] Done with resize!
+1: 494: [494] Done with resize!
+1: 494: [494] Done with resize!
+1: 161: [161] Done with resize!
+1: 161: [161] Done with resize!
+1: 779: [779] Done with resize!
+1: 779: [779] Done with resize!
+1: 646: [646] Done with resize!
+1: 646: [646] Done with resize!
+1: 575: [575] Done with resize!
+1: 575: [575] Done with resize!
+1: 631: [631] Done with resize!
+1: 631: [631] Done with resize!
+1: 70: [70] Done with resize!
+1: 70: [70] Done with resize!
+1: 296: [296] Done with resize!
+1: 296: [296] Done with resize!
+1: 460: [460] Done with resize!
+1: 460: [460] Done with resize!
+1: 219: [219] Done with resize!
+1: 219: [219] Done with resize!
+1: 364: [364] Done with resize!
+1: 364: [364] Done with resize!
+1: 51: [51] Done with resize!
+1: 51: [51] Done with resize!
+1: 190: [190] Done with resize!
+1: 190: [190] Done with resize!
+1: 800: [800] Done with resize!
+1: 800: [800] Done with resize!
+1: 247: [247] Done with resize!
+1: 247: [247] Done with resize!
+1: 850: [850] Done with resize!
+1: 850: [850] Done with resize!
+1: 315: [315] Done with resize!
+1: 315: [315] Done with resize!
+1: 819: [819] Done with resize!
+1: 819: [819] Done with resize!
+1: 723: [723] Done with resize!
+1: 723: [723] Done with resize!
+1: 547: [547] Done with resize!
+1: 547: [547] Done with resize!
+1: 746: [746] Done with resize!
+1: 746: [746] Done with resize!
+1: 612: [612] Done with resize!
+1: 612: [612] Done with resize!
+1: 513: [513] Done with resize!
+1: 513: [513] Done with resize!
+1: 491: [491] Done with resize!
+1: 491: [491] Done with resize!
+1: 149: [149] Done with resize!
+1: 149: [149] Done with resize!
+1: 771: [771] Done with resize!
+1: 771: [771] Done with resize!
+1: 79: [79] Done with resize!
+1: 79: [79] Done with resize!
+1: 306: [306] Done with resize!
+1: 306: [306] Done with resize!
+1: 7: [7] Done with resize!
+1: 7: [7] Done with resize!
+1: 198: [198] Done with resize!
+1: 198: [198] Done with resize!
+1: 30: [30] Done with resize!
+1: 30: [30] Done with resize!
+1: 122: [122] Done with resize!
+1: 122: [122] Done with resize!
+1: 351: [351] Done with resize!
+1: 351: [351] Done with resize!
+1: 841: [841] Done with resize!
+1: 841: [841] Done with resize!
+1: 95: [95] Done with resize!
+1: 95: [95] Done with resize!
+1: 327: [327] Done with resize!
+1: 327: [327] Done with resize!
+1: 824: [824] Done with resize!
+1: 824: [824] Done with resize!
+1: 278: [278] Done with resize!
+1: 278: [278] Done with resize!
+1: 707: [707] Done with resize!
+1: 707: [707] Done with resize!
+1: 603: [603] Done with resize!
+1: 603: [603] Done with resize!
+1: 419: [419] Done with resize!
+1: 419: [419] Done with resize!
+1: 530: [530] Done with resize!
+1: 530: [530] Done with resize!
+1: 480: [480] Done with resize!
+1: 480: [480] Done with resize!
+1: 167: [167] Done with resize!
+1: 167: [167] Done with resize!
+1: 576: [576] Done with resize!
+1: 576: [576] Done with resize!
+1: 458: [458] Done with resize!
+1: 458: [458] Done with resize!
+1: 43: [43] Done with resize!
+1: 43: [43] Done with resize!
+1: 185: [185] Done with resize!
+1: 185: [185] Done with resize!
+1: 792: [792] Done with resize!
+1: 792: [792] Done with resize!
+1: 243: [243] Done with resize!
+1: 243: [243] Done with resize!
+1: 363: [363] Done with resize!
+1: 363: [363] Done with resize!
+1: 320: [320] Done with resize!
+1: 320: [320] Done with resize!
+1: 820: [820] Done with resize!
+1: 820: [820] Done with resize!
+1: 714: [714] Done with resize!
+1: 714: [714] Done with resize!
+1: 551: [551] Done with resize!
+1: 551: [551] Done with resize!
+1: 741: [741] Done with resize!
+1: 741: [741] Done with resize!
+1: 595: [595] Done with resize!
+1: 595: [595] Done with resize!
+1: 527: [527] Done with resize!
+1: 527: [527] Done with resize!
+1: 764: [764] Done with resize!
+1: 764: [764] Done with resize!
+1: 680: [680] Done with resize!
+1: 680: [680] Done with resize!
+1: 627: [627] Done with resize!
+1: 627: [627] Done with resize!
+1: 27: [27] Done with resize!
+1: 27: [27] Done with resize!
+1: 387: [387] Done with resize!
+1: 387: [387] Done with resize!
+1: 175: [175] Done with resize!
+1: 175: [175] Done with resize!
+1: 799: [799] Done with resize!
+1: 799: [799] Done with resize!
+1: 356: [356] Done with resize!
+1: 356: [356] Done with resize!
+1: 716: [716] Done with resize!
+1: 716: [716] Done with resize!
+1: 737: [737] Done with resize!
+1: 737: [737] Done with resize!
+1: 588: [588] Done with resize!
+1: 588: [588] Done with resize!
+1: 399: [399] Done with resize!
+1: 399: [399] Done with resize!
+1: 523: [523] Done with resize!
+1: 523: [523] Done with resize!
+1: 141: [141] Done with resize!
+1: 141: [141] Done with resize!
+1: 775: [775] Done with resize!
+1: 775: [775] Done with resize!
+1: 651: [651] Done with resize!
+1: 651: [651] Done with resize!
+1: 643: [643] Done with resize!
+1: 643: [643] Done with resize!
+1: 281: [281] Done with resize!
+1: 281: [281] Done with resize!
+1: 755: [755] Done with resize!
+1: 755: [755] Done with resize!
+1: 404: [404] Done with resize!
+1: 404: [404] Done with resize!
+1: 663: [663] Done with resize!
+1: 663: [663] Done with resize!
+1: 583: [583] Done with resize!
+1: 583: [583] Done with resize!
+1: 678: [678] Done with resize!
+1: 678: [678] Done with resize!
+1: 211: [211] Done with resize!
+1: 211: [211] Done with resize!
+1: 855: [855] Done with resize!
+1: 855: [855] Done with resize!
+1: 415: [415] Done with resize!
+1: 415: [415] Done with resize!
+1: 687: [687] Done with resize!
+1: 687: [687] Done with resize!
+1: 609: [609] Done with resize!
+1: 609: [609] Done with resize!
+1: 206: [206] Done with resize!
+1: 206: [206] Done with resize!
+1: 439: [439] Done with resize!
+1: 439: [439] Done with resize!
+1: 391: [391] Done with resize!
+1: 391: [391] Done with resize!
+1: 668: [668] Done with resize!
+1: 668: [668] Done with resize!
+1: 568: [568] Done with resize!
+1: 568: [568] Done with resize!
+1: 144: [144] Done with resize!
+1: 144: [144] Done with resize!
+1: 54: [54] Done with resize!
+1: 54: [54] Done with resize!
+1: 672: [672] Done with resize!
+1: 672: [672] Done with resize!
+1: 861: [861] Done with resize!
+1: 861: [861] Done with resize!
+1: 830: [830] Done with resize!
+1: 830: [830] Done with resize!
+1: 266: [266] Done with resize!
+1: 266: [266] Done with resize!
+1: 618: [618] Done with resize!
+1: 618: [618] Done with resize!
+1: 75: [75] Done with resize!
+1: 75: [75] Done with resize!
+1: 368: [368] Done with resize!
+1: 368: [368] Done with resize!
+1: 347: [347] Done with resize!
+1: 347: [347] Done with resize!
+1: 294: [294] Done with resize!
+1: 294: [294] Done with resize!
+1: 711: [711] Done with resize!
+1: 711: [711] Done with resize!
+1: 12: [12] Done with resize!
+1: 12: [12] Done with resize!
+1: 124: [124] Done with resize!
+1: 124: [124] Done with resize!
+1: 432: [432] Done with resize!
+1: 432: [432] Done with resize!
+1: 471: [471] Done with resize!
+1: 471: [471] Done with resize!
+1: 856: [856] Done with resize!
+1: 856: [856] Done with resize!
+1: 379: [379] Done with resize!
+1: 379: [379] Done with resize!
+1: 215: [215] Done with resize!
+1: 215: [215] Done with resize!
+1: 177: [177] Done with resize!
+1: 177: [177] Done with resize!
+1: 337: [337] Done with resize!
+1: 337: [337] Done with resize!
+1: 45: [45] Done with resize!
+1: 45: [45] Done with resize!
+1: 788: [788] Done with resize!
+1: 788: [788] Done with resize!
+1: 61: [61] Done with resize!
+1: 61: [61] Done with resize!
+1: 658: [658] Done with resize!
+1: 658: [658] Done with resize!
+1: 228: [228] Done with resize!
+1: 228: [228] Done with resize!
+1: 99: [99] Done with resize!
+1: 99: [99] Done with resize!
+1: 555: [555] Done with resize!
+1: 555: [555] Done with resize!
+1: 498: [498] Done with resize!
+1: 498: [498] Done with resize!
+1: 257: [257] Done with resize!
+1: 257: [257] Done with resize!
+1: 667: [667] Done with resize!
+1: 667: [667] Done with resize!
+1: 540: [540] Done with resize!
+1: 540: [540] Done with resize!
+1: 698: [698] Done with resize!
+1: 698: [698] Done with resize!
+1: 478: [478] Done with resize!
+1: 478: [478] Done with resize!
+1: 780: [780] Done with resize!
+1: 780: [780] Done with resize!
+1: 0:  Computing error check along x=0.00195312, y=0.00173611
+1: 9: [9] Done with resize!
+1: 9: [9] Done with resize!
+1: 749: [749] Done with resize!
+1: 749: [749] Done with resize!
+1: 410: [410] Done with resize!
+1: 410: [410] Done with resize!
+1: 759: [759] Done with resize!
+1: 759: [759] Done with resize!
+1: 441: [441] Done with resize!
+1: 441: [441] Done with resize!
+1: 156: [156] Done with resize!
+1: 156: [156] Done with resize!
+1: 837: [837] Done with resize!
+1: 837: [837] Done with resize!
+1: 238: [238] Done with resize!
+1: 238: [238] Done with resize!
+1: 638: [638] Done with resize!
+1: 638: [638] Done with resize!
+1: 342: [342] Done with resize!
+1: 342: [342] Done with resize!
+1: 285: [285] Done with resize!
+1: 285: [285] Done with resize!
+1: 845: [845] Done with resize!
+1: 845: [845] Done with resize!
+1: 220: [220] Done with resize!
+1: 220: [220] Done with resize!
+1: 465: [465] Done with resize!
+1: 465: [465] Done with resize!
+1: 33: [33] Done with resize!
+1: 33: [33] Done with resize!
+1: 194: [194] Done with resize!
+1: 194: [194] Done with resize!
+1: 319: [319] Done with resize!
+1: 319: [319] Done with resize!
+1: 804: [804] Done with resize!
+1: 804: [804] Done with resize!
+1: 274: [274] Done with resize!
+1: 274: [274] Done with resize!
+1: 130: [130] Done with resize!
+1: 130: [130] Done with resize!
+1: 598: [598] Done with resize!
+1: 598: [598] Done with resize!
+1: 833: [833] Done with resize!
+1: 833: [833] Done with resize!
+1: 585: [585] Done with resize!
+1: 585: [585] Done with resize!
+1: 330: [330] Done with resize!
+1: 330: [330] Done with resize!
+1: 493: [493] Done with resize!
+1: 493: [493] Done with resize!
+1: 688: [688] Done with resize!
+1: 688: [688] Done with resize!
+1: 375: [375] Done with resize!
+1: 375: [375] Done with resize!
+1: 727: [727] Done with resize!
+1: 727: [727] Done with resize!
+1: 71: [71] Done with resize!
+1: 71: [71] Done with resize!
+1: 538: [538] Done with resize!
+1: 538: [538] Done with resize!
+1: 400: [400] Done with resize!
+1: 400: [400] Done with resize!
+1: 517: [517] Done with resize!
+1: 517: [517] Done with resize!
+1: 217: [217] Done with resize!
+1: 217: [217] Done with resize!
+1: 102: [102] Done with resize!
+1: 102: [102] Done with resize!
+1: 462: [462] Done with resize!
+1: 462: [462] Done with resize!
+1: 163: [163] Done with resize!
+1: 163: [163] Done with resize!
+1: 607: [607] Done with resize!
+1: 607: [607] Done with resize!
+1: 645: [645] Done with resize!
+1: 645: [645] Done with resize!
+1: 629: [629] Done with resize!
+1: 629: [629] Done with resize!
+1: 574: [574] Done with resize!
+1: 574: [574] Done with resize!
+1: 803: [803] Done with resize!
+1: 803: [803] Done with resize!
+1: 735: [735] Done with resize!
+1: 735: [735] Done with resize!
+1: 421: [421] Done with resize!
+1: 421: [421] Done with resize!
+1: 22: [22] Done with resize!
+1: 22: [22] Done with resize!
+1: 114: [114] Done with resize!
+1: 114: [114] Done with resize!
+1: 298: [298] Done with resize!
+1: 298: [298] Done with resize!
+1: 50: [50] Done with resize!
+1: 50: [50] Done with resize!
+1: 776: [776] Done with resize!
+1: 776: [776] Done with resize!
+1: 744: [744] Done with resize!
+1: 744: [744] Done with resize!
+1: 83: [83] Done with resize!
+1: 83: [83] Done with resize!
+1: 355: [355] Done with resize!
+1: 355: [355] Done with resize!
+1: 85: [85] Done with resize!
+1: 85: [85] Done with resize!
+1: 818: [818] Done with resize!
+1: 818: [818] Done with resize!
+1: 148: [148] Done with resize!
+1: 148: [148] Done with resize!
+1: 312: [312] Done with resize!
+1: 312: [312] Done with resize!
+1: 634: [634] Done with resize!
+1: 634: [634] Done with resize!
+1: 721: [721] Done with resize!
+1: 721: [721] Done with resize!
+1: 246: [246] Done with resize!
+1: 246: [246] Done with resize!
+1: 546: [546] Done with resize!
+1: 546: [546] Done with resize!
+1: 512: [512] Done with resize!
+1: 512: [512] Done with resize!
+1: 613: [613] Done with resize!
+1: 613: [613] Done with resize!
+1: 191: [191] Done with resize!
+1: 191: [191] Done with resize!
+1: 655: [655] Done with resize!
+1: 655: [655] Done with resize!
+1: 224: [224] Done with resize!
+1: 224: [224] Done with resize!
+1: 769: [769] Done with resize!
+1: 769: [769] Done with resize!
+1: 561: [561] Done with resize!
+1: 561: [561] Done with resize!
+1: 851: [851] Done with resize!
+1: 851: [851] Done with resize!
+1: 93: [93] Done with resize!
+1: 93: [93] Done with resize!
+1: 254: [254] Done with resize!
+1: 254: [254] Done with resize!
+1: 305: [305] Done with resize!
+1: 305: [305] Done with resize!
+1: 534: [534] Done with resize!
+1: 534: [534] Done with resize!
+1: 180: [180] Done with resize!
+1: 180: [180] Done with resize!
+1: 706: [706] Done with resize!
+1: 706: [706] Done with resize!
+1: 6: [6] Done with resize!
+1: 6: [6] Done with resize!
+1: 444: [444] Done with resize!
+1: 444: [444] Done with resize!
+1: 29: [29] Done with resize!
+1: 29: [29] Done with resize!
+1: 489: [489] Done with resize!
+1: 489: [489] Done with resize!
+1: 166: [166] Done with resize!
+1: 166: [166] Done with resize!
+1: 120: [120] Done with resize!
+1: 120: [120] Done with resize!
+1: 621: [621] Done with resize!
+1: 621: [621] Done with resize!
+1: 827: [827] Done with resize!
+1: 827: [827] Done with resize!
+1: 448: [448] Done with resize!
+1: 448: [448] Done with resize!
+1: 279: [279] Done with resize!
+1: 279: [279] Done with resize!
+1: 811: [811] Done with resize!
+1: 811: [811] Done with resize!
+1: 417: [417] Done with resize!
+1: 417: [417] Done with resize!
+1: 325: [325] Done with resize!
+1: 325: [325] Done with resize!
+1: 600: [600] Done with resize!
+1: 600: [600] Done with resize!
+1: 483: [483] Done with resize!
+1: 483: [483] Done with resize!
+1: 132: [132] Done with resize!
+1: 132: [132] Done with resize!
+1: 348: [348] Done with resize!
+1: 348: [348] Done with resize!
+1: 761: [761] Done with resize!
+1: 761: [761] Done with resize!
+1: 77: [77] Done with resize!
+1: 77: [77] Done with resize!
+1: 57: [57] Done with resize!
+1: 57: [57] Done with resize!
+1: 290: [290] Done with resize!
+1: 290: [290] Done with resize!
+1: 577: [577] Done with resize!
+1: 577: [577] Done with resize!
+1: 268: [268] Done with resize!
+1: 268: [268] Done with resize!
+1: 41: [41] Done with resize!
+1: 41: [41] Done with resize!
+1: 549: [549] Done with resize!
+1: 549: [549] Done with resize!
+1: 457: [457] Done with resize!
+1: 457: [457] Done with resize!
+1: 186: [186] Done with resize!
+1: 186: [186] Done with resize!
+1: 528: [528] Done with resize!
+1: 528: [528] Done with resize!
+1: 110: [110] Done with resize!
+1: 110: [110] Done with resize!
+1: 795: [795] Done with resize!
+1: 795: [795] Done with resize!
+1: 240: [240] Done with resize!
+1: 240: [240] Done with resize!
+1: 626: [626] Done with resize!
+1: 626: [626] Done with resize!
+1: 323: [323] Done with resize!
+1: 323: [323] Done with resize!
+1: 67: [67] Done with resize!
+1: 67: [67] Done with resize!
+1: 200: [200] Done with resize!
+1: 200: [200] Done with resize!
+1: 153: [153] Done with resize!
+1: 153: [153] Done with resize!
+1: 426: [426] Done with resize!
+1: 426: [426] Done with resize!
+1: 821: [821] Done with resize!
+1: 821: [821] Done with resize!
+1: 592: [592] Done with resize!
+1: 592: [592] Done with resize!
+1: 743: [743] Done with resize!
+1: 743: [743] Done with resize!
+1: 384: [384] Done with resize!
+1: 384: [384] Done with resize!
+1: 26: [26] Done with resize!
+1: 26: [26] Done with resize!
+1: 765: [765] Done with resize!
+1: 765: [765] Done with resize!
+1: 174: [174] Done with resize!
+1: 174: [174] Done with resize!
+1: 361: [361] Done with resize!
+1: 361: [361] Done with resize!
+1: 713: [713] Done with resize!
+1: 713: [713] Done with resize!
+1: 717: [717] Done with resize!
+1: 717: [717] Done with resize!
+1: 232: [232] Done with resize!
+1: 232: [232] Done with resize!
+1: 37: [37] Done with resize!
+1: 37: [37] Done with resize!
+1: 526: [526] Done with resize!
+1: 526: [526] Done with resize!
+1: 567: [567] Done with resize!
+1: 567: [567] Done with resize!
+1: 138: [138] Done with resize!
+1: 138: [138] Done with resize!
+1: 682: [682] Done with resize!
+1: 682: [682] Done with resize!
+1: 797: [797] Done with resize!
+1: 797: [797] Done with resize!
+1: 357: [357] Done with resize!
+1: 357: [357] Done with resize!
+1: 736: [736] Done with resize!
+1: 736: [736] Done with resize!
+1: 282: [282] Done with resize!
+1: 282: [282] Done with resize!
+1: 429: [429] Done with resize!
+1: 429: [429] Done with resize!
+1: 116: [116] Done with resize!
+1: 116: [116] Done with resize!
+1: 784: [784] Done with resize!
+1: 784: [784] Done with resize!
+1: 248: [248] Done with resize!
+1: 248: [248] Done with resize!
+1: 309: [309] Done with resize!
+1: 309: [309] Done with resize!
+1: 397: [397] Done with resize!
+1: 397: [397] Done with resize!
+1: 754: [754] Done with resize!
+1: 754: [754] Done with resize!
+1: 140: [140] Done with resize!
+1: 140: [140] Done with resize!
+1: 580: [580] Done with resize!
+1: 580: [580] Done with resize!
+1: 772: [772] Done with resize!
+1: 772: [772] Done with resize!
+1: 648: [648] Done with resize!
+1: 648: [648] Done with resize!
+1: 642: [642] Done with resize!
+1: 642: [642] Done with resize!
+1: 677: [677] Done with resize!
+1: 677: [677] Done with resize!
+1: 210: [210] Done with resize!
+1: 210: [210] Done with resize!
+1: 303: [303] Done with resize!
+1: 303: [303] Done with resize!
+1: 91: [91] Done with resize!
+1: 91: [91] Done with resize!
+1: 521: [521] Done with resize!
+1: 521: [521] Done with resize!
+1: 107: [107] Done with resize!
+1: 107: [107] Done with resize!
+1: 590: [590] Done with resize!
+1: 590: [590] Done with resize!
+1: 55: [55] Done with resize!
+1: 55: [55] Done with resize!
+1: 474: [474] Done with resize!
+1: 474: [474] Done with resize!
+1: 484: [484] Done with resize!
+1: 484: [484] Done with resize!
+1: 381: [381] Done with resize!
+1: 381: [381] Done with resize!
+1: 171: [171] Done with resize!
+1: 171: [171] Done with resize!
+1: 685: [685] Done with resize!
+1: 685: [685] Done with resize!
+1: 863: [863] Done with resize!
+1: 863: [863] Done with resize!
+1: 267: [267] Done with resize!
+1: 267: [267] Done with resize!
+1: 388: [388] Done with resize!
+1: 388: [388] Done with resize!
+1: 673: [673] Done with resize!
+1: 673: [673] Done with resize!
+1: 661: [661] Done with resize!
+1: 661: [661] Done with resize!
+1: 436: [436] Done with resize!
+1: 436: [436] Done with resize!
+1: 335: [335] Done with resize!
+1: 335: [335] Done with resize!
+1: 814: [814] Done with resize!
+1: 814: [814] Done with resize!
+1: 407: [407] Done with resize!
+1: 407: [407] Done with resize!
+1: 503: [503] Done with resize!
+1: 503: [503] Done with resize!
+1: 345: [345] Done with resize!
+1: 345: [345] Done with resize!
+1: 293: [293] Done with resize!
+1: 293: [293] Done with resize!
+1: 176: [176] Done with resize!
+1: 176: [176] Done with resize!
+1: 207: [207] Done with resize!
+1: 207: [207] Done with resize!
+1: 371: [371] Done with resize!
+1: 371: [371] Done with resize!
+1: 18: [18] Done with resize!
+1: 18: [18] Done with resize!
+1: 709: [709] Done with resize!
+1: 709: [709] Done with resize!
+1: 145: [145] Done with resize!
+1: 145: [145] Done with resize!
+1: 72: [72] Done with resize!
+1: 72: [72] Done with resize!
+1: 262: [262] Done with resize!
+1: 262: [262] Done with resize!
+1: 831: [831] Done with resize!
+1: 831: [831] Done with resize!
+1: 511: [511] Done with resize!
+1: 511: [511] Done with resize!
+1: 455: [455] Done with resize!
+1: 455: [455] Done with resize!
+1: 853: [853] Done with resize!
+1: 853: [853] Done with resize!
+1: 44: [44] Done with resize!
+1: 44: [44] Done with resize!
+1: 469: [469] Done with resize!
+1: 469: [469] Done with resize!
+1: 13: [13] Done with resize!
+1: 13: [13] Done with resize!
+1: 570: [570] Done with resize!
+1: 570: [570] Done with resize!
+1: 557: [557] Done with resize!
+1: 557: [557] Done with resize!
+1: 789: [789] Done with resize!
+1: 789: [789] Done with resize!
+1: 616: [616] Done with resize!
+1: 616: [616] Done with resize!
+1: 127: [127] Done with resize!
+1: 127: [127] Done with resize!
+1: 694: [694] Done with resize!
+1: 694: [694] Done with resize!
+1: 413: [413] Done with resize!
+1: 413: [413] Done with resize!
+1: 608: [608] Done with resize!
+1: 608: [608] Done with resize!
+1: 542: [542] Done with resize!
+1: 542: [542] Done with resize!
+1: 857: [857] Done with resize!
+1: 857: [857] Done with resize!
+1: 666: [666] Done with resize!
+1: 666: [666] Done with resize!
+1: 496: [496] Done with resize!
+1: 496: [496] Done with resize!
+1: 213: [213] Done with resize!
+1: 213: [213] Done with resize!
+1: 659: [659] Done with resize!
+1: 659: [659] Done with resize!
+1: 259: [259] Done with resize!
+1: 259: [259] Done with resize!
+1: 554: [554] Done with resize!
+1: 554: [554] Done with resize!
+1: 783: [783] Done with resize!
+1: 783: [783] Done with resize!
+1: 63: [63] Done with resize!
+1: 63: [63] Done with resize!
+1: 671: [671] Done with resize!
+1: 671: [671] Done with resize!
+1: 750: [750] Done with resize!
+1: 750: [750] Done with resize!
+1: 221: [221] Done with resize!
+1: 221: [221] Done with resize!
+1: 237: [237] Done with resize!
+1: 237: [237] Done with resize!
+1: 0:  z=    0.01 tInterpolated=  0.00533351 tExact=    0.00468 error=0.000653515
+1: 0:  z=     0.1 tInterpolated=  0.00533352 tExact=    0.00468 error=0.000653519
+1: 0:  z= 0.17783 tInterpolated=  0.00533352 tExact=    0.00468 error=0.000653524
+1: 0:  z= 0.31623 tInterpolated=   0.0053324 tExact=    0.00468 error=0.000652398
+1: 0:  z=    0.45 tInterpolated=  0.00502109 tExact=    0.00455 error=0.000471092
+1: 0:  z=     0.5 tInterpolated=  0.00267482 tExact=    0.00234 error=0.000334822
+1: 0:  z= 0.56234 tInterpolated= 0.000196064 tExact=      5e-05 error=0.000146064
+1: 0:  z=    0.75 tInterpolated= 5.26703e-08 tExact=          0 error=5.26703e-08
+1: 0: ngroups = 16
+1: 0: nangsn = 256
+1: 0: tot zones = 45299520
+1: 0: numUnknowns = 1.48437e+12
+1: 636: [636] Done with resize!
+1: 636: [636] Done with resize!
+1: 699: [699] Done with resize!
+1: 699: [699] Done with resize!
+1: 409: [409] Done with resize!
+1: 409: [409] Done with resize!
+1: 11: [11] Done with resize!
+1: 11: [11] Done with resize!
+1: 287: [287] Done with resize!
+1: 287: [287] Done with resize!
+1: 34: [34] Done with resize!
+1: 34: [34] Done with resize!
+1: 378: [378] Done with resize!
+1: 378: [378] Done with resize!
+1: 806: [806] Done with resize!
+1: 806: [806] Done with resize!
+1: 846: [846] Done with resize!
+1: 846: [846] Done with resize!
+1: 318: [318] Done with resize!
+1: 318: [318] Done with resize!
+1: 340: [340] Done with resize!
+1: 340: [340] Done with resize!
+1: 158: [158] Done with resize!
+1: 158: [158] Done with resize!
+1: 195: [195] Done with resize!
+1: 195: [195] Done with resize!
+1: 230: [230] Done with resize!
+1: 230: [230] Done with resize!
+1: 129: [129] Done with resize!
+1: 129: [129] Done with resize!
+1: 537: [537] Done with resize!
+1: 537: [537] Done with resize!
+1: 838: [838] Done with resize!
+1: 838: [838] Done with resize!
+1: 275: [275] Done with resize!
+1: 275: [275] Done with resize!
+1: 466: [466] Done with resize!
+1: 466: [466] Done with resize!
+1: 832: [832] Done with resize!
+1: 832: [832] Done with resize!
+1: 725: [725] Done with resize!
+1: 725: [725] Done with resize!
+1: 495: [495] Done with resize!
+1: 495: [495] Done with resize!
+1: 516: [516] Done with resize!
+1: 516: [516] Done with resize!
+1: 218: [218] Done with resize!
+1: 218: [218] Done with resize!
+1: 69: [69] Done with resize!
+1: 69: [69] Done with resize!
+1: 597: [597] Done with resize!
+1: 597: [597] Done with resize!
+1: 373: [373] Done with resize!
+1: 373: [373] Done with resize!
+1: 691: [691] Done with resize!
+1: 691: [691] Done with resize!
+1: 403: [403] Done with resize!
+1: 403: [403] Done with resize!
+1: 297: [297] Done with resize!
+1: 297: [297] Done with resize!
+1: 329: [329] Done with resize!
+1: 329: [329] Done with resize!
+1: 605: [605] Done with resize!
+1: 605: [605] Done with resize!
+1: 162: [162] Done with resize!
+1: 162: [162] Done with resize!
+1: 628: [628] Done with resize!
+1: 628: [628] Done with resize!
+1: 802: [802] Done with resize!
+1: 802: [802] Done with resize!
+1: 463: [463] Done with resize!
+1: 463: [463] Done with resize!
+1: 734: [734] Done with resize!
+1: 734: [734] Done with resize!
+1: 422: [422] Done with resize!
+1: 422: [422] Done with resize!
+1: 572: [572] Done with resize!
+1: 572: [572] Done with resize!
+1: 817: [817] Done with resize!
+1: 817: [817] Done with resize!
+1: 584: [584] Done with resize!
+1: 584: [584] Done with resize!
+1: 354: [354] Done with resize!
+1: 354: [354] Done with resize!
+1: 313: [313] Done with resize!
+1: 313: [313] Done with resize!
+1: 720: [720] Done with resize!
+1: 720: [720] Done with resize!
+1: 777: [777] Done with resize!
+1: 777: [777] Done with resize!
+1: 515: [515] Done with resize!
+1: 515: [515] Done with resize!
+1: 151: [151] Done with resize!
+1: 151: [151] Done with resize!
+1: 21: [21] Done with resize!
+1: 21: [21] Done with resize!
+1: 49: [49] Done with resize!
+1: 49: [49] Done with resize!
+1: 244: [244] Done with resize!
+1: 244: [244] Done with resize!
+1: 113: [113] Done with resize!
+1: 113: [113] Done with resize!
+1: 632: [632] Done with resize!
+1: 632: [632] Done with resize!
+1: 745: [745] Done with resize!
+1: 745: [745] Done with resize!
+1: 544: [544] Done with resize!
+1: 544: [544] Done with resize!
+1: 614: [614] Done with resize!
+1: 614: [614] Done with resize!
+1: 80: [80] Done with resize!
+1: 80: [80] Done with resize!
+1: 189: [189] Done with resize!
+1: 189: [189] Done with resize!
+1: 654: [654] Done with resize!
+1: 654: [654] Done with resize!
+1: 227: [227] Done with resize!
+1: 227: [227] Done with resize!
+1: 768: [768] Done with resize!
+1: 768: [768] Done with resize!
+1: 623: [623] Done with resize!
+1: 623: [623] Done with resize!
+1: 182: [182] Done with resize!
+1: 182: [182] Done with resize!
+1: 808: [808] Done with resize!
+1: 808: [808] Done with resize!
+1: 252: [252] Done with resize!
+1: 252: [252] Done with resize!
+1: 704: [704] Done with resize!
+1: 704: [704] Done with resize!
+1: 277: [277] Done with resize!
+1: 277: [277] Done with resize!
+1: 488: [488] Done with resize!
+1: 488: [488] Done with resize!
+1: 165: [165] Done with resize!
+1: 165: [165] Done with resize!
+1: 324: [324] Done with resize!
+1: 324: [324] Done with resize!
+1: 826: [826] Done with resize!
+1: 826: [826] Done with resize!
+1: 304: [304] Done with resize!
+1: 304: [304] Done with resize!
+1: 601: [601] Done with resize!
+1: 601: [601] Done with resize!
+1: 5: [5] Done with resize!
+1: 5: [5] Done with resize!
+1: 350: [350] Done with resize!
+1: 350: [350] Done with resize!
+1: 418: [418] Done with resize!
+1: 418: [418] Done with resize!
+1: 482: [482] Done with resize!
+1: 482: [482] Done with resize!
+1: 848: [848] Done with resize!
+1: 848: [848] Done with resize!
+1: 123: [123] Done with resize!
+1: 123: [123] Done with resize!
+1: 270: [270] Done with resize!
+1: 270: [270] Done with resize!
+1: 42: [42] Done with resize!
+1: 42: [42] Done with resize!
+1: 76: [76] Done with resize!
+1: 76: [76] Done with resize!
+1: 288: [288] Done with resize!
+1: 288: [288] Done with resize!
+1: 65: [65] Done with resize!
+1: 65: [65] Done with resize!
+1: 173: [173] Done with resize!
+1: 173: [173] Done with resize!
+1: 184: [184] Done with resize!
+1: 184: [184] Done with resize!
+1: 133: [133] Done with resize!
+1: 133: [133] Done with resize!
+1: 321: [321] Done with resize!
+1: 321: [321] Done with resize!
+1: 763: [763] Done with resize!
+1: 763: [763] Done with resize!
+1: 766: [766] Done with resize!
+1: 766: [766] Done with resize!
+1: 25: [25] Done with resize!
+1: 25: [25] Done with resize!
+1: 578: [578] Done with resize!
+1: 578: [578] Done with resize!
+1: 459: [459] Done with resize!
+1: 459: [459] Done with resize!
+1: 201: [201] Done with resize!
+1: 201: [201] Done with resize!
+1: 548: [548] Done with resize!
+1: 548: [548] Done with resize!
+1: 155: [155] Done with resize!
+1: 155: [155] Done with resize!
+1: 529: [529] Done with resize!
+1: 529: [529] Done with resize!
+1: 740: [740] Done with resize!
+1: 740: [740] Done with resize!
+1: 385: [385] Done with resize!
+1: 385: [385] Done with resize!
+1: 793: [793] Done with resize!
+1: 793: [793] Done with resize!
+1: 362: [362] Done with resize!
+1: 362: [362] Done with resize!
+1: 718: [718] Done with resize!
+1: 718: [718] Done with resize!
+1: 242: [242] Done with resize!
+1: 242: [242] Done with resize!
+1: 594: [594] Done with resize!
+1: 594: [594] Done with resize!
+1: 712: [712] Done with resize!
+1: 712: [712] Done with resize!
+1: 823: [823] Done with resize!
+1: 823: [823] Done with resize!
+1: 358: [358] Done with resize!
+1: 358: [358] Done with resize!
+1: 136: [136] Done with resize!
+1: 136: [136] Done with resize!
+1: 739: [739] Done with resize!
+1: 739: [739] Done with resize!
+1: 625: [625] Done with resize!
+1: 625: [625] Done with resize!
+1: 524: [524] Done with resize!
+1: 524: [524] Done with resize!
+1: 681: [681] Done with resize!
+1: 681: [681] Done with resize!
+1: 234: [234] Done with resize!
+1: 234: [234] Done with resize!
+1: 36: [36] Done with resize!
+1: 36: [36] Done with resize!
+1: 566: [566] Done with resize!
+1: 566: [566] Done with resize!
+1: 396: [396] Done with resize!
+1: 396: [396] Done with resize!
+1: 300: [300] Done with resize!
+1: 300: [300] Done with resize!
+1: 249: [249] Done with resize!
+1: 249: [249] Done with resize!
+1: 752: [752] Done with resize!
+1: 752: [752] Done with resize!
+1: 796: [796] Done with resize!
+1: 796: [796] Done with resize!
+1: 641: [641] Done with resize!
+1: 641: [641] Done with resize!
+1: 117: [117] Done with resize!
+1: 117: [117] Done with resize!
+1: 389: [389] Done with resize!
+1: 389: [389] Done with resize!
+1: 383: [383] Done with resize!
+1: 383: [383] Done with resize!
+1: 473: [473] Done with resize!
+1: 473: [473] Done with resize!
+1: 522: [522] Done with resize!
+1: 522: [522] Done with resize!
+1: 264: [264] Done with resize!
+1: 264: [264] Done with resize!
+1: 485: [485] Done with resize!
+1: 485: [485] Done with resize!
+1: 53: [53] Done with resize!
+1: 53: [53] Done with resize!
+1: 208: [208] Done with resize!
+1: 208: [208] Done with resize!
+1: 773: [773] Done with resize!
+1: 773: [773] Done with resize!
+1: 649: [649] Done with resize!
+1: 649: [649] Done with resize!
+1: 679: [679] Done with resize!
+1: 679: [679] Done with resize!
+1: 686: [686] Done with resize!
+1: 686: [686] Done with resize!
+1: 581: [581] Done with resize!
+1: 581: [581] Done with resize!
+1: 295: [295] Done with resize!
+1: 295: [295] Done with resize!
+1: 333: [333] Done with resize!
+1: 333: [333] Done with resize!
+1: 660: [660] Done with resize!
+1: 660: [660] Done with resize!
+1: 501: [501] Done with resize!
+1: 501: [501] Done with resize!
+1: 346: [346] Done with resize!
+1: 346: [346] Done with resize!
+1: 405: [405] Done with resize!
+1: 405: [405] Done with resize!
+1: 16: [16] Done with resize!
+1: 16: [16] Done with resize!
+1: 860: [860] Done with resize!
+1: 860: [860] Done with resize!
+1: 179: [179] Done with resize!
+1: 179: [179] Done with resize!
+1: 146: [146] Done with resize!
+1: 146: [146] Done with resize!
+1: 370: [370] Done with resize!
+1: 370: [370] Done with resize!
+1: 710: [710] Done with resize!
+1: 710: [710] Done with resize!
+1: 205: [205] Done with resize!
+1: 205: [205] Done with resize!
+1: 73: [73] Done with resize!
+1: 73: [73] Done with resize!
+1: 261: [261] Done with resize!
+1: 261: [261] Done with resize!
+1: 829: [829] Done with resize!
+1: 829: [829] Done with resize!
+1: 15: [15] Done with resize!
+1: 15: [15] Done with resize!
+1: 212: [212] Done with resize!
+1: 212: [212] Done with resize!
+1: 508: [508] Done with resize!
+1: 508: [508] Done with resize!
+1: 46: [46] Done with resize!
+1: 46: [46] Done with resize!
+1: 859: [859] Done with resize!
+1: 859: [859] Done with resize!
+1: 497: [497] Done with resize!
+1: 497: [497] Done with resize!
+1: 670: [670] Done with resize!
+1: 670: [670] Done with resize!
+1: 222: [222] Done with resize!
+1: 222: [222] Done with resize!
+1: 541: [541] Done with resize!
+1: 541: [541] Done with resize!
+1: 256: [256] Done with resize!
+1: 256: [256] Done with resize!
+1: 664: [664] Done with resize!
+1: 664: [664] Done with resize!
+1: 62: [62] Done with resize!
+1: 62: [62] Done with resize!
+1: 852: [852] Done with resize!
+1: 852: [852] Done with resize!
+1: 125: [125] Done with resize!
+1: 125: [125] Done with resize!
+1: 692: [692] Done with resize!
+1: 692: [692] Done with resize!
+1: 414: [414] Done with resize!
+1: 414: [414] Done with resize!
+1: 468: [468] Done with resize!
+1: 468: [468] Done with resize!
+1: 610: [610] Done with resize!
+1: 610: [610] Done with resize!
+1: 748: [748] Done with resize!
+1: 748: [748] Done with resize!
+1: 571: [571] Done with resize!
+1: 571: [571] Done with resize!
+1: 453: [453] Done with resize!
+1: 453: [453] Done with resize!
+1: 790: [790] Done with resize!
+1: 790: [790] Done with resize!
+1: 657: [657] Done with resize!
+1: 657: [657] Done with resize!
+1: 408: [408] Done with resize!
+1: 408: [408] Done with resize!
+1: 696: [696] Done with resize!
+1: 696: [696] Done with resize!
+1: 782: [782] Done with resize!
+1: 782: [782] Done with resize!
+1: 10: [10] Done with resize!
+1: 10: [10] Done with resize!
+1: 558: [558] Done with resize!
+1: 558: [558] Done with resize!
+1: 239: [239] Done with resize!
+1: 239: [239] Done with resize!
+1: 637: [637] Done with resize!
+1: 637: [637] Done with resize!
+1: 553: [553] Done with resize!
+1: 553: [553] Done with resize!
+1: 32: [32] Done with resize!
+1: 32: [32] Done with resize!
+1: 844: [844] Done with resize!
+1: 844: [844] Done with resize!
+1: 805: [805] Done with resize!
+1: 805: [805] Done with resize!
+1: 341: [341] Done with resize!
+1: 341: [341] Done with resize!
+1: 286: [286] Done with resize!
+1: 286: [286] Done with resize!
+1: 377: [377] Done with resize!
+1: 377: [377] Done with resize!
+1: 157: [157] Done with resize!
+1: 157: [157] Done with resize!
+1: 193: [193] Done with resize!
+1: 193: [193] Done with resize!
+1: 229: [229] Done with resize!
+1: 229: [229] Done with resize!
+1: 273: [273] Done with resize!
+1: 273: [273] Done with resize!
+1: 467: [467] Done with resize!
+1: 467: [467] Done with resize!
+1: 536: [536] Done with resize!
+1: 536: [536] Done with resize!
+1: 128: [128] Done with resize!
+1: 128: [128] Done with resize!
+1: 839: [839] Done with resize!
+1: 839: [839] Done with resize!
+1: 316: [316] Done with resize!
+1: 316: [316] Done with resize!
+1: 216: [216] Done with resize!
+1: 216: [216] Done with resize!
+1: 492: [492] Done with resize!
+1: 492: [492] Done with resize!
+1: 68: [68] Done with resize!
+1: 68: [68] Done with resize!
+1: 835: [835] Done with resize!
+1: 835: [835] Done with resize!
+1: 596: [596] Done with resize!
+1: 596: [596] Done with resize!
+1: 518: [518] Done with resize!
+1: 518: [518] Done with resize!
+1: 374: [374] Done with resize!
+1: 374: [374] Done with resize!
+1: 724: [724] Done with resize!
+1: 724: [724] Done with resize!
+1: 689: [689] Done with resize!
+1: 689: [689] Done with resize!
+1: 299: [299] Done with resize!
+1: 299: [299] Done with resize!
+1: 401: [401] Done with resize!
+1: 401: [401] Done with resize!
+1: 461: [461] Done with resize!
+1: 461: [461] Done with resize!
+1: 604: [604] Done with resize!
+1: 604: [604] Done with resize!
+1: 733: [733] Done with resize!
+1: 733: [733] Done with resize!
+1: 328: [328] Done with resize!
+1: 328: [328] Done with resize!
+1: 630: [630] Done with resize!
+1: 630: [630] Done with resize!
+1: 160: [160] Done with resize!
+1: 160: [160] Done with resize!
+1: 352: [352] Done with resize!
+1: 352: [352] Done with resize!
+1: 801: [801] Done with resize!
+1: 801: [801] Done with resize!
+1: 573: [573] Done with resize!
+1: 573: [573] Done with resize!
+1: 586: [586] Done with resize!
+1: 586: [586] Done with resize!
+1: 314: [314] Done with resize!
+1: 314: [314] Done with resize!
+1: 722: [722] Done with resize!
+1: 722: [722] Done with resize!
+1: 778: [778] Done with resize!
+1: 778: [778] Done with resize!
+1: 514: [514] Done with resize!
+1: 514: [514] Done with resize!
+1: 23: [23] Done with resize!
+1: 23: [23] Done with resize!
+1: 150: [150] Done with resize!
+1: 150: [150] Done with resize!
+1: 245: [245] Done with resize!
+1: 245: [245] Done with resize!
+1: 48: [48] Done with resize!
+1: 48: [48] Done with resize!
+1: 633: [633] Done with resize!
+1: 633: [633] Done with resize!
+1: 747: [747] Done with resize!
+1: 747: [747] Done with resize!
+1: 81: [81] Done with resize!
+1: 81: [81] Done with resize!
+1: 652: [652] Done with resize!
+1: 652: [652] Done with resize!
+1: 615: [615] Done with resize!
+1: 615: [615] Done with resize!
+1: 188: [188] Done with resize!
+1: 188: [188] Done with resize!
+1: 545: [545] Done with resize!
+1: 545: [545] Done with resize!
+1: 770: [770] Done with resize!
+1: 770: [770] Done with resize!
+1: 809: [809] Done with resize!
+1: 809: [809] Done with resize!
+1: 620: [620] Done with resize!
+1: 620: [620] Done with resize!
+1: 181: [181] Done with resize!
+1: 181: [181] Done with resize!
+1: 705: [705] Done with resize!
+1: 705: [705] Done with resize!
+1: 4: [4] Done with resize!
+1: 4: [4] Done with resize!
+1: 164: [164] Done with resize!
+1: 164: [164] Done with resize!
+1: 307: [307] Done with resize!
+1: 307: [307] Done with resize!
+1: 326: [326] Done with resize!
+1: 326: [326] Done with resize!
+1: 825: [825] Done with resize!
+1: 825: [825] Done with resize!
+1: 602: [602] Done with resize!
+1: 602: [602] Done with resize!
+1: 349: [349] Done with resize!
+1: 349: [349] Done with resize!
+1: 490: [490] Done with resize!
+1: 490: [490] Done with resize!
+1: 849: [849] Done with resize!
+1: 849: [849] Done with resize!
+1: 481: [481] Done with resize!
+1: 481: [481] Done with resize!
+1: 121: [121] Done with resize!
+1: 121: [121] Done with resize!
+1: 269: [269] Done with resize!
+1: 269: [269] Done with resize!
+1: 24: [24] Done with resize!
+1: 24: [24] Done with resize!
+1: 40: [40] Done with resize!
+1: 40: [40] Done with resize!
+1: 172: [172] Done with resize!
+1: 172: [172] Done with resize!
+1: 64: [64] Done with resize!
+1: 64: [64] Done with resize!
+1: 202: [202] Done with resize!
+1: 202: [202] Done with resize!
+1: 78: [78] Done with resize!
+1: 78: [78] Done with resize!
+1: 187: [187] Done with resize!
+1: 187: [187] Done with resize!
+1: 456: [456] Done with resize!
+1: 456: [456] Done with resize!
+1: 767: [767] Done with resize!
+1: 767: [767] Done with resize!
+1: 134: [134] Done with resize!
+1: 134: [134] Done with resize!
+1: 322: [322] Done with resize!
+1: 322: [322] Done with resize!
+1: 154: [154] Done with resize!
+1: 154: [154] Done with resize!
+1: 579: [579] Done with resize!
+1: 579: [579] Done with resize!
+1: 289: [289] Done with resize!
+1: 289: [289] Done with resize!
+1: 386: [386] Done with resize!
+1: 386: [386] Done with resize!
+1: 715: [715] Done with resize!
+1: 715: [715] Done with resize!
+1: 550: [550] Done with resize!
+1: 550: [550] Done with resize!
+1: 794: [794] Done with resize!
+1: 794: [794] Done with resize!
+1: 241: [241] Done with resize!
+1: 241: [241] Done with resize!
+1: 360: [360] Done with resize!
+1: 360: [360] Done with resize!
+1: 762: [762] Done with resize!
+1: 762: [762] Done with resize!
+1: 531: [531] Done with resize!
+1: 531: [531] Done with resize!
+1: 719: [719] Done with resize!
+1: 719: [719] Done with resize!
+1: 742: [742] Done with resize!
+1: 742: [742] Done with resize!
+1: 593: [593] Done with resize!
+1: 593: [593] Done with resize!
+1: 822: [822] Done with resize!
+1: 822: [822] Done with resize!
+1: 359: [359] Done with resize!
+1: 359: [359] Done with resize!
+1: 137: [137] Done with resize!
+1: 137: [137] Done with resize!
+1: 738: [738] Done with resize!
+1: 738: [738] Done with resize!
+1: 38: [38] Done with resize!
+1: 38: [38] Done with resize!
+1: 624: [624] Done with resize!
+1: 624: [624] Done with resize!
+1: 235: [235] Done with resize!
+1: 235: [235] Done with resize!
+1: 302: [302] Done with resize!
+1: 302: [302] Done with resize!
+1: 683: [683] Done with resize!
+1: 683: [683] Done with resize!
+1: 525: [525] Done with resize!
+1: 525: [525] Done with resize!
+1: 565: [565] Done with resize!
+1: 565: [565] Done with resize!
+1: 250: [250] Done with resize!
+1: 250: [250] Done with resize!
+1: 753: [753] Done with resize!
+1: 753: [753] Done with resize!
+1: 119: [119] Done with resize!
+1: 119: [119] Done with resize!
+1: 798: [798] Done with resize!
+1: 798: [798] Done with resize!
+1: 390: [390] Done with resize!
+1: 390: [390] Done with resize!
+1: 640: [640] Done with resize!
+1: 640: [640] Done with resize!
+1: 472: [472] Done with resize!
+1: 472: [472] Done with resize!
+1: 380: [380] Done with resize!
+1: 380: [380] Done with resize!
+1: 52: [52] Done with resize!
+1: 52: [52] Done with resize!
+1: 265: [265] Done with resize!
+1: 265: [265] Done with resize!
+1: 487: [487] Done with resize!
+1: 487: [487] Done with resize!
+1: 209: [209] Done with resize!
+1: 209: [209] Done with resize!
+1: 520: [520] Done with resize!
+1: 520: [520] Done with resize!
+1: 774: [774] Done with resize!
+1: 774: [774] Done with resize!
+1: 582: [582] Done with resize!
+1: 582: [582] Done with resize!
+1: 676: [676] Done with resize!
+1: 676: [676] Done with resize!
+1: 650: [650] Done with resize!
+1: 650: [650] Done with resize!
+1: 684: [684] Done with resize!
+1: 684: [684] Done with resize!
+1: 334: [334] Done with resize!
+1: 334: [334] Done with resize!
+1: 662: [662] Done with resize!
+1: 662: [662] Done with resize!
+1: 500: [500] Done with resize!
+1: 500: [500] Done with resize!
+1: 344: [344] Done with resize!
+1: 344: [344] Done with resize!
+1: 17: [17] Done with resize!
+1: 17: [17] Done with resize!
+1: 862: [862] Done with resize!
+1: 862: [862] Done with resize!
+1: 204: [204] Done with resize!
+1: 204: [204] Done with resize!
+1: 828: [828] Done with resize!
+1: 828: [828] Done with resize!
+1: 708: [708] Done with resize!
+1: 708: [708] Done with resize!
+1: 260: [260] Done with resize!
+1: 260: [260] Done with resize!
+1: 60: [60] Done with resize!
+1: 60: [60] Done with resize!
+1: 509: [509] Done with resize!
+1: 509: [509] Done with resize!
+1: 693: [693] Done with resize!
+1: 693: [693] Done with resize!
+1: 454: [454] Done with resize!
+1: 454: [454] Done with resize!
+1: 369: [369] Done with resize!
+1: 369: [369] Done with resize!
+1: 854: [854] Done with resize!
+1: 854: [854] Done with resize!
+1: 656: [656] Done with resize!
+1: 656: [656] Done with resize!
+1: 556: [556] Done with resize!
+1: 556: [556] Done with resize!
+1: 552: [552] Done with resize!
+1: 552: [552] Done with resize!
+1: 416: [416] Done with resize!
+1: 416: [416] Done with resize!
+1: 398: [398] Done with resize!
+1: 398: [398] Done with resize!
+1: 406: [406] Done with resize!
+1: 406: [406] Done with resize!
+1: 412: [412] Done with resize!
+1: 412: [412] Done with resize!
+1: 445: [445] Done with resize!
+1: 445: [445] Done with resize!
+1: 431: [431] Done with resize!
+1: 431: [431] Done with resize!
+1: 427: [427] Done with resize!
+1: 427: [427] Done with resize!
+1: 433: [433] Done with resize!
+1: 433: [433] Done with resize!
+1: 443: [443] Done with resize!
+1: 443: [443] Done with resize!
+1: 437: [437] Done with resize!
+1: 437: [437] Done with resize!
+1: 447: [447] Done with resize!
+1: 447: [447] Done with resize!
+1: 428: [428] Done with resize!
+1: 428: [428] Done with resize!
+1: 425: [425] Done with resize!
+1: 425: [425] Done with resize!
+1: 434: [434] Done with resize!
+1: 434: [434] Done with resize!
+1: 442: [442] Done with resize!
+1: 442: [442] Done with resize!
+1: 438: [438] Done with resize!
+1: 438: [438] Done with resize!
+1: 0: cumulativeIterationCount= 64 cumulativeWorkTime=133.885 s.
+1: 0: figure of merit = 7.09566e+11
+1: 84: [84] Done with resize!
+1: 84: [84] Done with resize!
+1: 109: [109] Done with resize!
+1: 109: [109] Done with resize!
+1: 88: [88] Done with resize!
+1: 88: [88] Done with resize!
+1: 105: [105] Done with resize!
+1: 105: [105] Done with resize!
+1: 103: [103] Done with resize!
+1: 103: [103] Done with resize!
+1: 96: [96] Done with resize!
+1: 96: [96] Done with resize!
+1: 94: [94] Done with resize!
+1: 94: [94] Done with resize!
+1: 111: [111] Done with resize!
+1: 111: [111] Done with resize!
+1: 89: [89] Done with resize!
+1: 89: [89] Done with resize!
+1: 106: [106] Done with resize!
+1: 106: [106] Done with resize!
+1: 98: [98] Done with resize!
+1: 98: [98] Done with resize!
+1: 101: [101] Done with resize!
+1: 101: [101] Done with resize!
+1: 92: [92] Done with resize!
+1: 92: [92] Done with resize!
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@sierra4368>
+Subject: Job 181594: <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -nnodes 216; ##BSUB -csm y;##BSUB -R "1*{select[LN]} + 20*432*{select[CN&&(hname!=sierra1448)&&(hname!=sierra2065)&&(hname!=sierra689)&&(hname!=sierra3248)&&(hname!=sierra2754)&&(type==any)]span[ptile=40]}"; ##BSUB -alloc_flags gpumps;#BSUB -alloc_flags smt2;#BSUB -G guests;#BSUB -q pbatch;#BSUB -core_isolation 2;#BSUB -W 60;#---------------------------------------;ulimit -s 10240; export OMP_NUM_THREADS=20;export CUDA_LAUNCH_BLOCKING=0; export OMP_STACKSIZE=64M;export PAMI_ENABLE_STRIPING=1; export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so; #export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so; echo 'starting jsrun with';echo "nodes = 216";echo "gpus used per socket = 2";echo "ranks_per_socket = 2";echo "cores_per_rank = 10";echo "used cores per socket = 20";echo "threads per rank = 20"; export RANKS_PER_SOCKET=2;export RANKS_PER_GPU=1; # profiling stuff:;export PROFILE_RANK=-1  #rank where device-bind will run nvprof;#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof";echo "nvprof output at ";  # -mxm; tstamp=09_07_10_52_33; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 864  --tasks_per_rs 1 --cpu_per_rs 10   --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x9x12_32.cmg 16 2 16 8 4> in cluster <sierra> Done
+
+Job <#BSUB -o %J.out;#BSUB -e %J.err;#BSUB -nnodes 216; ##BSUB -csm y;##BSUB -R "1*{select[LN]} + 20*432*{select[CN&&(hname!=sierra1448)&&(hname!=sierra2065)&&(hname!=sierra689)&&(hname!=sierra3248)&&(hname!=sierra2754)&&(type==any)]span[ptile=40]}"; ##BSUB -alloc_flags gpumps;#BSUB -alloc_flags smt2;#BSUB -G guests;#BSUB -q pbatch;#BSUB -core_isolation 2;#BSUB -W 60;#---------------------------------------;ulimit -s 10240; export OMP_NUM_THREADS=20;export CUDA_LAUNCH_BLOCKING=0; export OMP_STACKSIZE=64M;export PAMI_ENABLE_STRIPING=1; export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so; #export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so; echo 'starting jsrun with';echo "nodes = 216";echo "gpus used per socket = 2";echo "ranks_per_socket = 2";echo "cores_per_rank = 10";echo "used cores per socket = 20";echo "threads per rank = 20"; export RANKS_PER_SOCKET=2;export RANKS_PER_GPU=1; # profiling stuff:;export PROFILE_RANK=-1  #rank where device-bind will run nvprof;#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof";echo "nvprof output at ";  # -mxm; tstamp=09_07_10_52_33; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 864  --tasks_per_rs 1 --cpu_per_rs 10   --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x9x12_32.cmg 16 2 16 8 4> was submitted from host <sierra4359> by user <dappelh> in cluster <sierra> at Fri Sep  7 10:52:33 2018
+Job was executed on host(s) <1*sierra4368>, in queue <pbatch>, as user <dappelh> in cluster <sierra> at Fri Sep  7 10:52:35 2018
+                            <40*sierra2083>
+                            <40*sierra2084>
+                            <40*sierra2085>
+                            <40*sierra2086>
+                            <40*sierra2087>
+                            <40*sierra2590>
+                            <40*sierra2088>
+                            <40*sierra2591>
+                            <40*sierra2089>
+                            <40*sierra2592>
+                            <40*sierra2593>
+                            <40*sierra2594>
+                            <40*sierra2595>
+                            <40*sierra2596>
+                            <40*sierra2597>
+                            <40*sierra2598>
+                            <40*sierra2599>
+                            <40*sierra2090>
+                            <40*sierra2091>
+                            <40*sierra2092>
+                            <40*sierra2094>
+                            <40*sierra2095>
+                            <40*sierra2098>
+                            <40*sierra2099>
+                            <40*sierra4000>
+                            <40*sierra4001>
+                            <40*sierra4002>
+                            <40*sierra4003>
+                            <40*sierra4004>
+                            <40*sierra4005>
+                            <40*sierra4006>
+                            <40*sierra4007>
+                            <40*sierra4008>
+                            <40*sierra4009>
+                            <40*sierra4010>
+                            <40*sierra4011>
+                            <40*sierra4012>
+                            <40*sierra4013>
+                            <40*sierra4014>
+                            <40*sierra4015>
+                            <40*sierra4016>
+                            <40*sierra4017>
+                            <40*sierra4018>
+                            <40*sierra4019>
+                            <40*sierra4020>
+                            <40*sierra4021>
+                            <40*sierra4022>
+                            <40*sierra4023>
+                            <40*sierra4024>
+                            <40*sierra4025>
+                            <40*sierra4026>
+                            <40*sierra4027>
+                            <40*sierra4028>
+                            <40*sierra4029>
+                            <40*sierra4030>
+                            <40*sierra4031>
+                            <40*sierra4032>
+                            <40*sierra4033>
+                            <40*sierra4034>
+                            <40*sierra4035>
+                            <40*sierra4036>
+                            <40*sierra4037>
+                            <40*sierra4038>
+                            <40*sierra4039>
+                            <40*sierra3800>
+                            <40*sierra3801>
+                            <40*sierra3802>
+                            <40*sierra4040>
+                            <40*sierra3803>
+                            <40*sierra4041>
+                            <40*sierra3804>
+                            <40*sierra4042>
+                            <40*sierra3805>
+                            <40*sierra4043>
+                            <40*sierra3806>
+                            <40*sierra4044>
+                            <40*sierra3807>
+                            <40*sierra4045>
+                            <40*sierra3808>
+                            <40*sierra4046>
+                            <40*sierra3809>
+                            <40*sierra4047>
+                            <40*sierra4048>
+                            <40*sierra4049>
+                            <40*sierra3300>
+                            <40*sierra3301>
+                            <40*sierra3302>
+                            <40*sierra3303>
+                            <40*sierra3304>
+                            <40*sierra3305>
+                            <40*sierra3306>
+                            <40*sierra3307>
+                            <40*sierra3810>
+                            <40*sierra3308>
+                            <40*sierra3811>
+                            <40*sierra3309>
+                            <40*sierra3812>
+                            <40*sierra4050>
+                            <40*sierra3813>
+                            <40*sierra4051>
+                            <40*sierra3814>
+                            <40*sierra4052>
+                            <40*sierra3815>
+                            <40*sierra4053>
+                            <40*sierra3816>
+                            <40*sierra4054>
+                            <40*sierra3817>
+                            <40*sierra4055>
+                            <40*sierra3818>
+                            <40*sierra4056>
+                            <40*sierra3819>
+                            <40*sierra4057>
+                            <40*sierra4058>
+                            <40*sierra4059>
+                            <40*sierra3310>
+                            <40*sierra3311>
+                            <40*sierra3312>
+                            <40*sierra3313>
+                            <40*sierra3314>
+                            <40*sierra3315>
+                            <40*sierra3316>
+                            <40*sierra3820>
+                            <40*sierra3317>
+                            <40*sierra3821>
+                            <40*sierra3318>
+                            <40*sierra4060>
+                            <40*sierra3822>
+                            <40*sierra3319>
+                            <40*sierra4061>
+                            <40*sierra3823>
+                            <40*sierra4062>
+                            <40*sierra3824>
+                            <40*sierra4063>
+                            <40*sierra3825>
+                            <40*sierra4064>
+                            <40*sierra3826>
+                            <40*sierra4065>
+                            <40*sierra3827>
+                            <40*sierra4066>
+                            <40*sierra3828>
+                            <40*sierra4067>
+                            <40*sierra3829>
+                            <40*sierra4068>
+                            <40*sierra4069>
+                            <40*sierra3320>
+                            <40*sierra3321>
+                            <40*sierra3322>
+                            <40*sierra3323>
+                            <40*sierra3324>
+                            <40*sierra3325>
+                            <40*sierra3326>
+                            <40*sierra3830>
+                            <40*sierra3327>
+                            <40*sierra3831>
+                            <40*sierra3328>
+                            <40*sierra4070>
+                            <40*sierra3832>
+                            <40*sierra3329>
+                            <40*sierra4071>
+                            <40*sierra3833>
+                            <40*sierra4072>
+                            <40*sierra3834>
+                            <40*sierra4073>
+                            <40*sierra3835>
+                            <40*sierra4074>
+                            <40*sierra3836>
+                            <40*sierra4075>
+                            <40*sierra3837>
+                            <40*sierra4076>
+                            <40*sierra3838>
+                            <40*sierra4077>
+                            <40*sierra3839>
+                            <40*sierra4078>
+                            <40*sierra4079>
+                            <40*sierra3330>
+                            <40*sierra3331>
+                            <40*sierra3332>
+                            <40*sierra3333>
+                            <40*sierra3334>
+                            <40*sierra3335>
+                            <40*sierra3336>
+                            <40*sierra3840>
+                            <40*sierra3337>
+                            <40*sierra3841>
+                            <40*sierra3338>
+                            <40*sierra4080>
+                            <40*sierra3842>
+                            <40*sierra3339>
+                            <40*sierra4081>
+                            <40*sierra3843>
+                            <40*sierra4082>
+                            <40*sierra3844>
+                            <40*sierra4083>
+                            <40*sierra3846>
+                            <40*sierra4085>
+                            <40*sierra3855>
+                            <40*sierra4094>
+                            <40*sierra3856>
+                            <40*sierra4095>
+                            <40*sierra3857>
+                            <40*sierra4096>
+                            <40*sierra3858>
+                            <40*sierra4097>
+                            <40*sierra3859>
+                            <40*sierra4098>
+                            <40*sierra3350>
+                            <40*sierra3351>
+                            <40*sierra3352>
+                            <40*sierra3353>
+                            <40*sierra3354>
+                            <40*sierra3355>
+                            <40*sierra3356>
+                            <40*sierra3860>
+                            <40*sierra3357>
+                            <40*sierra3861>
+                            <40*sierra3358>
+</g/g19/dappelh> was used as the home directory.
+</g/g19/dappelh/code/umt2016-managed/sierra-runs> was used as the working directory.
+Started at Fri Sep  7 10:52:35 2018
+Terminated at Fri Sep  7 10:58:48 2018
+Results reported at Fri Sep  7 10:58:48 2018
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -o %J.out
+#BSUB -e %J.err
+#BSUB -nnodes 216
+
+##BSUB -csm y
+##BSUB -R "1*{select[LN]} + 20*432*{select[CN&&(hname!=sierra1448)&&(hname!=sierra2065)&&(hname!=sierra689)&&(hname!=sierra3248)&&(hname!=sierra2754)&&(type==any)]span[ptile=40]}"
+
+##BSUB -alloc_flags gpumps
+#BSUB -alloc_flags smt2
+#BSUB -G guests
+#BSUB -q pbatch
+#BSUB -core_isolation 2
+#BSUB -W 60
+#---------------------------------------
+ulimit -s 10240
+
+export OMP_NUM_THREADS=20
+export CUDA_LAUNCH_BLOCKING=0
+
+export OMP_STACKSIZE=64M
+export PAMI_ENABLE_STRIPING=1
+
+export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so
+
+#export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so
+
+echo 'starting jsrun with'
+echo "nodes = 216"
+echo "gpus used per socket = 2"
+echo "ranks_per_socket = 2"
+echo "cores_per_rank = 10"
+echo "used cores per socket = 20"
+echo "threads per rank = 20"
+
+export RANKS_PER_SOCKET=2
+export RANKS_PER_GPU=1
+
+# profiling stuff:
+export PROFILE_RANK=-1  #rank where device-bind will run nvprof
+#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof"
+echo "nvprof output at "
+
+
+# -mxm
+
+tstamp=09_07_10_52_33; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 864  --tasks_per_rs 1 --cpu_per_rs 10   --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x9x12_32.cmg 16 2 16 8 4
+
+
+
+------------------------------------------------------------
+
+Successfully completed.
+
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <181594.err> for stderr output of this job.
+

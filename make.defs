@@ -94,8 +94,10 @@ FPP             = pgf90
 
 #F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
-F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:80,ptxinfo,loadcache:L1,cuda9.2 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical 
+F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.2 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical 
 
+# for snswpxyz.F90 use 80 registers (gives better performance)
+SWEEPFLAGS      = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:80,ptxinfo,loadcache:L1,cuda9.2 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical 
 
 CXXFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)
 CFLAGS_OPT	=  -g -O2 -fpic $(OPENMPC_FLAGS)

@@ -184,24 +184,10 @@ int main(int argc, char* argv[])
     TAU_PROFILE_SET_NODE(myRank);
 #endif
 
-    long N = 2000000000;
-
-    if(myRank == 0) 
-      cout<<" Allocating and filling 16 GB dummy array to simulate gpfs"<<endl;
-    
-    if((myRank+1)%4 == 0) {
-      double * gpfs = new double[N];
-      for(int i=0; i<N; ++i){
-	gpfs[i] = i; // fill with dummy data
-      }
-    }
-
-
 
     //
     // build a MeshBase
     if(myRank == 0) {
-      cout<<" gpfs simulated size is "<<N<<"*8 GB"<<endl;
       cout<<" Building mesh..."<<endl;
     }
     std::string meshFileName(argv[1]);

@@ -73,7 +73,8 @@ module GPUhelper_mod
    !integer :: previous_batch, previous_binSend, previous_buffer
 
    ! Batchsize in number of angles (currently best to set to NangBin as some parts assume this for convenience)
-   integer, parameter :: batchsize=32
+   !integer, parameter :: batchsize=32
+   integer :: batchsize
 
    ! flag to determine if STime needs to be computed from tau*psi
    logical(kind=1) :: calcSTime
@@ -96,7 +97,8 @@ module GPUhelper_mod
 
    ! zero copy pointers for psib
    type(C_DEVPTR)                    :: d_psib_p
-   real(adqt), device, allocatable :: pinned_psib(:,:,:)
+   !real(adqt), device, allocatable :: pinned_psib(:,:,:)
+   real(adqt), device, pointer :: pinned_psib(:,:,:)
    
    ! device resident batch size of psib
    !real(adqt), device, allocatable :: d_psibBatch(:,:,:)
@@ -598,6 +600,7 @@ contains
     ! But if the problem does not fit in GPU memory, a double buffer strategy is used and the buffers have
     ! to be sized to fit chunks of the problem. (currently chunked by angle bins)
 
+    batchsize = maxval(QuadSet%NangBinList(:))
 
     ! allocate the storage space available on the GPU
     call gpuStorage_ctor(psi_storage,numPsi_buffers,QuadSet%Groups,Size%ncornr,BATCHSIZE)

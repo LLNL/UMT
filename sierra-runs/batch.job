@@ -1,0 +1,50 @@
+#BSUB -o %J.out
+#BSUB -e %J.err
+#BSUB -nnodes 64
+##BSUB -csm y
+##BSUB -R "1*{select[LN]} + 1344*{select[CN&&(hname!=c699c250)&&(type==any)]span[ptile=42]}"
+
+##BSUB -alloc_flags gpumps
+#BSUB -alloc_flags smt2
+#BSUB -G guests
+#BSUB -q pbatch
+#BSUB -core_isolation 2
+#BSUB -W 20
+#---------------------------------------
+ulimit -s 10240
+
+export OMP_NUM_THREADS=20
+export CUDA_LAUNCH_BLOCKING=0
+
+export OMP_STACKSIZE=64M
+export PAMI_ENABLE_STRIPING=1
+
+export OMPI_LD_PRELOAD_POSTPEND=/usr/tce/packages/spectrum-mpi/ibm/spectrum-mpi-rolling-release/lib/libmpitrace.so
+
+#export LD_PRELOAD=/ccs/home/walkup/logger/mpitrace/src/libmpitrace.so
+
+echo 'starting jsrun with'
+echo "nodes = 64"
+echo "gpus used per socket = 2"
+echo "ranks_per_socket = 2"
+echo "cores_per_rank = 10"
+echo "used cores per socket = 20"
+echo "threads per rank = 20"
+
+export RANKS_PER_SOCKET=2
+export RANKS_PER_GPU=1
+
+# profiling stuff:
+export PROFILE_RANK=-1  #rank where device-bind will run nvprof
+#export PROFILE_PATH="/gpfs/alpinetds/scratch/dappelh/ven201/nvp216_3.prof"
+echo "nvprof output at "
+
+
+# -mxm
+
+tstamp=09_07_10_58_51; jsrun -X 1 --stdio_mode prepended --progress .progress -D CUDA_VISIBLE_DEVICES -E OMP_NUM_THREADS=20 --nrs 256   --tasks_per_rs 1 --cpu_per_rs 10  --gpu_per_rs 1 --bind=proportional-packed:10 -d plane:1  ../Teton/SuOlsonTest 8x8x4_32.cmg 16 2 16 8 4
+
+# jsrun --smpiargs="-mxm --mca btl_openib_warn_default_gid_prefix 0 --mca mpi_warn_on_fork 0" #   --nrs 2  --tasks_per_rs 2 --cpu_per_rs 20 #   --gpu_per_rs 2 --bind=proportional-packed:10 -d plane:2  #   ../../sm60/Teton/SuOlsonTest 2x2x1_34.cmg 16 2 16 8 4
+
+
+

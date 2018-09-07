@@ -85,7 +85,7 @@
    shared_mem = 38*1024 ! 96 Kb
    istat = cudaFuncSetAttribute(GPU_sweep,cudaFuncAttributeMaxDynamicSharedMemorySize, shared_mem)
    if(myrank .eq. 0) then
-      !if(istat .ne. 0) print *, cudaGetErrorString(istat)
+      if(istat .ne. 0) print *, cudaGetErrorString(istat)
       print *, "set the func attribute with error = ", cudaGetErrorString(istat)
    endif
 
