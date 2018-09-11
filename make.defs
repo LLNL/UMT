@@ -21,9 +21,9 @@ endif
 #------------------------------------------------ IBM ----------------------------------------------------------
 
 # wsc paths:
-#MPI_HOME=/opt/ibm/spectrum_mpi
-#CUDA_HOME=/usr/local/cuda-9.2
-#PGI_HOME=/shared/opt/pgi/linuxpower/18.3
+MPI_HOME=/opt/ibm/spectrum_mpi
+CUDA_HOME=/usr/local/cuda-9.2
+PGI_HOME=/shared/opt/pgi/linuxpower/18.7
 
 # summit paths:
 #MPI_HOME=${OLCF_SPECTRUM_MPI_ROOT}
@@ -32,7 +32,7 @@ endif
 
 
 # sierra paths:
-MPI_HOME=${MPI_ROOT}
+#MPI_HOME=${MPI_ROOT}
 #CUDA_HOME=${CUDA_HOME}
 #PGI_HOME=${OLCF_PGI_ROOT}/linuxpower/18.3
 
@@ -92,7 +92,6 @@ FPP             = pgf90
 
 # Munixlogical makes pgf90 use 0 for false instead of 0xff.
 
-#F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical CUDAROOT=$(CUDA_HOME)
 
 F90FLAGS_OPT    = -Mcuda=cc$(COMPUTE_CAPABILITY),nordc,maxregcount:64,ptxinfo,loadcache:L1,cuda9.2 -fast -Mfprelaxed -O3 -Kpic $(OPENMPF_FLAGS) -Munixlogical 
 
