@@ -20,6 +20,8 @@ endif
 
 #------------------------------------------------ IBM ----------------------------------------------------------
 
+# MVAPICH2 build of UMT has been tested with PGI 18.7 compiler only
+
 # wsc paths:
 MPI_HOME=/opt/ibm/spectrum_mpi
 CUDA_HOME=/usr/local/cuda-9.2
@@ -77,7 +79,8 @@ MPI_LIB_PATH    =
 #MPI_LIBS        = -lmpi_mpifh 
 # New spectrum MPI requires
 MPI_LIBS        = -lmpi_ibm_mpifh 
-
+# MPICH/MVAPICH requires the following so comment out the above lines
+MPI_LIBS         = -lmpichf90 -lmpi
 
 LIBS 	       += $(MPI_LIBS) -lnvToolsExt
 #LIBS           += $(MPI_LIBS) -L/usr/local/cuda-9.1/targets/ppc64le-linux/lib/libnvToolsExt.so
