@@ -1,0 +1,24 @@
+#ifndef TETONVERSION_HH__
+#define TETONVERSION_HH__
+
+// Be compatible with C++98
+#if __cplusplus <= 199711L
+#define TETON_CONSTEXPR inline
+#else
+#define TETON_CONSTEXPR constexpr
+#endif
+
+#define TETON_VERSION_MAJOR @TETON_VERSION_MAJOR@
+#define TETON_VERSION_MINOR @TETON_VERSION_MINOR@
+#define TETON_VERSION_PATCH @TETON_VERSION_PATCH@
+
+TETON_CONSTEXPR const char* teton_get_install_prefix() { return "@CMAKE_INSTALL_PREFIX@"; }
+TETON_CONSTEXPR const char* teton_get_git_sha1() { return "@GIT_SHA1@"; }
+TETON_CONSTEXPR const char* teton_get_version() { return "@PROJECT_VERSION@"; }
+TETON_CONSTEXPR const char* teton_get_system_type() { return "@CMAKE_SYSTEM@"; }
+TETON_CONSTEXPR const char* teton_get_cxx_compiler() { return "@CMAKE_CXX_COMPILER@"; }
+TETON_CONSTEXPR const char* teton_get_fortran_compiler() { return "@CMAKE_Fortran_COMPILER@"; }
+
+#undef TETON_CONSTEXPR
+
+#endif // TETONVERSION_HH__

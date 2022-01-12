@@ -1,0 +1,134 @@
+! This source contains the subroutine implementations for a family of overloaded functions
+! in the OMPWrappers module.
+#include "ftm_utils.h"
+#include "macros.h"
+
+#if !defined(FTM_TYPE)
+#  error FTM_TYPE must be defined to use FTM templates.
+#endif
+
+#if !defined(FTM_KIND)
+#  error FTM_KIND must be defined to use FTM templates.
+#endif
+
+#if !defined(FTM_RANK)
+#  error FTM_RANK must be defined to use FTM templates.
+#endif
+
+#if FTM_RANK == 1
+#  define FTM_RANK_STRING :
+#elif FTM_RANK == 2
+#  define FTM_RANK_STRING :,:
+#elif FTM_RANK == 3
+#  define FTM_RANK_STRING :,:,:
+#elif FTM_RANK == 4
+#  define FTM_RANK_STRING :,:,:,:
+#else
+#  error Support for FTM_RANK > 4 not added yet to OMPWrapper function templates.
+#endif
+
+!-----------------------------------------------------------------------------
+! IMPORTANT
+! OpenMP does not currently provide a mechanism to map Fortran pointers, only C
+! pointers.
+!
+! Fortran pointers are complex types, not just a simple memory address.  They
+! also hold information about the memory location they refer to, such as
+! size and shape.
+!
+! These routines will handle mapping the address of the underlying data the pointer
+! refers to, but you must still issue an OpenMP map pragma after these functions
+! in order to map over the Fortran pointer itself.
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+   function FTM_CAT4(target_alloc_and_pair_ptrs,FTM_TYPE,FTM_KIND,FTM_RANK) (h_ptr, label) result(err_code)
+      
+      FTM_TYPE ( FTM_KIND ) , intent(in), target, dimension( FTM_RANK_STRING ) :: h_ptr
+      character(len=*), intent(in), optional :: label
+      integer :: err_code
+
+      integer(C_SIZE_T) :: num_bytes, offset
+      type(C_PTR) :: d_ptr
+      err_code = 1
+
+      num_bytes = storage_size(h_ptr,kind=C_SIZE_T)/8*SIZE(h_ptr)
+      offset = 0
+      d_ptr = c_null_ptr
+
+      ! Allocate device memory via umpire allocator
+
+!$omp critical
+#if defined(TETON_ENABLE_UMPIRE)
+      d_ptr = Allocator%umpire_device_allocator%allocate_pointer(num_bytes)
+#endif
+!$omp end critical
+      ! Verify that pointer now points to something.
+      TETON_VERIFY( C_ASSOCIATED(d_ptr), "Failed to allocate " // label // " on device.")
+
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
+      ! Associate host and device c pointers.
+      err_code = omp_target_associate_ptr( C_LOC(h_ptr), d_ptr, num_bytes, offset, omp_get_default_device() )
+#endif
+
+      TETON_VERIFY( err_code == 0, "Failed to associate host variable " // label // " with device pointer.")
+
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
+      TETON_VERIFY( omp_target_is_present(C_LOC(h_ptr), omp_get_default_device()) /= 0, "Runtime failed to add " // label // " in host<->device table.") 
+#endif
+         
+      return
+
+   end function FTM_CAT4(target_alloc_and_pair_ptrs,FTM_TYPE,FTM_KIND,FTM_RANK)
+
+!-----------------------------------------------------------------------------
+
+   function FTM_CAT4(target_free_and_unpair_ptrs,FTM_TYPE,FTM_KIND,FTM_RANK) (h_ptr, label) result(err_code)
+
+      FTM_TYPE ( FTM_KIND ) , intent(in), target, dimension( FTM_RANK_STRING ) :: h_ptr
+      character(len=*), intent(in), optional :: label
+      integer :: err_code
+
+      type(C_PTR) :: d_ptr
+      err_code = 1
+
+      d_ptr = c_null_ptr
+
+#if defined(TETON_OPENMP_HAS_USE_DEVICE_ADDR)
+      TOMP( target data use_device_addr(h_ptr))
+#else
+      TOMP( target data use_device_ptr(h_ptr))
+#endif
+
+      d_ptr = C_LOC(h_ptr)
+      TOMP( end target data )
+
+      TETON_VERIFY( c_associated(d_ptr), "Failed to retrieve device pointer for " // label )
+
+      ! Disassociate the pointer
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
+      err_code = omp_target_disassociate_ptr( C_LOC(h_ptr), omp_get_default_device() )
+#endif
+
+      TETON_VERIFY( err_code == 0, "Failed to disassociate host variable " // label )
+
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
+      TETON_VERIFY( omp_target_is_present(C_LOC(h_ptr), omp_get_default_device()) == 0, "Runtime failed to remove variable " // label // " from host<->device table.") 
+#endif
+
+!$omp critical 
+#if defined(TETON_ENABLE_UMPIRE)
+      call Allocator%umpire_device_allocator%deallocate_pointer(d_ptr)
+#endif
+!$omp end critical
+
+      return
+   end function FTM_CAT4(target_free_and_unpair_ptrs,FTM_TYPE,FTM_KIND,FTM_RANK)
+
+!-----------------------------------------------------------------------------
+
+! Cleanup defines
+#undef FTM_RANK
+#undef FTM_RANK_STRING
+#undef FTM_TYPE
+#undef FTM_KIND

@@ -1,0 +1,263 @@
+!=======================================================================
+!                       Version 1.0: 03/99, MRZ
+!-----------------------------------------------------------------------
+! MPI Interface File
+!   This defines the interface to the MPI class.
+!
+!-----------------------------------------------------------------------
+! v1.0: Original implementation
+!=======================================================================
+
+
+! public interfaces
+  public MPIAllReduce, MPIBarrier, MPICommRank, MPICommSize,    &
+         MPIGather, MPIBcast, MPIStart, MPIWait, MPIWaitall,              &
+         MPISendInit, MPIRecvInit, MPISendInit1, MPIRecvInit1,  &
+         MPIIsend, MPIIrecv, getMPIRank, getMPISize, MPIWtime,  &
+         MPIAbort 
+
+!=======================================================================
+! MPIAllReduce(buffer, op, comm)
+!
+!   Performs an MPI reduction on all nodes in the communicator.
+!-----------------------------------------------------------------------
+!   buffer   data buffer (integer or double precision)
+!               input:  data to be reduced
+!              output:  reduced data
+!   op       reduction operation
+!              "prod"...product reduction
+!               "sum"...sum reduction
+!               "min"...minimization reduction
+!               "max"...maximization reduction
+!   comm     MPI communicator
+!=======================================================================
+  interface MPIAllReduce
+    module procedure mpi_MPIAllReduce_r, &
+                     mpi_MPIAllReduce_r_, &
+                     mpi_MPIAllReduce_i, &
+                     mpi_MPIAllReduce_i_
+  end interface
+
+!=======================================================================
+! MPIBarrier(comm)
+!
+!   Performs an MPI barrier on all nodes in the communicator
+!-----------------------------------------------------------------------
+!   comm   MPI communicator
+!=======================================================================
+  interface MPIBarrier
+    module procedure mpi_MPIBarrier
+  end interface
+
+!=======================================================================
+! MPIAbort(comm)
+!
+!   Performs an MPI abort on all nodes in the communicator
+!-----------------------------------------------------------------------
+!   comm   MPI communicator
+!=======================================================================
+  interface MPIAbort
+    module procedure mpi_MPIAbort
+  end interface
+
+!=======================================================================
+! MPICommRank(comm, rank)
+!
+!   Returns the rank of the calling process in the communicator
+!-----------------------------------------------------------------------
+!   comm   MPI communicator
+!   rank   processor rank
+!=======================================================================
+  interface MPICommRank
+    module procedure mpi_MPICommRank
+  end interface
+
+!=======================================================================
+! MPICommSize(comm, size)
+!
+!   Returns the size of the group associated with the communicator
+!-----------------------------------------------------------------------
+!   comm     MPI communicator
+!   size     group size
+!=======================================================================
+  interface MPICommSize
+    module procedure mpi_MPICommSize
+  end interface
+
+!=======================================================================
+! MPIGather(sendBuf, recBuf, root, comm)
+!
+!   Performs an MPI gather operation
+!-----------------------------------------------------------------------
+!   sendBuf  send buffer (double precision)
+!   recvBuf  receive buffer (double precision)
+!   root     node to which gather is performed
+!   comm     MPI communicator
+!=======================================================================
+  interface MPIGather
+    module procedure mpi_MPIGather_r_, &
+                     mpi_MPIGather_r__
+  end interface
+
+!=======================================================================
+! MPIBcast(sendBuf, nsend, root, comm)
+!
+!   Performs an MPI gather operation
+!-----------------------------------------------------------------------
+!   sendBuf  send buffer (double precision)
+!   nsend    length of send buffer
+!   root     node that broadcasts sendBuf 
+!   comm     MPI communicator
+!=======================================================================
+  interface MPIBcast
+    module procedure mpi_MPIBcast_r, &
+                     mpi_MPIBcast_i
+  end interface
+
+!=======================================================================
+! MPISendInit(sendBuf, nsend, isend, tag, comm, request)
+!
+!   Creates a handle for a standard MPI send
+!-----------------------------------------------------------------------
+!   sendBuf  send buffer
+!   nsend    length of send buffer
+!   isend    node to send to
+!   tag      message tag
+!   comm     MPI communicator
+!   request  handle
+!=======================================================================
+  interface MPISendInit
+    module procedure mpi_MPISendInit
+  end interface
+
+  interface MPISendInit1
+    module procedure mpi_MPISendInit1, &
+                     mpi_MPISendInit1_i
+  end interface
+
+!=======================================================================
+! MPIRecvInit(recvBuf, nrecv, irecv, tag, comm, request)
+!
+!   Creates a handle for a standard MPI receive
+!-----------------------------------------------------------------------
+!   recvBuf  recv buffer
+!   nrecv    length of receive buffer
+!   irecv    node to receive from
+!   tag      message tag
+!   comm     MPI communicator
+!   request  handle
+!=======================================================================
+  interface MPIRecvInit
+    module procedure mpi_MPIRecvInit
+  end interface
+
+  interface MPIRecvInit1
+    module procedure mpi_MPIRecvInit1, &
+                     mpi_MPIRecvInit1_i
+  end interface
+
+!=======================================================================
+! MPIIsend(sendBuf, nsend, isend, tag, comm, request)
+!
+!   Begins an MPI nonblocking send operation
+!-----------------------------------------------------------------------
+!   sendBuf  send buffer
+!   nsend    length of send buffer
+!   isend    node to send to
+!   tag      message tag
+!   comm     MPI communicator
+!   request  handle
+!=======================================================================
+  interface MPIIsend
+    module procedure mpi_MPIIsend_r,  &
+                     mpi_MPIIsend_r2, &
+                     mpi_MPIIsend_i,  &
+                     mpi_MPIIsend_i2
+  end interface
+
+!=======================================================================
+! MPIIrecv(recvBuf, nrecv, irecv, tag, comm, request)
+!
+!   Beings an MPI nonblocking receive operation
+!-----------------------------------------------------------------------
+!   recvBuf  recv buffer
+!   nrecv    length of recv buffer
+!   irecv    node to receive from
+!   tag      message tag
+!   comm     MPI communicator
+!   request  handle
+!=======================================================================
+  interface MPIIrecv
+    module procedure mpi_MPIIrecv_r,  &
+                     mpi_MPIIrecv_r2, &
+                     mpi_MPIIrecv_i,  &
+                     mpi_MPIIrecv_i2
+  end interface
+
+!=======================================================================
+! MPIStart(comm)
+!
+!   Start a send for this communicator
+!-----------------------------------------------------------------------
+!   comm        MPI communicator
+!=======================================================================
+  interface MPIStart
+    module procedure mpi_MPIStart
+  end interface
+
+!=======================================================================
+! MPIWait(request)
+!
+!   Wait for requested communication to complete
+!-----------------------------------------------------------------------
+!   request     handle
+!=======================================================================
+  interface MPIWait
+    module procedure mpi_MPIWait
+  end interface
+
+!=======================================================================
+! MPIWaitall(count, request)
+!
+!   Wait for all requested communications to complete
+!-----------------------------------------------------------------------
+!   count       number of communications
+!   request     list of handles
+!   comm        MPI communicator
+!=======================================================================
+  interface MPIWaitall
+    module procedure mpi_MPIWaitall
+  end interface
+
+!=======================================================================
+! MPIWtime()
+!
+!   Wait time
+!=======================================================================
+  interface MPIWtime
+    module procedure mpi_MPIWtime
+  end interface
+
+!=======================================================================
+! getMPIRank(comm)
+!
+!   Returns the rank of the calling process in the communicator
+!-----------------------------------------------------------------------
+!   comm        MPI communicator
+!   getMPIRank  processor rank
+!=======================================================================
+  interface getMPIRank
+    module procedure mpi_getMPIRank
+  end interface
+
+!=======================================================================
+! getMPISize(comm)
+!
+!   Returns the size of the group associated with the communicator
+!-----------------------------------------------------------------------
+!   comm        MPI communicator
+!   getMPISize  group size
+!=======================================================================
+  interface getMPISize
+    module procedure mpi_getMPISize
+  end interface

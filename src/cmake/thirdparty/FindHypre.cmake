@@ -1,0 +1,38 @@
+# Once done, this will define
+#
+# HYPRE_FOUND         - system has hypre
+# HYPRE_INCLUDE_DIR   - hypre include directory
+# HYPRE_LIBRARIES     - hypre library
+
+include(FindPackageHandleStandardArgs)
+
+find_path(
+  HYPRE_INCLUDE_DIR
+  NAMES HYPRE.h
+  PATHS ${HYPRE_ROOT}
+  PATH_SUFFIXES include
+  NO_DEFAULT_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_CMAKE_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
+  NO_CMAKE_SYSTEM_PATH
+) 
+
+find_library(
+  HYPRE_LIBRARIES
+  NAMES HYPRE
+  PATHS ${HYPRE_ROOT}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_CMAKE_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
+  NO_CMAKE_SYSTEM_PATH
+)
+
+find_package_handle_standard_args(
+    hypre
+    DEFAULT_MSG
+    HYPRE_LIBRARIES HYPRE_INCLUDE_DIR)
+
+mark_as_advanced(HYPRE_LIBRARIES HYPRE_INCLUDE_DIR)
