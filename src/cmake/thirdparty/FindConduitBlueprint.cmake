@@ -1,0 +1,38 @@
+# Once done, this will define
+#
+# CONDUITBLUEPRINT_FOUND         - system has conduit blueprint
+# CONDUITBLUEPRINT_INCLUDE_DIR   - conduit blueprint include directory
+# CONDUITBLUEPRINT_LIBRARIES     - conduit blueprint library
+
+include(FindPackageHandleStandardArgs)
+
+find_path(
+  CONDUITBLUEPRINT_INCLUDE_DIR
+  NAMES conduit/conduit_blueprint.hpp
+  PATHS ${CONDUIT_ROOT}
+  PATH_SUFFIXES include
+  NO_DEFAULT_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_CMAKE_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
+  NO_CMAKE_SYSTEM_PATH
+) 
+
+find_library(
+  CONDUITBLUEPRINT_LIBRARIES
+  NAMES conduit_blueprint
+  PATHS ${CONDUIT_ROOT}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_CMAKE_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
+  NO_CMAKE_SYSTEM_PATH
+)
+
+find_package_handle_standard_args(
+    ConduitBlueprint
+    DEFAULT_MSG
+    CONDUITBLUEPRINT_LIBRARIES CONDUITBLUEPRINT_INCLUDE_DIR)
+
+mark_as_advanced(CONDUITBLUEPRINT_LIBRARIES CONDUITBLUEPRINT_INCLUDE_DIR)
