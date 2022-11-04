@@ -12,6 +12,7 @@
    subroutine InitGreySweepUCBxyz_GPU
 
    use, intrinsic :: iso_c_binding, only : c_int
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use Options_mod
    use kind_mod
    use constant_mod
@@ -50,7 +51,6 @@
    integer    :: nAngleSets
    integer    :: nZoneSets
    integer    :: nGTASets
-   integer(kind=c_int) :: nOmpMaxTeamThreads
 
    real(adqt) :: aez
    real(adqt) :: sigv
@@ -75,7 +75,6 @@
    real(adqt), allocatable :: omega(:,:)
 
 !  Constants
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
    nZoneSets  =  getNumberOfZoneSets(Quad)
    nAngleSets =  getNumberOfAngleSets(Quad)
    nGTASets   =  getNumberOfGTASets(Quad)
@@ -106,35 +105,28 @@
      enddo
    enddo
 
-   if (Size%useGPU) then
      TETON_CHECK_BOUNDS1(Quad%AngSetPtr, numAngles)
      TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
      TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
-     TOMP(target update to(GTA% GreySigTotal) )
-     TOMP(target update to(GTA% GreySigScat) )
-     TOMP(target update to(GTA% GreySigtInv) )
 
      TOMP(target data map(to: numAngles, angleList, omega, quadwt))
 
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) shared(Quad) private(ASet, zSetID, angle))
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nZoneSets, numAngles, Geom, GTA, omega)&)
+     TOMPC(private(angle))
 
      ZoneSetLoop1: do zSetID=1,nZoneSets
 
        do angle=1,numAngles
 
-         ASet => Quad% AngSetPtr(angle)
-
-         ! NOTE - This loop doesn't support a collapse(2).  OpenMP only supports
-         ! collapses over loops where the inner loop bounds can be expressed as a simple
-         ! algebraic relation to the outer loop iteration (c*2, c+2, etc).  This inner loop requires a
-         ! lookup (memory access) based on the outer loop bound.
+         ! NOTE - This does not support a collapse(2), as it is not a canonical loop form due to the lookup in inner loop bounds.
          !$omp  parallel do default(none)  &
-         !$omp& shared(Geom, ASet, Angle, omega, zSetID) private(c,cface)
+         !$omp& shared(Geom, GTA, angle, omega, zSetID)
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do cface=1,Geom% nCFacesArray(c)
-             ASet% AfpNorm(cface,c) = DOT_PRODUCT( omega(:,angle),Geom% A_fp(:,cface,c))
-             ASet% AezNorm(cface,c) = DOT_PRODUCT( omega(:,angle),Geom% A_ez(:,cface,c))
+             GTA% AfpNorm(cface,c,angle) = DOT_PRODUCT( omega(:,angle),Geom% A_fp(:,cface,c))
+             GTA% AezNorm(cface,c,angle) = DOT_PRODUCT( omega(:,angle),Geom% A_ez(:,cface,c))
            enddo
          enddo
 
@@ -146,23 +138,23 @@
 
      TOMP(end target teams distribute)
 
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) shared(Quad) private(ASet, zSetID, angle))
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+     TOMPC(shared(nZoneSets, numAngles, Geom, GTA)&)
+     TOMPC(private(angle))
 
      ZoneSetLoop2: do zSetID=1,nZoneSets
 
        do angle=1,numAngles
 
-         ASet => Quad% AngSetPtr(angle)
-
          !$omp  parallel do default(none)  &
-         !$omp& shared(Geom, ASet,zSetID) private(c,cface)
+         !$omp& shared(Geom, GTA, angle, zSetID) 
 
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
-           ASet% ANormSum(c) = zero
+           GTA% ANormSum(c,angle) = zero
            do cface=1,Geom% nCFacesArray(c)
-             ASet% ANormSum(c) = ASet% ANormSum(c) + half*   &
-            (ASet% AfpNorm(cface,c) + abs( ASet% AfpNorm(cface,c) ) +  &
-             ASet% AezNorm(cface,c) + abs( ASet% AezNorm(cface,c) ) )
+             GTA% ANormSum(c,angle) = GTA% ANormSum(c,angle) + half*   &
+            (GTA% AfpNorm(cface,c,angle) + abs( GTA% AfpNorm(cface,c,angle) ) +  &
+             GTA% AezNorm(cface,c,angle) + abs( GTA% AezNorm(cface,c,angle) ) )
            enddo
          enddo
 
@@ -174,13 +166,16 @@
 
      TOMP(end target teams distribute)
 
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) private(zSetID))
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+     TOMPC(shared(nZoneSets, Geom, GTA, Quad, numAngles, angleList, quadwt) &)
+     TOMPC(private(zone,ifp,c0,cez,nCorner,nCFaces,aSetID,angGTA) &)
+     TOMPC(private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,coef,dInv,Sigt,SigtEZ))
 
      ZoneSetLoop: do zSetID=1,nZoneSets
 
      !$omp  parallel do default(none)  &
      !$omp& shared(Geom, GTA, Quad, numAngles, angleList, quadwt, zSetID)  &
-     !$omp& private(zone,angle,i,cface,ifp,c,c0,c1,cez,nCorner,nCFaces,aSetID,angGTA) &
+     !$omp& private(zone,ifp,c0,cez,nCorner,nCFaces,aSetID,angGTA) &
      !$omp& private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,coef,dInv,Sigt,SigtEZ)
 
        ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
@@ -218,13 +213,13 @@
 
              do cface=1,nCfaces
 
-               aez = Quad% AngSetPtr(Angle)% AezNorm(cface,c0+c) 
+               aez = GTA% AezNorm(cface,c0+c,angle) 
                cez = Geom% cEZ(cface,c0+c)
 
                if (aez > zero ) then
 
                  ifp    = mod(cface,nCFaces) + 1
-                 afp    = Quad% AngSetPtr(Angle)% AfpNorm(ifp,c0+c)
+                 afp    = GTA% AfpNorm(ifp,c0+c,angle)
                  SigtEZ = GTA%GreySigTotal(c0+cez)
 
                  TestOppositeFace: if (afp < zero) then
@@ -271,7 +266,7 @@
 
              c    = Quad% AngSetPtr(aSetID)% nextC(c0+i,angGTA) 
 
-             dInv = one/(Quad% AngSetPtr(angle)% ANormSum(c0+c) +   &
+             dInv = one/(GTA% ANormSum(c0+c,angle) +   &
                          Geom% Volume(c0+c)*GTA%GreySigTotal(c0+c))
 
              do c1=1,nCorner
@@ -284,7 +279,7 @@
              nCFaces = Geom% nCFacesArray(c0+c)
 
              do cface=1,nCFaces
-               aez = Quad% AngSetPtr(angle)% AezNorm(cface,c0+c)
+               aez = GTA% AezNorm(cface,c0+c,angle)
 
                if (aez > zero) then
                  cez = Geom% cEZ(cface,c0+c)
@@ -314,7 +309,6 @@
      TOMP(end target teams distribute)
      TOMP(end target data)
 
-   endif ! if Size%useGPU
 
    deallocate( angleList )
    deallocate( omega )

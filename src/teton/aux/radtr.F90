@@ -25,12 +25,7 @@
    real(adqt) :: time1, time2
    real(adqt) :: time3, time4
 
-   START_RANGE("Teton_RadTransport")
-!  This call is needed to change the heap size on the GPU
-
-!#if defined(TETON_ENABLE_CUDA)
-!   call __xlcuf_init()
-!#endif
+   START_RANGE("Teton_Cycle")
 
 !***********************************************************************
 !  INTERPOLATE SOURCE PROFILES                                         *
@@ -44,9 +39,9 @@
 !  Initialize the radiation field and total opacity for each set       *
 !*********************************************************************** 
 
-   START_RANGE("Teton_Initialize")
+   START_RANGE("Teton_Initialize_Sets")
    call initializeSets
-   END_RANGE("Teton_Initialize")
+   END_RANGE("Teton_Initialize_Sets")
 
    time2 = MPIWtime()
 
@@ -58,9 +53,9 @@
 
    time3 = MPIWtime()
 
-   START_RANGE("Teton_Finalize")
+   START_RANGE("Teton_Finalize_Sets")
    call finalizeSets
-   END_RANGE("Teton_Finalize")
+   END_RANGE("Teton_Finalize_Sets")
 
    time4 = MPIWtime()
 
@@ -70,7 +65,7 @@
    Size% RadtrTimeCycle = (time4 - time1)/sixty
    Size% FinalTimeCycle = (time4 - time3)/sixty
 
-   END_RANGE("Teton_RadTransport")
+   END_RANGE("Teton_Cycle")
 
    return
    end subroutine radtr

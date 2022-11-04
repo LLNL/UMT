@@ -43,8 +43,6 @@ target_sources( teton PRIVATE
   GetTemperatureMaxIts.F90
   GetTemperatureRelTol.F90
   InitTeton.F90
-  ReConstructSets.F90
-  ReConstructSetsFromdV.F90
   ResetPsi.F90
   ScalePsir.F90
   SurfaceEdit.F90
@@ -71,7 +69,9 @@ target_sources( teton PRIVATE
   getRadiationForce.F90
   getRadiationTemperature.F90
   getRunStats.F90
+  getScalarIntensity.F90
   getVolume.F90
+  getZonalPsi.F90
   initMaterial.F90
   initOpacity.F90
   normalizeMaterial.F90
@@ -83,6 +83,7 @@ target_sources( teton PRIVATE
   resetTimers.F90
   rtedit.F90
   setCommunicationGroup.F90
+  setGTAOptions.F90
   setMaterial.F90
   setMaterialSource.F90
   setNodePosition.F90

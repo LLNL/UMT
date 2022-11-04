@@ -16,8 +16,6 @@
    use kind_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
    use BoundaryList_mod
    use Boundary_mod
 
@@ -34,21 +32,24 @@
 
    integer          :: c,c0,b0
    integer          :: bcID
-   logical(kind=1)  :: BoundaryZone
-   integer          :: CToFace(Size%maxcf,Size%maxCorner)
 
 !  Set the zone data structures
-
-   Z => getZoneData(Geom, zoneID)
-   M => getMesh(Geom, zoneID)
 
    c0 = 2*(zoneID - 1) 
 
    Geom% cOffSet(zoneID)   = c0
    Geom% numCorner(zoneID) = 2
+   Geom% zoneFaces(zoneID) = 2
+
+   ! Assuming only 2 zone faces per zone,
+   ! indexed consistently with local corners
+
+   do c=1,2
+     Geom% CToFace(1,c0+c) = c
+   enddo
 
    if (zoneID == 1 .or. zoneID == Size% nzones) then
-     BoundaryZone = .TRUE.
+     Geom% BoundaryZone(zoneID) = .TRUE.
 
      ! BCZoneID is a global boundary condition array
      ! Loop through and figure out which bcID corresponds to this zone
@@ -93,7 +94,7 @@
      enddo
 
    else
-     BoundaryZone = .FALSE.
+     Geom% BoundaryZone(zoneID) = .FALSE.
    endif
 
    !! Surface edit needs these:
@@ -112,11 +113,6 @@
    if ( zoneID /= Size% nzones ) then
      Geom% cFP(1,c0+2)  = c0+2
    endif
-
-   call constructZone( Z, c0, BoundaryZone )
-
-   call constructMesh( M, c0 )
-
 
 
    return

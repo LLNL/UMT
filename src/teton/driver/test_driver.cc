@@ -14,10 +14,6 @@ extern "C" void xl__trce(int, siginfo_t *, void *);
 #include "omp.h"
 #endif
 
-#if defined(TETON_ENABLE_MEMUSAGES)
-#include "MemUsages.h"
-#endif
-
 #if defined(TETON_ENABLE_UMPIRE)
 #include "umpire/Umpire.hpp"
 #include "umpire/strategy/QuickPool.hpp"
@@ -36,7 +32,6 @@ extern "C" void xl__trce(int, siginfo_t *, void *);
 #include "conduit/conduit_blueprint.hpp"
 
 #if defined(TETON_ENABLE_MFEM)
-#include "TetonBlueprint.hh"
 #include "mfem.hpp"
 #endif
 
@@ -85,6 +80,8 @@ int print_gpu_mem(const char *label)
    gbused = ((double) total_on_gpu - free_on_gpu) / (1024.0 * 1024.0 * 1024.0);
    fprintf(stdout, "%s: total %7.4f GB; free %7.3f GB; used %7.3f GB\n", label, gbtotal, gbfree, gbused);
    fflush(stdout);
+#else
+   (void) label;
 #endif
    return (0);
 }
@@ -93,22 +90,29 @@ int print_gpu_mem(const char *label)
 //  run syntax:
 //
 // ./test_driver -c <# cycles> -i <input path> -o <output path>
+// Note: to use the new blueprint format, ./test_driver -b ...
 //==========================================================
 
 int main(int argc, char *argv[])
 {
    int myRank = 0;
+   int mySize = -1;
    int opt;
    int cycles = 1;
    int numPhaseAngleSets = 0;
    int useUmpire = 1;
    int numOmpMaxThreads = -1; // Max number of CPU threads to use  If -1, use value from omp_get_max_threads()
+   double fixedDT = 0.0;
+   bool all_vacuum = false;
+
 #if defined(TETON_ENABLE_MFEM)
    int numSerialRefinementLevels = 0;
    int numParallelRefinementLevels = 0;
    int numPolar = -1;
    int numAzimuthal = -1;
    int numGroups = 1;
+   mfem::Mesh *mesh = nullptr;
+   mfem::ParMesh *pmesh = nullptr;
 #endif
 
    // MPI
@@ -116,20 +120,17 @@ int main(int argc, char *argv[])
    int provided = 0;
    int claimed = 0;
    int request = MPI_THREAD_SINGLE;
-   int verbose = 11;
+   int verbose = 1;
 
    bool useGPU = false;
    bool useCUDASweep = false;
-   bool dumpCopyOfInput = false;
-   bool freeOMPResources = false;
    bool useNewGTASolver = false;
    bool useDeviceAwareMPI = false; // Pass device addresses to MPI ( device-aware MPI ).
-
-   double memory_mb_used = -1;
 
    std::string inputPath(".");
    std::string outputPath("");
    std::string label("");
+   std::string colorFile("");
    std::string caliper_config("runtime-report");
 
 #if defined(TETON_ENABLE_CUDA)
@@ -196,10 +197,12 @@ int main(int argc, char *argv[])
 #endif
 
    MPI_Comm_rank(comm, &myRank);
+   MPI_Comm_size(comm, &mySize);
 
-#if defined(TETON_ENABLE_MEMUSAGES)
-   MemUsage_init(comm);
-#endif
+   if (myRank == 0)
+   {
+      std::cout << "Teton driver: number of MPI ranks: " << mySize << std::endl;
+   }
 
    //==========================================================
    // Get command line arguments
@@ -210,11 +213,11 @@ int main(int argc, char *argv[])
       static struct option long_options[]
           = { {"apply_label", no_argument, 0, 'l'},
               {"caliper", required_argument, 0, 'p'},
-              {"dump_input_copy", no_argument, 0, 'd'},
               {"free_omp_resources", no_argument, 0, 'f'},
               {"help", no_argument, 0, 'h'},
               {"input_path", required_argument, 0, 'i'},
               {"num_cycles", required_argument, 0, 'c'},
+              {"dt", required_argument, 0, 'D'},
               {"num_phase_space_sets", required_argument, 0, 's'},
               {"num_threads", required_argument, 0, 't'},
               {"output_path", required_argument, 0, 'o'},
@@ -224,12 +227,14 @@ int main(int argc, char *argv[])
               {"use_gpu_kernels", no_argument, 0, 'g'},
               {"use_new_gta", no_argument, 0, 'n'},
               {"verbose", required_argument, 0, 'v'},
+              {"all_vacuum", no_argument, 0, 'V'},
 #if defined(TETON_ENABLE_MFEM)
               {"serial_refinement_levels", required_argument, 0, 'r'},
               {"parallel_refinement_levels", required_argument, 0, 'z'},
               {"num_Polar", required_argument, 0, 'P'},
-              {"num_Azimuth", required_argument, 0, 'A'},
+              {"num_Azimuthal", required_argument, 0, 'A'},
               {"num_Groups", required_argument, 0, 'G'},
+              {"color_file", required_argument, 0, 'C'},
 #endif
               {0, 0, 0, 0} };
 
@@ -237,9 +242,9 @@ int main(int argc, char *argv[])
       int option_index = 0;
 
 #if defined(TETON_ENABLE_MFEM)
-      auto optString = "A:G:P:c:defghi:l:mno:p:r:s:t:u:v:z:";
+      auto optString = "A:G:P:C:c:D:efghi:l:mno:p:r:s:t:u:v:Vz:";
 #else
-      auto optString = "c:defghi:l:mno:p:s:t:u:v:";
+      auto optString = "c:D:efghi:l:mno:p:s:t:u:v:V";
 #endif
 
       opt = getopt_long(argc, argv, optString, long_options, &option_index);
@@ -257,8 +262,10 @@ int main(int argc, char *argv[])
             if (myRank == 0)
                std::cout << "Teton driver: cycles to execute: " << cycles << std::endl;
             break;
-         case 'd':
-            dumpCopyOfInput - true;
+         case 'D':
+            fixedDT = atof(optarg);
+            if (myRank == 0)
+               std::cout << "Teton driver: fixed dt selected: " << fixedDT << std::endl;
             break;
          case 'e':
             useCUDASweep = true;
@@ -266,10 +273,9 @@ int main(int argc, char *argv[])
                std::cout << "Using experimental streaming CUDA sweep." << std::endl;
             break;
          case 'f':
-            freeOMPResources = true;
             if (myRank == 0)
                std::cout
-                   << "Enabling freeing of all OpenMP resources on device between cycles via omp_pause_resource_all call."
+                   << "Deprecated the option to free OpenMP resources on device between cycles via omp_pause_resource_all call.  Resulted in issues on clang/xlf builds."
                    << std::endl;
             break;
          case 'g':
@@ -280,8 +286,6 @@ int main(int argc, char *argv[])
             {
                std::cout << "Usage: " << argv[0] << "[OPTIONS]" << std::endl;
                std::cout << " -c -num_cycles <cycles>      Number of cycles to execute." << std::endl;
-               std::cout << " -d -dump_input_copy          Dump a copy of the problem input to conduit json file."
-                         << std::endl;
                std::cout
                    << " -e -use_cuda_sweep           Use experimental CUDA sweep.  Do not specify this option and -g at the same time."
                    << std::endl;
@@ -313,8 +317,10 @@ int main(int argc, char *argv[])
                std::cout
                    << " -u -umpire_mode <0,1,2>      0 - Disable umpire.  1 - Use Umpire for CPU allocations.  2 - Use Umpire for CPU and GPU allocations."
                    << std::endl;
-               std::cout << " -v -verbose [0,1,2]    0 - quite  1 - informational  2 - really chatty (default)"
-                         << std::endl;
+               std::cout
+                   << " -v -verbose [0,1,2]    0 - quite  1 - informational(default)  2 - really chatty and dump files"
+                   << std::endl;
+               std::cout << " -V -all_vacuum Use all vacuum boundary conditions" << std::endl;
 #if defined(TETON_ENABLE_MFEM)
                std::cout
                    << " -r -serial_refinement_levels <int> Number of times to refine the MFEM mesh before doing parallel decomposition"
@@ -325,6 +331,7 @@ int main(int argc, char *argv[])
                std::cout << " -A -num_Azimuthal <int>      Number azimuthal angles in an octant" << std::endl;
                std::cout << " -P -num_Polar <int>          Number polar angles in an octant" << std::endl;
                std::cout << " -G -num_Groups <int>         Number energy groups" << std::endl;
+               std::cout << " -C -color_file <string>      color file for manual decomposition" << std::endl;
 #endif
             }
             return (0);
@@ -398,6 +405,9 @@ int main(int argc, char *argv[])
             if (myRank == 0)
                std::cout << "Teton driver: number of energy groups: " << numGroups << std::endl;
             break;
+         case 'C':
+            colorFile = std::string(optarg);
+            break;
 #endif
          case 't':
             numOmpMaxThreads = atoi(optarg);
@@ -413,6 +423,11 @@ int main(int argc, char *argv[])
             verbose = atoi(optarg);
             if (myRank == 0)
                std::cout << "Teton driver: setting verbosity to " << verbose << std::endl;
+            break;
+         case 'V':
+            all_vacuum = true;
+            if (myRank == 0)
+               std::cout << "Teton driver: using all vacuum boundary conditions" << std::endl;
             break;
          case '?':
             if (myRank == 0)
@@ -453,7 +468,6 @@ int main(int argc, char *argv[])
 // Initialize environment on GPU
 //==========================================================
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-
    if (myRank == 0)
       print_gpu_mem("Teton driver: Before hello world gpu kernel run.");
 
@@ -465,14 +479,6 @@ int main(int argc, char *argv[])
 
    if (myRank == 0)
       print_gpu_mem("Teton driver: After hello world gpu kernel run.");
-
-   if (freeOMPResources)
-   {
-      omp_pause_resource_all(omp_pause_hard);
-      if (myRank == 0)
-         print_gpu_mem("Teton driver: After omp_pause_resource_all.");
-   }
-
 #endif
 
 //==========================================================
@@ -493,16 +499,25 @@ int main(int argc, char *argv[])
    // Read in conduit nodes or mfem mesh with problem input
    //==========================================================
    ::Teton::Teton myTetonObject;
-   conduit::Node &datastore = myTetonObject.getDatastore();
+   conduit::Node &options = myTetonObject.getOptions();
    conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
-   conduit::Node &checkpoint = myTetonObject.getCheckpoint();
 
    //==========================================================
-   // Check if inputPath is path to mfem mesh file.
+   // Read in mesh from an mfem mesh file
+   //
    // This functionality is currently constrained to a hard-coded
    // crooked pipe problem.  It assumes a mfem mesh is provided
-   // with two materials specific boundary conditions.
+   // with two materials and very specific boundary condition
+   // tags.
+   //
+   // TODO - All this hard-coding can be moved into an input file that lives
+   // alongside the mfem mesh file.
+   // TODO - All this code for converting a mfem mesh and input to a blueprint
+   // mesh should be moved to another function in another source file, so the
+   // driver doesn't have all this here. -- black27
    //==========================================================
+   //==========================================================
+
    if (endsWith(inputPath, ".mesh"))
    {
       if (access(inputPath.c_str(), F_OK) != -1)
@@ -511,121 +526,297 @@ int main(int argc, char *argv[])
          if (myRank == 0)
             std::cout << "Teton driver: converting mfem mesh..." << std::endl;
 
-         mfem::Mesh *mesh = new mfem::Mesh(inputPath.c_str(), 1, 1);
+         mesh = new mfem::Mesh(inputPath.c_str(), 1, 1);
          for (int l = 0; l < numSerialRefinementLevels; ++l)
          {
             mesh->UniformRefinement();
          }
-         mfem::ParMesh *pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh);
+
+         if (colorFile.size() > 0)
+         {
+            if (access(colorFile.c_str(), F_OK) != -1)
+            {
+               int nelem = mesh->GetNE();
+               std::vector<int> colorData;
+               colorData.reserve(nelem);
+
+               int e = 0;
+               std::ifstream colorFileStream(colorFile.c_str());
+               while (!colorFileStream.eof() or e == nelem)
+               {
+                  int c = 0;
+                  colorFileStream >> c;
+                  colorData.push_back(c);
+                  ++e;
+               }
+               if (e < nelem)
+               {
+                  std::cerr << "Not enough colors in " << colorFile << std::endl;
+                  return (1);
+               }
+               colorFileStream.close();
+
+               pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh, colorData.data());
+            }
+            else
+            {
+               std::cerr << "could not open color file: " << colorFile << std::endl;
+               return (1);
+            }
+         }
+         else
+         {
+            pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh);
+         }
          for (int l = 0; l < numParallelRefinementLevels; ++l)
          {
-            mesh->UniformRefinement();
+            pmesh->UniformRefinement();
          }
 
          pmesh->PrintCharacteristics();
 
-         // Set up problem for crooked pipe mesh.  These are all hard-coded currently.
-         // TODO: Allow settings these from an input file of some kind, where a value could be set per
-         // material ( pmesh tag id ).
-         int nelem = mesh->GetNE();
+         // TODO: Is this local or global?
+         int nelem = pmesh->GetNE();
+
+         // Create a blueprint node from the mfem mesh
+         mfem::ConduitDataCollection conduit_data_collec("mesh_blueprint", pmesh);
+         // Note - the mesh blueprint node contains pointers back into the mfem
+         // mesh for some of the data.  For example, the coordinates.
+         // Do not delete the mfem mesh objects until this blueprint node is no
+         // longer needed.
+         conduit_data_collec.MeshToBlueprintMesh(pmesh, meshBlueprint);
+
+         // Delete extra fields we don't need.  Some of these are not yet supported
+         // by VisIt (https://wci.llnl.gov/simulation/computer-codes/visit)
+         if (meshBlueprint.has_path("topologies/main/grid_function"))
+         {
+            meshBlueprint.remove("topologies/main/grid_function");
+         }
+         if (meshBlueprint.has_path("topologies/main/boundary_topology"))
+         {
+            meshBlueprint.remove("topologies/main/boundary_topology");
+         }
+         if (meshBlueprint.has_path("fields/mesh_nodes"))
+         {
+            meshBlueprint.remove("fields/mesh_nodes");
+         }
 
          // TODO: Allow number of group to be set by command line argument.
-         int numGroups = 1;
-         mfem::Vector gr_bounds(numGroups + 1);
+         std::vector<double> gr_bounds(numGroups + 1);
          const double lowerBound = 1.0e-6;
          const double upperBound = 1.0e2;
          const double upperBoundLog = std::log(upperBound);
          const double lowerBoundLog = std::log(lowerBound);
          const double deltaLog = (upperBoundLog - lowerBoundLog) / numGroups;
-         for (int g = 0; g < numGroups; ++g)
+         for (int g = 0; g <= numGroups; ++g)
          {
             gr_bounds[g] = std::exp(lowerBoundLog + g * deltaLog);
          }
          gr_bounds[numGroups] = upperBound;
 
-         mfem::Vector density(nelem);
-         mfem::Vector heat_capacity(nelem);
-         mfem::Vector rad_temp(nelem);
-         mfem::Vector material_temp(nelem);
-         mfem::Vector electron_density(nelem);
-         mfem::Vector abs_opacity(numGroups * nelem);
-         mfem::Vector scat_opacity(numGroups * nelem);
+         //Energy groups and SN quadrature info
+         int qtype = 2;
+         int qorder = 10;
+         int npolar = 4;
+         int nazimu = 3;
+         int paxis = 1;
+         options["quadrature/gnu"].set(gr_bounds.data(), gr_bounds.size());
+         options["quadrature/qtype"] = qtype;
+         options["quadrature/qorder"] = qorder;
+         options["quadrature/npolar"] = npolar;
+         options["quadrature/nazimu"] = nazimu;
+         options["quadrature/paxis"] = paxis;
+         options["quadrature/num_groups"] = numGroups;
+         options["quadrature/gtaorder"] = 2;
+         options["quadrature/nSetsMaster"] = -1;
+         options["quadrature/nSets"] = 1;
+
+         // TODO: Make MFEM Grid functions for ConduitDataCollection to handle
+         // instead.
+
+         //Material dependent fields
+         std::vector<double> thermo_density(nelem);
+         std::vector<double> electron_specific_heat(nelem);
+         std::vector<double> radiation_temperature(nelem);
+         std::vector<double> electron_temperature(nelem);
+         std::vector<double> absorption_opacity(numGroups * nelem);
+         std::vector<double> scattering_opacity(numGroups * nelem, 0.0);
+         std::vector<double> electron_number_density(nelem, 4.16100608392217e+24);
+
+         // Field value to initialize each material to.
+         // Material # -> field -> value.
+         std::map<int, std::map<std::string, double>> material_field_vals;
+
+         //NOTE: some of these fields need to have the initial values updated.
+         //These values are based on the old field meanings, before they were
+         //renamed for the current mesh blueprint interface.  Need to consult
+         //with haut3.  -- black27
+
+         // thin material
+         material_field_vals[1]["thermo_density"] = 0.01;
+         material_field_vals[1]["electron_specific_heat"] = 0.001;
+         material_field_vals[1]["radiation_temperature"] = 0.0005;
+         material_field_vals[1]["electron_temperature"] = 5.0e-5;
+         material_field_vals[1]["absorption_opacity"] = 0.2;
+
+         //thick material
+         material_field_vals[2]["thermo_density"] = 10.0;
+         material_field_vals[2]["electron_specific_heat"] = 1.0;
+         material_field_vals[2]["radiation_temperature"] = 0.5;
+         material_field_vals[2]["electron_temperature"] = 0.05;
+         material_field_vals[2]["absorption_opacity"] = 200.0;
 
          for (int i = 0; i < nelem; ++i)
          {
             int attr_no = pmesh->GetAttribute(i);
-            electron_density[i] = 4.16100608392217e+24;
-            if (attr_no == 1) // crooked pipe, thin material
+
+            thermo_density[i] = material_field_vals[attr_no]["thermo_density"];
+            electron_specific_heat[i] = material_field_vals[attr_no]["electron_specific_heat"];
+            radiation_temperature[i] = material_field_vals[attr_no]["radiation_temperature"];
+            electron_temperature[i] = material_field_vals[attr_no]["electron_temperature"];
+
+            double abs_opacity = material_field_vals[attr_no]["absorption_opacity"];
+
+            for (int g = 0; g < numGroups; ++g)
             {
-               density[i] = .01;
-               heat_capacity[i] = .001;
-               rad_temp[i] = .0005;
-               material_temp[i] = 5.0e-5;
-               for( int g = 0; g <= numGroups; ++g)
-               {
-                  abs_opacity[i*numGroups + g] = 0.2;
-               }
-            }
-            else if (attr_no == 2) // crooked pipe, thick material
-            {
-               density[i] = 10.0;
-               heat_capacity[i] = 1.0;
-               rad_temp[i] = .5;
-               material_temp[i] = .05;
-               for( int g = 0; g <= numGroups; ++g)
-               {
-                  abs_opacity[i*numGroups + g] = 200.0;
-               }
-            }
-            else
-            {
-               std::cerr << "unknown attribute number on mesh element" << std::endl;
-               exit(1);
+               absorption_opacity[i * numGroups + g] = abs_opacity;
             }
          }
-         scat_opacity = 0.0;
 
-         TetonBlueprint blueprint(myTetonObject);
+         // Store the various fields (density, material temperature, etc.)
+         meshBlueprint["fields/thermo_density/association"] = "element";
+         meshBlueprint["fields/thermo_density/topology"] = "main";
+         meshBlueprint["fields/thermo_density/values"].set(thermo_density.data(), thermo_density.size());
 
-         // Set boundary conditions. These attribute numbers
-         // correspond to the tags in the TopHatMesh.py file and
-         // and the attribute numbers in the crooked pipe Nurbs
-         // mesh in the data directory.
+         meshBlueprint["fields/electron_specific_heat/association"] = "element";
+         meshBlueprint["fields/electron_specific_heat/topology"] = "main";
+         meshBlueprint["fields/electron_specific_heat/values"].set(electron_specific_heat.data(),
+                                                                   electron_specific_heat.size());
+
+         meshBlueprint["fields/electron_temperature/association"] = "element";
+         meshBlueprint["fields/electron_temperature/topology"] = "main";
+         meshBlueprint["fields/electron_temperature/values"].set(electron_temperature.data(),
+                                                                 electron_temperature.size());
+
+         meshBlueprint["fields/radiation_temperature/association"] = "element";
+         meshBlueprint["fields/radiation_temperature/topology"] = "main";
+         meshBlueprint["fields/radiation_temperature/values"].set(radiation_temperature.data(),
+                                                                  radiation_temperature.size());
+
+         meshBlueprint["fields/absorption_opacity/association"] = "element";
+         meshBlueprint["fields/absorption_opacity/topology"] = "main";
+         meshBlueprint["fields/absorption_opacity/values"].set(absorption_opacity.data(), absorption_opacity.size());
+
+         meshBlueprint["fields/scattering_opacity/association"] = "element";
+         meshBlueprint["fields/scattering_opacity/topology"] = "main";
+         meshBlueprint["fields/scattering_opacity/values"].set(scattering_opacity.data(), scattering_opacity.size());
+
+         meshBlueprint["fields/electron_number_density/association"] = "element";
+         meshBlueprint["fields/electron_number_density/topology"] = "main";
+         meshBlueprint["fields/electron_number_density/values"].set(electron_number_density.data(),
+                                                                    electron_number_density.size());
+
+         // Set boundary conditions. These attribute numbers correspond to the tags in the crooked_pipe_rz.mesh file
+         // and are set in the create_crooked_pipe_mesh.py pmesh script.
          std::map<int, int> boundary_id_to_type;
-         boundary_id_to_type[14] = 32; // bottom (reflecting Teton ID 32) for bottom wall (attribute no. 14)
-         boundary_id_to_type[12] = 32; // top wall
-         boundary_id_to_type[13] = 32; // right wall
-         boundary_id_to_type[11] = 32; // left wall
-         boundary_id_to_type[10] = 34; // source (source Teton ID 34) for left pipe wall (attribute no. 10)
-         blueprint.SetBoundaryIDs(boundary_id_to_type);
-         // set the temperature source on the source boundary
-         double T_val = .3;
-         blueprint.SetSourceBoundaryTemperature(T_val);
+         if (!all_vacuum)
+         {
+            boundary_id_to_type[14] = 32; // bottom (reflecting Teton ID 32) for bottom wall (attribute no. 14)
+            boundary_id_to_type[12] = 32; // top wall
+            boundary_id_to_type[13] = 32; // right wall
+            boundary_id_to_type[11] = 32; // left wall
+            boundary_id_to_type[10] = 34; // source (source Teton ID 34) for left pipe wall (attribute no. 10)
+         }
+         else
+         {
+            for (int i = 0; i < mesh->bdr_attributes.Size(); ++i)
+            {
+               boundary_id_to_type[mesh->bdr_attributes[i]] = 35; // vacuum
+            }
+         }
 
-         // Form conduit nodes
-         blueprint.OutputConduitMesh(
-             pmesh, density, heat_capacity, rad_temp, material_temp, gr_bounds, abs_opacity, scat_opacity, electron_density);
-         datastore.update(blueprint.GetConduitInputNode());
-         meshBlueprint.update(blueprint.GetConduitMeshNode());
+         std::vector<int> keys, values;
+         for (std::map<int, int>::iterator it = boundary_id_to_type.begin(); it != boundary_id_to_type.end(); ++it)
+         {
+            int k = it->first;
+            int v = it->second;
+            keys.push_back(k);
+            // There's some memory error here, which is very, very odd.
+            values.push_back(v);
+         }
+         options["boundary_conditions/id_to_type_map/ids"] = keys;
+         options["boundary_conditions/id_to_type_map/types"] = values;
 
-         datastore["sources/profile1/Values"] = 0.3;
-         datastore["sources/profile1/NumTimes"] = 1;
-         datastore["sources/profile1/NumValues"] = 1;
-         datastore["sources/profile1/Multiplier"] = 1.0;
+         // Needs to be re-done when blueprint interface for specifying profiles is updated.
+         options["sources/profile1/Values"] = 0.3;
+         options["sources/profile1/NumTimes"] = 1;
+         options["sources/profile1/NumValues"] = 1;
+         options["sources/profile1/Multiplier"] = 1.0;
+
+         // Prune the boundary topology of all interior boundary elements.  MFEM creates a boundary topology over
+         // both problem surface elements and interior shared boundaries between domains.
+         // Teton only wants the surface elements.  Teton uses the adjacency lists to determine shared boundary elements.
+         conduit::int_accessor bndry_vals = meshBlueprint.fetch_existing("fields/boundary_attribute/values").value();
+         conduit::int_accessor element_points
+             = meshBlueprint.fetch_existing("topologies/boundary/elements/connectivity").value();
+         std::string element_type = meshBlueprint.fetch_existing("topologies/boundary/elements/shape").as_string();
+
+         size_t num_points_in_element;
+
+         if (element_type == "point")
+         {
+            num_points_in_element = 1;
+         }
+         else if (element_type == "line")
+         {
+            num_points_in_element = 2;
+         }
+         else if (element_type == "quad")
+         {
+            num_points_in_element = 4;
+         }
+         else
+         {
+            std::cerr << "Unsupported element type of: " << element_type << std::endl;
+            return (1);
+         }
+
+         std::vector<int> new_bnd_attribs;
+         std::vector<int> new_connectivity;
+         size_t current_element = 0;
+         for (size_t i = 0; i < bndry_vals.number_of_elements(); i++)
+         {
+            if (std::find(keys.begin(), keys.end(), bndry_vals[i]) != keys.end())
+            {
+               new_bnd_attribs.push_back(bndry_vals[i]);
+               for (size_t j = 0; j < num_points_in_element; j++)
+               {
+                  new_connectivity.push_back(element_points[current_element + j]);
+               }
+            }
+
+            current_element += num_points_in_element;
+         }
+
+         conduit::Node &attrib_node = meshBlueprint.fetch_existing("fields/boundary_attribute/values");
+         attrib_node.reset();
+         attrib_node.set(new_bnd_attribs);
+
+         conduit::Node &conn_node = meshBlueprint.fetch_existing("topologies/boundary/elements/connectivity");
+         conn_node.reset();
+         conn_node.set(new_connectivity);
 
          if (numAzimuthal > 0)
          {
-            datastore["quadrature/nazimu"] = numAzimuthal;
+            options["quadrature/nazimu"] = numAzimuthal;
          }
          if (numPolar > 0)
          {
-            datastore["quadrature/npolar"] = numPolar;
+            options["quadrature/npolar"] = numPolar;
          }
-
-         delete mesh;
-         delete pmesh;
 #else
-         std::cerr << "Unable to open mfem mesh, test driver was not compiled with TETON_ENABLE_MFEM." << std::endl;
+         std::cerr << "Unable to open mfem mesh, test driver was not configured with CMake's '-DENABLE_MFEM=ON'."
+                   << std::endl;
          exit(1);
 #endif
       }
@@ -635,18 +826,20 @@ int main(int argc, char *argv[])
          exit(1);
       }
    }
-   // Assume this is an input directory with a set of parameter and mesh files.
+   // Assume this is an input directory with a set of conduit blueprint mesh files and problem parameter files.
+   // Note: The parameter files currently have all the input duplicated for each rank.  Look into making a
+   // single 'global' parameter file for global input.
    else
    {
       try
       {
-         std::string input_file_path_base = inputPath + "/parameters_rank" + std::to_string(myRank);
+         std::string input_file_path_base = inputPath + "/parameters_input_" + std::to_string(myRank);
          std::string input_file_path_full = input_file_path_base + ".hdf5";
 
          // Check for parameters node file ending in .hdf5.
          if (access(input_file_path_full.c_str(), F_OK) != -1)
          {
-            conduit::relay::io::load_merged(input_file_path_full, "hdf5", datastore);
+            conduit::relay::io::load_merged(input_file_path_full, "hdf5", options);
          }
          else
          {
@@ -654,7 +847,7 @@ int main(int argc, char *argv[])
             input_file_path_full = input_file_path_base + ".conduit_json";
             if (access(input_file_path_full.c_str(), F_OK) != -1)
             {
-               conduit::relay::io::load_merged(input_file_path_full, "conduit_json", datastore);
+               conduit::relay::io::load_merged(input_file_path_full, "conduit_json", options);
             }
             else
             {
@@ -664,7 +857,7 @@ int main(int argc, char *argv[])
          }
 
          // Check for mesh node file ending in .hdf5.
-         input_file_path_base = inputPath + "/mesh_rank" + std::to_string(myRank);
+         input_file_path_base = inputPath + "/mesh_input_" + std::to_string(myRank);
          input_file_path_full = input_file_path_base + ".hdf5";
          if (access(input_file_path_full.c_str(), F_OK) != -1)
          {
@@ -672,7 +865,7 @@ int main(int argc, char *argv[])
          }
          else
          {
-            // Check for parameters node file ending in .conduit_json.
+            // Check for mesh node file ending in .conduit_json.
             input_file_path_full = input_file_path_base + ".conduit_json";
             if (access(input_file_path_full.c_str(), F_OK) != -1)
             {
@@ -684,24 +877,24 @@ int main(int argc, char *argv[])
                exit(1);
             }
          }
-         if (dumpCopyOfInput)
+         // Create Teton's expected mesh format
+         if (myRank == 0)
          {
-            conduit::relay::io::save(
-                datastore, outputPath + "/parameters_rank" + std::to_string(myRank) + ".conduit_json", "conduit_json");
-            conduit::relay::io::save(
-                meshBlueprint, outputPath + "/mesh_rank" + std::to_string(myRank) + "hdf5", ".hdf5");
+            std::cout << "Teton driver: creating Teton mesh node from blueprint node "
+                      << "\n";
          }
       }
       catch (const std::exception &e)
       {
          std::cout << "Teton driver: Error loading conduit node files at " << inputPath << ": " << e.what();
+         throw;
       }
    }
 
-   datastore["memory_allocator/umpire_host_allocator_id"] = -1;
-   datastore["memory_allocator/umpire_device_allocator_id"] = -1;
+   options["memory_allocator/umpire_host_allocator_id"] = -1;
+   options["memory_allocator/umpire_device_allocator_id"] = -1;
 
-   datastore["size/useCUDASweep"] = false;
+   options["size/useCUDASweep"] = false;
 
    //==========================================================
    // Set problem options passed in via command line
@@ -709,20 +902,18 @@ int main(int argc, char *argv[])
 
    if (useDeviceAwareMPI == true)
    {
-      datastore["mpi/useDeviceAddresses"] = 0;
+      options["mpi/useDeviceAddresses"] = 0;
    }
-
-   bool useDeviceAddrForMPI = false; // Pass device addresses to MPI ( device-aware MPI ).
 
    if (useNewGTASolver == true)
    {
-      datastore["size/useNewGTASolver"] = true;
+      options["size/useNewGTASolver"] = true;
    }
 
    if (useCUDASweep == true)
    {
-      datastore["size/useCUDASweep"] = true;
-      datastore["size/useGPU"] = false;
+      options["size/useCUDASweep"] = true;
+      options["size/useGPU"] = false;
 
       if (useGPU == true)
       {
@@ -733,9 +924,9 @@ int main(int argc, char *argv[])
    else if (useGPU == true)
    {
       if (myRank == 0)
-         std::cout << "Teton driver: -g arg detected, enabling gpu kernels and associated datastore." << std::endl;
+         std::cout << "Teton driver: -g arg detected, enabling gpu kernels and associated options." << std::endl;
 
-      datastore["size/useGPU"] = useGPU;
+      options["size/useGPU"] = useGPU;
 
       // If using the GPU, enable several sub-options.
       if (useUmpire > 0)
@@ -752,18 +943,18 @@ int main(int argc, char *argv[])
          auto thread_safe_host_pinned_pool = rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
              "THREAD_SAFE_PINNED_QUICK_POOL", host_pinned_pool);
 
-         datastore["memory_allocator/umpire_host_allocator_id"] = thread_safe_host_pinned_pool.getId();
+         options["memory_allocator/umpire_host_allocator_id"] = thread_safe_host_pinned_pool.getId();
          if (useUmpire > 1)
          {
             auto device_pool
                 = rm.makeAllocator<umpire::strategy::QuickPool>("DEVICE_QUICK_POOL", rm.getAllocator("DEVICE"));
             auto thread_safe_device_pool
                 = rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>("THREAD_SAFE_DEVICE_QUICK_POOL", device_pool);
-            datastore["memory_allocator/umpire_device_allocator_id"] = thread_safe_device_pool.getId();
+            options["memory_allocator/umpire_device_allocator_id"] = thread_safe_device_pool.getId();
          }
          else
          {
-            datastore["memory_allocator/umpire_device_allocator_id"] = -1;
+            options["memory_allocator/umpire_device_allocator_id"] = -1;
          }
 #else
          if (myRank == 0)
@@ -777,36 +968,51 @@ int main(int argc, char *argv[])
       }
 
       // Enable the GPU CUDA Boltzmann Compton solver ( only has an effect if using BC solver).
-      datastore["size/useCUDASolver"] = true;
+      options["size/useCUDASolver"] = true;
    }
 
    if (numPhaseAngleSets != 0)
    {
-      datastore["quadrature/nSetsMaster"] = numPhaseAngleSets;
+      options["quadrature/nSetsMaster"] = numPhaseAngleSets;
    }
 
-   datastore["concurrency/nOmpMaxThreads"] = numOmpMaxThreads;
+   options["concurrency/nOmpMaxThreads"] = numOmpMaxThreads;
 
    //Set verbosity level ( default is 1 )
-   datastore["verbose"] = verbose;
+   options["verbose"] = verbose;
 
-   myTetonObject.initialize();
-   // Be sure to clear out the blueprint node, since initialize() is finished.
-   // Only populate the mesh blueprint node after this point if you want to trigger mesh movement or
-   // updates to materials or opacities, etc.
-   meshBlueprint.reset();
+   if (fixedDT > 0)
+   {
+      options["iteration/dtrad"] = fixedDT;
+   }
+
+   // Can remove this when MFEM is fixed to stop writing out empty adjacency sets.
+   // -- black27
+   if (meshBlueprint.has_path("adjsets/main_adjset/groups")
+       && meshBlueprint.fetch_existing("adjsets/main_adjset/groups").number_of_children() == 0)
+   {
+      meshBlueprint.remove("adjsets");
+   }
+
+   // Verify the blueprint is valid.
+   std::string protocol = "mesh";
+   conduit::Node info;
+   conduit::blueprint::verify(protocol, meshBlueprint, info);
+
+   // Get rid of adjacency set entry if there are no adjacency sets.
+
+   myTetonObject.initialize(comm);
+
+   // If a dtrad wasn't provided in the input file, the Teton initialize()
+   // call will populate it with a default value.
+   double dtrad = options.fetch_existing("iteration/dtrad").value();
+   double timerad = 0.0;
 
    for (int cycle = 1; cycle <= cycles; cycle++)
    {
-#if defined(TETON_ENABLE_MEMUSAGES)
-      double memory_mb_used = MemUsage_get_curr_proc_mbytes();
-      if (myRank == 0)
-         std::cout << "Teton driver: cycle " << cycle << " CPU process memory (MB): " << memory_mb_used << std::endl;
-#endif
-
       if (!outputPath.empty())
       {
-         myTetonObject.dump(cycle, outputPath, "dump");
+         myTetonObject.dump(cycle, outputPath);
       }
       if (myRank == 0)
       {
@@ -814,18 +1020,16 @@ int main(int argc, char *argv[])
          std::cout << "CYCLE " << cycle << std::endl;
          std::cout << "----------" << std::endl;
       }
-      double dtrad = datastore["iteration/dtrad"].value();
-      myTetonObject.setTimeStep(cycle, dtrad);
-      myTetonObject.step(cycle);
-
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-      if (freeOMPResources)
+      timerad = timerad + dtrad;
+      dtrad = myTetonObject.step(cycle);
+      // Either setTimeStep(cycle, dtrad) can be called to update time step, or
+      // these can be directly updated in the options.
+      if (fixedDT > 0)
       {
-         omp_pause_resource_all(omp_pause_hard);
-         if (myRank == 0)
-            print_gpu_mem("Teton driver: After omp_pause_resource_all.");
+         dtrad = fixedDT;
       }
-#endif
+      options["iteration/dtrad"] = dtrad;
+      options["iteration/timerad"] = timerad;
    }
 
    std::cout << "=================================================================\n";
@@ -878,6 +1082,14 @@ int main(int argc, char *argv[])
 #if defined(TETON_ENABLE_CALIPER)
    adiak::fini();
    mgr.flush();
+#endif
+
+#if defined(TETON_ENABLE_MFEM)
+   if (endsWith(inputPath, ".mesh"))
+   {
+      delete mesh;
+      delete pmesh;
+   }
 #endif
 
    MPI_Finalize();

@@ -19,10 +19,13 @@
    use CommSet_mod
    use AngleSet_mod
    use GroupSet_mod
+   use ZoneSet_mod
    use GreyAcceleration_mod
+   use Material_mod
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    use ComptonControl_mod
 #endif
+   use RadIntensity_mod
    use OMPWrappers_mod
    use MemoryAllocator_mod
    use Options_mod
@@ -54,6 +57,7 @@
    integer                  :: nGTASets
    integer                  :: angle
    logical(kind=1)          :: useBoltzmannCompton
+   logical(kind=1)          :: startCycle
 
 !  Constants
 
@@ -68,6 +72,52 @@
 
 !  Release GPU Memory
    if (Size%useGPU) then
+
+!    Update PhiTotal and edits on the CPU
+
+     TOMP(target update from(Rad% PhiTotal))
+
+     if ( useBoltzmannCompton .and. Size%useCUDASolver .and. Size%ngr >= 16) then
+!  In this case these edits are already on the CPU
+     else
+       TOMP(target update from(Mat% denec))
+       TOMP(target update from(Mat% nonLinearIterations))
+       TOMP(target update from(Mat% PowerEmitted))
+       TOMP(target update from(Mat% PowerCompton))
+     endif
+
+     ! Unmap zone sets
+
+     TOMP(target exit data map(release: ZSet% nCornerSet))
+     TOMP(target exit data map(release: ZSet% nCornerBatch))
+     TOMP(target exit data map(release: ZSet% offset))
+     TOMP(target exit data map(release: ZSet% cornerList))
+     TOMP(target exit data map(release: ZSet% cornerMap))
+     TOMP(target exit data map(release: ZSet% zoneList))
+     TOMP(target exit data map(release: ZSet% cornerConverged))
+     TOMP(target exit data map(release: ZSet% Te))
+     TOMP(target exit data map(release: ZSet% TeOld))
+     TOMP(target exit data map(release: ZSet% delta))
+     TOMP(target exit data map(release: ZSet% sumT))
+     TOMP(target exit data map(release: ZSet% netRate))
+     TOMP(target exit data map(release: ZSet% dTCompton))
+     TOMP(target exit data map(release: ZSet% B))
+     TOMP(target exit data map(release: ZSet% dBdT))
+     TOMP(target exit data map(release: ZSet% Snu0))
+     TOMP(target exit data map(release: ZSet% dSnu0dT))
+     TOMP(target exit data map(release: ZSet% AD))
+     TOMP(target exit data map(release: ZSet% z))
+     TOMP(target exit data map(release: ZSet% fk2))
+     TOMP(target exit data map(release: ZSet% nI))
+     TOMP(target exit data map(release: ZSet% nS))
+     TOMP(target exit data map(release: ZSet% ex))
+     TOMP(target exit data map(release: ZSet% expPH))
+     TOMP(target exit data map(release: ZSet% comptonDeltaEr))
+     TOMP(target exit data map(release: ZSet% dComptonDT))
+     TOMP(target exit data map(release: ZSet% comptonSe))
+     TOMP(target exit data map(release: ZSet% AU))
+     TOMP(target exit data map(release: ZSet% AL))
+     TOMP(target exit data map(release: ZSet))
 
      ! Unmap group sets
      do gSetID=1,nGroupSets
@@ -124,8 +174,6 @@
        enddo
      endif ! Options%getMPIUseDeviceAddresses()
 
-!$omp parallel do private(aSetID, angle) shared(nGTASets, nAngleSets, Quad, Size) schedule(static) default(none)
-
      do aSetID=1,nAngleSets+nGTASets
 
        TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% nextZ))
@@ -154,9 +202,11 @@
        TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr))
        TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% BdyExitPtr))
 
-       TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% AfpNorm))
-       TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% AezNorm))
-       TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% ANormSum))
+       if ( aSetID <= nAngleSets ) then
+         TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% AfpNorm))
+         TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% AezNorm))
+         TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% ANormSum))
+       endif
 
 
        if (Size% ndim == 2) then
@@ -168,12 +218,15 @@
        endif
 
      enddo
-!$omp end parallel do
+
+!    Geometry
 
      TOMP(target exit data map(release:Geom% Volume))
      TOMP(target exit data map(release:Geom% VolumeOld))
+     TOMP(target exit data map(release:Geom% VolumeZone))
      TOMP(target exit data map(release:Geom% cOffSet))
      TOMP(target exit data map(release:Geom% numCorner))
+     TOMP(target exit data map(release:Geom% CToZone))
      TOMP(target exit data map(release:Geom% corner1))
      TOMP(target exit data map(release:Geom% corner2))
      TOMP(target exit data map(release:Geom% zone1))
@@ -182,40 +235,47 @@
      TOMP(target exit data map(release:Geom% cFP))
      TOMP(target exit data map(release:Geom% A_ez))
      TOMP(target exit data map(release:Geom% A_fp))
-     TOMP(target exit data map(release:Geom% PhiTotal))
 
      if (Size% ndim == 2) then
-
        TOMP(target exit data map(release:Geom% Area))
        TOMP(target exit data map(release:Geom% RadiusEZ))
        TOMP(target exit data map(release:Geom% RadiusFP))
-
      elseif (Size% ndim == 3) then
-
        TOMP(target exit data map(release:Geom% nCFacesArray))
-
      endif
 
      TOMP(target exit data map(release:Geom))
 
+!    Radiation Intensity
+
+     TOMP(target exit data map(release:Rad% PhiTotal))
+     TOMP(target exit data map(release:Rad% radEnergy))
+     TOMP(target exit data map(release:Rad))
+
 !    GTA
+
      if (Size%useNewGTASolver) then
        TOMP(target exit data map(release:GTA% TT))
        TOMP(target exit data map(release:GTA% Pvv))
        TOMP(target exit data map(release:GTA% GreySigTotal))
        TOMP(target exit data map(release:GTA% GreySigScat))
        TOMP(target exit data map(release:GTA% GreySigtInv))
-       TOMP(target exit data map(release:GTA% GreySource))
        TOMP(target exit data map(release:GTA% PhiInc))
        TOMP(target exit data map(release:GTA% Q))
        TOMP(target exit data map(release:GTA% TsaSource))
+       TOMP(target exit data map(release:GTA% AfpNorm))
+       TOMP(target exit data map(release:GTA% AezNorm))
+       TOMP(target exit data map(release:GTA% ANormSum))
 
        if (Size% ndim == 2) then
          TOMP(target exit data map(release:GTA% Tvv))
        endif
-
-       TOMP(target exit data map(release:GTA))
      endif
+
+     TOMP(target exit data map(release:GTA% GreySource))
+     TOMP(target exit data map(release:GTA% GreyCorrection))
+     TOMP(target exit data map(release:GTA% Chi))
+     TOMP(target exit data map(release:GTA))
 
      do setID=nSets+1,nSets+nGTASets
        TOMP(target exit data map(release:Quad% SetDataPtr(setID)% AngleOrder))
@@ -229,6 +289,33 @@
        endif
      enddo
 
+!    Material
+
+     TOMP(target exit data map(release:Mat% Tec))
+     TOMP(target exit data map(release:Mat% Tecn))
+     TOMP(target exit data map(release:Mat% denec))
+     TOMP(target exit data map(release:Mat% cve))
+     TOMP(target exit data map(release:Mat% rho))
+     TOMP(target exit data map(release:Mat% nez))
+     TOMP(target exit data map(release:Mat% stimComptonMult))
+     TOMP(target exit data map(release:Mat% Siga))
+     TOMP(target exit data map(release:Mat% Sigs))
+     TOMP(target exit data map(release:Mat% Eta))
+     TOMP(target exit data map(release:Mat% EmissionRate))
+     TOMP(target exit data map(release:Mat% SMatEff))
+     TOMP(target exit data map(release:Mat% PowerEmitted))
+     TOMP(target exit data map(release:Mat% PowerCompton))
+     TOMP(target exit data map(release:Mat% nonLinearIterations))
+     TOMP(target exit data map(release:Mat))
+
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+     TOMP(target exit data map(release:Compton% gamMean))
+     TOMP(target exit data map(release:Compton% gamSqdDGam))
+     TOMP(target exit data map(release:Compton% gamCubedDGam))
+     TOMP(target exit data map(release:Compton% gamD))
+     TOMP(target exit data map(release:Compton))
+#endif
+
    endif !endif useGPU
 
 !  Deallocation for Communication Sets 
@@ -236,8 +323,6 @@
      CSet  => getCommSetData(Quad, cSetID)
      call destructComm(CSet)
    enddo CommSetLoop
-
-!$omp parallel do private(setID, Set) schedule(static)
 
    SetLoop: do setID=1,nSets
 
@@ -251,21 +336,27 @@
 #endif
      endif
 
+!  Release Dynamic Memory allocated at the beginning of the time step
+
      if (Size% ndim > 1) then
-       call Set%destructCyclePsi()
+       call Set%destructDynMemory()
      endif
 
    enddo SetLoop
 
-!$omp end parallel do
-
 !  Update boundary edits
 
-!$omp parallel do private(setID) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nSets)
    do setID=1,nSets
      call BoundaryEdit(setID)
    enddo
 !$omp end parallel do
+
+!  Update end-of-cycle material properties used by the host code
+
+   startCycle = .FALSE.
+   call advanceMaterialProperties(startCycle)
 
 !  Release set pointers
 
@@ -298,7 +389,7 @@
 
 #if defined(TETON_ENABLE_CUDA)
 #  if !defined(TETON_ENABLE_MINIAPP_BUILD)
-   if (useBoltzmannCompton .AND. Size% useCUDASolver) then
+   if (useBoltzmannCompton .AND. Size% useCUDASolver .and. Size%ngr >= 16) then
      call freeGpuMemory ()
    endif
 #  endif

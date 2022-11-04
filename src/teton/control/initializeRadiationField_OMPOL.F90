@@ -13,7 +13,7 @@
    subroutine initializeRadiationField 
 
    use, intrinsic :: iso_c_binding, only : c_int
-   use Options_mod
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use constant_mod
    use Size_mod
@@ -42,9 +42,6 @@
    integer    :: mCycle
    integer    :: offSet
 
-   integer(kind=c_int) :: nOmpMaxTeamThreads
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
-
 !  Constants
 
    nSets = getNumberOfSets(Quad)
@@ -65,8 +62,9 @@
 
 !  Update Boundary data
 
-     TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) private(setID, Set, ASet, BdyExitPtr, offSet) &)
-     TOMPC(private(angle, Groups, NumAngles))
+     TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nSets, Quad)&)
+     TOMPC(private(Set, ASet, BdyExitPtr, offSet, Groups, NumAngles, c, b))
 
      do setID=1,nSets
 
@@ -76,16 +74,17 @@
        NumAngles  =  Set% NumAngles
 
        do angle=1,NumAngles
-         BdyExitPtr => ASet% BdyExitPtr(Angle)
+         BdyExitPtr => ASet% BdyExitPtr(angle)
 
          !$omp  parallel do collapse(2) default(none) &
-         !$omp& shared(Set, BdyExitPtr, Angle, Groups) private(i,b,c,g)
+         !$omp& shared(Set, BdyExitPtr, angle, Groups) &
+         !$omp& private(b,c)
          do i=1,BdyExitPtr% nxBdy
            do g=1,Groups
              b = BdyExitPtr% bdyList(1,i)
              c = BdyExitPtr% bdyList(2,i)
 
-             Set% PsiB(g,b,Angle) = Set% Psi(g,c,angle)
+             Set% PsiB(g,b,angle) = Set% Psi(g,c,angle)
            enddo
          enddo
         !$omp end parallel do
@@ -98,7 +97,8 @@
          offSet = ASet% cycleOffSet(angle)
 
          !$omp  parallel do collapse(2) default(none) &
-         !$omp& shared(Set, ASet, angle, offSet, Groups) private(mCycle, c, g)
+         !$omp& shared(Set, ASet, angle, offSet, Groups) &
+         !$omp& private(c)
          do mCycle=1,ASet% numCycles(angle)
            do g=1,Groups
              c                              = ASet% cycleList(offSet+mCycle)
@@ -113,9 +113,9 @@
 
    else
 
-     !$omp parallel do private(Set, ASet, BdyExitPtr, setID)  & 
-     !$omp& private(NumAngles, angle, i, b, c)  &
-     !$omp& shared(Quad) schedule(static)
+     !$omp parallel do default(none) schedule(static) &
+     !$omp& shared(Quad, nSets) &
+     !$omp& private(Set, ASet, BdyExitPtr, NumAngles, b, c)
      do setID=1,nSets
 
        Set  => getSetData(Quad, setID)
@@ -126,7 +126,7 @@
 !    Initialize exiting boundary fluxes
 
        do angle=1,NumAngles
-         BdyExitPtr => ASet% BdyExitPtr(Angle)
+         BdyExitPtr => ASet% BdyExitPtr(angle)
 
          do i=1,BdyExitPtr% nxBdy
            b = BdyExitPtr% bdyList(1,i)

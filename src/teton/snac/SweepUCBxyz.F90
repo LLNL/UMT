@@ -43,10 +43,7 @@
    integer    :: hyperPlane
    integer    :: nHyperplanes
 
-   integer, dimension (1) :: cfirst
-
    integer    :: nxez(Size% maxCorner)
-   integer    :: need(Size% maxCorner)
    integer    :: ez_exit(Size%maxcf,Size% maxCorner)
    integer    :: bdy_exit(2,Size%maxcf*Size% maxCorner)
 
@@ -129,7 +126,6 @@
        enddo
 
        nxez(:) = 0
-       need(:) = 0
 
        CornerLoop: do c=1,nCorner
 
@@ -173,12 +169,10 @@
 
            if (cez > c) then
              if (aez > zero ) then
-               need(cez)              = need(cez) + 1
                nxez(c)                = nxez(c)   + 1
                ez_exit(nxez(c),c)     = cez
                coefpsi(nxez(c),c)     = aez
              elseif (aez < zero) then
-               need(c)                = need(c)   + 1
                nxez(cez)              = nxez(cez) + 1
                ez_exit(nxez(cez),cez) = c
                coefpsi(nxez(cez),cez) = -aez
@@ -267,8 +261,7 @@
        if ( zone0 > 0 ) then
           
          do i=1,nCorner
-           cfirst = minloc( need(1:nCorner) )
-           c      = cfirst(1)
+           c = ASet% nextC(c0+i,angle)
 
 !          Corner angular flux
            Set% Psi1(:,c0+c) = src(:,c)/(sumArea(c) + SigtVol(:,c))
@@ -282,11 +275,8 @@
 
            do cface=1,nxez(c)
              cez        = ez_exit(cface,c)
-             need(cez)  = need(cez) - 1
              src(:,cez) = src(:,cez) + coefpsi(cface,c)*Set% Psi1(:,c0+c)
            enddo
-
-           need(c) = 99
 
          enddo
         

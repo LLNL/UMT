@@ -18,7 +18,6 @@
    use kind_mod
    use Size_mod
    use QuadratureList_mod
-   use RadIntensity_mod
    use SetData_mod
 
    implicit none 
@@ -29,8 +28,7 @@
 
 !  Local
 
-   type(RadIntensity),     pointer  :: RadT
-   type(SetData),          pointer  :: Set
+   type(SetData), pointer  :: Set
 
    integer    :: angle
    integer    :: c
@@ -50,7 +48,6 @@
    SetLoop: do setID=1,nSets
 
      Set       => getSetData(Quad, setID)
-     RadT      => getRadIntensity(Quad, setID)
 
      Groups    =  Set% Groups
      NumAngles =  Set% NumAngles

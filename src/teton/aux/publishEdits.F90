@@ -46,6 +46,7 @@
    real(C_DOUBLE) :: dtused
    real(C_DOUBLE) :: TrMax
    real(C_DOUBLE) :: TeMax
+   real(C_DOUBLE) :: deltaEMat
    real(C_DOUBLE) :: EnergyRadiation
    real(C_DOUBLE) :: PowerIncident
    real(C_DOUBLE) :: PowerEscape
@@ -54,7 +55,6 @@
    real(C_DOUBLE) :: PowerExtSources
    real(C_DOUBLE) :: PowerCompton
    real(C_DOUBLE) :: EnergyCheck
-   type(c_ptr) :: cnode
 
    type(IterControl), pointer    :: temperatureControl => NULL()
    type(IterControl), pointer    :: intensityControl   => NULL()
@@ -73,7 +73,7 @@
    character(len=25), parameter :: Iformat = "(1X,A13,i6,A15,i6,A15,i6)"
    character(len=18), parameter :: Jformat = "(1X,A20,i6,A21,i6)"
    character(len=30), parameter :: Tformat = "(1X,A7,1X,F18.10,A9,i7,A12,i5)"
-   character(len=32), parameter :: Eformat = "(1X,A13,1X,F18.10,1X,A15,F18.10)"
+   character(len=55), parameter :: Eformat = "(1X,A31,1X,1pe18.10,1X,A13,1X,1pe18.10,1X,A15,1pe18.10)"
    character(len=17), parameter :: Dformat = "(1X,A43,1pe18.10)"
 
  ! Iteration Controls
@@ -117,6 +117,7 @@
    TeMaxProcess    = getTeMaxProcess(RadEdit)
    TrMax           = getTrMax(RadEdit)
    TeMax           = getTeMax(RadEdit)
+   deltaEMat       = getDeltaEMat(RadEdit)
    EnergyRadiation = getEnergyRadiation(RadEdit)
    PowerIncident   = getPowerIncident(RadEdit)
    PowerEscape     = getPowerEscape(RadEdit)
@@ -138,6 +139,7 @@
    call theDatastore%root%set_path("rtedits/TeMaxProcess", TeMaxProcess)
    call theDatastore%root%set_path("rtedits/TeMax", TeMax)
    call theDatastore%root%set_path("rtedits/TrMax", TrMax)
+   call theDatastore%root%set_path("rtedits/deltaEMat", deltaEMat)
    call theDatastore%root%set_path("rtedits/EnergyRadiation", EnergyRadiation)
    call theDatastore%root%set_path("rtedits/PowerIncident", PowerIncident)
    call theDatastore%root%set_path("rtedits/PowerEscape", PowerEscape)
@@ -168,7 +170,7 @@
                                 TrMaxZone," on Process ",TrMaxProcess
       print Tformat, "TeMax =", TeMax, " in Zone ", &
                                 TeMaxZone," on Process ",TeMaxProcess
-      print Eformat, "ERad total = ", EnergyRadiation, "Energy check = ",EnergyCheck
+      print Eformat, "Energy deposited in material = ", deltaEMat, "ERad total = ", EnergyRadiation, "Energy check = ",EnergyCheck
       print Dformat, "Recommended time step for next rad cycle = ", dtrad
       print *, ""
       flush(stdout)

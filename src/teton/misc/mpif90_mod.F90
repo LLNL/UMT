@@ -316,10 +316,14 @@ contains
      integer, intent(in) :: comm
 
 !    local variables
+     integer :: errorcode = 1
      integer :: ierror
 
 !    MPI Abort 
-     call MPI_Abort(comm, ierror)
+     call MPI_Abort(comm, errorcode, ierror)
+     if (ierror /= MPI_SUCCESS) then
+        call f90fatal("MPI Abort Failed")
+     endif
 
      return
   end subroutine mpi_MPIAbort
@@ -1141,7 +1145,7 @@ contains
      implicit none
 
 !    passed variables
-     integer, intent(in) :: comm
+     integer, intent(inout) :: comm
 
 !    local variables
      integer :: ierror
@@ -1167,7 +1171,7 @@ contains
      implicit none
 
 !    passed variables
-     integer, intent(in) :: request
+     integer, intent(inout) :: request
 
 !    local variables
      integer :: status(MPI_STATUS_SIZE)
@@ -1195,7 +1199,7 @@ contains
 
 !    passed variables
      integer, intent(in) :: count
-     integer, intent(in) :: request(count)
+     integer, intent(inout) :: request(count)
 
 !    local variables
      integer :: status(MPI_STATUS_SIZE,count)

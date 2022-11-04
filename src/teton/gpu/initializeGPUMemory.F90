@@ -29,10 +29,7 @@
 
    nSets = getNumberOfSets(Quad)
 
-
-!$omp parallel do private(setID) schedule(static)
    do setID=1,nSets
-
 
      if (Size% ndim == 2) then
        TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID) % PsiM)
@@ -90,9 +87,6 @@
      endif
 
    enddo
-
-!$omp end parallel do
-
 
    return
    end subroutine initializeGPUMemory

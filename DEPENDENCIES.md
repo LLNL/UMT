@@ -5,13 +5,7 @@ The code depends on several libraries.
 Required libraries are:
 - Conduit, a io interchange library
   https://github.com/LLNL/conduit 
-- MFEM, a finite element methods library (required if reading in MFEM meshes)
+- MFEM, a finite element methods library
   https://github.com/mfem/mfem
 
-Optional libraries:
-- Umpire, a memory management library.
-  https://github.com/llnl/umpire
-- Caliper, a performance analysis library.
-  https://github.com/LLNL/Caliper
-- SILO, a file i/o library
-  https://wci.llnl.gov/simulation/computer-codes/silo
+MFEM requires the additional libraries METIS and HYPRE.  See the MFEM github website for more information.

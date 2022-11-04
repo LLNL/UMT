@@ -27,37 +27,42 @@
 !  Local
 
    integer          :: ndim
+   integer          :: residualFlag
 
    real(adqt)       :: time1
    real(adqt)       :: time2
    real(adqt)       :: dtime
 
-   logical (kind=1) :: SnSweep
+   logical (kind=1) :: useGPU
 
 !  Constants
 
-   parameter (SnSweep=.TRUE.)
-
-   ndim  = Size%ndim
+   ndim   = Size%ndim
+   useGPU = getGPUStatus(Size)
 
 ! TODO: Add a loop around this function.   This would allow us
 ! to work in full LMFG mode.
 
 !***********************************************************************
-!     BEGIN LOOP OVER BATCHES                                          *
+!  Initialize Collision Rate before we apply the transport operator    *
 !***********************************************************************
 
-!  Initialize Collision Rate before we apply the transport operator
-   call getCollisionRate
+   residualFlag = 0
 
-!  Sweep all angles in all groups in this "batch"
+   if ( useGPU ) then
+     call getCollisionRate_GPU(residualFlag)
+   else
+     call getCollisionRate(residualFlag)
+   endif
+
+!  Sweep all angles in all groups
 
    START_RANGE("Teton_Sweep")
 
    if (ndim == 1) then
      call ControlSweep1D(savePsi)
    else
-     call ControlSweep(SnSweep, savePsi)
+     call ControlSweep(savePsi)
    endif
 
    END_RANGE("Teton_Sweep")
@@ -65,11 +70,16 @@
    call PrintEnergies("LinearSolver, after call to MGSN ControlSweep (MGSN Sweep)")
 
 !***********************************************************************
-!     END FREQUENCY GROUP LOOP                                         *
+!  Update Collision Rate and GTA source
 !***********************************************************************
 
-!  Update Collision Rate and GTA source
-   call getCollisionRate
+   residualFlag = 1 
+
+   if ( useGPU ) then
+     call getCollisionRate_GPU(residualFlag)
+   else
+     call getCollisionRate(residualFlag)
+   endif
 
 !***********************************************************************
 !     GREY ACCELERATION                                                *
@@ -78,16 +88,30 @@
    time1 = MPIWtime()
    START_RANGE("Teton_Grey_Transport_Acceleration")
 
-!  Solve for corrections
-   if (ndim == 1) then
-     call GDASolver
+!  Solve for corrections and update multigroup scalar photon intensities
+
+   if ( useGPU ) then
+
+     if ( Size% useNewGTASolver ) then
+       call GTASolver_GPU
+     else
+       call GTASolver
+     endif
+
+     call addGreyCorrections_GPU
+
    else
-     call GTASolver
+
+     if (ndim == 1) then
+       call GDASolver
+     else
+       call GTASolver
+     endif
+
+     call addGreyCorrections
+
    endif
 
-!  Update multigroup scalar photon intensities with grey corrections
-
-   call addGreyCorrections
 
    END_RANGE("Teton_Grey_Transport_Acceleration")
    time2 = MPIWtime()

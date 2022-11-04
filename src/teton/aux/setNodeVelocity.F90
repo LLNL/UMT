@@ -2,7 +2,7 @@
 !                        Last Update:  03/2012, PFN                    *
 !                                                                      *
 !    SetNodeVelocity -  Called from host to set node velocities        *
-!                       in the MeshData module.                        *
+!                       in the Geometry module.                        *
 !                                                                      *
 !***********************************************************************
 

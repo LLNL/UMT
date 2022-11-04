@@ -6,7 +6,8 @@ target_sources( teton PRIVATE
   ConvergenceTest.F90
   GDASolver.F90
   GTASolver.F90
-  GreySweep.F90
+  GTASolver_OMPOL.F90
+  GreySweep_OMPOL.F90
   InitExchange.F90
   LinearSolver.F90
   RecvFlux.F90
@@ -14,6 +15,7 @@ target_sources( teton PRIVATE
   SweepScheduler.F90
   TestSend.F90
   addGreyCorrections.F90
+  addGreyCorrections_OMPOL.F90
   findReflectedAngles.F90
   findexit.F90
   findexit1D.F90
@@ -22,6 +24,7 @@ target_sources( teton PRIVATE
   geometryUCBrz.F90
   geometryUCBxyz.F90
   getCollisionRate.F90
+  getCollisionRate_OMPOL.F90
   initFindExit.F90
   initcomm.F90
   pentalud.F90
@@ -40,6 +43,7 @@ target_sources( teton PRIVATE
   scat_prod.F90
   scat_prod1.F90
   setGTAOpacity.F90
+  setGTAOpacity_OMPOL.F90
   setIncidentFlux.F90
   setNetFlux.F90
   testFluxConv.F90

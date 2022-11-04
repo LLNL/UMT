@@ -1,3 +1,6 @@
+#if !defined(__TETON_MACROS_H__)
+#define __TETON_MACROS_H__
+
 !-----------------------------------------------------------------------------
 ! Defines utility macros for use in Teton
 ! Note: Do not indent the '#' symbol, it causes FPP to choke.
@@ -80,4 +83,6 @@
 #if (_OPENMP > 201511)
 # define TETON_OPENMP_HAS_FORTRAN_INTERFACE
 # define TETON_OPENMP_HAS_USE_DEVICE_ADDR
+#endif
+
 #endif

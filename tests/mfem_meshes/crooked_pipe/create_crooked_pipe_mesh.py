@@ -205,6 +205,5 @@ globOuter.borderEdges[-1].setZoneSpacing( ratioSpacing, globOuter.borderVertices
 
 blocking = Blocking( )
 Superblock.createSuperfaces( )
-blocking.save( "TopHatMesh.sat" )
 mesh = Mesh( )
 mesh.saveNURBs( mfem = "crooked_pipe.mesh", materials = mfem, elementSource = 'zone_linear' )

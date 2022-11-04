@@ -8,24 +8,20 @@
                 BIND(C,NAME="teton_getnumanglebins")
 
    USE ISO_C_BINDING
-   use AngleSet_mod
    use QuadratureList_mod
 
    implicit none 
 
 !  Arguments
-
    integer(C_INT), intent(out)   :: numAngleBins
 
 !  Local
-   type(AngleSet), pointer  :: ASet
-   integer                  :: setID
+   integer                  :: qset
 
-!  There is only one higher-order SN set for all energy groups:
-   setID = 1
+!  There is only one higher-order SN quadrature set for all energy groups:
+   qset = 1
 
-   ASet   => getAngleSetFromSetID(Quad, setID)
-   numAngleBins = ASet% nPolarAngles
+   numAngleBins = Quad%QuadPtr(qset)%nPolarAngles
 
    return
    end subroutine getNumAngleBins

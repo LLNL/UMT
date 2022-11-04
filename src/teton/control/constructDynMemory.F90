@@ -1,7 +1,7 @@
 !=======================================================================
-! construct cycle Psi 
+! construct dynamic memory 
 !=======================================================================
-   subroutine constructCyclePsi(setID)
+   subroutine constructDynMemory(setID, maxZonesPerPlane)
 
    use kind_mod
    use Size_mod
@@ -16,6 +16,7 @@
 !  Arguments 
 
    integer, intent(in)      :: setID
+   integer, intent(in)      :: maxZonesPerPlane
 
 !  Local
 
@@ -23,8 +24,6 @@
    type(AngleSet), pointer  :: ASet
 
    integer                  :: totalCycles
-   logical                  :: usePinnedMemory
-   usePinnedMemory = Size%useGPU
 
 !  Allocate Memory 
 
@@ -37,11 +36,21 @@
 
    totalCycles = max(ASet% totalCycles, 1) 
 
-   call Allocator%allocate(usePinnedMemory, Set%label,"cyclePsi", Set% cyclePsi, Set% Groups, totalCycles)
+   call Allocator%allocate(Size%usePinnedMemory, Set%label, "cyclePsi", Set% cyclePsi, Set% Groups, totalCycles)
+
+!  These are onlu used in the GPU sweep
+   if (Size% useGPU) then
+     call Allocator%allocate(Size%usePinnedMemory, Set%label, "Q",        Set% Q,Set% Groups, Size% maxCorner, maxZonesPerPlane)
+     call Allocator%allocate(Size%usePinnedMemory, Set%label, "S",        Set% S,Set% Groups, Size% maxCorner, maxZonesPerPlane)
+
+     Set% Q(:,:,:) = zero
+     Set% S(:,:,:) = zero
+   endif
+
 
    return
 
-   end subroutine constructCyclePsi 
+   end subroutine constructDynMemory 
 
 
    subroutine initCyclePsi(setID)

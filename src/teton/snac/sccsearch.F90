@@ -14,8 +14,6 @@
    use kind_mod
    use Size_mod
    use Geometry_mod
-   use MeshData_mod
-   use ZoneData_mod
 
    implicit none
 
@@ -43,8 +41,6 @@
 
 !  Local Variables
 
-   type(MeshData), pointer   :: MT
-
    integer    :: i
    integer    :: c
    integer    :: zone2
@@ -70,15 +66,13 @@
 
 !  Loop over all downstream zones that have not been completed 
 
-   MT => getMesh(Geom, zone)
-
-   nFaces = MT% nFaces
+   nFaces = Geom% zoneFaces(zone)
 
    FaceLoop: do face=1,nFaces 
 
      if ( exitFace(face,zone) ) then
 
-       zone2 = MT% zoneOpp(face) 
+       zone2 = Geom% zoneOpp(face,zone) 
 
        if (zone2 > 0) then
 
@@ -144,14 +138,12 @@
 
 !  Loop over all neighbors for this zone and find the ones on the stack
 
-       MT => getMesh(Geom, lowlinkZ)
-
-       nFaces = MT% nFaces
+       nFaces = Geom% zoneFaces(lowlinkZ)
 
        FaceLoop2: do face=1,nFaces
 
-         zoneBreak = MT% zoneOpp(face)
-         faceBreak = MT% faceOpp(face)
+         zoneBreak = Geom% zoneOpp(face,lowlinkZ)
+         faceBreak = Geom% faceOpp(face,lowlinkZ)
 
          if (zoneBreak > 0) then
 

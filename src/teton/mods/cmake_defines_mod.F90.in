@@ -11,7 +11,7 @@ implicit none
    character (len = *), parameter :: system_type="@CMAKE_SYSTEM@"
    character (len = *), parameter :: cxx_compiler="@CMAKE_CXX_COMPILER@"
    character (len = *), parameter :: fortran_compiler="@CMAKE_Fortran_COMPILER@"
-   integer, parameter :: omp_target_device_num_processors = @OMP_TARGET_NUM_PROCESSORS@
-   integer, parameter :: omp_target_device_max_threads_per_team = @OMP_TARGET_MAX_THREADS_PER_THREAD_TEAM@
+   integer, parameter :: omp_device_num_processors = @OMP_DEVICE_NUM_PROCESSORS@
+   integer, parameter :: omp_device_team_thread_limit = @OMP_DEVICE_TEAM_THREAD_LIMIT@
 
 end module cmake_defines_mod

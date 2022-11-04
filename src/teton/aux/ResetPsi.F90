@@ -15,6 +15,7 @@
    use Size_mod
    use QuadratureList_mod
    use Geometry_mod
+   use RadIntensity_mod
    use Material_mod
    use SetData_mod
 
@@ -72,11 +73,11 @@
 !    Zero energy densities
 
      do g=1,Size% ngr
-       Geom% RadEnergyDensity(zone,g) = zero
+       Rad% RadEnergyDensity(zone,g) = zero
      enddo
 
      do c=1,nCorner
-       Geom% PhiTotal(:,c0+c) = zero
+       Rad% PhiTotal(:,c0+c) = zero
      enddo
 
 !    Need to remove this zone from time step control

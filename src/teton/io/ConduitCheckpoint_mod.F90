@@ -122,11 +122,6 @@ contains
       real(real32) :: nan
       real(adqt) :: relTol
 
-      integer(kind=int32) numSets,    &
-                          numGroups,  &
-                          numCorners, &
-                          numAngles,  &
-                          numZones
 
       type(IterControl), pointer  :: itCon => NULL()
 

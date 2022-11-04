@@ -11,13 +11,14 @@
 
    subroutine initPhiTotal
 
-
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use Size_mod
    use constant_mod
    use Geometry_mod
    use SetData_mod
    use AngleSet_mod
+   use RadIntensity_mod
    use QuadratureList_mod
    use OMPWrappers_mod
 
@@ -53,16 +54,17 @@
 
      TOMP(target data map(to: nSets, ngr))
 
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(1024) &)
-     TOMPC(private(Set, ASet, zSetID, setID, g0, Groups, Angle, NumAngles, quadwt))
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nZoneSets, Geom, Rad, ngr, Quad, nSets )&)
+     TOMPC(private(Set, ASet, g0, Groups, NumAngles, quadwt, volRatio))
 
      ZoneSetLoop1: do zSetID=1,nZoneSets
 
        !$omp  parallel do collapse(2) default(none)  &
-       !$omp& shared(Geom, ngr, zSetID) private(c,g)
+       !$omp& shared(Geom, Rad, ngr, zSetID)
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          do g=1,ngr
-           Geom% PhiTotal(g,c) = zero 
+           Rad% PhiTotal(g,c) = zero 
          enddo
        enddo
        !$omp end parallel do
@@ -81,21 +83,16 @@
          AngleLoop: do Angle=1,NumAngles
            quadwt =  ASet% weight(Angle)
 
-! Only the newer OpenMP 4.x capable compilers support collapses over imperfectly
-! nested loops
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
            !$omp  parallel do collapse(2) default(none)  &
-#else
-           !$omp  parallel do default(none)  &
-#endif
-           !$omp& shared(Geom, Set, g0, Groups, Angle, quadwt, zSetID) private(c,g,volRatio)
+           !$omp& shared(Geom, Rad, Set, g0, Groups, Angle, quadwt, zSetID) &
+           !$omp& private(volRatio)
            do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
-             volRatio = Geom% VolumeOld(c)/Geom% Volume(c)
              do g=1,Groups
-               Set% Psi(g,c,Angle)    = volRatio*Set% Psi(g,c,Angle)
+               volRatio              = Geom% VolumeOld(c)/Geom% Volume(c)
+               Set% Psi(g,c,Angle)   = volRatio*Set% Psi(g,c,Angle)
 
-               Geom% PhiTotal(g0+g,c) = Geom% PhiTotal(g0+g,c) + &
-                                        quadwt*Set% Psi(g,c,Angle)
+               Rad% PhiTotal(g0+g,c) = Rad% PhiTotal(g0+g,c) + &
+                                       quadwt*Set% Psi(g,c,Angle)
              enddo
            enddo
 
@@ -110,15 +107,14 @@
      TOMP(end target teams distribute)
      TOMP(end target data)
 
-     TOMP(target update from(Geom% PhiTotal))
-
    else
 
-     Geom% PhiTotal(:,:) = zero
+     Rad% PhiTotal(:,:) = zero
 
-     !$omp parallel do private(Set, ASet, zSetID, setID)  &
+     !$omp parallel do default(none) schedule(static) &
+     !$omp& private(Set, ASet, zSetID, setID)  &
      !$omp& private(c, g, g0, Groups, Angle, NumAngles, quadwt, volRatio) &
-     !$omp& shared(Quad, Geom) schedule(static)
+     !$omp& shared(Quad, Geom, Rad, nZoneSets, nSets)
 
      ZoneSetLoop2: do zSetID=1,nZoneSets
 
@@ -137,10 +133,10 @@
            do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
              volRatio = Geom% VolumeOld(c)/Geom% Volume(c)
              do g=1,Groups
-               Set% Psi(g,c,Angle)    = volRatio*Set% Psi(g,c,Angle)
+               Set% Psi(g,c,Angle)   = volRatio*Set% Psi(g,c,Angle)
 
-               Geom% PhiTotal(g0+g,c) = Geom% PhiTotal(g0+g,c) + &
-                                        quadwt*Set% Psi(g,c,Angle)
+               Rad% PhiTotal(g0+g,c) = Rad% PhiTotal(g0+g,c) + &
+                                       quadwt*Set% Psi(g,c,Angle)
              enddo
            enddo
          enddo AngleLoop2

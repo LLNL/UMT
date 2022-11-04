@@ -66,9 +66,9 @@ module SetData_mod
      character(len=19) :: label ! A string descriptor for this set.
 
      contains
-       procedure, public :: construct => SetData_ctor
-       procedure, public :: destruct => SetData_dtor
-       procedure, public :: destructCyclePsi => SetData_dtorCyclePsi
+       procedure, public :: construct         => SetData_ctor
+       procedure, public :: destruct          => SetData_dtor
+       procedure, public :: destructDynMemory => SetData_dtorDynMem
 
   end type SetData 
 
@@ -126,25 +126,10 @@ contains
     integer :: ndim
     integer :: angle
     integer :: nLevels
-    integer :: maxZones
-    logical :: usePinnedMemory
 
 !   Set Properties
 
     ndim               =  Size% ndim
-
-!   IMPORTANT: "maxZones" is intended to estimate the maximum number of zones
-!   in any sweep hyperplane. It is sized to be conservative (i.e. it is much
-!   bigger than it needs to be). It is sized here to avoid gpu memory errors.
-!   It should really be sized in the hyperplane constructor. (PFN)
-
-    ! This used to be nzones/25, but the max hyperplane is very problem
-    ! dependent and that was insufficient for some problem configurations,
-    ! resulting in array overruns on the gpu.
-    ! Should make another attempt to move this to the hyperplane constructor,
-    ! per Paul's comment above.
-    maxZones           =  MAX(100, (Size% nzones / 3) )
-
     self% SetID        =  SetID
     self% groupSetID   =  groupSetID
     self% angleSetID   =  angleSetID
@@ -161,8 +146,6 @@ contains
     self% g0           =  g0
     self% angle0       =  angle0
 
-    usePinnedMemory = Size%useGPU
-
     ! Make sure loadTetonVariables.F90 stay consistent with this logic that sets
     ! the label.  It also creates this label during a restart load.
     write(self%label,'(I0.3)') setID
@@ -171,24 +154,18 @@ contains
     if ( .not. GTASet ) then
 
       if ( .not. fromRestart ) then
-        call Allocator%allocate(usePinnedMemory,self%label,"Psi", self% Psi, Groups,nCorner,NumAngles)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"Psi", self% Psi, Groups,nCorner,NumAngles)
         self% Psi(:,:,:) = zero
       endif
 
-      call Allocator%allocate(usePinnedMemory,self%label,"PsiB", self% PsiB, Groups,Size% nbelem,NumAngles)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"PsiB", self% PsiB, Groups,Size% nbelem,NumAngles)
       self% PsiB(:,:,:) = zero
 
-      call Allocator%allocate(usePinnedMemory,self%label,"Psi1", self% Psi1, Groups,nCorner+Size% nbelem)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"Psi1", self% Psi1, Groups,nCorner+Size% nbelem)
       self% Psi1(:,:)   = zero
 
-      call Allocator%allocate(usePinnedMemory,self%label,"Q",    self% Q,    Groups,Size% maxCorner,maxZones)
-      self% Q(:,:,:)    = zero
-
-      call Allocator%allocate(usePinnedMemory,self%label,"S",    self% S,    Groups,Size% maxCorner,maxZones)
-      self% S(:,:,:)    = zero
-
       if (ndim == 2) then
-        call Allocator%allocate(usePinnedMemory,self%label,"PsiM",  self% PsiM,  Groups,nCorner)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"PsiM",  self% PsiM,  Groups,nCorner)
         self% PsiM(:,:) = zero
       endif
       ! Using either CPU or CUDA Sweep
@@ -204,17 +181,17 @@ contains
 
     else
 
-      call Allocator%allocate(usePinnedMemory,self%label,"tPsi", self% tPsi, nCorner+Size% nbelem)
-      call Allocator%allocate(usePinnedMemory,self%label,"pInc", self% pInc, nCorner)
-      call Allocator%allocate(usePinnedMemory,self%label,"src" , self% src,  nCorner)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"tPsi", self% tPsi, nCorner+Size% nbelem)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"pInc", self% pInc, nCorner)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"src" , self% src,  nCorner)
 
       self% tPsi(:) = zero
       self% pInc(:) = zero
       self% src(:)  = zero
 
       if (ndim == 2) then
-        call Allocator%allocate(usePinnedMemory,self%label,"tInc",  self% tInc, nCorner)
-        call Allocator%allocate(usePinnedMemory,self%label,"tPsiM", self% tPsiM, nCorner)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"tInc",  self% tInc, nCorner)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"tPsiM", self% tPsiM, nCorner)
 
         self% tInc(:)  = zero
         self% tPsiM(:) = zero
@@ -280,25 +257,20 @@ contains
     class(SetData),   intent(inout) :: self
     logical(kind=1), intent(in)     :: GTASet
 
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
     if ( .not. GTASet ) then
-      call Allocator%deallocate(usePinnedMemory,self%label,"Psi",  self% Psi  )
-      call Allocator%deallocate(usePinnedMemory,self%label,"PsiB", self% PsiB )
-      call Allocator%deallocate(usePinnedMemory,self%label,"Psi1", self% Psi1 )
-      call Allocator%deallocate(usePinnedMemory,self%label,"Q",    self% Q)
-      call Allocator%deallocate(usePinnedMemory,self%label,"S",    self% S)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"Psi",  self% Psi  )
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"PsiB", self% PsiB )
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"Psi1", self% Psi1 )
 
       if ( Size% ndim == 2) then
-        call Allocator%deallocate(usePinnedMemory,self%label,"PsiM", self% PsiM )
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"PsiM", self% PsiM )
       endif
 
       ! Using either CPU or CUDA Sweep
       if (Size%useGPU .NEQV. .TRUE.) then
         if (Size%useCUDASweep .EQV. .TRUE.) then
           ! CUDA Sweep solver needs it page-locked for optimal transfer performance.
-          call Allocator%deallocate(usePinnedMemory,self%label,"Phi",  self% Phi  )
+          call Allocator%deallocate(Size%usePinnedMemory,self%label,"Phi",  self% Phi  )
         else
           ! CPU Sweep does not need this page-locked.
           deallocate( self% Phi )
@@ -307,13 +279,13 @@ contains
 
     else
 
-      call Allocator%deallocate(usePinnedMemory,self%label,"tPsi", self% tPsi )
-      call Allocator%deallocate(usePinnedMemory,self%label,"pInc", self% pInc )
-      call Allocator%deallocate(usePinnedMemory,self%label,"src" , self% src )
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"tPsi", self% tPsi )
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"pInc", self% pInc )
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"src" , self% src )
 
       if (Size% ndim == 2) then
-        call Allocator%deallocate(usePinnedMemory,self%label,"tInc", self% tInc )
-        call Allocator%deallocate(usePinnedMemory,self%label,"tPsiM", self% tPsiM )
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"tInc", self% tInc )
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"tPsiM", self% tPsiM )
       endif
 
 
@@ -336,9 +308,9 @@ contains
   end subroutine SetData_dtor
 
 !=======================================================================
-! destruct cycle Psi    
+! destruct Set dynamic memory at the end of the time step    
 !=======================================================================
-  subroutine SetData_dtorCyclePsi(self)
+  subroutine SetData_dtorDynMem(self)
 
     use MemoryAllocator_mod
     use Size_mod
@@ -348,15 +320,19 @@ contains
 !   Passed variables
     class(SetData),    intent(inout) :: self
 
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
 !   Release Memory 
 
-    call Allocator%deallocate(usePinnedMemory,self%label,"cyclePsi", self% cyclePsi)
+    call Allocator%deallocate(Size%usePinnedMemory, self%label, "cyclePsi", self% cyclePsi)
+
+!   These are only used by the GPU sweep
+
+    if (Size% useGPU) then
+      call Allocator%deallocate(Size%usePinnedMemory, self%label, "Q", self% Q)
+      call Allocator%deallocate(Size%usePinnedMemory, self%label, "S", self% S)
+    endif
 
     return
 
-  end subroutine SetData_dtorCyclePsi
+  end subroutine SetData_dtorDynMem
 
 end module SetData_mod

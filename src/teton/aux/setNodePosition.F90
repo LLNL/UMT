@@ -2,7 +2,7 @@
 !                        Last Update:  03/2012, PFN                    *
 !                                                                      *
 !    SetNodePosition -  Called from host to set node positions         *
-!                       in the MeshData module.                        *
+!                       in the Geometry module.                        *
 !                                                                      *
 !***********************************************************************
 
@@ -13,26 +13,23 @@
    use kind_mod
    use Size_mod
    use Geometry_mod
-   use MeshData_mod
-   use radconstant_mod
 
    implicit none
 
 !  Arguments
 
-   integer(C_INT),    intent(in) :: zoneID 
+   integer(C_INT), intent(in) :: zoneID 
    real(C_DOUBLE), intent(in) :: nodePosition(Size% ndim,Size% maxCorner) 
 
 !  Local
 
-   integer  :: c, nCorner
+   integer  :: c, c0, nCorner
 
-   M => getMesh(Geom, zoneID)
-
-   nCorner = M% nCorner
+   nCorner = Geom% numCorner(zoneID)
+   c0      = Geom% cOffSet(zoneID) 
 
    do c=1,nCorner
-     M% px(:,c)  = nodePosition(:,c)
+     Geom% px(:,c0+c) = nodePosition(:,c)
    enddo
 
 

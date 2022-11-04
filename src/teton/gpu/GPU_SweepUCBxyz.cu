@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <omp.h>
 #include <string.h>
 
 #include "nvToolsExt.h"
@@ -174,6 +173,7 @@ __global__ void SweepUCBxyzKernel(int Angle,
                                   int nHyperPlanes,
                                   int *nZonesInPlane,
                                   int *nextZ,
+                                  int *nextC,
                                   double *STotal,
                                   double tau,
                                   const int Groups,
@@ -188,7 +188,6 @@ __global__ void SweepUCBxyzKernel(int Angle,
                                   int *bdy_exit,
                                   double *Psi1,
                                   int *cEZ,
-                                  int *next,
                                   double quadwt,
                                   double *Phi,
                                   double *PsiB,
@@ -210,7 +209,6 @@ __global__ void SweepUCBxyzKernel(int Angle,
    int zoneBatch = blockDim.x / GROUPS_IN_BLOCK; // Number of zones that can be updated simultaneously
    int ii = threadIdx.x / GROUPS_IN_BLOCK;       // index, within the chunk, of the zone handled by this thread
 
-   int cfirst;
    int zone0;
    int zone;
    int nCorner;
@@ -265,10 +263,6 @@ __global__ void SweepUCBxyzKernel(int Angle,
    int *nxez = sNxez + threadIdx.x * maxCorner;
    //int nxez[MAXC];
 
-   // TODO: Need to size this dynamically according to zones in batches
-   //int * need = nxez + maxCorner;
-   int need[8];
-
    area_opp = 0;
    psi_opp = 0;
 
@@ -317,7 +311,6 @@ __global__ void SweepUCBxyzKernel(int Angle,
             for (int qq = 0; qq < maxCorner; ++qq)
             {
                nxez[qq] = 0;
-               need[qq] = 0;
             }
 
             // Cornerloop
@@ -372,14 +365,12 @@ __global__ void SweepUCBxyzKernel(int Angle,
                   {
                      if (aez > (double) 0.0)
                      {
-                        need[cez] = need[cez] + 1;
                         nxez[c] = nxez[c] + 1;
                         ez_exit[c * maxcf + nxez[c] - 1] = cez;
                         coefpsi[c * maxcf + nxez[c] - 1] = aez;
                      }
                      else if (aez < (double) 0.0)
                      {
-                        need[c] = need[c] + 1;
                         nxez[cez] = nxez[cez] + 1;
                         ez_exit[cez * maxcf + nxez[cez] - 1] = c;
                         coefpsi[cez * maxcf + nxez[cez] - 1] = -aez;
@@ -465,18 +456,7 @@ __global__ void SweepUCBxyzKernel(int Angle,
             {
                for (int i = 0; i < nCorner; i++)
                {
-                  // RCC this replaces minloc operation
-                  int smallest = need[0];
-                  cfirst = 0;
-                  for (int qq = 0; qq < maxCorner; ++qq)
-                  {
-                     if (need[qq] < smallest)
-                     {
-                        smallest = need[qq];
-                        cfirst = qq;
-                     }
-                  }
-                  int c = cfirst;
+                  int c = nextC[c0 + i] - 1;
 
                   // Corner angular flux
                   Psi1[(c0 + c) * Groups + g] = src[c] / (sumArea[c] + SigtVol[c]);
@@ -491,11 +471,8 @@ __global__ void SweepUCBxyzKernel(int Angle,
                   for (int cface = 0; cface < nxez[c]; cface++)
                   {
                      cez = ez_exit[c * maxcf + cface];
-                     need[cez] = need[cez] - 1;
-
                      src[cez] += coefpsi[c * maxcf + cface] * Psi1[(c0 + c) * Groups + g];
                   }
-                  need[c] = 99;
                }
             }
 
@@ -556,6 +533,7 @@ void gpu_sweepucbxyz(int *Angle,
                      int *nHyperPlanes,
                      int *nZonesInPlane,
                      int *nextZ,
+                     int *nextC,
                      double *STotal,
                      double *tau,
                      double *Psi,
@@ -573,7 +551,6 @@ void gpu_sweepucbxyz(int *Angle,
                      int *nbelem,
                      double *A_ez,
                      int *cEZ,
-                     int *next,
                      int *NumAngles,
                      double *quadwt,
                      double *Phi,
@@ -617,12 +594,12 @@ void gpu_sweepucbxyz(int *Angle,
    static int *h_nZonesInPlane[MAX_CUDA_STREAMS];
    static int *d_nextZ[MAX_CUDA_STREAMS];
    static int *h_nextZ[MAX_CUDA_STREAMS];
+   static int *d_nextC[MAX_CUDA_STREAMS];
+   static int *h_nextC[MAX_CUDA_STREAMS];
    static int *d_nCFacesArray[MAX_CUDA_STREAMS];
    static int *d_cFP[MAX_CUDA_STREAMS];
    static int *d_bdy_exit[MAX_CUDA_STREAMS];
    static int *d_cEZ[MAX_CUDA_STREAMS];
-   static int *d_next[MAX_CUDA_STREAMS];
-   static int *h_next[MAX_CUDA_STREAMS];
 
    static int *d_GnumCorner[MAX_CUDA_STREAMS];
    static int *d_GcOffSet[MAX_CUDA_STREAMS];
@@ -687,6 +664,11 @@ void gpu_sweepucbxyz(int *Angle,
 
       CUDA_SAFE_CALL(cudaMallocHost(&(h_nextZ[streamId]), totalZones * sizeof(int)));
 
+      CUDA_SAFE_CALL(cudaMalloc(&(d_nextC[streamId]), *ncorner * sizeof(int)));
+      printf("allocated d_nextC          = %lu bytes\n", *ncorner * sizeof(int));
+
+      CUDA_SAFE_CALL(cudaMallocHost(&(h_nextC[streamId]), *ncorner * sizeof(int)));
+
       CUDA_SAFE_CALL(cudaMalloc(&(d_nCFacesArray[streamId]), *ncorner * sizeof(int)));
       printf("allocated d_nCFacesArray   = %lu bytes\n", *ncorner * sizeof(int));
 
@@ -749,11 +731,6 @@ void gpu_sweepucbxyz(int *Angle,
 
       CUDA_SAFE_CALL(cudaMalloc(&(d_cyclePsi[streamId]), MAX_TOTAL_CYCLES * *Groups * sizeof(double)));
       printf("allocated d_cyclePsi       = %lu bytes\n", MAX_TOTAL_CYCLES * *Groups * sizeof(double));
-
-      CUDA_SAFE_CALL(cudaMalloc(&(d_next[streamId]), *ncorner * sizeof(int)));
-      printf("allocated d_next           = %lu bytes\n", *ncorner * sizeof(int));
-
-      CUDA_SAFE_CALL(cudaMallocHost(&(h_next[streamId]), *ncorner * sizeof(int)));
 
       CUDA_SAFE_CALL(cudaMalloc(&(d_GnumCorner[streamId]), totalZones * sizeof(int)));
       printf("allocated d_GnumCorner           = %lu bytes\n", totalZones * sizeof(int));
@@ -938,6 +915,8 @@ void gpu_sweepucbxyz(int *Angle,
    CUDA_SAFE_CALL(cudaMemcpyAsync(
        d_nextZ[streamId], nextZ, totalZones * sizeof(int), cudaMemcpyHostToDevice, sweepStream[streamId]));
    CUDA_SAFE_CALL(cudaMemcpyAsync(
+       d_nextC[streamId], nextC, *ncorner * sizeof(int), cudaMemcpyHostToDevice, sweepStream[streamId]));
+   CUDA_SAFE_CALL(cudaMemcpyAsync(
        d_Volume[streamId], Volume, *ncorner * sizeof(double), cudaMemcpyHostToDevice, sweepStream[streamId]));
    CUDA_SAFE_CALL(cudaMemcpyAsync(
        d_Sigt[streamId], Sigt, totalZones * *Groups * sizeof(double), cudaMemcpyHostToDevice, sweepStream[streamId]));
@@ -947,8 +926,6 @@ void gpu_sweepucbxyz(int *Angle,
        d_cEZ[streamId], cEZ, *maxcf * *ncorner * sizeof(int), cudaMemcpyHostToDevice, sweepStream[streamId]));
    CUDA_SAFE_CALL(cudaMemcpyAsync(
        d_cFP[streamId], cFP, *maxcf * *ncorner * sizeof(int), cudaMemcpyHostToDevice, sweepStream[streamId]));
-   CUDA_SAFE_CALL(
-       cudaMemcpyAsync(d_next[streamId], next, *ncorner * sizeof(int), cudaMemcpyHostToDevice, sweepStream[streamId]));
    CUDA_SAFE_CALL(cudaMemcpyAsync(d_GnumCorner[streamId],
                                   Geom_numCorner,
                                   totalZones * sizeof(int),
@@ -962,6 +939,7 @@ void gpu_sweepucbxyz(int *Angle,
                                                                                              *nHyperPlanes,
                                                                                              d_nZonesInPlane[streamId],
                                                                                              d_nextZ[streamId],
+                                                                                             d_nextC[streamId],
                                                                                              d_STotal[streamId],
                                                                                              *tau,
                                                                                              *Groups,
@@ -976,7 +954,6 @@ void gpu_sweepucbxyz(int *Angle,
                                                                                              d_bdy_exit[streamId],
                                                                                              d_Psi1[streamId],
                                                                                              d_cEZ[streamId],
-                                                                                             d_next[streamId],
                                                                                              *quadwt,
                                                                                              d_Phi[streamId],
                                                                                              d_PsiB[streamId],

@@ -19,6 +19,7 @@
    use radconstant_mod
    use Size_mod
    use Geometry_mod
+   use RadIntensity_mod
    use Material_mod
    use QuadratureList_mod
    use SetData_mod
@@ -123,7 +124,7 @@
      planck = planck/speed_light
 
      do g=1,ngr
-       Geom% RadEnergyDensity(zone,g)     = max(planck(g),efloor)
+       Rad% RadEnergyDensity(zone,g)      = max(planck(g),efloor)
        erad = erad + Geom% VolumeZone(zone)*max(planck(g),efloor)
      enddo
 

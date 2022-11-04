@@ -1,0 +1,39 @@
+# Once done, this will define
+#
+# CONDUITRELAYMPI_FOUND         - system has conduit relay
+# CONDUITRELAYMPI_INCLUDE_DIR   - conduit relay include directory
+# CONDUITRELAYMPI_LIBRARIES     - conduit relay library
+
+include(FindPackageHandleStandardArgs)
+
+find_path(
+  CONDUITRELAYMPI_INCLUDE_DIR
+  NAMES conduit/conduit_relay_mpi.hpp
+  PATHS ${CONDUIT_ROOT}
+  PATH_SUFFIXES include
+  NO_DEFAULT_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_CMAKE_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
+  NO_CMAKE_SYSTEM_PATH
+) 
+
+find_library(
+  CONDUITRELAYMPI_LIBRARIES
+  NAMES conduit_relay_mpi
+  PATHS ${CONDUIT_ROOT}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_CMAKE_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
+  NO_CMAKE_SYSTEM_PATH
+)
+
+
+find_package_handle_standard_args(
+    ConduitRelayMPI
+    DEFAULT_MSG
+    CONDUITRELAYMPI_LIBRARIES CONDUITRELAYMPI_INCLUDE_DIR)
+
+mark_as_advanced(CONDUITRELAYMPI_LIBRARIES CONDUITRELAYMPI_INCLUDE_DIR)

@@ -2,9 +2,11 @@
 !***********************************************************************
 !                         Version 0: 03/11/21 TSH                      *
 !                                                                      *
-!         getCornerVolumes -  Called from host to get the              *
-!                             corner volumes in the zone               *
+!         getCornerVolumes -  Called from host to get the corner       *
+!                             volumes in the zone.                     *
 !                                                                      *
+! 02/07/2022 - The value returned by this function was updated to      *
+!              be scaled by the geometry factor.                       *
 !***********************************************************************
 
   subroutine getCornerVolumes(zone, cornerVolumes) &
@@ -27,12 +29,14 @@
     integer    :: c 
     integer    :: c0 
     integer    :: nCorner 
+    real(adqt) :: geometryFactor
 
 !   Set the corner volumes
     c0 = Geom% cOffSet(zone)
+    geometryFactor = getGeometryFactor(Size)
     nCorner = Geom% numCorner(zone)
     do c=1,nCorner
-      cornerVolumes(c) = Geom% Volume(c0+c)
+      cornerVolumes(c) = geometryFactor * Geom% Volume(c0+c)
     enddo
 
   end subroutine getCornerVolumes

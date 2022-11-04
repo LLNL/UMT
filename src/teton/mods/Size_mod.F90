@@ -68,6 +68,8 @@ module Size_mod
      logical (kind=1) :: usePWLD               ! use PWLD spatial differencing
      logical (kind=1) :: useSurfaceMassLumping ! surface and mass lumping for PWLD 
      logical (kind=1) :: useGPU                ! offload computations to the GPU
+     logical          :: usePinnedMemory       ! use page-locked cpu memory for
+                                               ! data that will be transferred to GPU.
      logical (kind=1) :: useCUDASweep          ! use CUDA sweep on the GPU
      logical (kind=1) :: useCUDASolver         ! use CUDA solver on the GPU
 
@@ -168,7 +170,8 @@ contains
     self% nbelem             = nbelem
     self% maxcf              = maxcf
     self% maxCorner          = maxCorner 
-    self% maxFaces           = 1 
+! In 1D, 2D maxFaces = maxCorner; In 3D it's an overestimate
+    self% maxFaces           = maxCorner 
     self% maxSides           = 1
     self% ncomm              = ncomm
     self% ndim               = ndim
@@ -210,17 +213,27 @@ contains
     endif
 
     self% useNewNonLinearSolver = useNewNonLinearSolver
-
-    TETON_VERIFY(.NOT. (useNewGTASolver .AND. nzones < 20), "Teton: New GTA solver does not support small meshes < 20 zones.  See JIRA TETON-116 for more info.")
-
     self% useNewGTASolver       = useNewGTASolver
     self% usePWLD               = usePWLD
     self% useSurfaceMassLumping = useSurfaceMassLumping
 
-    self% useGPU                = useGPU
     ! GPU kernels do not support 1d meshes.
-    if (ndim == 1 .AND. useGPU ) then
+    if (ndim == 1) then
        self% useGPU = .FALSE.
+    else
+       self% useGPU = useGPU
+    endif
+
+! Pinned memory improves CPU<->GPU memory transfer performance, so default to
+! using this if running GPU kernels.  Allocating data in pinned memory requires Umpire.
+#if defined(TETON_ENABLE_UMPIRE)
+    self% usePinnedMemory       = self%useGPU
+#else
+    self% usePinnedMemory       = .FALSE.
+#endif
+
+    if (self% useGPU .AND. .NOT. self% usePinnedMemory) then
+       print *, "TETON WARNING: Detected that GPU kernels are enabled, but UMPIRE pinned memory is not enabled.  This is not recommended and will result in severe performance degradation."
     endif
 
     self% useCUDASolver         = useCUDASolver

@@ -47,6 +47,7 @@
 
    integer    :: nzones
    integer    :: zone
+   integer    :: zone0
    integer    :: nCorner
    integer    :: c
    integer    :: ii
@@ -121,7 +122,8 @@
  
      ZoneLoop: do ii=1,nzones
  
-       zone    = ASet% nextZ(ndoneZ+ii,Angle)
+       zone0   = ASet% nextZ(ndoneZ+ii,Angle)
+       zone    = iabs( zone0 ) 
        nCorner = Geom% numCorner(zone)
        c0      = Geom% cOffSet(zone)
 

@@ -24,7 +24,7 @@
 
 !  Local Variables
    integer                       :: provided ! level of thread support
-   integer                       :: ierr     ! error code from MPI
+   integer                       :: errorcode,  ierr     ! error code from MPI
 
    MY_COMM_GROUP = comm
 
@@ -34,11 +34,13 @@
    call MPI_Query_thread(provided, ierr)
    if (ierr /= MPI_SUCCESS) then
       print *, "Teton: MPI thread support query failed."
-      call MPI_Abort(MPI_COMM_WORLD, ierr)
+      errorcode = 1
+      call MPI_Abort(MPI_COMM_WORLD, errorcode, ierr)
    endif
    if (provided /= MPI_THREAD_MULTIPLE) then
       print *, "Teton: MPI was not initialized with thread support level MPI_THREAD_MULTIPLE.  A thread-safe MPI is required when OpenMP is enabled in Teton."
-      call MPI_Abort(MPI_COMM_WORLD, ierr)
+      errorcode = 1
+      call MPI_Abort(MPI_COMM_WORLD, errorcode, ierr)
    endif
 #endif
 

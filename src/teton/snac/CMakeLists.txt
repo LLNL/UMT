@@ -1,9 +1,9 @@
 target_sources( teton PRIVATE
   GaussLegendreLobattoWgts.F90
   GTASweep.F90
+  GTASweep_OMPOL.F90
   InitSweepGreyUCBrz.F90
   InitSweepGreyUCBxyz.F90
-  InitSweepGrey_OMPOL.F90
   Jacobi.F90
   JacobiLobattoPts.F90
   SetSweep.F90

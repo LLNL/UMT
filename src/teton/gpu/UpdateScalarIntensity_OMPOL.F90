@@ -12,7 +12,7 @@
 !***********************************************************************
    subroutine ScalarIntensityDecompose_GPU(P)
 
-   use, intrinsic :: iso_c_binding, only : c_int
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use constant_mod
    use Size_mod
@@ -20,7 +20,6 @@
    use GreyAcceleration_mod
    use QuadratureList_mod
    use OMPWrappers_mod
-   use Options_mod
 
    implicit none
 
@@ -38,7 +37,6 @@
    integer    :: c0
    integer    :: nCorner
    integer    :: i, j, k
-   integer(kind=c_int) :: nOmpMaxTeamThreads
 
    real(adqt) :: wtiso
    real(adqt) :: diagInv
@@ -47,24 +45,20 @@
 
 !  Constants
 
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
    nZoneSets = getNumberOfZoneSets(Quad)
    wtiso     = Size% wtiso
 
-   if (Size%useGPU) then
 
-     TOMP(target update to(GTA% GreySource) )
-
-     TOMP(target data map(to: wtiso) map(tofrom: P))
-
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) private(zSetID)) 
+   TOMP(target data map(to: wtiso))
+   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+   TOMPC(shared(nZoneSets, P, Geom, GTA, wtiso)&)
+   TOMPC(private(cc,c0,nCorner,diagInv,t,v))
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
 !$omp  parallel do default(none)  &
 !$omp& shared(P, Geom, GTA, wtiso, zSetID)  &
-!$omp& private(zone,c,cc,c0,nCorner,i,j,k) &
-!$omp& private(diagInv,t,v)
+!$omp& private(cc,c0,nCorner,diagInv,t,v)
 
      ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -144,9 +138,8 @@
 
    enddo ZoneSetLoop
 
-     TOMP(end target teams distribute)
-     TOMP(end target data)
-   endif ! if Size%useGPU
+   TOMP(end target teams distribute)
+   TOMP(end target data)
 
 
    return
@@ -155,7 +148,7 @@
 
    subroutine ScalarIntensitySolve_GPU(P)
 
-   use, intrinsic :: iso_c_binding, only : c_int
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use constant_mod
    use Size_mod
@@ -179,27 +172,23 @@
    integer    :: c0
    integer    :: nCorner
    integer    :: i, k
-   integer(kind=c_int) :: nOmpMaxTeamThreads
 
    real(adqt) :: t
 
 !  Constants
 
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
    nZoneSets = getNumberOfZoneSets(Quad)
 
-   if (Size%useGPU) then
 
-     TOMP(target data map(tofrom: P))
-
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) private(zSetID)) 
+   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(shared(nZoneSets, P, Geom, GTA)&)
+   TOMPC(private(c0,nCorner,t))
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
 !$omp  parallel do default(none)  &
 !$omp& shared(P, Geom, GTA, zSetID)  &
-!$omp& private(zone,c,c0,nCorner,i,k) &
-!$omp& private(t)
+!$omp& private(c0,nCorner,t)
 
      ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -242,9 +231,7 @@
 
    enddo ZoneSetLoop
 
-     TOMP(end target teams distribute)
-     TOMP(end target data)
-   endif ! if Size%useGPU
+   TOMP(end target teams distribute)
 
 
    return

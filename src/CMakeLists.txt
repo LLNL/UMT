@@ -7,20 +7,15 @@ set(PROJECT_NAME teton)
 # Update version information in this file.
 
 set(TETON_VERSION_MAJOR 4)
-set(TETON_VERSION_MINOR 12)
+set(TETON_VERSION_MINOR 14)
 set(TETON_VERSION_PATCH 0)
 include (cmake/Version.cmake)
 
 # The CUDA Boltzmann Compton solver source file requires C++11.
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-
-set(TETON_INTEL_VER_REQUIRED 19.0.4.20190416)
-set(TETON_GNU_VER_REQUIRED 8.1.0)
-set(TETON_XL_VER_REQUIRED 16.01.0001.0009)
-set(TETON_CRAY_VER_REQUIRED 11.0.3)
 
 # Tell CMake to not clear out the RPATH when installing an executable.
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -58,11 +53,17 @@ endif()
 
 # -----
 # Enable mini-app code version that focuses on the transport sweep algorithm.
+# This will enable the test driver, and MFEM mesh support by default.
+# This will disable SILO and HDF5, as that is not required for MFEM problem input.
 # -----
-option( ENABLE_MINIAPP_BUILD "Enable transport sweep mini-app." YES )
+option( ENABLE_MINIAPP_BUILD "Enable transport sweep mini-app." TRUE )
 if(ENABLE_MINIAPP_BUILD)
    message( STATUS "Enabling transport sweep mini-app build." )
    add_compile_definitions( "TETON_ENABLE_MINIAPP_BUILD" )
+   set(NOT_ENABLE_MINIAPP_BUILD FALSE)
+else()
+   set(NOT_ENABLE_MINIAPP_BUILD TRUE)
+
 endif()
 
 # Enable some extra function hooks around the intensity iteration for testing, manufactured solutions, etc.
@@ -149,13 +150,15 @@ if(ENABLE_TOMP_TRACES)
    add_compile_definitions( "TETON_ENABLE_TOMP_TRACES" )
 endif()
 
-option( ENABLE_TESTS "Enable test driver executable." OFF )
+option( ENABLE_TESTS "Enable test driver executable." ${ENABLE_MINIAPP_BUILD} )
 if (ENABLE_TESTS)
    message( STATUS "Enable teton test driver." )
-   option( ENABLE_MFEM"Enable mfem mesh support." OFF )
+   option( ENABLE_MFEM "Enable mfem mesh support." ${ENABLE_MINIAPP_BUILD} )
    if (ENABLE_MFEM)
       message( STATUS "Enable mfem mesh support.")
       add_compile_definitions( "TETON_ENABLE_MFEM" )
+   else()
+      message( STATUS "Disable mfem mesh support.")
    endif()
 else()
    message( STATUS "Disable teton test driver." )
@@ -172,47 +175,16 @@ include (cmake/GetGPUInfo.cmake)
 #       These are used if compiling the test driver.
 include(cmake/FindFortranCompilerLibraries.cmake)
 
-
-# ----- Check if tested compiler is being used. -----
-option(ENABLE_COMPILER_VERSION_CHECK "Check that compiler meets minimum tested version." YES)
-if (ENABLE_COMPILER_VERSION_CHECK)
-   include(cmake/GetFortranCompilerVersion.cmake)
-   message(STATUS "Checking ${CMAKE_Fortran_COMPILER_ID} ${Fortran_COMPILER_VERSION} against minimum supported version...")
-   if (CMAKE_Fortran_COMPILER_ID STREQUAL "Gnu" AND CMAKE_Fortran_COMPILER_VERSION VERSION_LESS ${TETON_GNU_VER_REQUIRED})
-      message(FATAL_ERROR "GNU gfortran ${CMAKE_Fortran_COMPILER_VERSION} detected.  This version is untested.  Minimum tested compiler version is ${TETON_GNU_VER_REQUIRED}.")
-   endif()
-
-   if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" AND CMAKE_Fortran_COMPILER_VERSION VERSION_LESS ${TETON_INTEL_VER_REQUIRED})
-      message(FATAL_ERROR "Intel ifort ${CMAKE_Fortran_COMPILER_VERSION} detected.  This version is untested.  Minimum tested compiler version is ${TETON_INTEL_VER_REQUIRED}.")
-   endif()
-   if (CMAKE_Fortran_COMPILER_ID STREQUAL "XL")
-      if (${Fortran_COMPILER_VERSION} VERSION_LESS ${TETON_XL_VER_REQUIRED})
-         message(FATAL_ERROR "IBM xlf ${Fortran_COMPILER_VERSION} detected.  This version is untested.  Minimum tested compiler version is ${TETON_XL_VER_REQUIRED}.")
-      endif()
-   endif()
-   if (CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
-      include(cmake/GetFortranCompilerVersion.cmake)
-      if (${Fortran_COMPILER_VERSION} VERSION_LESS ${TETON_CRAY_VER_REQUIRED})
-         message(FATAL_ERROR "Cray ftn ${Fortran_COMPILER_VERSION} detected.  This version is untested.  Minimum tested compiler version is ${TETON_CRAY_VER_REQUIRED}.")
-      endif()
-   endif()
-else()
-    message( STATUS "Minimum compiler version check is disabled." )
-endif()
-
 # Add third party FindXXX.cmake modules.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/thirdparty/")
 
 option( ENABLE_UMPIRE "Link and enable the use of the UMPIRE memory library." NO )
 if(ENABLE_UMPIRE)
    find_package(Umpire)
+   if(ENABLE_CAMP)
+      find_package(Camp)
+   endif()
    add_compile_definitions( "TETON_ENABLE_UMPIRE" )
-endif()
-
-option( ENABLE_MEMUSAGES "Link and enable the use of the MEMUSAGES to track memory usage in test driver." YES )
-if(ENABLE_MEMUSAGES)
-   find_package(Memusages)
-   add_compile_definitions( "TETON_ENABLE_MEMUSAGES" )
 endif()
 
 option( ENABLE_CALIPER "Link and enable the use of the CALIPER performance measurement library." NO )
@@ -222,25 +194,35 @@ if(ENABLE_CALIPER)
    add_compile_definitions( "TETON_ENABLE_CALIPER" )
 endif()
 
+option( ENABLE_BLUEPRINT_INTERFACE "Enable support for configuring teton via conduit blueprint interface." YES )
+
 find_package(Conduit)
 find_package(ConduitRelay)
+find_package(ConduitRelayMPI)
+find_package(ConduitRelayMPIIO)
 find_package(ConduitBlueprint)
+find_package(ConduitBlueprintMPI)
+
+# Needed for restart SILO file support.
+option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." ${NOT_ENABLE_MINIAPP_BUILD})
+if (ENABLE_SILO)
+   find_package(Silo)
+endif()
 
 if(NOT ENABLE_MINIAPP_BUILD)
    # Need the source headers for these, regardless of whether we compile the test driver executable.
    find_package(PhysicsUtils)
 endif()
 
-option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." YES )
-if (ENABLE_SILO)
-  find_package(Silo)
+
+# Needed if conduit was built against HDF5.
+option( ENABLE_HDF5 "Link in the HDF5 library." ${NOT_ENABLE_MINIAPP_BUILD} )
+if (ENABLE_HDF5)
+   find_package(HDF5)
+   find_package(Z)
 endif()
 
 if (ENABLE_TESTS)
-   # Only needed if we compile the test driver executable.
-   find_package(HDF5)
-   find_package(SZ)
-   find_package(Z)
    # Only needed if we compile the test driver mfem support.
    if (ENABLE_MFEM)
       find_package(MFEM)

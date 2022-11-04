@@ -13,8 +13,6 @@
    use constant_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -40,19 +38,16 @@
      case (geometry_cylinder)
  
        do zone=1,nzones
-         Z => getZoneData(Geom, zone)
-         M => getMesh(Geom, zone)
-
          c0                    = 2*(zone - 1)
 
-         Rmin                  = M% px(1,1)
-         Rmax                  = M% px(1,2)
+         Rmin                  = Geom% px(1,c0+1)
+         Rmax                  = Geom% px(1,c0+2)
          Rave                  = half*( Rmin + Rmax )
 
-         Z% Rave               = Rave
-         Z% Rmin               = Rmin
-         Z% Rmax               = Rmax
-         Z% zoneWidth          = Rmax - Rmin
+         Geom% Rave(zone)      = Rave
+         Geom% Rmin(zone)      = Rmin
+         Geom% Rmax(zone)      = Rmax
+         Geom% zoneWidth(zone) = Rmax - Rmin
 
          Geom% Radius(c0+1)    = Rave
          Geom% Radius(c0+2)    = Rmax
@@ -67,19 +62,16 @@
      case (geometry_sphere)
  
        do zone=1,nzones
-         Z => getZoneData(Geom, zone)
-         M => getMesh(Geom, zone)
-
          c0                    = 2*(zone - 1)
 
-         Rmin                  = M% px(1,1) 
-         Rmax                  = M% px(1,2) 
+         Rmin                  = Geom% px(1,c0+1) 
+         Rmax                  = Geom% px(1,c0+2) 
          Rave                  = half*( Rmin + Rmax )
 
-         Z% Rave               = Rave*Rave
-         Z% Rmin               = Rmin*Rmin
-         Z% Rmax               = Rmax*Rmax
-         Z% zoneWidth          = Rmax - Rmin
+         Geom% Rave(zone)      = Rave*Rave
+         Geom% Rmin(zone)      = Rmin*Rmin
+         Geom% Rmax(zone)      = Rmax*Rmax
+         Geom% zoneWidth(zone) = Rmax - Rmin
 
          Geom% Radius(c0+1)    = Rave
          Geom% Radius(c0+2)    = Rmax
@@ -94,19 +86,16 @@
      case (geometry_slab)
  
        do zone=1,nzones
-         Z => getZoneData(Geom, zone)
-         M => getMesh(Geom, zone)
-
          c0                    = 2*(zone - 1)
 
-         Rmin                  = M% px(1,1) 
-         Rmax                  = M% px(1,2) 
+         Rmin                  = Geom% px(1,c0+1) 
+         Rmax                  = Geom% px(1,c0+2) 
          Rave                  = half*( Rmin + Rmax )
 
-         Z% Rave               = one 
-         Z% Rmin               = one 
-         Z% Rmax               = one 
-         Z% zoneWidth          = Rmax - Rmin
+         Geom% Rave(zone)      = one 
+         Geom% Rmin(zone)      = one 
+         Geom% Rmax(zone)      = one 
+         Geom% zoneWidth(zone) = Rmax - Rmin
 
          Geom% Radius(c0+1)    = Rave
          Geom% Radius(c0+2)    = Rmax

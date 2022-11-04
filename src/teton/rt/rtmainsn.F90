@@ -21,6 +21,7 @@
    use constant_mod
    use mpi_param_mod
    use mpif90_mod
+   use default_iter_controls_mod, only : outer_slow_conv_threshold
 
 #if defined(TETON_ENABLE_CALIPER)
    use caliper_mod
@@ -36,7 +37,6 @@
    integer    :: tempIter, nTotalSweeps, izero
    integer    :: ndim
    integer    :: nThreadsInitial
-   integer    :: ierr
    integer    :: maxIterCheck
 
    real(adqt) :: maxEnergyDensityError, maxTempError 
@@ -134,6 +134,9 @@
 
 !  Calculate new electron temperature and energy change
 
+   write(descriptor,'(A63)') "In rtmainsn, before any NL solves or temperature iterations."
+   call PrintEnergies(trim(descriptor))
+
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    time1 = MPIWtime()
    START_RANGE("Teton_NonLinearSolver")
@@ -191,10 +194,24 @@
 !***********************************************************************
      call ConvergenceTest(maxEnergyDensityError, maxTempError)
 
-     if ((tempIter > 1) .and.  &
-         (maxTempError <  getEpsilonPoint(temperatureControl) .and.  &
-          maxEnergyDensityError <  getEpsilonPoint(intensityControl))  .or.   &
-          tempIter >= getMaxNumberOfIterations(temperatureControl)) then
+     if (tempIter >= getMaxNumberOfIterations(temperatureControl)) then
+
+       exit TemperatureIteration
+
+     else if (tempIter > 1 .and.  &
+         maxTempError <  getEpsilonPoint(temperatureControl) .and.  &
+         maxEnergyDensityError <  getEpsilonPoint(intensityControl)) then
+
+       if (associated(GTA) .eqv. .true. .and. GTA% forceExtraOuter .and. .not. getConvergenceState(greyControl)) then
+
+          if (Options%isRankVerbose() > 1) then
+             print *, "In outer iteration ", tempIter, ", GTA is not converged so Teton will do another outer iteration."
+          endif
+
+          GTA%epsGrey = max(maxEnergyDensityError,maxTempError)/20.d0
+          cycle TemperatureIteration
+
+       endif
 
        exit TemperatureIteration
 

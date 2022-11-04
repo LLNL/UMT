@@ -39,7 +39,9 @@
 !  Transport sweeps in curvilinear geometry
 
      if ( savePsi ) then
-!$omp parallel do private(setID, Groups, NumAngles) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nSets, Quad) &
+!$omp& private(Groups, NumAngles)
 
        do setID=1,nSets
 
@@ -56,7 +58,9 @@
 !$omp end parallel do
      else
 
-!$omp parallel do private(setID, Groups, NumAngles) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nSets, Quad) &
+!$omp& private(Groups, NumAngles)
 
        do setID=1,nSets
 
@@ -77,7 +81,9 @@
 
 !  Transport sweeps in planar geometry
 
-!$omp parallel do private(setID, Groups) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nSets, Quad, savePsi) &
+!$omp& private(Groups, NumAngles)
 
      do setID=1,nSets
 

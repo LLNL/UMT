@@ -14,6 +14,7 @@
 #define __TETON_CONDUIT_INTERFACE_HH__
 
 #include <string>
+#include <mpi.h>
 #include "conduit/conduit.hpp"
 
 namespace Teton
@@ -24,23 +25,22 @@ public:
    Teton() : areSourceProfilesSet(false)
    {
    }
-   ~Teton()
-   {
-   }
 
-   void initialize();
+   ~Teton();
+
+   void initialize(MPI_Comm communicator, bool fromRestart=false);
 
    // This stores the needed mesh data needed to compute
    // forces on the vertices
    void storeMeshData();
 
-   void constructBoundaries();
+   void constructBoundaries(int rank);
 
    void constructComptonControl();
 
    void constructEdits();
 
-   void constructSize();
+   void constructSize(int rank);
 
    void constructMemoryAllocator();
 
@@ -67,7 +67,7 @@ public:
 
    // Initializes material properties used by Teton at the beginning
    // of a run or after a restart.
-   void setMaterials(double *cornerTe_ptr);
+   void setMaterials();
 
    // create IterControl/DtControl object used in Teton for
    // iteration/time-step control etc.
@@ -77,7 +77,13 @@ public:
    // a member function to update opacity
    void updateOpacity();
 
-   void dump(int cycle, std::string path = ".", std::string name = "dump", bool allFields = false);
+   // updates the radiation force if the fields 
+   // "radiation_force_r" (dim == 2) or "radiation_force_x" 
+   // (dim == 3) fields are present in the conduit blueprint node
+   void updateRadiationForce();
+   void updateZonalRadiationForce();
+
+   void dump(int cycle, std::string path = ".");
 
    double *getCornerTemperature();
 
@@ -92,14 +98,29 @@ public:
    // This updates Teton's zone vertex coordinates based on
    // changes to the mesh nodes (from hydro)
    void updateMeshPositions();
-   // NOTE: The arrays RadiationForceXTotal, ..., must
-   //       already be allocated to the number of mesh vertices
-   void getRadiationForceOnVerts(double *RadiationForceXTotal,
-                                 double *RadiationForceYTotal,
-                                 double *RadiationForceZTotal);
+
+   // TODO: remove this once all host codes swich to getting the 
+   // force density fields from the conduit node
+   void getRadiationForceDensity(double *RadiationForceDensityX,
+                                 double *RadiationForceDensityY,
+                                 double *RadiationForceDensityZ);
+
+   // Updates the field "fields/rad_energy_deposited/values" in the 
+   // blueprint conduit node if it exists 
+   void getRadEnergyDeposited(double *RadEnergyDeposited);
+   void updateRadEnergyDeposited();
+
    int *getCornerToVertexArray()
    {
       return &mCornerToVertex[0];
+   }
+   int *getZoneToNCornersArray()
+   {
+      return &mZoneToNCorners[0];
+   }
+   int *getZoneToCornersArray()
+   {
+      return &mZoneToCorners[0];
    }
    // This is used for the post-ALE step of rescaling psi
    // based on the remapped radiation energy density.
@@ -115,12 +136,12 @@ public:
 
    conduit::Node &getMeshBlueprint()
    {
-      return mMeshBlueprint;
+      return getDatastore()["blueprint"];
    }
    conduit::Node &getDatastore();
    conduit::Node &getOptions()
    {
-      return getDatastore();
+      return getDatastore()["options"];
    }
 
    // ---------------------------------------------------------------------------
@@ -133,18 +154,14 @@ public:
    void checkpointExternalDataLoaded();
    void checkpointFinished();
 
-   double dtrad;
+   double mDTrad;
 
 private:
+
    bool areSourceProfilesSet; // Whether or not setSourceProfiles has been called
 
    int mGTAorder; // quadrature order used for grey transport acceleration (def=2 for s2 acc)
    int mInternalComptonFlag;
-   conduit::Node mMeshBlueprint;
-
-   // Fields that we want to be able to dump each cycle
-   std::vector<double> mCornerTemperature;
-   std::vector<double> mRadiationEnergyDensity;
 
    // To compute radiation forces on the vertices, Teton
    // needs to hang on to this connectivity array
@@ -153,6 +170,14 @@ private:
    // !!!! TODO: Make this work for AMR meshes
    std::vector<int> mCornerToVertex;
    std::vector<int> mZoneToNCorners;
+   std::vector<int> mZoneToCorners;
+   std::vector<int> mCornerToZone;
+   // REMOVE //
+   std::vector<double> mCornerToVertexCoordX;
+   std::vector<double> mCornerToVertexCoordY;
+   std::vector<double> mCornerToVertexCoordZ;
+   // REMOVE //
+
 };
 } //end namespace Teton
 

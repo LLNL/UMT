@@ -21,7 +21,6 @@
    use Quadrature_mod
    use BoundaryList_mod
    use Boundary_mod
-   use ZoneData_mod
    use SetData_mod
    use CommSet_mod
    use AngleSet_mod
@@ -41,7 +40,6 @@
    type(CommSet),          pointer  :: CSet
    type(AngleSet),         pointer  :: ASet
    type(GroupSet),         pointer  :: GSet
-   type(ZoneData),         pointer  :: ZT
    type(Boundary),         pointer  :: BdyT
    type(Communicator),     pointer  :: CommT
 
@@ -145,8 +143,6 @@
 
    ZoneLoop1: do zone=nzones,1,-1
 
-     ZT   => getZoneData(Geom, zone)
-
      c0 = 2*(zone - 1)
 
 !  Initialize the scalar intensity
@@ -156,16 +152,16 @@
 
 !  Starting Direction
 
-     a0 = -half*ZT% Rave
+     a0 = -half*Geom% Rave(zone)
 
      do g=1,Groups
 
        Q1  = Geom% Volume(c0+1)*(GSet% STotal(g,c0+1) + tau*Set% Psi(g,c0+1,mstdr))
        Q2  = Geom% Volume(c0+2)*(GSet% STotal(g,c0+2) + tau*Set% Psi(g,c0+2,mstdr)) +  &
-                                 ZT% Rmax*psi_inc(g,1)
+                                 Geom% Rmax(zone)*psi_inc(g,1)
 
        b0  = -a0 + GSet% Sigt(g,zone)*Geom% Volume(c0+1)
-       a1  =  a0 + GSet% Sigt(g,zone)*Geom% Volume(c0+2) + ZT% Rmax
+       a1  =  a0 + GSet% Sigt(g,zone)*Geom% Volume(c0+2) + Geom% Rmax(zone)
        den =  one/(a0*a0 + b0*a1)
 
        Psi1 = ( a1*Q1 - a0*Q2 )*den
@@ -188,8 +184,8 @@
        adweta  = ASet% adweta(Angle)
        quadtau = ASet% tau(Angle)
 
-       a0       = half*omega*ZT% Rave
-       angTerm1 = adweta*Geom% Area(c0+1) + a0 - ZT% Rmin*omega
+       a0       = half*omega*Geom% Rave(zone)
+       angTerm1 = adweta*Geom% Area(c0+1) + a0 - Geom% Rmin(zone)*omega
        angTerm2 = adweta*Geom% Area(c0+2) - a0
 
        do g=1,Groups
@@ -198,7 +194,7 @@
                falpha*Geom% Area(c0+1)*PsiM1(g,1)
          Q2  = Geom% Volume(c0+2)*(GSet% STotal(g,c0+2) + tau*Set% Psi(g,c0+2,Angle)) + &
                falpha*Geom% Area(c0+2)*PsiM1(g,2)   - &
-               omega*ZT% Rmax*psi_inc(g,Angle)
+               omega*Geom% Rmax(zone)*psi_inc(g,Angle)
 
          b0  =  GSet% Sigt(g,zone)*Geom% Volume(c0+1) + angTerm1 
          a1  =  GSet% Sigt(g,zone)*Geom% Volume(c0+2) + angTerm2 
@@ -282,9 +278,7 @@
 
    ZoneLoop2: do zone=1,nzones
 
-     ZT   => getZoneData(Geom, zone)
-
-     c0   = ZT% c0
+     c0 = 2*(zone - 1) 
 
      PsiM1(:,1) = PsiM(:,c0+1)
      PsiM1(:,2) = PsiM(:,c0+2)
@@ -299,15 +293,15 @@
        adweta  = ASet% adweta(Angle)
        quadtau = ASet% tau(Angle)
 
-       a0       = half*omega*ZT% Rave
+       a0       = half*omega*Geom% Rave(zone)
        angTerm1 = adweta*Geom% Area(c0+1) + a0
-       angTerm2 = adweta*Geom% Area(c0+2) + ZT% Rmax*omega - a0
+       angTerm2 = adweta*Geom% Area(c0+2) + Geom% Rmax(zone)*omega - a0
 
        do g=1,Groups
 
          Q1  = Geom% Volume(c0+1)*(GSet% STotal(g,c0+1) + tau*Set% Psi(g,c0+1,Angle)) + &
                falpha*Geom% Area(c0+1)*PsiM1(g,1)   + &
-               omega*ZT% Rmin*psi_inc(g,Angle)
+               omega*Geom% Rmin(zone)*psi_inc(g,Angle)
          Q2  = Geom% Volume(c0+2)*(GSet% STotal(g,c0+2) + tau*Set% Psi(g,c0+2,Angle)) + &
                falpha*Geom% Area(c0+2)*PsiM1(g,2)
 

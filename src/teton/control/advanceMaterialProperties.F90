@@ -5,7 +5,7 @@
 !                                                                      *
 !***********************************************************************
  
-   subroutine advanceMaterialProperties(zone)
+   subroutine advanceMaterialProperties(startCycle)
 
 
    use kind_mod
@@ -13,30 +13,27 @@
    use radconstant_mod
    use Size_mod
    use Geometry_mod
+   use RadIntensity_mod
    use Material_mod
-   use ZoneData_mod
 
    implicit none
 
 !  Arguments
 
-   integer, intent(in)      :: zone
+   logical (kind=1), intent(in)  :: startCycle
 
 !  Local
-
-   type(ZoneData), pointer  :: ZT
 
    integer                  :: c
    integer                  :: c0
    integer                  :: nCorner
-   integer                  :: g
+   integer                  :: zone
 
    real(adqt)               :: tfloor
    real(adqt)               :: tr4min
    real(adqt)               :: ratio
    real(adqt)               :: Tstar
    real(adqt)               :: radEDensity 
-   real(adqt)               :: sumRad
 
 !  Constants
 
@@ -50,52 +47,80 @@
 !  Advance zone temperatures [set old = new]                           *
 !***********************************************************************
 
+!  Start of cycle
 
-   ZT       => getZoneData(Geom, zone)
-   nCorner  =  Geom% numCorner(zone)
-   c0       =  Geom% cOffSet(zone)
+   if ( startCycle ) then
+
+!$omp  parallel do default(none) schedule(dynamic) &
+!$omp& shared(Size, Mat, Geom, Rad, tfloor, tr4min) &
+!$omp& private(c0, nCorner, Tstar, ratio, radEDensity)
+
+     do zone=1,Size% nzones
+
+       nCorner        =  Geom% numCorner(zone)
+       c0             =  Geom% cOffSet(zone)
                                                                                                    
-   Tstar          = getZoneAverage(Geom, zone, Mat%Tec)
-   Mat%trz(zone)  = max( Mat%trz(zone), tfloor )
-   Mat%tez(zone)  = max( Mat%tez(zone), tfloor )
+       Tstar          =  getZoneAverage(Geom, zone, Mat%Tec)
+       Mat%trz(zone)  =  max( Mat%trz(zone), tfloor )
+       Mat%tez(zone)  =  max( Mat%tez(zone), tfloor )
 
-   Mat%tezn(zone) = Mat%tez(zone)
-   ratio          = Mat%tez(zone)/Tstar
+       Mat%tezn(zone) =  Mat%tez(zone)
+       ratio          =  Mat%tez(zone)/Tstar
 
-!  Initialize the material for the next time step
+!      Initialize the material for the next time step
 
-   Mat% tezold(zone) = zero
+       Mat% tezold(zone) = zero
 
-   do c=1,nCorner
-     Mat% Tec(c0+c)    = max( ratio*Mat%Tec(c0+c), tfloor )
-     Mat% Tecn(c0+c)   = Mat%tec(c0+c)
-     Mat% denec(c0+c)  = zero
-     Mat% tezold(zone) = Mat% tezold(zone) + Mat% Tec(c0+c)*Geom% Volume(c0+c)
-   enddo
+       do c=1,nCorner
+         Mat% Tec(c0+c)    = max( ratio*Mat%Tec(c0+c), tfloor )
+         Mat% Tecn(c0+c)   = Mat%tec(c0+c)
+         Mat% denec(c0+c)  = zero
+         Mat% tezold(zone) = Mat% tezold(zone) + Mat% Tec(c0+c)*Geom% Volume(c0+c)
+         Mat% nonLinearIterations(c0+c) = 0
+       enddo
 
-   Mat% tezold(zone)  = Mat% tezold(zone)/Geom% VolumeZone(zone) 
+       Mat% tezold(zone)  = Mat% tezold(zone)/Geom% VolumeZone(zone) 
 
-!  Initialize the non-linear iteration counter
+!      Initialize the radiation energy (used for monitoring convergence)
 
-   Mat% nonLinearIterations(zone) = 0
+       Mat% EnergyDensityOld(zone) = Rad% radEnergy(zone)/Geom% VolumeZone(zone)
+       radEDensity                 = Rad% radEnergy(zone)/  &
+                                    (Geom% VolumeZone(zone)*rad_constant*speed_light)
 
-!  Initialize the radiation energy (used for monitoring convergence)
+       Mat%Trzn(zone) = sqrt( sqrt( max(radEDensity, tr4min) ) )
 
-   Geom% radEnergy(zone) = zero
-
-   do c=1,nCorner
-     sumRad = zero
-     do g=1,Size% ngr
-       sumRad = sumRad + Geom% PhiTotal(g,c0+c)
      enddo
-     Geom% radEnergy(zone) = Geom% radEnergy(zone) + Geom% Volume(c0+c)*sumRad
-   enddo
 
-   ZT% EnergyDensityOld = Geom% radEnergy(zone)/Geom% VolumeZone(zone)
-   radEDensity          = Geom% radEnergy(zone)/  &
-                         (Geom% VolumeZone(zone)*rad_constant*speed_light)
+!$omp end parallel do
 
-   Mat%Trzn(zone) = sqrt( sqrt( max(radEDensity, tr4min) ) )
+   else
+
+!  End of cycle
+
+!$omp  parallel do default(none) schedule(dynamic) &
+!$omp& shared(Size, Mat, Geom) &
+!$omp& private(c0, nCorner)
+
+     do zone=1,Size% nzones
+
+       nCorner          = Geom% numCorner(zone)
+       c0               = Geom% cOffSet(zone)
+       Mat% tez(zone)   = zero
+       Mat% denez(zone) = zero
+
+       do c=1,nCorner
+         Mat% tez(zone)   = Mat% tez(zone)   + Geom% Volume(c0+c)*Mat%tec(c0+c)
+         Mat% denez(zone) = Mat% denez(zone) + Geom% Volume(c0+c)*Mat% denec(c0+c) 
+       enddo
+
+       Mat% tez(zone)   = Mat% tez(zone)/Geom% VolumeZone(zone)
+       Mat% denez(zone) = Mat% denez(zone)/Geom% VolumeZone(zone)
+
+     enddo
+
+!$omp end parallel do
+
+   endif
 
 
 

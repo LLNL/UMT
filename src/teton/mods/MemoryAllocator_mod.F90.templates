@@ -28,7 +28,6 @@
 ! C_DOUBLE subroutines
 !-----------------------------------------------------------------------------
    subroutine FTM_CAT4(allocate_host,real,c_double,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr, FTM_DIMS)
-      use Datastore_mod, only : theDatastore
 
       class(AllocatorType) :: self
       logical, intent(in) :: pinnedMemory
@@ -66,14 +65,12 @@
         varPtr = 0
       endif
 
-      call theDatastore%root%set_path_external_float64_ptr( parentName//"/"//varName, varPtr, numElements )
 !$omp end critical
 
       return
    end subroutine FTM_CAT4(allocate_host,real,c_double,FTM_RANK)
 !-----------------------------------------------------------------------------
    subroutine FTM_CAT4(deallocate_host,real,c_double,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr)
-      use Datastore_mod, only : theDatastore
 
       class(AllocatorType) :: self
       logical, intent(in) :: pinnedMemory
@@ -91,7 +88,6 @@
          deallocate( varPtr )
       endif
 
-      call theDatastore%root%remove(parentName//"/"//varName)
 !$omp end critical
 
       return
@@ -101,7 +97,6 @@
 ! C_INT subroutines
 !-----------------------------------------------------------------------------
    subroutine FTM_CAT4(allocate_host,integer,c_int,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr, FTM_DIMS)
-      use Datastore_mod, only : theDatastore
 
       class(AllocatorType) :: self
       logical, intent(in) :: pinnedMemory
@@ -139,14 +134,12 @@
         varPtr = 0
       endif
 
-      call theDatastore%root%set_path_external_int32_ptr( parentName//"/"//varName, varPtr, numElements )
 !$omp end critical
 
       return
    end subroutine FTM_CAT4(allocate_host,integer,c_int,FTM_RANK)
 !-----------------------------------------------------------------------------
    subroutine FTM_CAT4(deallocate_host,integer,c_int,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr)
-      use Datastore_mod, only : theDatastore
 
       class(AllocatorType) :: self
       logical, intent(in) :: pinnedMemory
@@ -164,7 +157,6 @@
          deallocate( varPtr )
       endif
 
-      call theDatastore%root%remove(parentName//"/"//varName)
 !$omp end critical
 
       return

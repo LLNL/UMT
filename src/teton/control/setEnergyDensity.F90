@@ -17,6 +17,7 @@
    use radconstant_mod
    use Size_mod
    use Geometry_mod
+   use RadIntensity_mod
 
    implicit none 
 
@@ -37,7 +38,7 @@
  
    factor = one/speed_light
 
-   Geom% RadEnergyDensity(:,:) = zero
+   Rad% RadEnergyDensity(:,:) = zero
 
    ZoneLoop: do zone=1,Size%nzones
 
@@ -49,8 +50,8 @@
        VolFrac = factor*Geom% Volume(c0+c)/Geom% VolumeZone(zone)
        
        do g=1,Size% ngr
-         Geom% RadEnergyDensity(zone,g) = Geom% RadEnergyDensity(zone,g) +  &
-                                          VolFrac*Geom% PhiTotal(g,c0+c)
+         Rad% RadEnergyDensity(zone,g) = Rad% RadEnergyDensity(zone,g) +  &
+                                         VolFrac*Rad% PhiTotal(g,c0+c)
        enddo
 
      enddo

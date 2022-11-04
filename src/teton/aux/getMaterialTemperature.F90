@@ -15,7 +15,6 @@
    use Material_mod
    use Geometry_mod
    use Material_mod
-   !use ZoneData_mod
 
    implicit none
 
@@ -26,11 +25,6 @@
 
 !  Local
 
-   !type(ZoneData), pointer  :: ZT
-
-
-   !materialTemperature = Mat% tez(zone)
-   !ZT => getZoneData(Geom, zone)
    materialTemperature = getZoneAverage(Geom, zone, Mat%Tec)
    materialTemperature  = max( materialTemperature, Size% tfloor )
 

@@ -10,12 +10,13 @@
 !***********************************************************************
 
    subroutine getPhiTotal(sendIndex)
-   use, intrinsic :: iso_c_binding, only : c_int
-   use Options_mod
+
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use Size_mod
    use constant_mod
    use Geometry_mod
+   use RadIntensity_mod
    use SetData_mod
    use AngleSet_mod
    use QuadratureList_mod
@@ -29,6 +30,7 @@
 !  Local
 
    type(SetData),    pointer :: Set
+   type(AngleSet),   pointer :: ASet
 
    integer    :: Groups
    integer    :: g
@@ -40,13 +42,9 @@
    integer    :: nZoneSets
    integer    :: ngr
    integer    :: Angle
-   type(AngleSet),   pointer :: ASet
    real(adqt) :: quadwt
-   integer(kind=c_int) :: nOmpMaxTeamThreads
 
 !  Constants
-
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
    nSets     = getNumberOfSets(Quad)
    nZoneSets = getNumberOfZoneSets(Quad)
    ngr       = Size% ngr
@@ -55,18 +53,19 @@
 
      TOMP(target data map(to: nSets, ngr, sendIndex))
 
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) &)
-     TOMPC(private(Set, ASet, zSetID, setID, g0, Groups, Angle, quadwt))
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+     TOMPC(shared(Geom, Rad, ngr, nZoneSets, sendIndex, nSets, Quad)&)
+     TOMPC(private(Set, ASet, g0, Groups, Angle, quadwt))
 
      ZoneSetLoop1: do zSetID=1,nZoneSets
 
        if (sendIndex == 1) then
 
          !$omp  parallel do collapse(2) default(none)  &
-         !$omp& shared(Geom, ngr, zSetID) private(c,g)
+         !$omp& shared(Geom, Rad, ngr, zSetID)
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do g=1,ngr
-             Geom% PhiTotal(g,c) = zero 
+             Rad% PhiTotal(g,c) = zero 
            enddo
          enddo
          !$omp end parallel do
@@ -88,11 +87,11 @@
          if (.not. ASet% StartingDirection(Angle) ) then
 
          !$omp  parallel do collapse(2) default(none)  &
-         !$omp& shared(Geom, Set, g0, Groups, quadwt, zSetID) private(c,g)
+         !$omp& shared(Geom, Rad, Set, g0, Groups, quadwt, zSetID)
 
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do g=1,Groups
-             Geom% PhiTotal(g0+g,c) = Geom% PhiTotal(g0+g,c) + quadwt*Set% Psi1(g,c)
+             Rad% PhiTotal(g0+g,c) = Rad% PhiTotal(g0+g,c) + quadwt*Set% Psi1(g,c)
            enddo
          enddo
 
@@ -110,10 +109,11 @@
 
    else
 
-     Geom% PhiTotal(:,:) = zero
+     Rad% PhiTotal(:,:) = zero
 
-     !$omp parallel do private(Set, zSetID, setID, c, g, g0, Groups) &
-     !$omp& shared(Quad, Geom) schedule(static)
+     !$omp parallel do default(none) schedule(static) &
+     !$omp& shared(Quad, Geom, Rad, nZoneSets, nSets) &
+     !$omp private(Set, zSetID, g0, Groups)
 
      ZoneSetLoop2: do zSetID=1,nZoneSets
 
@@ -125,7 +125,7 @@
 
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do g=1,Groups
-             Geom% PhiTotal(g0+g,c) = Geom% PhiTotal(g0+g,c) + Set% Phi(g,c)
+             Rad% PhiTotal(g0+g,c) = Rad% PhiTotal(g0+g,c) + Set% Phi(g,c)
            enddo
          enddo
 

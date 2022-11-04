@@ -56,7 +56,6 @@ contains
 
    subroutine AllocatorType_construct(self, umpire_host_allocator_id, umpire_device_allocator_id)
       use Size_mod, only: Size
-      use Datastore_mod, only : theDatastore
 
       class(AllocatorType), intent(inout) :: self
       integer :: umpire_host_allocator_id
@@ -90,7 +89,7 @@ contains
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
          self%use_internal_host_allocator = .TRUE.
          self%umpire_host_allocator = umpire_resource_manager%get_allocator_by_name("PINNED")
-         self%umpire_host_allocator = umpire_resource_manager%make_allocator_pool("POOL", self%umpire_host_allocator, initial_pool_size, pool_growth_size)
+         self%umpire_host_allocator = umpire_resource_manager%make_allocator_quick_pool("POOL", self%umpire_host_allocator, initial_pool_size, pool_growth_size)
          self%umpire_host_allocator_id = self%umpire_host_allocator%get_id()
 #endif
       endif
@@ -100,10 +99,6 @@ contains
          self%umpire_device_allocator_id = umpire_device_allocator_id
       endif
 #endif
-
-      ! Make sure the datastore is initialized, as this allocator will
-      ! automatically added entries to it for anything allocated.
-      call theDatastore%initialize()
 
    end subroutine AllocatorType_construct
    

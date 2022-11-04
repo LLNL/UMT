@@ -15,7 +15,6 @@
    use Size_mod
    use Geometry_mod
    use QuadratureList_mod
-   use MeshData_mod
    use AngleSet_mod
 
    implicit none
@@ -28,7 +27,6 @@
 
 !  Local Variables
 
-   type(MeshData), pointer   :: MT
    type(AngleSet), pointer   :: ASet
 
    integer    :: Zexit
@@ -122,10 +120,8 @@
      ZoneLoop: do zID=1,newZones
 
        zone    =  listZone(lastZone+zID)
-
-       MT      => getMesh(Geom, zone)
-       nCorner =  MT% nCorner
-       nFaces  =  MT% nFaces
+       nCorner =  Geom% numCorner(zone) 
+       nFaces  =  Geom% zoneFaces(zone)
 
        ndoneZ      =  ndoneZ + 1
        doneZ(zone) = .TRUE.
@@ -138,7 +134,7 @@
 
          if ( exitFace(face,zone) ) then
 
-           Zexit = MT% zoneOpp(face)
+           Zexit = Geom% zoneOpp(face,zone)
 
            if ( Zexit > 0) then
              if ( .not. doneZ(Zexit) ) then

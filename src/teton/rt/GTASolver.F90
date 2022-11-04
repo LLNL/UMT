@@ -1,4 +1,5 @@
 #include "macros.h"
+#include "omp_wrappers.h"
 !***********************************************************************
 !                       Last Update:  10/2016, PFN                     *
 !                                                                      *
@@ -47,6 +48,7 @@
    use iter_control_mod
    use Size_mod
    use Geometry_mod
+   use RadIntensity_mod
    use GreyAcceleration_mod
    use ieee_arithmetic
 
@@ -54,35 +56,48 @@
 
 !  Local
 
-   type(IterControl),      pointer  :: greyControl => NULL()
+   type(IterControl), pointer  :: greyControl => NULL()
 
-   integer    :: c, c0, zone, nCorner, alloc_stat
-   integer    :: g, Groups
+   integer    :: c
+   integer    :: c0
+   integer    :: zone
+   integer    :: nCorner
+   integer    :: alloc_stat
+   integer    :: nGreyIter
+   integer    :: izRelErrPoint
+   integer    :: ngdart
+   integer    :: nzones
 
-   integer    :: ncornr, nzones 
+   real(adqt) :: errL2
+   real(adqt) :: errZone
+   real(adqt) :: relErrPoint
+   real(adqt) :: maxRelErrPoint
+   real(adqt) :: relErrL2
+   real(adqt) :: phiL2
+   real(adqt) :: phiNew
+   real(adqt) :: pz
+   real(adqt) :: maxRelErrGrey
+   real(adqt) :: maxRelErrGreyLocal
+   real(adqt) :: sumRad
+   real(adqt) :: rrproduct
+   real(adqt) :: betaCG
+   real(adqt) :: alphaCG
+   real(adqt) :: omegaCG
+   real(adqt) :: rrproductold
+   real(adqt) :: dadproduct
+   real(adqt) :: omegaNum
+   real(adqt) :: omegaDen
 
-   integer    :: nGreyIter, izRelErrPoint, ngdart 
+   real(adqt), external  :: scat_prod
+   real(adqt), external  :: scat_prod1
 
-   real(adqt) :: errL2, errZone, relErrPoint, maxRelErrPoint, &
-                 relErrL2, phiL2, phiNew, sumRad, &
-                 maxRelErrGreyLocal, maxRelErrGrey
+   logical(kind=1)       :: withSource
 
-   real(adqt) :: rrproduct, betaCG, alphaCG, omegaCG, &
-                 rrproductold, dadproduct
-
-   real(adqt) :: omegaNum, omegaDen, pz
-
-   real(adqt), external :: scat_prod, scat_prod1
-
-   logical(kind=1)      :: useGPU
-   logical(kind=1)      :: withSource
-
-   character(len=512)   :: descriptor
+   character(len=512)    :: descriptor
 
 !  Dynamic
 
    real(adqt), allocatable :: pzOld(:)
-   real(adqt), allocatable :: phitot(:)
    real(adqt), allocatable :: CGResidual(:)
    real(adqt), allocatable :: CGDirection(:)
    real(adqt), allocatable :: CGAction(:)
@@ -91,46 +106,45 @@
 !  Set some constants
 
    greyControl => getIterationControl(IterControls, "grey")
-
-   useGPU      =  getGPUStatus(Size)
-   ncornr      =  Size%ncornr
    nzones      =  Size%nzones
-   Groups      =  Size% ngr
 
 !  Allocate memory for the SI solution of the grey equations
 
    allocate( pzOld(nzones) )
-   allocate( phitot(nzones) )
 
 !  Allocate memory for BiConjugate Gradient 
 
-   allocate( CGResidual(ncornr) )
-   allocate( CGDirection(ncornr) )
-   allocate( CGAction(ncornr) )
-   allocate( CGActionS(ncornr) )
+   allocate( CGResidual(Size% ncornr) )
+   allocate( CGDirection(Size% ncornr) )
+   allocate( CGAction(Size% ncornr) )
+   allocate( CGActionS(Size% ncornr) )
 
 !  Initialize index of zone with maximum error:
    izRelErrPoint  = -1
 
+!  Map data from the GPU
+
+   if ( Size% useGPU ) then
+     TOMP(target update from(Rad% PhiTotal))
+     TOMP(target update from(GTA% GreySource))
+     TOMP(target update to(GTA% Chi))
+   endif
+
 !  Sum current solution over groups for convergence test
 !  Compute grey source
 
-   phitot(:) = zero
-
    ZoneLoop: do zone=1,nzones
 
-     nCorner = Geom% numCorner(zone) 
-     c0      = Geom% cOffSet(zone) 
+     nCorner              = Geom% numCorner(zone)
+     c0                   = Geom% cOffSet(zone)
+     Rad% radEnergy(zone) = zero
 
      do c=1,nCorner
-       sumRad = zero
-       do g=1,Groups
-         sumRad = sumRad + Geom% PhiTotal(g,c0+c)
-       enddo
-       phitot(zone) = phitot(zone) + Geom% Volume(c0+c)*sumRad
+       sumRad               = sum( Rad% PhiTotal(:,c0+c) )
+       Rad% radEnergy(zone) = Rad% radEnergy(zone) + Geom% Volume(c0+c)*sumRad
      enddo
 
-     phitot(zone) = phitot(zone)/Geom% VolumeZone(zone)
+     Rad% radEnergy(zone) = Rad% radEnergy(zone)/Geom% VolumeZone(zone)
 
    enddo ZoneLoop
 
@@ -138,31 +152,23 @@
 
    if (Size% useNewGTASolver) then
 
-     if ( useGPU ) then
-       if (Size% ndim == 2) then
-         call InitGreySweepUCBrz_GPU
-       else
-         call InitGreySweepUCBxyz_GPU
-       endif
+     if (Size% ndim == 2) then
+
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nzones)
+       do zone=1,nzones
+         call InitGreySweepUCBrz(zone)
+       enddo
+!$omp end parallel do
+
      else
 
-       if (Size% ndim == 2) then
-
-!$omp parallel do private(zone) schedule(static)
-         do zone=1,nzones
-           call InitGreySweepUCBrz(zone)
-         enddo
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nzones)
+       do zone=1,nzones
+         call InitGreySweepUCBxyz(zone)
+       enddo
 !$omp end parallel do
-
-       else
-
-!$omp parallel do private(zone) schedule(static)
-         do zone=1,nzones
-           call InitGreySweepUCBxyz(zone)
-         enddo
-!$omp end parallel do
-
-       endif
 
      endif
 
@@ -211,7 +217,9 @@
      write(descriptor,'(A15,I5)') "GTASolver, GreyIteration number ", nGreyIter
      call PrintEnergies(trim(descriptor))
 
-!  Exit CG if the residual is identically zero
+!  Exit CG if the residual is below the minimum. This used to test against zero,
+!  but due to differences in rounding errors some platforms would return
+!  very small numbers and not zero. 
 
      if (rrProductOld == zero) then
        if (nGreyIter <= 2) then
@@ -309,7 +317,7 @@
      phiL2          = zero
      maxRelErrPoint = zero
 
-     do zone=1,nzones
+     CorrectionZoneLoop: do zone=1,nzones
        nCorner = Geom% numCorner(zone) 
        c0      = Geom% cOffSet(zone) 
 
@@ -324,10 +332,16 @@
        errZone = pz - pzOld(zone)
        errL2   = errL2 + Geom% VolumeZone(zone)*(errZone*errZone)
 
-       phiNew  = phitot(zone) + pz
+       phiNew  = Rad% radEnergy(zone) + pz
        phiL2   = phiL2 + Geom% VolumeZone(zone)*(phiNew*phiNew)
 
-       if (phiNew /= zero) then
+       ! Is this too cumbersome? a NaN check on every zone on every GTA iteration?
+       if (ieee_is_nan(phiNew) .or. ieee_is_nan(errZone)) then
+         izRelErrPoint  = zone  ! The zone where we first see a nan
+         print *, "Teton's GTASolver encountered a NaN on iteration", nGreyIter, " on rank ", Size% myRankInGroup, " in zone ", izRelErrPoint
+         call sleep(15)
+         TETON_FATAL("Grey solver encountered a NaN!")
+       else if (phiNew /= zero) then
          relErrPoint = abs(errZone/phiNew)
          if (relErrPoint > maxRelErrPoint) then
            maxRelErrPoint = relErrPoint
@@ -336,7 +350,7 @@
        endif
 
        pzOld(zone) = pz
-     enddo
+     enddo CorrectionZoneLoop
 
      if (phiL2 /= zero) then
        relErrL2 = sqrt( abs(errL2/phiL2) )
@@ -351,7 +365,11 @@
 
 !  Check convergence of the Grey Iteration
 
-     if ( (maxRelErrGrey < getEpsilonPoint(greyControl) .or.         &
+     if ( GTA% enforceHardGTAIterMax .and. nGreyIter >= getMaxNumberOfIterations(greyControl) ) then
+
+       exit GreyIteration
+
+     else if ( (maxRelErrGrey < getEpsilonPoint(greyControl) .or. &
            nGreyIter >= getMaxNumberOfIterations(greyControl)) .and. &
            maxRelErrGrey < GTA%epsGrey ) then
 
@@ -360,8 +378,8 @@
      else if ( nGreyIter >= 100*getMaxNumberOfIterations(greyControl)) then
 
        ! Only print on offending ranks:
-       if (maxRelErrGreyLocal >= GTA%epsGrey .or. ieee_is_nan(maxRelErrGreyLocal)) then
-          print *, "Teton's GTASolver is not converging despite nGreyIter >= 100*getNumberOfMaxIterations! Maximum error on rank ", Size% myRankInGroup, " is ", maxRelErrPoint, " in zone ", izRelErrPoint
+       if (maxRelErrGreyLocal >= GTA%epsGrey) then
+          print *, "Teton's GTASolver is not converging despite nGreyIter ", nGreyIter, " >= 100*getNumberOfMaxIterations! Maximum error on rank ", Size% myRankInGroup, " is ", maxRelErrPoint, " in zone ", izRelErrPoint
        endif
 
        ! Provide enough time for the above statement to get printed on every rank
@@ -391,8 +409,6 @@
 !  Free memory
 
    deallocate(pzOld,         stat=alloc_stat)
-   deallocate(phitot,        stat=alloc_stat)
-
    deallocate(CGResidual,    stat=alloc_stat)
    deallocate(CGDirection,   stat=alloc_stat)
    deallocate(CGAction,      stat=alloc_stat)

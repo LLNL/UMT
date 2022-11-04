@@ -24,7 +24,6 @@
    use constant_mod
    use Material_mod
    use Geometry_mod
-   use MeshData_mod
    use QuadratureList_mod
    use iter_control_list_mod
    use iter_control_mod
@@ -149,8 +148,7 @@
        ConvState(4)     = Mat%cve(ConvControlZone)
        ConvState(5)     = Mat%SMatEff(ConvControlZone)
 
-       M => getMesh(Geom, ConvControlZone)
-       zoneCenter(:) = getZoneCenter(M)
+       zoneCenter(:)    = getZoneCenter(Geom, ConvControlZone)
 
        do i=1,ndim
          ConvState(5+i) = zoneCenter(i)
@@ -171,8 +169,7 @@
        ConvState(4)     = Mat%cve(ConvControlZone)
        ConvState(5)     = Mat%SMatEff(ConvControlZone)
 
-       M => getMesh(Geom, ConvControlZone)
-       zoneCenter(:) = getZoneCenter(M)
+       zoneCenter(:)    = getZoneCenter(Geom, ConvControlZone)
 
        do i=1,ndim
          ConvState(5+i) = zoneCenter(i)
@@ -210,8 +207,7 @@
        DtControlChange  = zero
      endif
 
-     M => getMesh(Geom, DtControlZone)
-     zoneCenter(:) = getZoneCenter(M)
+     zoneCenter(:) = getZoneCenter(Geom, DtControlZone)
 
      DtState(1) = DtControlChange
      DtState(2) = Mat%trz(DtControlZone)
