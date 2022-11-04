@@ -92,8 +92,9 @@ subroutine SetSweep_CUDA(savePsi)
 
 !  Initialize
 
-!$omp parallel do default(none) private(cSetID,CSet,setID,Set)  &
-!$omp shared(nCommSets,Quad,ndim) schedule(dynamic)
+!$omp parallel do default(none) schedule(dynamic) &
+!$omp& shared(nCommSets,Quad,ndim) &
+!$omp& private(CSet,Set)
      do cSetID=1,nCommSets
        CSet => getCommSetData(Quad, cSetID)
 
@@ -121,9 +122,9 @@ subroutine SetSweep_CUDA(savePsi)
      ! This is a loop over all angles in a set of angles with equivalent hyperplanes, etc.
      ! For _now_ just get the kernel working per single angle.
 
-!$omp parallel do default(none) private(cSetID,CSet,ASet,NumAnglesDyn,sendIndex)  &
-!$omp private(Angle,setID,Set,Groups) shared(nCommSets,SnSweep,savePsi,ndim,Quad) &
-!$omp schedule(dynamic)
+!$omp parallel do default(none) schedule(dynamic) &
+!$omp& shared(nCommSets,SnSweep,savePsi,ndim,Quad) &
+!$omp& private(CSet,ASet,NumAnglesDyn,Angle,Set,Groups)
      CommLoop: do cSetID=1,nCommSets
 
        CSet         => getCommSetData(Quad, cSetID)
@@ -191,7 +192,8 @@ subroutine SetSweep_CUDA(savePsi)
      CALL gpu_streamSynchronize ( mod(cSetID,20) ) 
 #endif
 
-!$omp parallel do default(none) private(cSetID) shared(nCommSets,FluxConverged) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nCommSets,FluxConverged)
     do cSetID=1,nCommSets
       call setIncidentFlux(cSetID)
       call testFluxConv(cSetID, FluxConverged(cSetID))

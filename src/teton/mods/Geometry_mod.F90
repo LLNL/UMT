@@ -3,8 +3,6 @@
 module Geometry_mod 
 
   use kind_mod
-  use ZoneData_mod
-  use MeshData_mod
 
   private
 
@@ -12,10 +10,10 @@ module Geometry_mod
                                                                                              
   public construct 
   public destruct 
-  public getZoneData
-  public getMesh
   public getZoneAverage
   public setConnectivity
+  public getZoneCenter
+  public getFaceCenter
                                                                                  
                                                                                  
   type, public :: Geometry 
@@ -27,11 +25,15 @@ module Geometry_mod
      integer,         pointer, contiguous :: nCFacesArray(:) => null()
      integer,         pointer, contiguous :: cOffSet(:) => null()
      integer,         pointer, contiguous :: numCorner(:) => null()
-     integer,         pointer, contiguous :: cToZone(:) => null()
+     integer,         pointer, contiguous :: CToZone(:) => null()
      integer,         pointer, contiguous :: zone1(:) => null()
      integer,         pointer, contiguous :: zone2(:) => null()
      integer,         pointer, contiguous :: corner1(:) => null()
      integer,         pointer, contiguous :: corner2(:) => null()
+     integer,         pointer, contiguous :: zoneFaces(:) => null()
+     integer,         pointer, contiguous :: zoneOpp(:,:) => null()
+     integer,         pointer, contiguous :: faceOpp(:,:) => null()
+     integer,         pointer, contiguous :: CToFace(:,:) => null()
 
 !    Geometry Factors
 
@@ -45,13 +47,7 @@ module Geometry_mod
      real(adqt),      pointer, contiguous :: A_fp(:,:,:) => null()
      real(adqt),      pointer, contiguous :: A_ez(:,:,:) => null()
      real(adqt),      pointer, contiguous :: VoC(:,:) => null()
-
-! Placeholder
-
-     real(adqt),      pointer, contiguous :: PhiTotal(:,:) => null()
-     real(adqt),      pointer, contiguous :: CollisionRate(:) => null()
-     real(adqt),      pointer, contiguous :: radEnergy(:) => null()
-     real(adqt),      pointer, contiguous :: RadEnergyDensity(:,:) => null()
+     real(adqt),      pointer, contiguous :: px(:,:)  => null()
 
 ! PWLD
 
@@ -65,10 +61,16 @@ module Geometry_mod
      real(adqt),      pointer, contiguous :: ADu(:,:,:) => null()
      real(adqt),      pointer, contiguous :: MMu(:,:,:) => null()
 
-! Pointers to other modules
+! 1D only
 
-     type(ZoneData), pointer :: ZData(:)   => null()   ! zone data pointers
-     type(MeshData), pointer :: MData(:)   => null()   ! mesh data pointers
+     real(adqt), pointer, contiguous :: zoneWidth(:) => null() ! delta radius
+     real(adqt), pointer, contiguous :: Rave(:)      => null() ! average radius
+     real(adqt), pointer, contiguous :: Rmin(:)      => null() ! inner radius
+     real(adqt), pointer, contiguous :: Rmax(:)      => null() ! outer radius
+
+! Misc arrays
+
+     logical(kind=1), pointer, contiguous :: BoundaryZone(:) ! is zone on a boundary
 
 !    Misc
      character(len=8) :: label ! A string descriptor for this set.
@@ -81,20 +83,20 @@ module Geometry_mod
     module procedure Geometry_ctor
   end interface
 
-  interface getZoneData
-    module procedure Geometry_getZone
-  end interface
-
-  interface getMesh
-    module procedure Geometry_getMesh
-  end interface
-
   interface getZoneAverage
     module procedure Geometry_getZoneAverage
   end interface
 
   interface setConnectivity 
     module procedure Geometry_setConnectivity
+  end interface
+
+  interface getZoneCenter
+    module procedure Geometry_getZoneCenter
+  end interface
+
+  interface getFaceCenter
+    module procedure Geometry_getFaceCenter
   end interface
 
   interface destruct
@@ -127,49 +129,64 @@ contains
     integer                        :: zonesTotal
     integer                        :: nSetsP
     integer                        :: setID
-    logical                        :: usePinnedMemory
-
-    usePinnedMemory = Size%useGPU
 
     self%label = "geometry"
 
 !   Pointers
 
-    allocate( self% ZData(Size%nzones) )
-    allocate( self% MData(Size%nzones) )
-
-    allocate( self% VolumeZone(Size%nzones) )
-    self% VolumeZone(:) = zero
     allocate( self% VoC(Size% ndim,Size% ncornr) )
-    self% VoC(:,:)      = zero
+    allocate( self% px(Size% ndim,Size% ncornr) )
+    allocate( self% zoneFaces(Size% nzones) )
+    allocate( self% zoneOpp(Size%maxFaces,Size% nzones) )
+    allocate( self% faceOpp(Size%maxFaces,Size% nzones) )
+    allocate( self% CToFace(Size% maxcf,Size% ncornr) )
+    allocate( self% BoundaryZone(Size% nzones) )
 
-    call Allocator%allocate(usePinnedMemory,self%label,"Volume",       self% Volume,    Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"VolumeOld",    self% VolumeOld, Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"cOffSet",      self% cOffSet,   Size% nzones)
-    call Allocator%allocate(usePinnedMemory,self%label,"numCorner",    self% numCorner, Size% nzones)
-    call Allocator%allocate(usePinnedMemory,self%label,"cToZone",      self% cToZone,   Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"zone1",        self% zone1,     nZoneSets)
-    call Allocator%allocate(usePinnedMemory,self%label,"zone2",        self% zone2,     nZoneSets)
-    call Allocator%allocate(usePinnedMemory,self%label,"corner1",      self% corner1,   nZoneSets)
-    call Allocator%allocate(usePinnedMemory,self%label,"corner2",      self% corner2,   nZoneSets)
-    call Allocator%allocate(usePinnedMemory,self%label,"cFP",          self% cFP,       Size% maxcf,Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"cEZ",          self% cEZ,       Size% maxcf,Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"A_fp",         self% A_fp,      Size% ndim,Size% maxcf,Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"A_ez",         self% A_ez,      Size% ndim,Size% maxcf,Size% ncornr)
-    call Allocator%allocate(usePinnedMemory,self%label,"nCFacesArray", self% nCFacesArray, Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"Volume",       self% Volume,    Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"VolumeOld",    self% VolumeOld, Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"VolumeZone",   self% VolumeZone,Size% nzones)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"cOffSet",      self% cOffSet,   Size% nzones)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"numCorner",    self% numCorner, Size% nzones)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"CToZone",      self% CToZone,   Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"zone1",        self% zone1,     nZoneSets)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"zone2",        self% zone2,     nZoneSets)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"corner1",      self% corner1,   nZoneSets)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"corner2",      self% corner2,   nZoneSets)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"cFP",          self% cFP,       Size% maxcf,Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"cEZ",          self% cEZ,       Size% maxcf,Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"A_fp",         self% A_fp,      Size% ndim,Size% maxcf,Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"A_ez",         self% A_ez,      Size% ndim,Size% maxcf,Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"nCFacesArray", self% nCFacesArray, Size% ncornr)
+
+    self% VolumeZone(:)   = zero
+    self% VoC(:,:)        = zero
+    self% px(:,:)         = zero
+    self% zoneFaces(:)    = 0
+    self% zoneOpp(:,:)    = 0
+    self% faceOpp(:,:)    = 0
+    self% CToFace(:,:)    = 0
+    self% BoundaryZone(:) = .FALSE.
 
     if (Size% ndim == 1) then
       allocate( self% Area(Size% ncornr) )
       allocate( self% Radius(Size% ncornr) )
+      allocate( self% zoneWidth(Size% nzones) )
+      allocate( self% Rave(Size% nzones) )
+      allocate( self% Rmin(Size% nzones) )
+      allocate( self% Rmax(Size% nzones) )
 
-      self% Area(:)   = zero
-      self% Radius(:) = zero
+      self% Area(:)      = zero
+      self% Radius(:)    = zero
+      self% zoneWidth(:) = zero
+      self% Rave(:)      = zero
+      self% Rmin(:)      = zero
+      self% Rmax(:)      = zero
 
     elseif (Size% ndim == 2) then
 
-      call Allocator%allocate(usePinnedMemory,self%label,"Area",     self% Area,      Size% ncornr)
-      call Allocator%allocate(usePinnedMemory,self%label,"RadiusEZ", self% RadiusEZ,  2,Size% ncornr)
-      call Allocator%allocate(usePinnedMemory,self%label,"RadiusFP", self% RadiusFP,  2,Size% ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"Area",     self% Area,      Size% ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"RadiusEZ", self% RadiusEZ,  2,Size% ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"RadiusFP", self% RadiusFP,  2,Size% ncornr)
 
     endif
 
@@ -186,14 +203,6 @@ contains
         allocate( self% MMu(Size% maxSides,Size% maxSides,Size% nZones) )
       endif
     endif
-
-    call Allocator%allocate(usePinnedMemory,self%label,"PhiTotal", self% PhiTotal, Size% ngr, Size% ncornr)
-
-    allocate( self% CollisionRate(Size% ncornr) )
-    self% CollisionRate(:)      = zero
-
-    call Allocator%allocate(.FALSE.,self%label,"radEnergy", self% radEnergy, Size%nZones)
-    call Allocator%allocate(.FALSE.,self%label,"RadEnergyDensity", self% RadEnergyDensity, Size%nzones, Size%ngr)
 
 !   Zone Sets: Assign zone range to each zone set; sets 1->nSetsP get an extra
 !   zone if there is a remainder
@@ -227,12 +236,15 @@ contains
 ! set connectivity interface
 !=======================================================================
 
-  subroutine Geometry_setConnectivity(self,     &
-                                      zone,     &
-                                      nCorner,  &
-                                      c0,       &
-                                      cFP,      &
-                                      cEZ,      &
+  subroutine Geometry_setConnectivity(self,      &
+                                      zone,      &
+                                      nCorner,   &
+                                      c0,        &
+                                      zoneFaces, &
+                                      zoneOpp,   &
+                                      CToFace,   &
+                                      cFP,       &
+                                      cEZ,       &
                                       nCFacesArray)
 
     use Size_mod
@@ -246,19 +258,27 @@ contains
     integer, intent(in)            :: zone
     integer, intent(in)            :: nCorner
     integer, intent(in)            :: c0
+    integer, intent(in)            :: zoneFaces
+    integer, intent(in)            :: zoneOpp(zoneFaces)
+    integer, intent(in)            :: CToFace(Size%maxcf,Size%maxCorner)
     integer, intent(in)            :: cFP(Size%maxcf,Size%maxCorner)
     integer, intent(in)            :: cEZ(Size%maxcf,Size%maxCorner)
     integer, intent(in)            :: nCFacesArray(Size%maxCorner)
 
 !   Local
 
-    integer                        :: c, cface
+    integer                        :: c, cface, face
 
     self% cOffSet(zone)   = c0
     self% numCorner(zone) = nCorner
+    self% zoneFaces(zone) = zoneFaces
 
     do c=1,nCorner
-      self% cToZone(c0+c) = zone
+      self% CToZone(c0+c) = zone
+    enddo
+
+    do face=1,zoneFaces
+      self% zoneOpp(face,zone) = zoneOpp(face)
     enddo
 
 !   Set corner connectivity
@@ -266,8 +286,9 @@ contains
     do c=1,nCorner
       self% nCFacesArray(c0+c) = nCFacesArray(c)
       do cface=1,Size%maxcf
-        self% cFP(cface,c0+c) = cFP(cface,c)
-        self% cEZ(cface,c0+c) = cEZ(cface,c)
+        self% cFP(cface,c0+c)     = cFP(cface,c)
+        self% cEZ(cface,c0+c)     = cEZ(cface,c)
+        self% CToFace(cface,c0+c) = CToFace(cface,c)
       enddo
     enddo
 
@@ -275,48 +296,6 @@ contains
     return
 
   end subroutine Geometry_setConnectivity
-
-!=======================================================================
-! get Zone Data interface
-!=======================================================================
-  function Geometry_getZone(self,zoneID) result(ZData)
-
-!    Return a pointer to a zone definition
-
-!    variable declarations
-     implicit none
-
-!    passed variables
-     type(Geometry),     intent(in)   :: self
-     integer,            intent(in)   :: zoneID
-     type(ZoneData),     pointer      :: ZData
-
-     ZData => self % ZData(zoneID)
-
-     return
-
-  end function Geometry_getZone
-
-!=======================================================================
-! getMesh interface
-!=======================================================================
-  function Geometry_getMesh(self,zoneID) result(MData)
- 
-!    Return a pointer to a zone definition
- 
-!    variable declarations
-     implicit none
- 
-!    passed variables
-     type(Geometry),     intent(in)   :: self
-     integer,            intent(in)   :: zoneID
-     type(MeshData),     pointer      :: MData
- 
-     MData => self % MData(zoneID)
- 
-     return
- 
-  end function Geometry_getMesh
 
 !=======================================================================
 ! getZoneAverage interface
@@ -357,6 +336,109 @@ contains
      return
 
   end function Geometry_getZoneAverage
+
+!=======================================================================
+! getZoneCenter interface
+!=======================================================================
+
+  function Geometry_getZoneCenter(self, zone) result(zoneCenter)
+
+!    Return the zone center
+
+     use Size_mod
+     use constant_mod
+
+     implicit none
+
+!    passed variables
+     type(Geometry), intent(in) :: self
+     integer,        intent(in) :: zone
+     real(adqt)                 :: zoneCenter(Size% ndim)
+
+!    Local
+     integer  :: c
+     integer  :: c0
+     integer  :: nCorner
+
+!    Accumulate sum of coordinates:
+
+     nCorner = self% numCorner(zone)
+     c0      = self% cOffSet(zone)
+
+     zoneCenter(:) = zero
+
+     do c=1,nCorner
+       zoneCenter(:) = zoneCenter(:) + self% px(:,c0+c)
+     enddo
+
+!    Divide by number of corners to get average coordinate:
+
+     zoneCenter(:) = zoneCenter(:)/real(nCorner,adqt)
+
+
+     return
+
+  end function Geometry_getZoneCenter
+
+!=======================================================================
+! getFaceCenter interface
+!=======================================================================
+
+  function Geometry_getFaceCenter(self, zone, nFaces) result(faceCenter)
+
+!    Return the zone center
+
+     use Size_mod
+     use constant_mod
+
+     implicit none
+
+!    passed variables
+     type(Geometry), intent(in) :: self
+     integer,        intent(in) :: zone
+     integer,        intent(in) :: nFaces
+     real(adqt)                 :: faceCenter(3,nFaces)
+
+!    Local
+     integer  :: c
+     integer  :: c0
+     integer  :: nCorner
+     integer  :: cface
+     integer  :: face
+     integer  :: nCFaces
+     integer  :: nc_face(nFaces)
+
+!    Sum all point coordinates associated with a face and
+!    the number of corner faces on a zone face
+
+     nCorner         = self% numCorner(zone)
+     c0              = self% cOffSet(zone)
+     nc_face(:)      = 0
+     faceCenter(:,:) = zero
+
+     do c=1,nCorner
+       nCFaces = self% nCFacesArray(c0+c)
+       do cface=1,nCFaces
+         face               = self% CToFace(cface,c0+c)
+         nc_face(face)      = nc_face(face) + 1
+         faceCenter(:,face) = faceCenter(:,face) + self% px(:,c0+c)
+       enddo
+     enddo
+
+!    Calculate the face-center coordinates as the average of point
+!    coordinates associated with that face
+
+     do face=1,nFaces
+       if (nc_face(face) /= 0) then
+         faceCenter(:,face) = faceCenter(:,face)/real(nc_face(face),adqt)
+       else
+         faceCenter(:,face) = zero
+       endif
+     enddo
+
+     return
+
+  end function Geometry_getFaceCenter
                                                                                              
 !=======================================================================
 ! destruct interface
@@ -373,42 +455,46 @@ contains
 
     type(Geometry),  intent(inout) :: self
 
-    logical                        :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
 !   Pointers 
 
-    deallocate( self% ZData )
-    deallocate( self% MData )
-
-    deallocate( self% VolumeZone )
     deallocate( self% VoC )
+    deallocate( self% px  )
+    deallocate( self% zoneFaces )
+    deallocate( self% zoneOpp )
+    deallocate( self% faceOpp )
+    deallocate( self% CToFace )
+    deallocate( self% BoundaryZone )
 
-    call Allocator%deallocate(usePinnedMemory,self%label,"Volume",       self% Volume)
-    call Allocator%deallocate(usePinnedMemory,self%label,"VolumeOld",    self% VolumeOld)
-    call Allocator%deallocate(usePinnedMemory,self%label,"cOffSet",      self% cOffSet)
-    call Allocator%deallocate(usePinnedMemory,self%label,"numCorner",    self% numCorner)
-    call Allocator%deallocate(usePinnedMemory,self%label,"cToZone",      self% cToZone)
-    call Allocator%deallocate(usePinnedMemory,self%label,"zone1",        self% zone1)
-    call Allocator%deallocate(usePinnedMemory,self%label,"zone2",        self% zone2)
-    call Allocator%deallocate(usePinnedMemory,self%label,"corner1",      self% corner1)
-    call Allocator%deallocate(usePinnedMemory,self%label,"corner2",      self% corner2)
-    call Allocator%deallocate(usePinnedMemory,self%label,"cFP",          self% cFP)
-    call Allocator%deallocate(usePinnedMemory,self%label,"cEZ",          self% cEZ)
-    call Allocator%deallocate(usePinnedMemory,self%label,"A_fp",         self% A_fp)
-    call Allocator%deallocate(usePinnedMemory,self%label,"A_ez",         self% A_ez)
-    call Allocator%deallocate(usePinnedMemory,self%label,"nCFacesArray", self% nCFacesArray)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"Volume",       self% Volume)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"VolumeOld",    self% VolumeOld)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"VolumeZone",   self% VolumeZone)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"cOffSet",      self% cOffSet)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"numCorner",    self% numCorner)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"CToZone",      self% CToZone)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"zone1",        self% zone1)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"zone2",        self% zone2)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"corner1",      self% corner1)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"corner2",      self% corner2)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"cFP",          self% cFP)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"cEZ",          self% cEZ)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"A_fp",         self% A_fp)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"A_ez",         self% A_ez)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"nCFacesArray", self% nCFacesArray)
 
     if (Size% ndim == 1) then
 
       deallocate( self% Area )
       deallocate( self% Radius )
+      deallocate( self% zoneWidth )
+      deallocate( self% Rave )
+      deallocate( self% Rmin )
+      deallocate( self% Rmax )
 
     elseif (Size% ndim == 2) then
 
-      call Allocator%deallocate(usePinnedMemory,self%label,"Area",     self% Area)
-      call Allocator%deallocate(usePinnedMemory,self%label,"RadiusEZ", self% RadiusEZ)
-      call Allocator%deallocate(usePinnedMemory,self%label,"RadiusFP", self% RadiusFP)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"Area",     self% Area)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"RadiusEZ", self% RadiusEZ)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"RadiusFP", self% RadiusFP)
 
     endif
 
@@ -425,12 +511,6 @@ contains
       endif
     endif
 
-    call Allocator%deallocate(usePinnedMemory,self%label,"PhiTotal", self% PhiTotal)
-
-    deallocate( self% CollisionRate )
-
-    call Allocator%deallocate(.FALSE.,self%label,"radEnergy", self% radEnergy)
-    call Allocator%deallocate(.FALSE.,self%label,"RadEnergyDensity", self% RadEnergyDensity)
 
     return
 

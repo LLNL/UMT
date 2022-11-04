@@ -15,8 +15,6 @@
    use Geometry_mod
    use BoundaryList_mod
    use Boundary_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -48,12 +46,10 @@
      case (geometry_cylinder)
  
        do zone=1,nzones
-         M => getMesh(Geom, zone)
-
          c0                     = 2*(zone - 1)
 
-         Rmin                   = M% px(1,1)
-         Rmax                   = M% px(1,2)
+         Rmin                   = Geom% px(1,c0+1)
+         Rmax                   = Geom% px(1,c0+2)
          Rave                   = half*( Rmin + Rmax )
 
          Geom% Volume(c0+1)     = half*( Rave*Rave - Rmin*Rmin )
@@ -66,12 +62,10 @@
      case (geometry_sphere)
  
        do zone=1,nzones
-         M => getMesh(Geom, zone)
-
          c0                     = 2*(zone - 1)
 
-         Rmin                   = M% px(1,1) 
-         Rmax                   = M% px(1,2) 
+         Rmin                   = Geom% px(1,c0+1) 
+         Rmax                   = Geom% px(1,c0+2) 
          Rave                   = half*( Rmin + Rmax )
 
          Geom% Volume(c0+1)     = third*( Rave*Rave*Rave - Rmin*Rmin*Rmin )
@@ -84,12 +78,10 @@
      case (geometry_slab)
  
        do zone=1,nzones
-         M => getMesh(Geom, zone)
-
          c0                     = 2*(zone - 1)
 
-         Rmin                   = M% px(1,1) 
-         Rmax                   = M% px(1,2) 
+         Rmin                   = Geom% px(1,c0+1) 
+         Rmax                   = Geom% px(1,c0+2) 
          Rave                   = half*( Rmin + Rmax )
 
          Geom% Volume(c0+1)     = Rave - Rmin
@@ -113,9 +105,9 @@
        Bdy% Radius(1)  = zero
        Bdy% BdyToC(1)  = 1
      elseif (zone == nzones) then
-       M => getMesh(Geom, nzones)
+       c0              = 2*(nzones - 1)
        Bdy% A_bdy(1,1) = one
-       Bdy% Radius(1)  = M% px(1,2)
+       Bdy% Radius(1)  = Geom% px(1,c0+2)
        Bdy% BdyToC(1)  = Size% ncornr
      else
        call f90fatal("Invalid boundary element to zone map in RTGEOM1")

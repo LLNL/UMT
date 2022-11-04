@@ -26,7 +26,6 @@
 !  Local
 
    integer         :: set
-   integer         :: NumQuadSets
    integer         :: nReflecting
    integer         :: nReflectGlobal
    integer         :: NumAngles
@@ -71,7 +70,6 @@
 
    nReflecting    = getNumberOfReflecting(RadBoundary)
    nReflectGlobal = 0
-   NumQuadSets    = getNumQuadSets(Quad)
    nSets          = getNumberOfSets(Quad)
    ndim           = Size% ndim
    angleStride    = 1
@@ -82,7 +80,9 @@
    octantCoupled(:,:)      = 0
    List(:)                 = 0
 
-   QuadSetLoop: do set=1,NumQuadSets
+!  The code supports one high-order angle set and one GTA set
+
+   QuadSetLoop: do set=1,2
 
      QuadSet   => getQuadrature(Quad, set)
      NumAngles =  QuadSet% NumAngles
@@ -91,7 +91,7 @@
      ! - 1d mesh (not supported)
      ! - quadrature set is level symmetric (not supported)
      ! - user specified to use only one angle set, or code is not threaded
-     if (ndim == 1 .or. (set /= NumQuadSets .and. QuadSet% TypeName == 'levelsym') .or. nSets == 1 ) then
+     if (ndim == 1 .or. (set /= 2 .and. QuadSet% TypeName == 'levelsym') .or. nSets == 1 ) then
 
        QuadSet% maxAngleSets = 1
 
@@ -300,7 +300,7 @@
 
      ! Reduce GTA angle sets to one if it exceeded nSets.
 
-     if ( set == NumQuadSets .and. QuadSet%maxAngleSets > nSets) then
+     if ( set == 2 .and. QuadSet%maxAngleSets > nSets) then
        QuadSet% maxAngleSets = 1
 
        do angle=1, QuadSet%NumAngles

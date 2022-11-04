@@ -16,6 +16,7 @@
    use Size_mod
    use Geometry_mod
    use Material_mod
+   use RadIntensity_mod
    use QuadratureList_mod
    use TimeStepControls_mod
    use iter_control_list_mod
@@ -44,6 +45,7 @@
    integer    :: nSets
    integer    :: processTr, processTe
    integer    :: maxNonLinearIters
+   integer    :: zoneNonLinearIters
    integer    :: zoneNLItersMax
    integer    :: my_NLItersMax
    integer    :: processNLIters
@@ -51,15 +53,15 @@
    integer    :: ngr
 
    ! Use doubles to avoid overflow errors on very large meshes.
-   real(adqt)             :: numNonLinearIters
-   real(adqt)             :: totalNonLinearIters
-   real(adqt)             :: nZonesGlobal
+   real(adqt) :: numNonLinearIters
+   real(adqt) :: totalNonLinearIters
+   real(adqt) :: nZonesGlobal
 
    real(adqt) :: dtrad
    real(adqt) :: geometryFactor
    real(adqt) :: tr4min, mass, tfloor
 
-   real(adqt) :: my_TrMax, my_TeMax, TrMax, TeMax, PhiAve, TeAve
+   real(adqt) :: my_TrMax, my_TeMax, TrMax, TeMax, PhiAve
    real(adqt) :: deltaEMat, deltaERad
    real(adqt) :: EnergyRadiation
    real(adqt) :: PowerIncident
@@ -141,34 +143,31 @@
 
      nCorner = Geom% numCorner(zone)
      c0      = Geom% cOffSet(zone)
-     TeAve   = zero
      ERad    = zero
 
      do c=1,nCorner
        do g=1,ngr
-         Erad          = Erad          + Geom% Volume(c0+c)*Geom% PhiTotal(g,c0+c)
-         PowerAbsorbed = PowerAbsorbed + Geom% Volume(c0+c)*Geom% PhiTotal(g,c0+c)* &
+         Erad          = Erad          + Geom% Volume(c0+c)*Rad% PhiTotal(g,c0+c)
+         PowerAbsorbed = PowerAbsorbed + Geom% Volume(c0+c)*Rad% PhiTotal(g,c0+c)* &
                                          Mat%Siga(g,zone)
        enddo
-     enddo
 
-     do c=1,nCorner
-       TeAve         = TeAve + Geom% Volume(c0+c)*Mat%tec(c0+c)
-       Tec(c0+c)     = Mat%tec(c0+c)
-     enddo
+!  Electron temperature
 
-     EnergyRadiation = EnergyRadiation + ERad 
-     PhiAve          = ERad/(Geom% VolumeZone(zone)*rad_constant*speed_light)
+       Tec(c0+c) = Mat%tec(c0+c)
 
 !  These are computed in UpdateMaterialCoupling
+       PowerEmitted     = PowerEmitted     + Mat% PowerEmitted(c0+c)
+       PowerCompton     = PowerCompton     + Mat% PowerCompton(c0+c)
 
-     PowerEmitted = PowerEmitted + Mat% PowerEmitted(zone)
-     PowerCompton = PowerCompton + Mat% PowerCompton(zone)
+     enddo
 
-!  Radiation and Electron temperatures
+     EnergyRadiation  = EnergyRadiation + ERad 
+     PhiAve           = ERad/(Geom% VolumeZone(zone)*rad_constant*speed_light)
+
+!  Radiation temperature
 
      Mat%trz(zone) = sqrt( sqrt( max(PhiAve, tr4min) ) )
-     Mat%tez(zone) = TeAve/Geom% VolumeZone(zone)
 
 !  Maximum temperatures
 
@@ -184,10 +183,14 @@
 
 !  Non-linear Iterations
 
-     totalNonLinearIters = totalNonLinearIters + Mat%nonLinearIterations(zone)
+     zoneNonLinearIters = 0
+     do c=1,nCorner
+       totalNonLinearIters = totalNonLinearIters + Mat%nonLinearIterations(c0+c)
+       zoneNonLinearIters  = zoneNonLinearIters  + Mat%nonLinearIterations(c0+c)
+     enddo
 
-     if (Mat%nonLinearIterations(zone) > maxNonLinearIters) then
-       maxNonLinearIters = Mat%nonLinearIterations(zone)
+     if (zoneNonLinearIters > maxNonLinearIters) then
+       maxNonLinearIters = zoneNonLinearIters 
        zoneNLItersMax    = zone
      endif
 
@@ -291,6 +294,7 @@
                  TeMaxProcess=processTe,           &
                  TrMax=TrMax,                      &
                  TeMax=TeMax,                      &
+                 deltaEMat=deltaEMat,              &
                  EnergyRadiation=EnergyRadiation,  &
                  PowerIncident=PowerIncident,      &
                  PowerEscape=PowerEscape,          &

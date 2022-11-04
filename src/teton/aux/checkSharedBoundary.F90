@@ -13,8 +13,6 @@
    use mpif90_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
    use BoundaryList_mod
    use Boundary_mod
 
@@ -24,7 +22,7 @@
 
    integer    :: request(2*Size%ncomm)
    integer    :: d, i, ib
-   integer    :: c, ndim, zone
+   integer    :: c, ndim
    integer    :: nBdyElem
    integer    :: nShared
    integer    :: neighbor
@@ -65,15 +63,9 @@
      neighbor =  getNeighborID(Bdy)
 
      do ib=1,nBdyElem
-       zone = Bdy% BdyToZone(ib)
+       c  = Bdy% BdyToC(ib)
 
-       Z => getZoneData(Geom, zone)
-       M => getMesh(Geom, zone)
-
-       c  = Bdy% BdyToC(ib) - Z% c0
-
-       Bdy% nodePosition(:,ib) = M% px(:,c)
-
+       Bdy% nodePosition(:,ib) = Geom% px(:,c)
      enddo
 
      nSend = ndim*nBdyElem

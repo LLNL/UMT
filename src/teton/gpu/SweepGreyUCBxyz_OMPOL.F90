@@ -13,6 +13,7 @@
 
    subroutine SweepGreyUCBxyzNEW_GPU(sendIndex, PsiB)
 
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use constant_mod
    use Size_mod
@@ -34,7 +35,6 @@
 
    type(SetData),    pointer :: Set
    type(AngleSet),   pointer :: ASet
-   type(AngleSet),   pointer :: ASet1
    type(HypPlane),   pointer :: HypPlanePtr
    type(BdyExit),    pointer :: BdyExitPtr
 
@@ -47,7 +47,8 @@
    integer    :: iter
 
    integer    :: angle0
-   integer    :: Angle
+   integer    :: angle
+   integer    :: angGTA
 
    integer    :: c
    integer    :: c0
@@ -105,72 +106,77 @@
      angleList(2,setID) = Set% angle0
    enddo
 
-   if (Size%useGPU) then
+   ! Verify we won't get out-of-bounds accesses below.
+   TETON_CHECK_BOUNDS1(Quad%SetDataPtr, nSets+nGTASets)
+   TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
+   TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
-     ! Verify we won't get out-of-bounds accesses below.
-     TETON_CHECK_BOUNDS1(Quad%SetDataPtr, nSets+nGTASets)
-     TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
-     TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
+   TOMP(target data map(to: angleList, nSets, nGTASets, nHyperDomains) map(tofrom: PsiB))
+   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(shared(nZoneSets, nGTASets, Geom, Quad, nSets)&)
+   TOMPC(private(Set))  
 
-     TOMP(target data map(to: angleList, nSets, nGTASets, nHyperDomains) map(tofrom: PsiB))
-     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(1024) private(Set, setID, zSetID))  
+   ZoneSetLoop0: do zSetID=1,nZoneSets
 
-     ZoneSetLoop0: do zSetID=1,nZoneSets
+     do setID=1,nGTASets
+       Set => Quad% SetDataPtr(nSets+setID)
 
-       do setID=1,nGTASets
-         Set => Quad% SetDataPtr(nSets+setID)
-
-!$omp  parallel do default(none)  &
-!$omp& shared(Set, Geom, zSetID) private(c)
-         do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
-           Set% tPsi(c) = zero
-         enddo
-!$omp end parallel do
-
+       !$omp  parallel do default(none)  &
+       !$omp& shared(Set, Geom, zSetID)
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+         Set% tPsi(c) = zero
        enddo
+       !$omp end parallel do
 
-     enddo ZoneSetLoop0
+     enddo
 
-     TOMP(end target teams distribute)
+   enddo ZoneSetLoop0
+
+   TOMP(end target teams distribute)
+
+
+   TOMP(target teams distribute num_teams(nGTASets) thread_limit(omp_device_team_thread_limit) default(none)&)
+   TOMPC(shared(nGTASets, PsiB, Quad, nSets, angleList)&)
+   TOMPC(private(Set, angle0, angle))
+
+   GTASetLoop0: do setID=1,nGTASets
+
+     Set    => Quad% SetDataPtr(nSets+setID)
+     angle  =  angleList(1,setID)
+     angle0 =  angleList(2,setID)
+
+!    Initialize Boundary Values 
+
+     !$omp  parallel do default(none) &
+     !$omp& shared(Set, PsiB, angle0, angle)
+     do b=1,Set%nbelem
+       Set% tPsi(Set%nCorner+b) = PsiB(b,angle0+angle)
+     enddo
+     !$omp end parallel do
+
+   enddo GTASetLoop0
+
+   TOMP(end target teams distribute)
 
 
    SweepIteration: do iter=1,GTA% nGreySweepIters
 
-     TOMP(target teams distribute num_teams(nGTASets) thread_limit(1024) private(Set, setID, angle0, Angle)) 
-
-     GTASetLoop0: do setID=1,nGTASets
-
-       Set    => Quad% SetDataPtr(nSets+setID)
-       Angle  =  angleList(1,setID) 
-       angle0 =  angleList(2,setID) 
-
-!      Initialize Boundary Values 
-
-!$omp  parallel do default(none) &
-!$omp& shared(Set, PsiB, angle0, Angle) private(b)
-       do b=1,Set%nbelem
-         Set% tPsi(Set%nCorner+b) = PsiB(b,angle0+Angle)
-       enddo
-!$omp end parallel do
-
-     enddo GTASetLoop0
-
-     TOMP(end target teams distribute)
-
-
-     TOMP(target teams distribute collapse(2) num_teams(nHyperDomains*nGTASets) thread_limit(1024) private(Set, ASet, ASet1) &)
-     TOMPC(private(HypPlanePtr, setID, domID, angle0, Angle, hyperPlane, hplane1, hplane2, ndoneZ, nzones))
+     TOMP(target teams distribute collapse(2) num_teams(nHyperDomains*nGTASets) &)
+     TOMPC(thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nGTASets, nHyperDomains, Geom, GTA, Quad, nSets, angleList)&)
+     TOMPC(private(Set, ASet, HypPlanePtr, angle0, angle, angGTA, hplane1, hplane2, ndoneZ, nzones, zone, nCorner) &)
+     TOMPC(private(c0, ifp, cez, cfp, nCFaces, aez, area_opp, sigv, sigv2, gnum, gtau, sez, psi_opp, denom, afp))
 
    GTASetLoop: do setID=1,nGTASets
      DomainLoop: do domID=1,nHyperDomains
 
      Set          => Quad% SetDataPtr(nSets+setID)
      ASet         => Quad% AngSetPtr(Set% angleSetID)
-     Angle        =  angleList(1,setID)
+     angle        =  angleList(1,setID)
      angle0       =  angleList(2,setID)
-     ASet1        => Quad% AngSetPtr(angle0+Angle)
+     angGTA       =  angle0 + angle
 
-     HypPlanePtr  => ASet% HypPlanePtr(Angle)
+     HypPlanePtr  => ASet% HypPlanePtr(angle)
      hplane1      =  HypPlanePtr% hplane1(domID)
      hplane2      =  HypPlanePtr% hplane2(domID)
      ndoneZ       =  HypPlanePtr% ndone(domID) 
@@ -181,18 +187,14 @@
 
        nzones = HypPlanePtr% zonesInPlane(hyperPlane) 
 
-!$omp  parallel do default(none)  &
-!$omp& shared(Geom, GTA, ASet, ASet1, Set)    &
-!$omp& shared(ndoneZ, nzones, Angle)    &
-!$omp& private(ii, zone, nCorner, c, c0, cface) &
-!$omp& private(i, ifp, cez, cfp, nCFaces)     &
-!$omp& private(aez, area_opp, sigv, sigv2, gnum, gtau) &
-!$omp& private(sez, psi_opp, denom, afp)   &
-!$omp& schedule(static) 
+!$omp  parallel do default(none) schedule(static) &
+!$omp& shared(Geom, GTA, ASet, Set, ndoneZ, nzones, angle, angGTA) &
+!$omp& private(zone, nCorner, c0, ifp, cez, cfp, nCFaces, aez, area_opp, sigv, sigv2, gnum, gtau, sez, psi_opp) &
+!$omp& private(denom, afp)
 
        ZoneLoop: do ii=1,nzones
 
-         zone    = iabs( ASet% nextZ(ndoneZ+ii,Angle) )
+         zone    = iabs( ASet% nextZ(ndoneZ+ii,angle) )
          nCorner = Geom% numCorner(zone)
          c0      = Geom% cOffSet(zone)
 
@@ -212,7 +214,7 @@
 
            do cface=1,nCFaces
 
-             afp = ASet1% AfpNorm(cface,c0+c) 
+             afp = GTA% AfpNorm(cface,c0+c,angGTA) 
              cfp = Geom% cFP(cface,c0+c)
 
              if ( afp < zero ) then
@@ -225,7 +227,7 @@
 
            do cface=1,ncfaces
 
-             aez = ASet1% AezNorm(cface,c0+c) 
+             aez = GTA% AezNorm(cface,c0+c,angGTA) 
              cez = Geom% cEZ(cface,c0+c)
 
              if (aez > zero ) then
@@ -234,7 +236,7 @@
                area_opp = zero
 
                ifp = mod(cface,nCFaces) + 1
-               afp = ASet1% AfpNorm(ifp,c0+c)
+               afp = GTA% AfpNorm(ifp,c0+c,angGTA)
 
                if ( afp < zero ) then
                  cfp      =  Geom% cFP(ifp,c0+c)
@@ -244,7 +246,7 @@
 
                do i=2,nCFaces-2
                  ifp = mod(ifp,nCFaces) + 1
-                 afp = ASet1% AfpNorm(ifp,c0+c)
+                 afp = GTA% AfpNorm(ifp,c0+c,angGTA)
                  if ( afp < zero ) then
                    cfp      = Geom% cFP(ifp,c0+c)
                    area_opp = area_opp - afp
@@ -291,7 +293,7 @@
            c = ASet% nextC(c0+i,angle) 
 
 !          Corner angular flux
-           denom           = ASet1% ANormSum(c0+c) +  &
+           denom           = GTA% ANormSum(c0+c,angGTA) +  &
                              Geom% Volume(c0+c)*GTA%GreySigTotal(c0+c) 
            Set% tPsi(c0+c) = Set% src(c0+c)/denom
            Set% pInc(c0+c) = Set% pInc(c0+c)/denom
@@ -303,7 +305,7 @@
            nCFaces = Geom% nCFacesArray(c0+c)
 
            do cface=1,nCFaces
-             aez = ASet1% AezNorm(cface,c0+c)
+             aez = GTA% AezNorm(cface,c0+c,angGTA)
 
              if (aez > zero) then
                cez               = Geom% cEZ(cface,c0+c)
@@ -331,24 +333,27 @@
 
 !  Update exiting boundary fluxes 
 
-   TOMP(target teams distribute num_teams(nGTASets) thread_limit(1024) private(Set, ASet, BdyExitPtr, setID, angle0, Angle)) 
+   TOMP(target teams distribute num_teams(nGTASets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(shared(nGTASets, nSets, PsiB, angleList, Quad)&)
+   TOMPC(private(Set, ASet, BdyExitPtr, angle0, angle, b, c))
 
    do setID=1,nGTASets
 
      Set        => Quad% SetDataPtr(nSets+setID)
      ASet       => Quad% AngSetPtr(Set% angleSetID)
-     Angle      =  angleList(1,setID) 
+     angle      =  angleList(1,setID) 
      angle0     =  angleList(2,setID) 
-     BdyExitPtr => ASet% BdyExitPtr(Angle)
+     BdyExitPtr => ASet% BdyExitPtr(angle)
 
 !$omp  parallel do default(none) &
-!$omp& shared(Set, BdyExitPtr, angle0, Angle, PsiB) private(i,b,c)
+!$omp& shared(Set, BdyExitPtr, angle0, angle, PsiB) &
+!$omp& private(b,c)
 
      do i=1,BdyExitPtr% nxBdy
        b = BdyExitPtr% bdyList(1,i)
        c = BdyExitPtr% bdyList(2,i)
 
-       PsiB(b,angle0+Angle) = Set% tPsi(c)
+       PsiB(b,angle0+angle) = Set% tPsi(c)
      enddo
 
 !$omp end parallel do
@@ -357,7 +362,9 @@
    TOMP(end target teams distribute)
 
 
-   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(1024) private(Set, ASet, zSetID, Angle, quadwt))  
+   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(shared(nZoneSets, nGTASets, nSets, GTA, angleList, Quad, Geom)&)
+   TOMPC(private(Set, ASet, zSetID, angle, quadwt)) 
 
      ZoneSetLoop3: do zSetID=1,nZoneSets
 
@@ -366,11 +373,11 @@
          Set    => Quad% SetDataPtr(nSets+setID)
          ASet   => Quad% AngSetPtr(Set% angleSetID)
 
-         Angle  =  angleList(1,setID) 
-         quadwt =  ASet% weight(Angle)
+         angle  =  angleList(1,setID) 
+         quadwt =  ASet% weight(angle)
 
 !$omp  parallel do default(none)  &
-!$omp& shared(Geom, Set, GTA, quadwt, zSetID) private(c)
+!$omp& shared(Geom, Set, GTA, quadwt, zSetID)
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            GTA% PhiInc(c) = GTA% PhiInc(c) + quadwt*Set% pInc(c) 
          enddo
@@ -381,9 +388,7 @@
      enddo ZoneSetLoop3
 
    TOMP(end target teams distribute)
-
    TOMP(end target data)
-   endif ! if Size%useGPU
 
 
    deallocate( angleList )

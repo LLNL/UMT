@@ -1,23 +1,20 @@
 !***********************************************************************
-!                        Version 1:  09/96, PFN                        *
+!                        Version 1:  09/2017, PFN                      *
 !                                                                      *
-!   SNFLWXYZ - This routine, called by RSWPMD and RTACCELMD, solves    *
-!              the fixed-source transport problem on an arbitrary      *
-!              grid in either xyz-geometry or rz-geometry.             *
-!              An upstream corner-balance spatial discretization is    *
-!              used.                                                   *
+!   GTASweep      - This routine controls the GTA set sweeps           *
+!                   communication when running on a CPU.               *
 !                                                                      *
 !***********************************************************************
 
-   subroutine GTASweep(GTAsetID, PsiB)
+   subroutine GTASweep(P, PsiB)
 
 
    use kind_mod
    use constant_mod
    use Size_mod
-   use Quadrature_mod
    use QuadratureList_mod
    use GreyAcceleration_mod
+   use Geometry_mod
    use SetData_mod
    use CommSet_mod
    use AngleSet_mod
@@ -26,8 +23,8 @@
 
 !  Arguments
 
-   integer,    intent(in)    :: GTAsetID
-   real(adqt), intent(inout) :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt), intent(inout)    :: P(Size%ncornr)
+   real(adqt), intent(inout)    :: PsiB(Size%nbelem,Size%nangGTA)
 
 !  Local
 
@@ -35,85 +32,124 @@
    type(CommSet),    pointer :: CSet
    type(AngleSet),   pointer :: ASet
 
-   integer                   :: nSets
+   integer                   :: nGTASets
    integer                   :: nCommSets
-   integer                   :: nAngleSets
+   integer                   :: nZoneSets
    integer                   :: setID
    integer                   :: cSetID
-   integer                   :: aSetID
+   integer                   :: zSetID
    integer                   :: Angle
    integer                   :: ndim 
    integer                   :: sendIndex
+   integer                   :: NumAnglesDyn
+   integer                   :: GTASetID
+   integer                   :: c
+
+   real(adqt)                :: wtiso
 
    logical (kind=1)          :: SnSweep 
 
 !  Constants
 
-   nSets      = getNumberOfSets(Quad)
-   nCommSets  = getNumberOfCommSets(Quad)
-   nAngleSets = getNumberOfAngleSets(Quad)
+   nGTASets     =  getNumberOfGTASets(Quad)
+   nCommSets    =  getNumberOfCommSets(Quad)
+   nZoneSets    =  getNumberOfZoneSets(Quad)
 
-   setID      = nSets      + GTAsetID
-   cSetID     = nCommSets  + GTAsetID
-   aSetID     = nAngleSets + GTAsetID
+   Set          => getGTASetData(Quad, 1) 
+   NumAnglesDyn =  Set% NumAnglesDyn
 
-   Set     => getSetData(Quad, setID)
-   CSet    => getCommSetData(Quad, cSetID)
-   ASet    => getAngleSetData(Quad, aSetID)
+   ndim         =  Size% ndim
+   SnSweep      = .FALSE.
+   wtiso        =  Size% wtiso
 
-   ndim    =  Size% ndim
-   SnSweep = .FALSE.
 
-!  Restore the initial communication order
-   call restoreCommOrder(CSet)
+!  Initialize Communication
 
-!  Post receives for all data
-   call InitExchange(cSetID)
+   do cSetID=nCommSets+1,nCommSets+nGTASets
+     CSet => getCommSetData(Quad, cSetID)
+
+!    Restore the initial communication order
+     call restoreCommOrder(CSet)
+
+!    Post receives for all data
+     call InitExchange(cSetID)
+   enddo
+
+!  Set the TSA source before the sweeps
+
+   if ( GTA% ID == 1) then
+
+     !$omp  parallel do default(none)  &
+     !$omp& shared(nZoneSets, Geom, GTA, wtiso, P)
+     ZoneSetLoop1: do zSetID=1,nZoneSets
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+         GTA% TsaSource(c) = wtiso*(GTA% GreySigScat(c)*P(c) + &
+                             GTA% GreySource(c)) 
+       enddo
+     enddo ZoneSetLoop1
+     !$omp end parallel do
+
+   else
+
+     !$omp  parallel do default(none)  &
+     !$omp& shared(nZoneSets,Geom, GTA, wtiso, P)
+     ZoneSetLoop2: do zSetID=1,nZoneSets
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+         GTA% TsaSource(c) = wtiso*GTA% GreySigScat(c)*GTA%eps(c)*  &
+                             (P(c) - GTA%OldGreyCorrection(c))
+       enddo
+     enddo ZoneSetLoop2
+     !$omp end parallel do
+
+   endif
 
 !  Initialize partial scalar correction
 
-   if (.not. Size% useNewGTASolver) then
-     Set% tPhi(:) = zero
+   if (Size% useNewGTASolver) then
+     GTA% PhiInc(:) = zero
+   else
+     do GTAsetID=1,nGTASets
+       Set  => getGTASetData(Quad, GTAsetID)
+       Set% tPhi(:) = zero
+     enddo
    endif
 
    if (ndim == 2) then
-     Set% tPsiM(:) = zero
-     Set% tInc(:)  = zero
+     do GTAsetID=1,nGTASets
+       Set  => getGTASetData(Quad, GTAsetID)
+       Set% tPsiM(:) = zero
+       Set% tInc(:)  = zero
+     enddo
    endif
 
 !  Loop over angles, solving for each in turn:
 
    AngleLoop: do sendIndex=1,Set% NumAnglesDyn
 
-     Angle = CSet% AngleOrder(sendIndex)
+     do cSetID=nCommSets+1,nCommSets+nGTASets
 
-!    Send the boundary information needed by my neighbors
-     call SendFlux(SnSweep, cSetID, sendIndex, PsiB)
+       CSet  => getCommSetData(Quad, cSetID)
+       Angle =  CSet% AngleOrder(sendIndex)
+       setID =  CSet% set1
 
-!    Test for completion of the sends needed by my neighbors
-     call TestSend(cSetID, sendIndex)
+!      Send the boundary information needed by my neighbors
+       call SendFlux(SnSweep, cSetID, sendIndex, PsiB)
 
-!    Receive the boundary information needed to compute this angle
-     call RecvFlux(SnSweep, cSetID, Angle, PsiB)
+!      Test for completion of the sends needed by my neighbors
+       call TestSend(cSetID, sendIndex)
 
+!      Receive the boundary information needed to compute this angle
+       call RecvFlux(SnSweep, cSetID, Angle, PsiB)
 
-!    Sweep the mesh, calculating PSI for each corner; the 
-!    boundary flux array PSIB is also updated here. 
-!    Mesh cycles are fixed automatically.
+!      Sweep the mesh, calculating PSI for each corner; the 
+!      boundary flux array PSIB is also updated here. 
+!      Mesh cycles are fixed automatically.
 
-     AngleType: if ( .not. ASet% FinishingDirection(Angle) ) then
+       ASet => getAngleSetData(Quad, cSetID)
 
-       call snreflect(SnSweep, setID, Angle, PsiB)
+       AngleType: if ( .not. ASet% FinishingDirection(Angle) ) then
 
-       if (Size% useNewGTASolver) then
-
-         if (ndim == 3) then
-           call SweepGreyUCBxyzNEW(setID, Angle, PsiB)
-         elseif (ndim == 2) then
-           call SweepGreyUCBrzNEW(setID, Angle, PsiB)
-         endif
-
-       else
+         call snreflect(SnSweep, setID, Angle, PsiB)
 
          if (ndim == 3) then
            call SweepGreyUCBxyz(setID, Angle, PsiB)
@@ -121,9 +157,9 @@
            call SweepGreyUCBrz(setID, Angle, PsiB)
          endif
 
-       endif
+       endif AngleType
 
-     endif AngleType
+     enddo
 
    enddo AngleLoop
 

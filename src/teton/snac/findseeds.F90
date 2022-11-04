@@ -22,8 +22,6 @@
    use constant_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -41,9 +39,6 @@
 
 !  Local Variables
 
-   type(ZoneData), pointer   :: ZT
-   type(MeshData), pointer   :: MT
-
    integer :: c
    integer :: zone
    integer :: nzones 
@@ -52,6 +47,7 @@
    integer :: minNeed
    integer :: face
    integer :: faceOpp
+   integer :: nFaces
 
 !  Mesh Constants
 
@@ -78,8 +74,7 @@
      zoneID  = 0
 
      BoundaryZoneLoop: do zone=1,nzones
-       ZT=> getZoneData(Geom, zone)
-       if ( ZT% BoundaryZone ) then
+       if ( Geom% BoundaryZone(zone) ) then
          if (needZ(zone) < minNeed) then
            zoneID  = zone
            minNeed = needZ(zone)
@@ -90,14 +85,12 @@
      nseed         = 1
      listZone(1)   = zoneID
      needZ(zoneID) = 0
+     nFaces        = Geom% zoneFaces(zoneID)
 
-     ZT => getZoneData(Geom, zoneID)
-     MT => getMesh(Geom, zoneID)
-
-     do face=1,ZT% nFaces
+     do face=1,nFaces
        if ( .not. exitFace(face,zoneID) ) then
-         zoneOpp = MT% zoneOpp(face)
-         faceOpp = MT% faceOpp(face)
+         zoneOpp = Geom% zoneOpp(face,zoneID)
+         faceOpp = Geom% faceOpp(face,zoneID)
 
          if (zoneOpp > 0) then
 

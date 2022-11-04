@@ -12,7 +12,7 @@
    use kind_mod
    use Size_mod
    use constant_mod
-   use Geometry_mod
+   use RadIntensity_mod
 
    implicit none 
 
@@ -26,7 +26,7 @@
 !  Update Radiation Energy Density                                     * 
 !***********************************************************************
  
-   RadEnergyDensity(:,:) = Geom% RadEnergyDensity(:,:) 
+   RadEnergyDensity(:,:) = Rad% RadEnergyDensity(:,:) 
 
 
    return

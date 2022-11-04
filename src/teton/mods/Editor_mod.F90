@@ -19,6 +19,7 @@ module Editor_mod
   public getTrMax
   public getTeMax
   public getNumberOfSpectrumAngleBins
+  public getDeltaEMat
   public getEnergyRadiation
   public getPowerIncident 
   public getPowerEscape
@@ -42,6 +43,7 @@ module Editor_mod
      real(adqt)              :: TeMax               ! Max value of Te
 
 !    Instantaneous (per cycle) global edits
+     real(adqt)              :: deltaEMat           ! Energy deposited in material (this is what gets returned to the host code)
      real(adqt)              :: EnergyRadiation     ! Energy in radiation field
      real(adqt)              :: PowerIncident       ! Power incident on external boundaries
      real(adqt)              :: PowerEscape         ! Power escaping from external boundaries
@@ -100,6 +102,10 @@ module Editor_mod
 
   interface getNumberOfSpectrumAngleBins
     module procedure Editor_get_NumSpectrumAngleBins
+  end interface
+
+  interface getDeltaEMat
+    module procedure Editor_get_DeltaEMat
   end interface
 
   interface getEnergyRadiation
@@ -175,6 +181,7 @@ contains
     self% TrMax                = zero
     self% TeMax                = zero
 
+    self% deltaEMat            = zero
     self% EnergyRadiation      = zero
     self% PowerIncident        = zero
     self% PowerEscape          = zero
@@ -223,6 +230,7 @@ contains
     self% TrMax                = zero
     self% TeMax                = zero
 
+    self% deltaEMat            = zero
     self% EnergyRadiation      = zero
     self% PowerIncident        = zero
     self% PowerEscape          = zero
@@ -250,6 +258,7 @@ contains
                         TeMaxProcess,     &
                         TrMax,            &
                         TeMax,            &
+                        deltaEMat,        &
                         EnergyRadiation,  &
                         PowerIncident,    &
                         PowerEscape,      &
@@ -270,6 +279,7 @@ contains
     integer,    optional, intent(in)                :: TeMaxProcess
     real(adqt), optional, intent(in)                :: TrMax 
     real(adqt), optional, intent(in)                :: TeMax 
+    real(adqt), optional, intent(in)                :: deltaEMat
     real(adqt), optional, intent(in)                :: EnergyRadiation
     real(adqt), optional, intent(in)                :: PowerIncident
     real(adqt), optional, intent(in)                :: PowerEscape
@@ -303,6 +313,10 @@ contains
 
     if (present(TeMax)) then
       self% TeMax = TeMax
+    endif
+
+    if (present(deltaEMat)) then
+      self% deltaEMat = deltaEMat
     endif
 
     if (present(EnergyRadiation)) then
@@ -474,6 +488,27 @@ contains
 
      return
   end function Editor_get_NumSpectrumAngleBins
+
+!=======================================================================
+! getDeltaEMat interface
+!=======================================================================
+
+  function Editor_get_DeltaEMat(self) result(deltaEMat)
+
+!    Return the material energy deposited (deltaEMat).
+!       This is the quantity that the host code sees.
+
+!    variable declarations
+     implicit none
+
+!    passed variables
+     type(Editor), intent(in) :: self
+     real(adqt)               :: deltaEMat
+
+     deltaEMat = self% deltaEMat
+
+     return
+  end function Editor_get_DeltaEMat
 
 !=======================================================================
 ! getEnergyRadiation interface

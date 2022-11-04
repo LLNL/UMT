@@ -5,7 +5,6 @@ module QuadratureList_mod
   use kind_mod
   use Quadrature_mod
   use SetData_mod
-  use RadIntensity_mod
   use AngleSet_mod
   use GroupSet_mod
   use CommSet_mod
@@ -44,8 +43,6 @@ module QuadratureList_mod
   public getCommSetFromSetID
   public getNumberOfGroups
   public getNumberOfAngles
-  public getRadIntensity
-  public getZoneRadiationEnergy
   public getSetIDfromGroupAngle
 
   type, public :: QuadratureList
@@ -79,7 +76,6 @@ module QuadratureList_mod
      type(AngleSet),     pointer     :: AngSetPtr(:)  => null()
      type(GroupSet),     pointer     :: GrpSetPtr(:)  => null()
      type(CommSet),      pointer     :: CommSetPtr(:) => null()
-     type(RadIntensity), pointer     :: RadIntPtr(:)  => null()
 
   end type QuadratureList
 
@@ -197,14 +193,6 @@ module QuadratureList_mod
     module procedure QuadratureList_getGTASetData
   end interface
 
-  interface getRadIntensity
-    module procedure QuadratureList_getRadIntensity
-  end interface
-
-  interface getZoneRadiationEnergy
-    module procedure QuadratureList_getZoneRadEnergy
-  end interface
-
   interface getSetIDfromGroupAngle
     module procedure QuadratureList_getSetIDfromGroupAngle
   end interface
@@ -222,9 +210,10 @@ contains
   subroutine QuadratureList_ctor(self, NumQuadSets, ngr,   &
                                  totalAngles, nSetsMaster, nSets)
 
-    use, intrinsic :: iso_c_binding, only : c_int                                                                                                                                                                  
+    use, intrinsic :: iso_c_binding, only : c_int
+    use cmake_defines_mod, only : omp_device_num_processors, omp_device_team_thread_limit
+    use Options_mod, only : Options
     use constant_mod
-    use Options_mod
 
     implicit none
 
@@ -258,10 +247,12 @@ contains
 
 #if defined(TETON_ENABLE_OPENMP)
     if (Size%useGPU) then
-       nOmpMaxTeams = Options%getNumOmpMaxTeams()
+       ! If running on gpu, set these to use all available gpu processors.
+       nOmpMaxTeams = omp_device_num_processors
        self% nSets       = max(self% NumSnSets, nOmpMaxTeams)
        self% nZoneSets   = min(Size%nzones, nOmpMaxTeams)
     else
+       ! If not running on gpu, set these to use all available CPU threads.
        nOmpMaxThreads = Options%getNumOmpMaxThreads()
        self% nSets       = max(self% NumSnSets, nOmpMaxThreads)
        self% nZoneSets   = min(Size%nzones, nOmpMaxThreads)
@@ -315,7 +306,6 @@ contains
 
     if ( .not. associated( self% SetDataPtr ) ) then
       allocate( self% SetDataPtr(self% nSets+self% nGTASets) )
-      allocate( self% RadIntPtr(self% nSets) )
       allocate( self% AngSetPtr(self% nAngleSets+self% nGTASets) )
       allocate( self% CommSetPtr(self% nCommSets+self% nGTASets) )
       allocate( self% GrpSetPtr(self% nGroupSets) )
@@ -324,6 +314,7 @@ contains
       allocate( self% angleID(self% nSets+self% nGTASets) )
       allocate( self% commID(self% nSets+self% nGTASets) )
     endif
+
 
     return
 
@@ -434,7 +425,6 @@ contains
     deallocate( self% GrpSetPtr )
     deallocate( self% AngSetPtr )
     deallocate( self% CommSetPtr )
-    deallocate( self% RadIntPtr )
 
     deallocate( self% angleID )
     deallocate( self% groupID )
@@ -845,27 +835,6 @@ contains
 
   end function QuadratureList_getGTASetData
 
-!=======================================================================
-! access the radiation intensity variables for a Set 
-!=======================================================================
-
-  function QuadratureList_getRadIntensity(self,setID) result(RadIntPtr)
-
-    implicit none
-
-!   Passed variables
-    type(QuadratureList), intent(in) :: self
-    integer,              intent(in) :: setID
-    type(RadIntensity),   pointer    :: RadIntPtr
-
-
-    RadIntPtr => self% RadIntPtr(setID)
-
-
-    return
-
-  end function QuadratureList_getRadIntensity
-
 !-----------------------------------------------------------------------
   function QuadratureList_getNumberOfGroups(self,setID) result(Groups)
 
@@ -982,40 +951,6 @@ contains
      return
 
   end function QuadratureList_getGroupAverageEnergy
-
-!=======================================================================
-! get the zone radiation energy, summed over sets 
-!=======================================================================
-
-  function QuadratureList_getZoneRadEnergy(self, zoneID) result(radEnergy)
-   
-    use constant_mod
-    use RadIntensity_mod
-
-    implicit none
-
-!   Passed variables
-    type(QuadratureList),     intent(in) :: self
-    integer,                  intent(in) :: zoneID
-    real(adqt)                           :: radEnergy
-
-!   Local
-    integer                          :: setID
-    type(RadIntensity),     pointer  :: RadIntPtr
-
-!   Return the zonal radiation energy 
-
-    radEnergy = zero
-    do setID=1,self% nSets
-      RadIntPtr => self% RadIntPtr(setID)
-
-      radEnergy = radEnergy + RadIntPtr% radEnergy(zoneID) 
-    enddo
-
-
-    return
-
-  end function QuadratureList_getZoneRadEnergy 
 
 !=======================================================================
 ! setCounters interface

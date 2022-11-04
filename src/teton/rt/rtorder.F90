@@ -32,6 +32,7 @@
    integer                    :: nGroupSets
    integer                    :: setID 
    integer                    :: gSetID
+   integer                    :: maxZonesPerPlane
 
 !  Dynamic
 
@@ -41,15 +42,7 @@
    ASet       => getAngleSetData(Quad, aSetID)
    nAngleSets =  getNumberOfAngleSets(Quad)
    nGroupSets =  getNumberOfGroupSets(Quad)
-
-!  Determine the number of "hyper-domains"
-   if (Size% useGPU) then
-     nDomains = min( 80/getNumberOfGTASets(Quad), 20)
-   else
-     nDomains = getNumberOfSets(Quad)
-   endif
-
-   Quad% nHyperDomains = nDomains
+   nDomains   =  Quad% nHyperDomains
 
 !  Determine the sweep order for each angle (i.e. the order in which the 
 !  zones are solved: "nextZ") 
@@ -79,7 +72,9 @@
 
    allocate( badCornerList(ASet% totalCycles) )
 
-   offSet = 0
+   offSet           = 0
+   maxZonesPerPlane = 1
+
    do angle=1,ASet% NumAngles
      HypPlanePtr => ASet% HypPlanePtr(angle)
 
@@ -87,11 +82,18 @@
        badCornerList(offSet+mCycle) = HypPlanePtr% badCornerList(mCycle)
      enddo
 
-     offSet = offSet + ASet% numCycles(angle)
+     offSet           = offSet + ASet% numCycles(angle)
+
+     if ( .not. ASet% FinishingDirection(angle) ) then
+        maxZonesPerPlane = max(maxZonesPerPlane, HypPlanePtr%maxZones)
+     endif
 
    enddo
 
    call constructCycleList(ASet, badCornerList)
+
+!  Allocate dynamic memory that can change size each cycle
+
    if (aSetID <= nAngleSets) then
 
      offSet = (aSetID - 1)*nGroupSets
@@ -99,7 +101,7 @@
      do gSetID=1,nGroupSets
        setID = offSet + gSetID
 
-       call constructCyclePsi(setID)
+       call constructDynMemory(setID, maxZonesPerPlane)
      enddo
 
    endif

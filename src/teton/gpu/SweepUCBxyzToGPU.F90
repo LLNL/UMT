@@ -41,15 +41,16 @@ subroutine SweepUCBxyzToGPU (Set, setID, Groups, Angle, savePsi, Psi1)
   end interface
 
   interface
-     subroutine gpu_sweepucbxyz ( Angle, nHyperPlanes, nZonesInPlane, nextZ, STotal, tau, Psi, &
+     subroutine gpu_sweepucbxyz ( Angle, nHyperPlanes, nZonesInPlane, nextZ, nextC, STotal, tau, Psi, &
           Groups, Volume, Sigt, nCFacesArray, ndim, maxcf, &
-          ncorner, A_fp, omega, cFP, Psi1, nbelem, A_ez, cEZ, next, NumAngles, quadwt, Phi, PsiB, maxCorner, mem0solve1, threadNum, numThreads, &
+          ncorner, A_fp, omega, cFP, Psi1, nbelem, A_ez, cEZ, NumAngles, quadwt, Phi, PsiB, maxCorner, mem0solve1, threadNum, numThreads, &
           savePsi, numCycles, cycleOffset, cyclePsi, cycleList, b0, nBdyElem, PsiBMref, Mref, Geo_numCorner, Geo_cOffSet) bind (c)
        use iso_c_binding
        integer (c_int) :: Angle
        integer (c_int) :: nHyperPlanes
        integer (c_int) :: nZonesInPlane           !! seems this is the proper way to do it
        integer (c_int) :: nextZ                  !! 
+       integer (c_int) :: nextC
        real (c_double) :: STotal                 !! 
        real (c_double) :: tau
        real (c_double) :: Psi
@@ -67,7 +68,6 @@ subroutine SweepUCBxyzToGPU (Set, setID, Groups, Angle, savePsi, Psi1)
        integer (c_int) :: nbelem
        real (c_double) :: A_ez
        integer (c_int) :: cEZ
-       integer (c_int) :: next
        integer (c_int) :: NumAngles
        real (c_double) :: quadwt
        real (c_double) :: Phi
@@ -106,7 +106,6 @@ subroutine SweepUCBxyzToGPU (Set, setID, Groups, Angle, savePsi, Psi1)
   type(AngleSet),   pointer       :: ASet
   type(GroupSet),   pointer       :: GSet
 
-  integer    :: b, i, ib, cfp, ifp, g, k
   integer    :: nHyperplanes
   integer    :: intSavePsi
   integer    :: nReflecting
@@ -201,6 +200,7 @@ subroutine SweepUCBxyzToGPU (Set, setID, Groups, Angle, savePsi, Psi1)
        nHyperPlanes, &
        HypPlanePtr%zonesInPlane(1), &
        ASet%nextZ(1,Angle), &
+       ASet%nextC(1,Angle), &
        GSet%STotal(1,1), &
        Size%tau,                      &
        Set%Psi(1,1,Angle), &
@@ -218,7 +218,6 @@ subroutine SweepUCBxyzToGPU (Set, setID, Groups, Angle, savePsi, Psi1)
        Set%nbelem, &
        Geom%A_ez(1,1,1), &
        Geom%cEZ(1,1), &
-       ASet%nextC(1,Angle), &
        Set%NumAngles, &
        ASet%weight(Angle), &
        Set%Phi(1,1), &

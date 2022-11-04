@@ -26,7 +26,7 @@
 
 !  Arguments
 
-   logical (kind=1), intent(in) :: savePsi
+   logical (kind=1), intent(in)  :: savePsi
 
 !  Local
 
@@ -84,8 +84,9 @@
 
 !  Initialize
 
-!$omp parallel do default(none) private(cSetID,CSet,setID,Set)  &
-!$omp shared(nCommSets,Quad,ndim) schedule(dynamic)
+!$omp parallel do default(none) schedule(dynamic) &
+!$omp& private(CSet,Set)  &
+!$omp& shared(nCommSets,Quad,ndim)
      do cSetID=1,nCommSets
        CSet => getCommSetData(Quad, cSetID)
 
@@ -109,9 +110,9 @@
 
 !  Loop over angles, solving for each in turn:
 
-!$omp parallel do default(none) private(cSetID,CSet,ASet,NumAnglesDyn,sendIndex)  &
-!$omp private(Angle,setID,Set,Groups) shared(nCommSets,SnSweep,savePsi,ndim,Quad) &
-!$omp schedule(dynamic)
+!$omp parallel do default(none) schedule(dynamic) &
+!$omp& private(CSet,ASet,NumAnglesDyn,Angle,Set,Groups) &
+!$omp& shared(nCommSets,SnSweep,savePsi,ndim,Quad)
      CommLoop: do cSetID=1,nCommSets
 
        CSet         => getCommSetData(Quad, cSetID)
@@ -170,7 +171,8 @@
 
 !    Test convergence of incident fluxes
 
-!$omp parallel do default(none) private(cSetID) shared(nCommSets,FluxConverged) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nCommSets,FluxConverged)
      do cSetID=1,nCommSets
        call setIncidentFlux(cSetID)
        call testFluxConv(cSetID, FluxConverged(cSetID))

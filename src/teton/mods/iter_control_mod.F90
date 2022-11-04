@@ -44,6 +44,7 @@ private
   public getTotalNumberOfIterations 
   public getZoneOfMax
   public getProcessOfMax
+  public getConvergenceState
 
   type, public :: IterControl
     private
@@ -136,6 +137,10 @@ private
 
   interface getGlobalError
     module procedure iter_control_get_globalError
+  end interface
+
+  interface getConvergenceState
+    module procedure iter_control_get_convergenceState
   end interface
 
 contains
@@ -716,5 +721,23 @@ contains
                                  
     return
   end function iter_control_get_globalError
+
+!-----------------------------------------------------------------------
+  function iter_control_get_convergenceState(self) result(convergenceState)
+
+!   Return whether we were able to converge before we hit the maximum
+!   number of iterations
+
+!   variable declarations
+    implicit none
+
+!   passed variables
+    type(IterControl), intent(in) :: self
+    logical(kind=1)               :: convergenceState
+
+    convergenceState = (self%nIter < self%maxIter)
+
+    return
+  end function iter_control_get_convergenceState
 
 end module iter_control_mod

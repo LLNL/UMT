@@ -26,6 +26,10 @@
    use iter_control_list_mod
    use iter_control_mod
    use OMPWrappers_mod
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+   use ComptonControl_mod
+#endif
+
 #if defined(TETON_ENABLE_CALIPER)
    use caliper_mod
 #endif
@@ -38,16 +42,15 @@
 
 !  Local
 
-   type(SetData),     pointer    :: Set
-   type(CommSet),     pointer    :: CSet
-   type(GroupSet),    pointer    :: GSet
-   type(AngleSet),    pointer    :: ASet
+   type(SetData),     pointer    :: Set  => null()
+   type(CommSet),     pointer    :: CSet => null()
+   type(AngleSet),    pointer    :: ASet => null()
+   type(GroupSet),    pointer    :: GSet => null()
    type(IterControl), pointer    :: incidentFluxControl => NULL()
 
    integer                       :: nSets
    integer                       :: setID
    integer                       :: cSetID
-   integer                       :: gSetID
    integer                       :: Angle
    integer                       :: ndim 
    integer                       :: sendIndex
@@ -66,6 +69,7 @@
    logical (kind=1)              :: SnSweep 
 
    logical (kind=1), allocatable :: FluxConverged(:)
+   logical(kind=1)               :: useBoltzmannCompton
 
 !  Constants
 
@@ -76,16 +80,22 @@
    nCommSets           =  getNumberOfCommSets(Quad)
    ndim                =  Size% ndim
    SnSweep             = .TRUE.
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+   useBoltzmannCompton = getUseBoltzmann(Compton)
+#endif
 
    allocate( FluxConverged(nCommSets) )
 
-!  Update the total fixed source on the GPU
+!  If the CUDA solver is used the source needs to be mapped to the GPU
 
-   do gSetID=1,nGroupSets
-     GSet => getGroupSetData(Quad, gSetID)
-
-     TOMP(target update to(GSet%STotal))
-   enddo
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+   if ( useBoltzmannCompton .and. Size% useCUDASolver .and. Size% ngr >= 16) then
+     do setID=1,nGroupSets
+       GSet   => getGroupSetData(Quad, setID)
+       TOMP(target update to (GSet% STotal))
+     enddo
+   endif
+#endif
 
 !  At this point, all sets must have the same number of angles
 
@@ -122,7 +132,9 @@
 
      AngleLoop: do sendIndex=1,NumAnglesDyn
 
-!$omp parallel do private(cSetID,CSet,Angle) schedule(dynamic)
+!$omp parallel do default(none) schedule(dynamic) &
+!$omp& shared(nCommSets,Quad,SnSweep, sendIndex) &
+!$omp& private(CSet,Angle)
        do cSetID=1,nCommSets
 
          CSet  => getCommSetData(Quad, cSetID)
@@ -149,20 +161,11 @@
 
          call snreflect(SnSweep, setID, Angle)
 
-       enddo
-
 !  Map the latest boundary values
-
-!$omp parallel do private(setID,Set,Angle) schedule(dynamic)
-       do setID=1,nSets
-
-         Set   => getSetData(Quad, setID)
-         Angle =  Set% AngleOrder(sendIndex)
 
          TOMP(target update to( Set%PsiB(:,:,Angle) ) )
 
        enddo
-!$omp end parallel do
 
 !      Sweep the mesh, calculating PSI for each corner; the 
 !      boundary flux array PSIB is also updated here. 
@@ -191,7 +194,6 @@
 
        endif AngleType
 
-!$omp parallel do private(setID,Set,Angle) schedule(dynamic)
        do setID=1,nSets
 
          Set   => getSetData(Quad, setID)
@@ -200,13 +202,13 @@
          TOMP(target update from( Set%PsiB(:,:,Angle) ))
 
        enddo
-!$omp end parallel do
 
      enddo AngleLoop
 
 !    Test convergence of incident fluxes
 
-!$omp parallel do private(cSetID) shared(FluxConverged) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(nCommSets, FluxConverged)
      do cSetID=1,nCommSets
        call setIncidentFlux(cSetID)
        call testFluxConv(cSetID, FluxConverged(cSetID))
@@ -247,8 +249,6 @@
 
    enddo FluxIteration
 
-!  Map PhiTotal back to the CPU
-   TOMP(target update from(Geom% PhiTotal) )
 
    deallocate( FluxConverged )
 

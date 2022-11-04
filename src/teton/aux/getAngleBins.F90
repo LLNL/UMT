@@ -14,6 +14,7 @@
    use AngleSet_mod
    use QuadratureList_mod
    use kind_mod
+   use constant_mod
    use Size_mod
 
    implicit none 
@@ -26,44 +27,52 @@
 !  Local
 
    type(AngleSet), pointer  :: ASet
-   integer                  :: setID
+   integer                  :: angleSetID
    integer                  :: NumAngles
+   integer                  :: numAngleSets
    integer                  :: angle
    integer                  :: polarAngle
    real(adqt)               :: weight
    integer                  :: bin
 
-!  There is only one higher-order SN set for all energy groups:
-   setID = 1
+   angleBinBoundaries(:) = zero
 
-   ASet   => getAngleSetFromSetID(Quad, setID)
+   numAngleSets = getNumberOfAngleSets(Quad)
 
-   tetonAssert(ASet% nPolarAngles == numAngleBins, &
-    "numAngleBins must be # of Teton polar angles in teton_getanglebins")
+   do angleSetID=1,numAngleSets
 
-   angleBinBoundaries(:) = 0.0
+      ASet   => getAngleSetData(Quad, angleSetID)
 
-   NumAngles = ASet% NumAngles
+      tetonAssert(ASet% nPolarAngles == numAngleBins, &
+       "numAngleBins must be # of Teton polar angles in teton_getanglebins")
 
-   do angle=1,NumAngles
-      polarAngle = ASet% polarAngle(angle)
-      weight     = ASet% Weight(angle)
-      angleBinBoundaries(polarAngle+1) = angleBinBoundaries(polarAngle+1) + weight
+      NumAngles = ASet% NumAngles
+
+      do angle=1,NumAngles
+         polarAngle = ASet% polarAngle(angle)
+         weight     = ASet% Weight(angle)
+         angleBinBoundaries(polarAngle+1) = angleBinBoundaries(polarAngle+1) + weight
+      enddo
+
    enddo
 
-   tetonAssert(abs(sum(angleBinBoundaries) - one) < 1.e-14_adqt, &
-               "Error in getA_adqtngleBins.F90: sum(angle weights) != 1")
+   tetonAssert(abs(sum(angleBinBoundaries) - one/Size%wtiso) < 1.e-14_adqt, &
+               "Error in getAngleBins.F90: sum(angle weights) != 1")
 
    angleBinBoundaries(:) = angleBinBoundaries(:)*Size%wtiso*2
-   angleBinBoundaries(1) = -1.0
+   angleBinBoundaries(1) = -one
 
 ! Integrate the weights to get bin boundaries:
    do bin=2,numAngleBins+1
       angleBinBoundaries(bin) = angleBinBoundaries(bin)+angleBinBoundaries(bin-1)
    enddo
 
+! Check that the final weight is close enough to one:
    tetonAssert((angleBinBoundaries(numAngleBins+1) - one) < 1.e-14_adqt, &
                "Error in getAngleBins.F90: Last bin boundary != 1")
+
+! Then set it to one explicitly:
+   angleBinBoundaries(numAngleBins+1) = one
 
    return
    end subroutine getAngleBins

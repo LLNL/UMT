@@ -14,8 +14,6 @@ module Options_mod
   type :: options_type
   contains
     procedure :: getNumOmpMaxThreads
-    procedure :: getNumOmpMaxTeams
-    procedure :: getNumOmpMaxTeamThreads
     procedure :: getMPIUseDeviceAddresses
     procedure :: initialize
     procedure :: check
@@ -54,15 +52,10 @@ contains
 #else
        omp_cpu_max_threads = 1
 #endif
-    call theDatastore%root%set_path("concurrency/omp_cpu_max_threads", omp_cpu_max_threads)
-
-    ! Set maximum values of threads and teams platform supports.
-    ! These are populated in cmake_Defines_mod.F90
-    call theDatastore%root%set_path("concurrency/omp_target_device_num_processors", omp_target_device_num_processors)
-    call theDatastore%root%set_path("concurrency/omp_target_device_max_threads_per_team", omp_target_device_max_threads_per_team)
+    call theDatastore%root%set_path("options/concurrency/omp_cpu_max_threads", omp_cpu_max_threads)
 
     ! Default to not using device (GPU) addresses for MPI
-    call theDatastore%root%set_path("mpi/useDeviceAddresses", 0)
+    call theDatastore%root%set_path("options/mpi/useDeviceAddresses", 0)
 
     ! Build information.
     ! These are populated in the cmake_defines_mod.F90
@@ -74,9 +67,9 @@ contains
     call theDatastore%root%set_path("build_meta_data/cmake_fortran_compiler", fortran_compiler)
 
     ! Default to not verbose
-    temp = theDatastore%root%has_path("verbose")
+    temp = theDatastore%root%has_path("options/verbose")
     if (.NOT. temp) then
-      call theDatastore%root%set_path("verbose", 0)
+      call theDatastore%root%set_path("options/verbose", 0)
     endif
       
     call self%check()
@@ -96,19 +89,15 @@ contains
 
     ! Retrieve value in local 4 byte logical to workaround buffer overflow in
     ! conduit API.  Will be fixed in future conduit version.
-    temp = theDatastore%root%has_path("concurrency")
+    temp = theDatastore%root%has_path("options/concurrency")
     TETON_VERIFY(temp, "Options tree is missing 'concurrency'.")
-    temp = theDatastore%root%has_path("concurrency/omp_cpu_max_threads")
+    temp = theDatastore%root%has_path("options/concurrency/omp_cpu_max_threads")
     TETON_VERIFY(temp, "Options is missing concurrency/omp_cpu_max_threads.")
-    temp = theDatastore%root%has_path("concurrency/omp_target_device_num_processors")
-    TETON_VERIFY(temp, "Options is missing concurrency/omp_target_device_num_processors.")
-    temp = theDatastore%root%has_path("concurrency/omp_target_device_max_threads_per_team")
-    TETON_VERIFY(temp, "Options tree is missing concurrency/omp_target_device_max_threads_per_team.")
 
-    temp = theDatastore%root%has_path("mpi/useDeviceAddresses")
+    temp = theDatastore%root%has_path("options/mpi/useDeviceAddresses")
     TETON_VERIFY(temp, "Options tree is missing mpi/useDeviceAddresses.")
 
-    temp = theDatastore%root%has_path("verbose")
+    temp = theDatastore%root%has_path("options/verbose")
     TETON_VERIFY(temp, "Options tree is missing verbose.")
 
   end subroutine
@@ -117,23 +106,13 @@ contains
 !=======================================================================
   integer(kind=int32) function getNumOmpMaxThreads(self) result(numOmpMaxThreads)
     class(options_type) :: self
-    numOmpMaxThreads = theDatastore%root%fetch_path_as_int32("concurrency/omp_cpu_max_threads")
-  end function
-
-  integer(kind=int32) function getNumOmpMaxTeams(self) result(numOmpMaxTeams)
-    class(options_type) :: self
-    numOmpMaxTeams = theDatastore%root%fetch_path_as_int32("concurrency/omp_target_device_num_processors")
-  end function
-
-  integer(kind=int32) function getNumOmpMaxTeamThreads(self) result(numOmpMaxTeamThreads)
-    class(options_type) :: self
-    numOmpMaxTeamThreads = theDatastore%root%fetch_path_as_int32("concurrency/omp_target_device_max_threads_per_team")
+    numOmpMaxThreads = theDatastore%root%fetch_path_as_int32("options/concurrency/omp_cpu_max_threads")
   end function
 
   logical(kind=c_bool) function getMPIUseDeviceAddresses(self) result(useDeviceAddresses)
     class(options_type) :: self
     integer(kind=int32) :: useDeviceAddressesInt
-    useDeviceAddressesInt = theDataStore%root%fetch_path_as_int32("mpi/useDeviceAddresses")
+    useDeviceAddressesInt = theDataStore%root%fetch_path_as_int32("options/mpi/useDeviceAddresses")
 
     if (useDeviceAddressesInt == 0) then
       useDeviceAddresses = .FALSE.
@@ -152,7 +131,7 @@ contains
 !***********************************************************************
    integer(kind=int32) function getVerbose(self) result(level)
       class(options_type) :: self
-      level = theDatastore%root%fetch_path_as_int32("verbose")
+      level = theDatastore%root%fetch_path_as_int32("options/verbose")
    end function getVerbose
 
 !***********************************************************************
@@ -217,7 +196,7 @@ contains
       ! TODO - Remove this when we have a proper teton initialize() function
       call theDatastore%initialize()
 
-      call theDatastore%root%set_path("verbose", level)
+      call theDatastore%root%set_path("options/verbose", level)
 
       if ( self%isRankVerbose() > 0 ) then
          print *, "Teton: verbose output enabled."

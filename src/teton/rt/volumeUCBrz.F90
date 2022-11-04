@@ -14,13 +14,10 @@
    use Geometry_mod
    use BoundaryList_mod
    use Boundary_mod
-   use MeshData_mod
 
    implicit none
 
 !  Local
-
-   type(MeshData), pointer   :: MT
 
    integer    :: c
    integer    :: c0
@@ -65,13 +62,11 @@
 
    ZoneLoop: do zone=1,nzones
 
-     MT => getMesh(Geom, zone)
-
      Geom% VolumeZone(zone) = zero
 
 !    Zone Center
 
-     zoneCenter(:) = getZoneCenter(MT)
+     zoneCenter(:) = getZoneCenter(Geom, zone)
 
      nCorner = Geom% numCorner(zone)
      c0      = Geom% cOffSet(zone)
@@ -91,12 +86,12 @@
 
        r_zone   = zoneCenter(1)
        z_zone   = zoneCenter(2)
-       r_point  = MT% px(1,c)
-       z_point  = MT% px(2,c)
-       r_point1 = MT% px(1,c1)
-       z_point1 = MT% px(2,c1)
-       r_point2 = MT% px(1,c2)
-       z_point2 = MT% px(2,c2)
+       r_point  = Geom% px(1,c0+c)
+       z_point  = Geom% px(2,c0+c)
+       r_point1 = Geom% px(1,c0+c1)
+       z_point1 = Geom% px(2,c0+c1)
+       r_point2 = Geom% px(1,c0+c2)
+       z_point2 = Geom% px(2,c0+c2)
 
        r_edge1  = half*( r_point + r_point1 )
        z_edge1  = half*( z_point + z_point1 )

@@ -26,7 +26,6 @@
    use Quadrature_mod
    use QuadratureList_mod
    use Size_mod
-   use ZoneData_mod
    use SetData_mod
    use AngleSet_mod
 
@@ -38,7 +37,6 @@
 
 !  Local
 
-   type(ZoneData),         pointer  :: ZT
    type(SetData),          pointer  :: Set
    type(AngleSet),         pointer  :: ASet
 
@@ -67,10 +65,9 @@
    AngleTest: if ( mod(NumAngles,4) == 0 ) then
 
      ZoneLoop4: do zone=1,nZones
-       ZT   => getZoneData(Geom, zone)
 
-       nCorner = ZT% nCorner
-       c0      = ZT% c0
+       nCorner = Geom% numCorner(zone) 
+       c0      = Geom% cOffSet(zone) 
 
        do c=1,nCorner
          Set% Phi(:,c0+c) = zero
@@ -98,10 +95,9 @@
    elseif (mod(NumAngles,3) == 0 ) then
 
      ZoneLoop3: do zone=1,nZones
-       ZT   => getZoneData(Geom, zone)
 
-       nCorner = ZT% nCorner
-       c0      = ZT% c0
+       nCorner = Geom% numCorner(zone) 
+       c0      = Geom% cOffSet(zone) 
 
        do c=1,nCorner
          Set% Phi(:,c0+c) = zero
@@ -127,10 +123,9 @@
    elseif (mod(NumAngles,2) == 0 ) then
 
      ZoneLoop2: do zone=1,nZones
-       ZT   => getZoneData(Geom, zone)
 
-       nCorner = ZT% nCorner
-       c0      = ZT% c0
+       nCorner = Geom% numCorner(zone) 
+       c0      = Geom% cOffSet(zone) 
 
        do c=1,nCorner
          Set% Phi(:,c0+c) = zero
@@ -154,10 +149,9 @@
    else
 
      ZoneLoop1: do zone=1,nZones
-       ZT   => getZoneData(Geom, zone)
 
-       nCorner = ZT% nCorner
-       c0      = ZT% c0
+       nCorner = Geom% numCorner(zone) 
+       c0      = Geom% cOffSet(zone) 
 
        do c=1,nCorner
          Set% Phi(:,c0+c) = zero

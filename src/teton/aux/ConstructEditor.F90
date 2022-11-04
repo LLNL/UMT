@@ -44,7 +44,6 @@
                   RadPowerIncident,           &
                   PolarSectorPowerEscape)
 
-
    return
    end subroutine ConstructEditor
 

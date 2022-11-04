@@ -12,8 +12,6 @@
    use constant_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -61,13 +59,12 @@
 
    ZoneLoop: do zone=1,nZones
 
-     Z => getZoneData(Geom, zone)
-     M => getMesh(Geom, zone)
+     zoneCenter(:) = getZoneCenter(Geom, zone)
 
-     zoneCenter(:) = getZoneCenter(M)
+!    In 2D nSides = nCorner
 
-     nSides       = Z% nSides
-     side0        = Z% side0
+     nSides = Geom% numCorner(zone) 
+     side0  = Geom% cOffSet(zone) 
 
      beta(1:nSides) = one/real(nSides, adqt)
 
@@ -93,10 +90,10 @@
 
 !  Load the necessary coordinates
 
-       r0      = M% px(1,vert1)
-       z0      = M% px(2,vert1)
-       r1      = M% px(1,vert2)
-       z1      = M% px(2,vert2)
+       r0      = Geom% px(1,side0+vert1)
+       z0      = Geom% px(2,side0+vert1)
+       r1      = Geom% px(1,side0+vert2)
+       z1      = Geom% px(2,side0+vert2)
        r2      = zoneCenter(1)
        z2      = zoneCenter(2)
        r_edge  = half*( r0 + r1 )

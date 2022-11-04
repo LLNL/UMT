@@ -12,8 +12,6 @@
    use Size_mod
    use Geometry_mod
    use constant_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -64,18 +62,15 @@
 
    ZoneLoop: do zone=1,nzones
 
-     Z => getZoneData(Geom, zone)
-     M => getMesh(Geom, zone)
+     nFaces = Geom% zoneFaces(zone) 
 
-     nFaces = M% nFaces
+!  Calculate the location of the face-centers and zone-centers
 
-!  Calculate the location of the face-centers (FX) and zone-centers (ZX)
+     zoneCenter(:)          = getZoneCenter(Geom, zone)
+     faceCenter(:,1:nFaces) = getFaceCenter(Geom, zone, nFaces)
 
-     zoneCenter(:)          = getZoneCenter(M)
-     faceCenter(:,1:nFaces) = getFaceCenter(M)
-
-     nCorner = Z% nCorner
-     c0      = Z% c0
+     nCorner =  Geom% numCorner(zone)
+     c0      =  Geom% cOffSet(zone)
 
      do c=1,nCorner
        Geom% Volume(c0+c)   = zero
@@ -95,11 +90,11 @@
          cez1    = Geom% cEZ(cface1,cc)
          cez2    = Geom% cEZ(cface2,cc)
 
-         face    = M% CToFace(cface1,c)
+         face    = Geom% CToFace(cface1,cc)
 
-         pnt0(:) = M% px(:,c)
-         pnt1(:) = M% px(:,cez1)
-         pnt2(:) = M% px(:,cez2)
+         pnt0(:) = Geom% px(:,c0+c)
+         pnt1(:) = Geom% px(:,c0+cez1)
+         pnt2(:) = Geom% px(:,c0+cez2)
 
 
          tdl(:)  = half*(pnt1(:)            - pnt2(:))
@@ -116,7 +111,7 @@
          A_fep(2) = half*( tfl(1)*tdl(3) - tfl(3)*tdl(1) )
          A_fep(3) = half*( tfl(2)*tdl(1) - tfl(1)*tdl(2) )
 
-         zoneOpp  = M% zoneOpp(face)
+         zoneOpp  = Geom% zoneOpp(face,zone)
 
          if (zoneOpp > 0) then
 

@@ -1,16 +1,16 @@
-# Try to Umpire
+# Try to find Camp
 # Once done, this will define
 #
-# SZ_FOUND         - system has sz
-# SZ_INCLUDE_DIR   - sz include directory
-# SZ_LIBRARIES     - sz library
+# CAMP_FOUND         - system has camp
+# CAMP_INCLUDE_DIR   - camp include directory
+# CAMP_LIBRARIES     - camp library
 
 include(FindPackageHandleStandardArgs)
 
 find_path(
-  SZ_INCLUDE_DIR
-  NAMES szlib.h
-  PATHS ${SZ_ROOT}
+  CAMP_INCLUDE_DIR
+  NAMES camp/camp.hpp
+  PATHS ${CAMP_ROOT}
   PATH_SUFFIXES include
   NO_DEFAULT_PATH
   NO_CMAKE_ENVIRONMENT_PATH
@@ -20,9 +20,9 @@ find_path(
 ) 
 
 find_library(
-  SZ_LIBRARIES
-  NAMES sz
-  PATHS ${SZ_ROOT}
+  CAMP_LIBRARIES
+  NAMES camp
+  PATHS ${CAMP_ROOT}
   PATH_SUFFIXES lib
   NO_DEFAULT_PATH
   NO_CMAKE_ENVIRONMENT_PATH
@@ -31,10 +31,9 @@ find_library(
   NO_CMAKE_SYSTEM_PATH
 )
 
-
 find_package_handle_standard_args(
-    SZ
+    Camp
     DEFAULT_MSG
-    SZ_LIBRARIES SZ_INCLUDE_DIR)
+    CAMP_LIBRARIES CAMP_INCLUDE_DIR)
 
-mark_as_advanced(SZ_LIBRARIES SZ_INCLUDE_DIR)
+mark_as_advanced(CAMP_LIBRARIES CAMP_INCLUDE_DIR)

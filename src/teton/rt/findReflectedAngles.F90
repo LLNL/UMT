@@ -20,7 +20,6 @@
    use Boundary_mod
    use QuadratureList_mod
    use Geometry_mod
-   use MeshData_mod
    use AngleSet_mod
 
    implicit none
@@ -33,13 +32,12 @@
 
    type(AngleSet),  pointer    :: ASet
    type(Boundary),  pointer    :: BdyT
-   type(MeshData),  pointer    :: MT 
 
    integer    :: d, ndim 
    integer    :: reflID, ib, nReflecting, nBdyElem
    integer    :: Angle
    integer    :: ReflAngle
-   integer    :: c
+   integer    :: c, c0, nCorner
    integer    :: zone
    integer    :: NumAngles
 
@@ -83,18 +81,19 @@
        enddo
 
        if ( delta_A > tol ) then
-         zone =  BdyT% BdyToZone(ib)
-         MT   => getMesh(Geom, zone)
+         zone    = BdyT% BdyToZone(ib)
+         nCorner = Geom% numCorner(zone)
+         c0      = Geom% cOffSet(zone)
 
          write(6,100) Size% myRankInGroup,zone
 
          if (ndim == 2) then
-           do c=1,MT% nCorner
-             write(6,200) MT% px(1,c), MT% px(2,c)
+           do c=1,nCorner
+             write(6,200) Geom% px(1,c0+c), Geom% px(2,c0+c)
            enddo
          else if (ndim == 3) then
-           do c=1,MT% nCorner
-             write(6,300) MT% px(1,c), MT% px(2,c), MT% px(3,c)
+           do c=1,nCorner
+             write(6,300) Geom% px(1,c0+c), Geom% px(2,c0+c), Geom% px(3,c0+c)
            enddo
          endif
 

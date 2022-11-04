@@ -11,6 +11,7 @@
    use constant_mod
    use Size_mod
    use Geometry_mod
+   use RadIntensity_mod
    use GreyAcceleration_mod
    use Communicator_mod
    use QuadratureList_mod
@@ -65,28 +66,28 @@
 
 !  Compute the group-dependent corrections
 
-!$omp parallel do private(zone, c, c0, nCorner, g) &
-!$omp& private(sumRad, correction) &
-!$omp& shared(Geom, GTA) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(Size, Geom, Rad, GTA, nzones) &
+!$omp& private(c0, nCorner, sumRad, correction) 
 
    ZoneLoop: do zone=1,nzones
 
      nCorner = Geom% numCorner(zone)
      c0      = Geom% cOffSet(zone)
 
-     Geom% radEnergy(zone) = zero
+     Rad% radEnergy(zone) = zero
 
      do c=1,nCorner
 
        sumRad = zero
 
        do g=1,Size% ngr
-         correction             = GTA%GreyCorrection(c0+c)*GTA% Chi(g,c0+c)
-         Geom% PhiTotal(g,c0+c) = Geom% PhiTotal(g,c0+c) + correction 
-         sumRad                 = sumRad + Geom% PhiTotal(g,c0+c)
+         correction            = GTA%GreyCorrection(c0+c)*GTA% Chi(g,c0+c)
+         Rad% PhiTotal(g,c0+c) = Rad% PhiTotal(g,c0+c) + correction 
+         sumRad                = sumRad + Rad% PhiTotal(g,c0+c)
        enddo
 
-       Geom% radEnergy(zone) = Geom% radEnergy(zone) + Geom% Volume(c0+c)*sumRad
+       Rad% radEnergy(zone) = Rad% radEnergy(zone) + Geom% Volume(c0+c)*sumRad
 
      enddo
 
@@ -96,10 +97,9 @@
 
 !  Update Set dependent boundary fluxes
 
-!$omp parallel do private(setID, NumAngles, g, g0, Groups) & 
-!$omp& private(sharedID, angle, i, b, c, reflID, nBdyElem, b0)  &
-!$omp& private(Set, ASet, CSet, CommT, BdyT) &
-!$omp& shared(Quad, GTA, RadBoundary, wtiso) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& private(NumAngles, g0, Groups, c, nBdyElem, b, b0, Set, ASet, CSet, CommT, BdyT) &
+!$omp& shared(nSets, Quad, GTA, RadBoundary, wtiso, nReflecting, nShared)
 
    SetLoop: do setID=1,nSets
 

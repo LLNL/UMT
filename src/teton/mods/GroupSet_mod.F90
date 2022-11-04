@@ -61,9 +61,6 @@ contains
     integer,        intent(in)       :: nZones
     integer,        intent(in)       :: nCorner
 
-    logical                          :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
 !   Set Properties
 
     write(self%label,'(I0.3)') g0
@@ -73,8 +70,8 @@ contains
     self% g0     = g0
 
 !   Allocate Memory
-    call Allocator%allocate(usePinnedMemory,self%label, "Sigt",   self% Sigt,   Groups,nZones)
-    call Allocator%allocate(usePinnedMemory,self%label, "STotal", self% STotal, Groups,nCorner)
+    call Allocator%allocate(Size%usePinnedMemory,self%label, "Sigt",   self% Sigt,   Groups,nZones)
+    call Allocator%allocate(Size%usePinnedMemory,self%label, "STotal", self% STotal, Groups,nCorner)
 
     self% Sigt(:,:)   = zero
     self% STotal(:,:) = zero
@@ -98,11 +95,8 @@ contains
 
     type(GroupSet), intent(inout)    :: self
 
-    logical                          :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
-    call Allocator%deallocate(usePinnedMemory,self%label, "Sigt",   self% Sigt)
-    call Allocator%deallocate(usePinnedMemory,self%label, "STotal", self% STotal)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label, "Sigt",   self% Sigt)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label, "STotal", self% STotal)
 
     return
 

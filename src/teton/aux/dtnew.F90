@@ -21,6 +21,7 @@
    use Size_mod
    use Geometry_mod
    use Material_mod
+   use default_iter_controls_mod, only : outer_slow_conv_threshold
 
    implicit none
 
@@ -173,7 +174,8 @@
 !  If the iteration count is approaching the maximum allowed,
 !  do not increase the time step further. 
 
-   maxTempIterations = getMaxNumberOfIterations(temperatureControl)
+!  20+ iterations is considered slow even if you're allowing for many more outers
+   maxTempIterations = MIN(outer_slow_conv_threshold,getMaxNumberOfIterations(temperatureControl))
    numTempIterations = getNumberOfIterations(temperatureControl)
    zoneConvControl   = getZoneOfMax(temperatureControl)
 
@@ -183,7 +185,8 @@
      dtRecList(indexSlowConv) = two*dtRad
    endif
 
-!  If the iteration did not converge cut the timestep by half
+!  If the iteration did not converge cut the timestep by IterFraction
+!    We may want to consider cutting it in half instead!
 
    if (numTempIterations >= maxTempIterations) then
      dtRecList(indexNoConv) = IterFraction*dtRad

@@ -1,3 +1,4 @@
+#include "macros.h"
 !***********************************************************************
 !                        Last Update:  03/2013, PFN                    *
 !                                                                      *
@@ -6,52 +7,90 @@
 !                      source for grey-transport acceleration (GTA).   *
 !                                                                      *
 !***********************************************************************
-   subroutine getCollisionRate 
+   subroutine getCollisionRate(residualFlag) 
 
    use kind_mod
    use constant_mod
    use Size_mod
    use Geometry_mod
+   use RadIntensity_mod
    use Material_mod
    use GreyAcceleration_mod
+   use QuadratureList_mod
+   use ZoneSet_mod
 
    implicit none
+
+!  Arguments
+
+   integer,  intent(in) :: residualFlag
 
 !  Local
 
    integer    :: c
-   integer    :: c0
-   integer    :: nCorner
    integer    :: g
-   integer    :: Groups
+   integer    :: ngr
    integer    :: zone 
-   integer    :: nZones
+   integer    :: zSetID
+   integer    :: nZoneSets
 
    real(adqt) :: sumCollisionRate
 
 !  Constants
 
-   nZones =  Size% nZones
-   Groups =  Size% ngr 
+   nZoneSets = getNumberOfZoneSets(Quad)
+   ngr       = Size% ngr
 
-!  Calculate the total energy absorption rate density for this set 
+!  Calculate the total energy absorption rate density 
 
-   ZoneLoop: do zone=1,nZones
-     nCorner =  Geom% numCorner(zone)
-     c0      =  Geom% cOffSet(zone)
+   if (residualFlag == 0) then
 
-     do c=1,nCorner
-       sumCollisionRate = zero
-       do g=1,Groups
-         sumCollisionRate = sumCollisionRate  +   &
-                           (Mat%Eta(c0+c)*Mat%siga(g,zone) + Mat%sigs(g,zone))* &
-                            Geom% PhiTotal(g,c0+c)
+!$omp parallel do default(none) schedule(dynamic)  &
+!$omp& shared(nZoneSets, Geom, Rad, Mat, GTA, ngr)                &
+!$omp& private(zone, sumCollisionRate) 
+
+     do zSetID=1,nZoneSets
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+
+         zone             = Geom% CToZone(c)
+         sumCollisionRate = zero
+
+         do g=1,ngr
+           sumCollisionRate = sumCollisionRate  +   &
+                             (Mat%Eta(c)*Mat%siga(g,zone) + Mat%sigs(g,zone))* &
+                              Rad% PhiTotal(g,c)
+         enddo
+
+         GTA% GreySource(c) = sumCollisionRate
        enddo
-       GTA%  GreySource(c0+c)    = sumCollisionRate - Geom% CollisionRate(c0+c)
-       Geom% CollisionRate(c0+c) = sumCollisionRate
      enddo
+!$omp end parallel do
 
-   enddo ZoneLoop
+   else
+
+!$omp parallel do default(none) schedule(dynamic)  &
+!$omp& shared(nZoneSets, Geom, Rad, Mat, GTA, ngr)                &
+!$omp& private(zone, sumCollisionRate) 
+
+     do zSetID=1,nZoneSets
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+
+         zone             = Geom% CToZone(c)
+         sumCollisionRate = zero
+
+         do g=1,ngr
+           sumCollisionRate = sumCollisionRate  +   &
+                             (Mat%Eta(c)*Mat%siga(g,zone) + Mat%sigs(g,zone))* &
+                              Rad% PhiTotal(g,c)
+         enddo
+
+         GTA% GreySource(c) = sumCollisionRate - GTA% GreySource(c) 
+
+       enddo
+     enddo
+!$omp end parallel do
+
+   endif
 
  
    return

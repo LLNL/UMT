@@ -11,13 +11,17 @@ module RadIntensity_mod
   public construct
   public destruct
 
-  ! TODO: These are stored per set.  But that really isn't needed.
   type, public :: RadIntensity
 
-     real(adqt), pointer, contiguous  :: radEnergy(:)
-     real(adqt), pointer, contiguous  :: RadiationForce(:,:)
-     real(adqt), pointer, contiguous  :: RadiationFlux(:,:,:)
-     real(adqt), pointer, contiguous  :: EddingtonTensorDiag(:,:)
+     real(adqt), pointer, contiguous  :: radEnergy(:)             => null()
+     real(adqt), pointer, contiguous  :: RadiationForce(:,:)      => null()
+     real(adqt), pointer, contiguous  :: RadiationFlux(:,:,:)     => null()
+     real(adqt), pointer, contiguous  :: EddingtonTensorDiag(:,:) => null()
+     real(adqt), pointer, contiguous  :: PhiTotal(:,:)            => null()
+     real(adqt), pointer, contiguous  :: RadEnergyDensity(:,:)    => null()
+
+!    Misc
+     character(len=12) :: label ! A string descriptor for this module.
 
   end type RadIntensity 
 
@@ -38,33 +42,60 @@ contains
 ! construct interface
 !=======================================================================
 
-  subroutine RadIntensity_ctor(self, Groups)
+  subroutine RadIntensity_ctor(self)
  
     use Size_mod
     use constant_mod
+    use MemoryAllocator_mod
+    use Datastore_mod, only : theDatastore
+    use, intrinsic :: iso_c_binding, only : c_size_t
 
     implicit none
  
 !   Passed variables
  
     type(RadIntensity), intent(inout) :: self
-    integer,            intent(in)    :: Groups
+
+!   Local
+
+    integer(kind=c_size_t) :: num_elements_size_t
+
+    self%label = "radintensity"
 
 
-    allocate( self% radEnergy(Size%nzones) )
-    allocate( self% RadiationForce(Size%ndim,Size%ncornr) )
-    allocate( self% RadiationFlux(Size%ndim,Groups,Size%nzones) )
-    allocate( self% EddingtonTensorDiag(Size%ndim,Size%nzones) )
+!   The following are used on the GPU and require pinned memory
+
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"PhiTotal", self% PhiTotal, Size% ngr, Size% ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"radEnergy", self% radEnergy, Size%nZones)
+
+!   The following are only used on the CPU
+
+    call Allocator%allocate(.FALSE.,self%label, "RadiationForce", self% RadiationForce, Size%ndim, Size%ncornr)
+    call Allocator%allocate(.FALSE.,self%label, "RadiationFlux", self% RadiationFlux, Size%ndim, Size%ngr, Size%nzones)
+    call Allocator%allocate(.FALSE.,self%label, "EddingtonTensorDiag", self% EddingtonTensorDiag, Size%ndim, Size%nzones)
+    call Allocator%allocate(.FALSE.,self%label, "RadEnergyDensity", self% RadEnergyDensity, Size%nzones, Size%ngr)
+
+    ! Describe the field in the mesh blueprint.  This is a field over the main
+    ! mesh (zone mesh), over zones (elements) as opposed to vertices (nodes).
+    ! Multi-value fields are not support for visualization, however.
+    num_elements_size_t = Size% nzones * Size% ngr
+
+    call theDatastore%root%set_path_external_float64_ptr("blueprint/fields/radiation_energy_density/values", self% RadEnergyDensity,num_elements_size_t )
+    call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/association", "element")
+    call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/topology", "main")
+
+!   Initialize
 
     self% radEnergy(:)              = zero
+    self% PhiTotal(:,:)             = zero
     self% RadiationForce(:,:)       = zero
     self% RadiationFlux(:,:,:)      = zero
     self% EddingtonTensorDiag(:,:)  = zero
+    self% RadEnergyDensity(:,:)     = zero
 
     return
  
   end subroutine RadIntensity_ctor
-
 
 
 !=======================================================================
@@ -72,6 +103,10 @@ contains
 !=======================================================================
                                                             
   subroutine RadIntensity_dtor(self)
+
+    use Size_mod
+    use MemoryAllocator_mod
+    use Datastore_mod, only : theDatastore
                                       
     implicit none
                  
@@ -79,11 +114,14 @@ contains
                     
     type(RadIntensity),    intent(inout) :: self
 
+    call Allocator%deallocate(Size%usePinnedMemory,self%label, "PhiTotal", self% PhiTotal)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label, "radEnergy", self% radEnergy)
+    call Allocator%deallocate(.FALSE.,             self%label, "RadiationForce", self% RadiationForce)
+    call Allocator%deallocate(.FALSE.,             self%label, "RadiationFlux", self% RadiationFlux)
+    call Allocator%deallocate(.FALSE.,             self%label, "EddingtonTensorDiag", self% EddingtonTensorDiag)
 
-    deallocate( self% radEnergy )
-    deallocate( self% RadiationForce )
-    deallocate( self% RadiationFlux )
-    deallocate( self% EddingtonTensorDiag )
+    call theDatastore%root%remove_path("blueprint/fields/radiation_energy_density")
+    call Allocator%deallocate(.FALSE.,self%label,"RadEnergyDensity", self%RadEnergyDensity)
 
 
     return

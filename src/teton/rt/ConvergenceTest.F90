@@ -17,7 +17,7 @@
    use iter_control_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
+   use RadIntensity_mod
    use Material_mod
 
    implicit none
@@ -127,7 +127,7 @@
    EnergyDensity(:) = zero
 
    do zone=1,nzones
-     EnergyDensity(zone) = Geom% radEnergy(zone)/Geom% VolumeZone(zone)
+     EnergyDensity(zone) = Rad% radEnergy(zone)/Geom% VolumeZone(zone)
    enddo
 
 !  Find an energy threshold for convergence tests
@@ -149,13 +149,12 @@
  
    do zone=1,nzones
 
-     Z => getZoneData(Geom, zone)
-
      radEnergy = EnergyDensity(zone)
 
      if (RadEnergy > threshold) then
 
-       relerr = abs( (EnergyDensity(zone) - Z% EnergyDensityOld)/EnergyDensity(zone) )
+       relerr = abs( (EnergyDensity(zone) - Mat% EnergyDensityOld(zone))/ &
+                      EnergyDensity(zone) )
 
        if (relerr > maxEnergyDensityError) then
          zoneMaxError          = zone 
@@ -164,7 +163,7 @@
 
      endif
 
-     Z% EnergyDensityOld = EnergyDensity(zone)
+     Mat% EnergyDensityOld(zone) = EnergyDensity(zone)
 
    enddo
 

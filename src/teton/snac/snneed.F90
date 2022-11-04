@@ -22,8 +22,6 @@
    use Size_mod
    use Geometry_mod
    use QuadratureList_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -40,8 +38,6 @@
    real(adqt), intent(in)          :: omega(Size%ndim)
 
 !  Local Variables
-
-   type(MeshData), pointer   :: MT
 
    integer    :: izero, nzones, nFaces, nCorner, nCFaces
    integer    :: c, c0, cc, cface, zone, zoneOpp, face
@@ -69,19 +65,18 @@
    if (Size% ndim == 2) then
 
      ZoneLoop2D: do zone=1,nzones
-       MT => getMesh(Geom, zone)
 
-       c0      = MT% c0
-       nCorner = MT% nCorner 
+       nCorner =  Geom% numCorner(zone)
+       c0      =  Geom% cOffSet(zone)
 
        CornerLoop2D: do c=1,nCorner 
 
-         face    = MT% CToFace(1,c)
-         zoneOpp = MT% zoneOpp(face)
+         face    = Geom% CToFace(1,c0+c)
+         zoneOpp = Geom% zoneOpp(face,zone)
 
          if (zone < zoneOpp) then
 
-           faceOpp = MT% faceOpp(face)
+           faceOpp = Geom% faceOpp(face,zone)
            afpm    = DOT_PRODUCT( omega(:),Geom% A_fp(:,1,c0+c) )
 
            if (afpm < zero) then
@@ -101,11 +96,9 @@
 
      ZoneLoop: do zone=1,nzones
 
-       MT      => getMesh(Geom, zone)
-
-       nCorner = MT% nCorner
-       nFaces  = MT% nFaces
-       c0      = MT% c0
+       nCorner =  Geom% numCorner(zone)
+       c0      =  Geom% cOffSet(zone)
+       nFaces  =  Geom% zoneFaces(zone)
 
        afpm_Face(:) = zero
        nInc(:)      = izero
@@ -121,8 +114,8 @@
  
 !          Get downstream zone number
 
-           face    = MT% CToFace(cface,c)
-           zoneOpp = MT% zoneOpp(face)
+           face    = Geom% CToFace(cface,cc)
+           zoneOpp = Geom% zoneOpp(face,zone)
 
 !  Omega dot Outward normal - IMPORTANT: the dot product must be
 !  coded this way to be compatible with the coding in SNSWP3D and SNSWP2D.
@@ -150,11 +143,11 @@
 
        FaceLoop: do face=1,nFaces
 
-         zoneOpp = MT% zoneOpp(face)
+         zoneOpp = Geom% zoneOpp(face,zone)
 
          if (zoneOpp > zone) then
 
-           faceOpp = MT% faceOpp(face)
+           faceOpp = Geom% faceOpp(face,zone)
 
            if (afpm_Face(face) < zero) then
              needZ(zone)               = needZ(zone) + 1

@@ -43,7 +43,8 @@
 
      if (Size% ndim == 2) then
 
-!$omp parallel do private(zone) shared(setID) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(setID, nzones)
        do zone=1,nzones
          call InitGreySweepUCBrz(setID, zone)
        enddo
@@ -51,7 +52,8 @@
 
      else
 
-!$omp parallel do private(zone) shared(setID) schedule(static)
+!$omp parallel do default(none) schedule(static) &
+!$omp& shared(setID, nzones)
        do zone=1,nzones
          call InitGreySweepUCBxyz(setID, zone)
        enddo

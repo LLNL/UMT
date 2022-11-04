@@ -22,7 +22,6 @@ subroutine checkInputSanity(killOnBad,   &
    use Size_mod
    use Geometry_mod
    use Material_mod
-   use ZoneData_mod
 
    implicit none
    ! Input / Output arguments
@@ -31,9 +30,6 @@ subroutine checkInputSanity(killOnBad,   &
    integer(C_INT),  intent(in)    :: numCatsToCheck
    integer(C_INT),  intent(in)    :: arrayOfCatsToCheck(numCatsToCheck)
    integer(C_INT),  intent(inout) :: numBadInputCategories
-
-   !  Local pointers
-   type(ZoneData), pointer        :: ZonePtr => NULL()
 
    ! different numbers may be more appropriate, but these are physically meaninful
    ! Note that opacities are now clipped at 1e50 in teton_setopacity
@@ -236,9 +232,8 @@ subroutine checkInputSanity(killOnBad,   &
          numEntries = nCornersTotal
          categoryName = "Corner Volume"
          do zone=1, nZones
-            ZonePtr => getZoneData(Geom, zone)
-            nCorner = ZonePtr% nCorner
-            c0      = ZonePtr% c0
+            nCorner = Geom% numCorner(zone) 
+            c0      = Geom% cOffSet(zone) 
             do c=1,nCorner
                if( Geom% Volume(c0+c)  < VOLUMEMIN) then
                   numBadEntries = numBadEntries + 1

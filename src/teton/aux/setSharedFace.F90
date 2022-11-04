@@ -14,8 +14,6 @@
    use kind_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
    use BoundaryList_mod
    use Boundary_mod
 
@@ -39,11 +37,9 @@
 !  First set boundary element numbers
 
    Bdy  => getBoundary(RadBoundary, bcID)
-   Z    => getZoneData(Geom, zoneID+1)
-   M    => getMesh(Geom, zoneID+1)
 
-   b0      = getFirstBdyElement(Bdy) - 1
-   c0      = Z% c0
+   b0   =  getFirstBdyElement(Bdy) - 1
+   c0   =  Geom% cOffSet(zoneID+1)
 
 !  Add a boundary element to the list for this corner-face 
 

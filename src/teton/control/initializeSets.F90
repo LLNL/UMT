@@ -22,11 +22,14 @@
    use AngleSet_mod
    use GroupSet_mod
    use CommSet_mod
+   use ZoneSet_mod
    use Geometry_mod
    use GreyAcceleration_mod
+   use Material_mod
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    use ComptonControl_mod
 #endif
+   use RadIntensity_mod
    use MemoryAllocator_mod
    use OMPWrappers_mod
    use Options_mod
@@ -83,12 +86,11 @@
 !  Set Total opacity
 
    GroupSetLoop: do gSetID=1,nGroupSets
-
      call setTotalOpacity(gSetID)
-
    enddo GroupSetLoop
 
-   !$omp parallel do private(aSetID) shared(Size,nGTASets,nAngleSets) schedule(static) default(none)
+   !$omp parallel do default(none) schedule(static) &
+   !$omp& shared(Size,nGTASets,nAngleSets)
    AngleSetLoop: do aSetID=1,nAngleSets+nGTASets
      ! Find reflected angles on all symmetry boundaries
      call findReflectedAngles(aSetID)
@@ -133,6 +135,40 @@
        TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% GrpSetPtr(gSetID)% STotal)
        TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% GrpSetPtr(gSetID)% Sigt)
      enddo
+
+!    Map ZoneSets
+
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% AL)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% AU)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% nCornerSet)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% nCornerBatch)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% offset)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% cornerList)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% cornerMap)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% zoneList)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% cornerConverged)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% Te)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% TeOld)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% delta)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% sumT)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% netRate)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% dTCompton)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% B)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% dBdT)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% Snu0)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% dSnu0dT)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% AD)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% z)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% fk2)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% nI)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% nS)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% ex)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% expPH)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% comptonDeltaEr)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% dComptonDT)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% comptonSe)
+
 
      if (Options%getMPIUseDeviceAddresses()) then
   !    Map Comm Sets
@@ -184,9 +220,6 @@
      endif ! Options%getMPIUseDeviceAddresses()
 
 !    Map Angle Sets
-
-!$omp parallel do private(aSetID,angle) shared(Quad,Size,nAngleSets,nGTASets) schedule(static) default(none)
-
      do aSetID=1,nAngleSets+nGTASets
 
        TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% nextZ)
@@ -203,9 +236,11 @@
        TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% HypPlanePtr)
        TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% BdyExitPtr)
 
-       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% AfpNorm)
-       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% AezNorm)
-       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% ANormSum)
+       if ( aSetID <= nAngleSets ) then
+         TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% AfpNorm)
+         TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% AezNorm)
+         TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% ANormSum)
+       endif
 
        do angle=1,Quad% AngSetPtr(aSetID)% numAngles
 
@@ -227,15 +262,16 @@
        endif
 
      enddo
-!$omp end parallel do
 
 !    Geometry
 
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% Volume)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% VolumeOld)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% VolumeZone)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% cOffSet)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% numCorner)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% CToZone)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% corner1)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% corner2)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% zone1)
@@ -244,32 +280,48 @@
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% cFP)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% A_ez)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% A_fp)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% PhiTotal)
 
      if (Size% ndim == 2) then
-
        TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% Area)
        TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% RadiusEZ)
        TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% RadiusFP)
-
      elseif (Size% ndim == 3) then
-
        TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% nCFacesArray)
-
      endif
+
+!    Radiation Intensity
+
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Rad)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Rad% PhiTotal)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Rad% radEnergy)
+
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamMean)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamSqdDGam)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamCubedDGam)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamD)
+#endif
+
 !    GTA
 
+     TOMP_TARGET_ENTER_DATA_MAP_TO(GTA)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreySource)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreyCorrection)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% Chi)
+
      if (Size%useNewGTASolver) then
-        TOMP_TARGET_ENTER_DATA_MAP_TO(GTA)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% TT)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% Pvv)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreySigTotal)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreySigScat)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreySigtInv)
-        TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreySource)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% PhiInc)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% Q)
         TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% TsaSource)
+        TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% AfpNorm)
+        TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% AezNorm)
+        TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% ANormSum)
 
         if (Size% ndim == 2) then
           TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% Tvv)
@@ -291,13 +343,13 @@
 
 !  Begin Initialize Phase
 
-!$omp parallel do private(setID) shared(nSets) schedule(static) default(none)
+!$omp parallel do schedule(static) default(none) &
+!$omp& shared(nSets)
    do setID=1,nSets
 !    Initialize Boundary Flux
      call setBoundarySources(setID)
    enddo
 !$omp end parallel do
-
 
    !Allocate GPU Memory
    if (Size%useGPU) then
@@ -305,41 +357,39 @@
    endif
 
 !  Initialize the radiation field (Psi, PsiB, PhiTotal)
-
    call initPhiTotal
    call initializeRadiationField
 
-!  Initialize set-specific data and map to the GPU
-
-!$omp  parallel do private(CSet, cSetID, setID) shared(Quad, Size, nCommSets)  &
-!$omp& schedule(static) default(none)
-   CommSetLoop2: do cSetID=1,nCommSets
-
-     CSet => getCommSetData(Quad, cSetID)
-
-!    Map PsiB back to the CPU
-     if (Size%useGPU) then
+!  Map PsiB back to the CPU
+   if (Size%useGPU) then
+     do cSetID=1,nCommSets
+       CSet => getCommSetData(Quad, cSetID)
        do setID=CSet% set1,CSet% set2
          TOMP(target update from(Quad% SetDataPtr(setID)% PsiB))
        enddo
-     endif
+     enddo
+   endif
 
-!    Establish angle order for transport sweeps
-
+!  Establish angle order for transport sweeps
+!$omp  parallel do default(none) schedule(static) &
+!$omp& shared(nCommSets, Size)
+   do cSetID=1,nCommSets
      call setNetFlux(cSetID)
 
      if (Size% ndim >= 2) then
        call SweepScheduler(cSetID)
      endif
+   enddo
+!$omp end parallel do
 
-     if (Size%useGPU) then
+   if (Size%useGPU) then
+     do cSetID=1,nCommSets
+       CSet => getCommSetData(Quad, cSetID)
        do setID=CSet% set1,CSet% set2
          TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% AngleOrder)
        enddo
-     endif
-
-   enddo CommSetLoop2
-!$omp end parallel do
+     enddo
+   endif
 
 !  Initialize zonal material properties, 
 !  Contains a threaded loop over zones
@@ -354,7 +404,28 @@
      enddo GTASetLoop
    endif
 
-!  Map GTA variables
+!    Material
+
+   if ( Size% useGPU ) then
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Tec)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Tecn)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% denec)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% cve)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% rho)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% nez)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% stimComptonMult)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Siga)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Sigs)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Eta)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% EmissionRate)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% SMatEff)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% PowerEmitted)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% PowerCompton)
+     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% nonLinearIterations)
+   endif
+
+!  Map GTA set variables
 
    if ( Size% useGPU ) then
 
@@ -376,7 +447,7 @@
 
 #if defined(TETON_ENABLE_CUDA)
 #  if !defined(TETON_ENABLE_MINIAPP_BUILD)
-   if (useBoltzmannCompton .AND. Size% useCUDASolver) then
+   if (useBoltzmannCompton .AND. Size% useCUDASolver .AND. Size% ngr >= 16) then
      call fallocateGpuMemory(Size%ngr, Size%nBCITabG2Gs, Size%nBCITabTaus,  &
                              Size% zoneBatchSize, Size%maxCorner)
    endif

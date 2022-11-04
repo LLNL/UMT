@@ -16,32 +16,16 @@
 
    USE ISO_C_BINDING
    use kind_mod
-   use QuadratureList_mod
    use RadIntensity_mod
 
 
    implicit none
 
-!  Local
+!  Construct Radiation Intensity  Module 
 
-   type(RadIntensity), pointer  :: RadT
+   allocate(Rad)
 
-   integer :: setID
-   integer :: nSets
-   integer :: Groups
-
-!  Construct Material Module 
-
-   nSets = getNumberOfSets(Quad)
-
-   do setID=1,nSets
-
-     RadT      => getRadIntensity(Quad, setID)
-     Groups    =  getNumberOfGroups(Quad, setID)
- 
-     call construct(RadT, Groups)
-
-   enddo
+   call construct(Rad)
 
 
    return

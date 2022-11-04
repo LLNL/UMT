@@ -17,8 +17,6 @@
 
    implicit none
 
-   type(IterControl),      pointer  :: iControl => NULL()
-
 !  Construct Iteration Controls
 
    allocate (IterControls)

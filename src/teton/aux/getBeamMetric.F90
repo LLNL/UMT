@@ -15,28 +15,18 @@
    use kind_mod
    use constant_mod
    use Size_mod
-   use QuadratureList_mod
    use RadIntensity_mod
-   use SetData_mod
 
    implicit none 
 
 !  Arguments
 
-   integer(C_INT),    intent(in)    :: zoneID
+   integer(C_INT),    intent(in) :: zoneID
 
    real(C_DOUBLE), intent(inout) :: beamMetric
 
 !  Local
 
-   type(RadIntensity),     pointer  :: RadT
-   type(SetData),          pointer  :: Set
-
-   integer    :: setID
-   integer    :: nSets
-   integer    :: g
-   integer    :: g0
-   integer    :: Groups
    real(adqt) :: EdDiag(Size%ndim)
    real(adqt) :: totRad
 
@@ -44,25 +34,14 @@
 !  Constants
 
 !***********************************************************************
-!  Compute the radiation flux                                          *
+!  Compute the beam metric                                             *
 !***********************************************************************
 
-   nSets   =  getNumberOfSets(Quad)
 
-   EdDiag(:) = zero
-   totRad = zero
+   EdDiag(:) = Rad% EddingtonTensorDiag(:,zoneID)
+   totRad    = Rad% radEnergy(zoneID)
 
-   SetLoop: do setID=1,nSets
-
-     RadT   => getRadIntensity(Quad, setID)
-     Set    => getSetData(Quad, setID)
-
-     EdDiag(:) = EdDiag(:) + RadT% EddingtonTensorDiag(:,zoneID)
-     totRad = totRad + RadT% radEnergy(zoneID)
-
-   enddo SetLoop
-
-   if( totRad > 0.0) then
+   if( totRad > zero) then
       beamMetric = maxval(EdDiag) / totRad
    else
       beamMetric = one

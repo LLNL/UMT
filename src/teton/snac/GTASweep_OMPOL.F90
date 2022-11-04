@@ -1,20 +1,16 @@
 #include "macros.h"
 #include "omp_wrappers.h"
 !***********************************************************************
-!                        Version 1:  09/96, PFN                        *
+!                        Version 1:  09/2017, PFN                      *
 !                                                                      *
-!   SNFLWXYZ - This routine, called by RSWPMD and RTACCELMD, solves    *
-!              the fixed-source transport problem on an arbitrary      *
-!              grid in either xyz-geometry or rz-geometry.             *
-!              An upstream corner-balance spatial discretization is    *
-!              used.                                                   *
+!   GTASweep_GPU  - This routine controls the GTA set sweeps           *
+!                   communication when running on a GPU.               *
 !                                                                      *
 !***********************************************************************
 
-   subroutine GTASweep_GPU(PsiB)
+   subroutine GTASweep_GPU(P, PsiB, withSource)
 
-   use, intrinsic :: iso_c_binding, only : c_int
-   use Options_mod
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use constant_mod
    use Size_mod
@@ -28,7 +24,10 @@
 
 !  Arguments
 
-   real(adqt),           intent(inout) :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt), intent(in)       :: P(Size%ncornr)
+   real(adqt), intent(inout)    :: PsiB(Size%nbelem,Size%nangGTA)
+
+   logical (kind=1), intent(in) :: withSource
 
 !  Local
 
@@ -48,25 +47,25 @@
    integer                   :: ndim 
    integer                   :: sendIndex
 
-   integer(kind=c_int) :: nOmpMaxTeamThreads
+   real(adqt)                :: wtiso
 
    logical (kind=1)          :: SnSweep 
 
 !  Constants
 !
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
    nSets     = getNumberOfSets(Quad)
    nGTASets  = getNumberOfGTASets(Quad)
    nZoneSets = getNumberOfZoneSets(Quad)
    nCommSets = getNumberOfCommSets(Quad)
    ndim      =  Size% ndim
    SnSweep   = .FALSE.
+   wtiso     = Size% wtiso
 
    Set       => getSetData(Quad, nSets+1)
 
-!  Update TSA source on the GPU
+!  Initialize Communication 
 
-   TOMP(target update to(GTA%TsaSource) )
+   TOMP(target data map(to: wtiso))
 
    do cSetID=nCommSets+1,nCommSets+nGTASets
 
@@ -82,16 +81,19 @@
 
 !  Initialize angle-independent variables before the sweeps
 
-TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) private(zSetID))
+   if ( withSource ) then
+
+TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+TOMPC(shared(nZoneSets, Geom, GTA, wtiso))
 
      ZoneSetLoop: do zSetID=1,nZoneSets
 
 !$omp  parallel do default(none)  &
-!$omp& shared(Geom, GTA, zSetID) private(c)
+!$omp& shared(Geom, GTA, zSetID, wtiso)
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          GTA% PhiInc(c)    = zero
-         GTA% Q(c)         = GTA%GreySigtInv(c)*GTA% TsaSource(c)
-         GTA% TsaSource(c) = Geom% Volume(c)*GTA% TsaSource(c)
+         GTA% Q(c)         = wtiso*GTA%GreySigtInv(c)*GTA% GreySource(c)
+         GTA% TsaSource(c) = wtiso*Geom% Volume(c)*GTA% GreySource(c)
        enddo
 !$omp end parallel do
 
@@ -99,12 +101,37 @@ TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThread
 
 TOMP(end target teams distribute)
 
+   else
+
+TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+TOMPC(shared(nZoneSets, Geom, GTA, wtiso, P))
+
+     ZoneSetLoop2: do zSetID=1,nZoneSets
+
+!$omp  parallel do default(none)  &
+!$omp& shared(Geom, GTA, zSetID, wtiso, P)
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+         GTA% PhiInc(c)    = zero
+         GTA% Q(c)         = wtiso*GTA%GreySigtInv(c)*GTA% GreySigScat(c)*P(c)
+         GTA% TsaSource(c) = wtiso*Geom% Volume(c)*GTA% GreySigScat(c)*P(c)
+       enddo
+!$omp end parallel do
+
+     enddo ZoneSetLoop2
+
+TOMP(end target teams distribute)
+
+   endif
+
+TOMP(end target data)
+
 !  Loop over angles, solving for each in turn:
 
    AngleLoop: do sendIndex=1,Set% NumAnglesDyn
 
-!$omp parallel do private(cSetID, setID, CSet, Angle)  &
-!$omp& shared(PsiB) schedule(static)
+!$omp  parallel do default(none) schedule(static)  &
+!$omp& private(CSet, Angle)  &
+!$omp& shared(Quad, sendIndex, nCommSets, nGTASets, SnSweep,  PsiB) 
      do cSetID=nCommSets+1,nCommSets+nGTASets
 
        CSet  => getCommSetData(Quad, cSetID)

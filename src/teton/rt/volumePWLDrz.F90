@@ -14,8 +14,6 @@
    use Geometry_mod
    use BoundaryList_mod
    use Boundary_mod
-   use ZoneData_mod
-   use MeshData_mod
 
    implicit none
 
@@ -33,7 +31,7 @@
    integer    :: nBdyElem
    integer    :: b
    integer    :: b0
-   integer    :: c0
+   integer    :: side0
 
    real(adqt) :: Area
    real(adqt) :: r0, z0
@@ -65,13 +63,11 @@
 
    ZoneLoop: do zone=1,nZones
 
-     Z => getZoneData(Geom, zone)
-     M => getMesh(Geom, zone)
+     zoneCenter(:) = getZoneCenter(Geom, zone)
 
-     zoneCenter(:) = getZoneCenter(M)
-
-     nSides                 = Z% nSides
-     c0                     = Z% c0   
+!    In 2D nSides = nCorner
+     nSides                 = Geom% numCorner(zone) 
+     side0                  = Geom% cOffSet(zone)   
      Geom% VolumeZone(zone) = zero
 
      beta(1:nSides) = one/real(nSides, adqt)
@@ -83,16 +79,16 @@
 
 !  Load the necessary coordinates
 
-       r0      = M% px(1,vert1)
-       z0      = M% px(2,vert1)
-       r1      = M% px(1,vert2)
-       z1      = M% px(2,vert2)
+       r0      = Geom% px(1,side0+vert1)
+       z0      = Geom% px(2,side0+vert1)
+       r1      = Geom% px(1,side0+vert2)
+       z1      = Geom% px(2,side0+vert2)
        r2      = zoneCenter(1)
        z2      = zoneCenter(2)
        r_edge  = half*( r0 + r1 )
        z_edge  = half*( z0 + z1 )
 
-       zoneOpp = M% zoneOpp(side)
+       zoneOpp = Geom% zoneOpp(side,zone)
 
        if (zoneOpp < 0) then
          b          = b + 1
@@ -113,11 +109,11 @@
 !  Each half-side volume is its area multiplied by its average
 !  radial coordinate.
 
-       Geom%Volume(c0+side) = third*(r0 + r1 + r2)*Area
+       Geom%Volume(side0+side) = third*(r0 + r1 + r2)*Area
 
 !  Accumulate zone volume
  
-       Geom% VolumeZone(zone) = Geom% VolumeZone(zone) + Geom%Volume(c0+side)
+       Geom% VolumeZone(zone) = Geom% VolumeZone(zone) + Geom%Volume(side0+side)
 
      enddo SideLoop
 

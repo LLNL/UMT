@@ -349,6 +349,15 @@ void teton_constructsize(
     const int *nConcurrentBatches,     // scalar, number of NL zone batches to process concurrently.
     const int *igeom); // scalar, int corresponding to tetonGeometryFlag underlying integer for geometry type
 
+// Set some optional parameters for GTA convergence.
+//   enforceHardGTAIterMax defaults to true for the new GTA.  This is needed to avoid buildup of BiCGSTAB roundoff errors that leads to divergence.
+//   forceExtraOuter defaults to false in all cases.  This may be needed to prevent the outer iteration from exiting earlier than it should when GTA is struggling.
+void teton_setgtaoptions(
+    const bool *
+        enforceHardGTAIterMax, // bool, whether or not GTA exits at grey_max_sweeps, even if minimum convergence criterion is not met.
+    const bool
+        *forceExtraOuter); // bool, whether or not the outer is forced to do an extra iteration when GTA isn't converged
+
 // Set verbosity level for controlling output
 // verbosity is a two digit number.
 //   The first digit determines whether only rank 0 is verbose
@@ -364,7 +373,7 @@ void teton_constructmemoryallocator(
         umpire_host_pinned_pool_allocator_id, // scalar, umpire allocator to use for pinned memory allocations on host (cpu).
                                               // value < 0 = have teton create its own allocator, if needed.
     int *umpire_device_pool_allocator_id); // scalar, umpire allocator to use for memory allocations on the accelerator
-    // device (gpu).  value < 0 = use native OpenMP or CUDA for memory allocation.
+// device (gpu).  value < 0 = use native OpenMP or CUDA for memory allocation.
 
 // destroy mesh data in case it has changed during the simulation
 void teton_destructmeshdata(const bool *nonLTE);
@@ -432,6 +441,7 @@ void teton_getedits(int *noutrt,             // scalar, number of thermal [outer
                     double *dtrad,           // scalar, radiation vote for next time step
                     double *TrMax,           // scalar, T rad maximum value
                     double *TeMax,           // scalar, T electron maximum value
+                    double *deltaEMat,       // scalar, change in material energy this time step
                     double *EnergyRadiation, // scalar, energy contained in the radiation field
                     double *PowerIncident,   // scalar, power of photons incident
                     double *PowerEscape,     // scalar, power of photons escaping
@@ -495,6 +505,15 @@ void teton_getnumsnsets(int *numSNSets); // number of SN sets
 void teton_getpsipointer(const int *setIdx,   // scalar, phase space set desired (input)
                          int *psiDims,        // array[3], dimensions of the intensity object pointed at
                          double **intensity); // array[ngrps*ncorners*nAngles], indexed as ( )?
+
+//
+//  teton_getzonalpsi
+//
+//  get the zone-averaged psi for each zone, group, and angle
+//
+void teton_getzonalpsi(
+    const int *numAngles, // scalar, number of angles, must match psi
+    double *psi); // array[nzones*ngroups*nAngles], indexed such that zone varies fastest and angle varies slowest
 
 // get the amount of radiation deposited in a zone within a cycle
 void teton_getradiationdeposited(
@@ -660,6 +679,18 @@ void teton_radtr();
 //           phiTotal = [phi_g0_c0, phi_g1_c0 ... phi_gN_c0 , phi_g0_c1 ...]
 void teton_reconstructpsi(double *EnergyRadiation,   // scalar, total radiation energy density (in/out)
                           const double *radDensity); // array[ nzones x ngroups ], input only
+
+//
+//  teton_reconstructpsifrompsi
+//
+//  Reconstruct/scale the corner based psi after remap to match the new, zone-based remapped psi
+//
+//  TODO add a note about the ordering of RemappedPsi vs Set%Psi
+//
+void teton_reconstructpsifrompsi(
+    double *EnergyRadiation,    // scalar, total radiation energy density (in/out)
+    const int *numAngles,       // scalar, number of angles, must match psi
+    const double *RemappedPsi); // array[ nzones x ngroups x numAngles], input only, zone varies fastest
 
 //
 //  teton_reconstructpsifromdv
@@ -851,9 +882,9 @@ void teton_setsharedface(const int *bcID,   // scalar, input, index of the bound
 //
 //          FaceToBcList integers array to associate zone faces that are boundaries to the appropriate BC index
 void teton_setzone(
-    const int *zoneID,    // scalar, index of zone
-    const int *corner0,   // scalar, global index of this zone's local corner zero
-    const int *zoneFaces, // scalar, number of zone faces this zone has that connect to other zones or boundaries
+    const int *zoneID,        // scalar, index of zone
+    const int *corner0,       // scalar, global index of this zone's local corner zero
+    const int *zoneFaces,     // scalar, number of zone faces this zone has that connect to other zones or boundaries
     const int *cornerFaces,   // scalar,
     const int *zoneNCorner,   // scalar, number of corners in this zone
     const int *zoneOpp,       // array[ zoneFaces ] of zones opposite this zone on a given face
@@ -906,6 +937,7 @@ inline void teton_getrunstats(const int *verbose,        // deprecated, use teto
                               double *timeNonRad,
                               double *timeOther)
 {
+   (void)verbose;
    teton_getrunstats(MatCoupTimeTotal,
                      SweepTimeTotal,
                      GPUSweepTimeTotal,
@@ -947,6 +979,7 @@ inline void teton_constructsize(
     const int *nConcurrentBatches,     // scalar, number of NL zone batches to process concurrently.
     const int *igeom) // scalar, int corresponding to tetonGeometryFlag underlying integer for geometry type
 {
+   (void)maxDynamicIters;
    teton_constructsize(myRankInGroup,
                        nzones,
                        ncornr,
@@ -989,6 +1022,7 @@ inline void teton_resetsize(
     const bool *usePWLD,               // scalar, use PWLD spatial discretization (rz only)
     const bool *useSurfaceMassLumping) // scalar, use surface and mass lumping for PWLD
 {
+   (void)maxDynamicIters;
    teton_resetsize(functionRNLTE,
                    tFloor,
                    radForceMultiplier,
@@ -1183,6 +1217,7 @@ inline void teton_addprofile(const int *NumTimes,
                              const double *Values)
 {
    int dummyInt = -1;
+   (void)NumInterpValues;
    teton_addprofile_internal(NumTimes, NumValues, Multiplier, BlackBody, Isotropic, Times, Values, &dummyInt);
 }
 
@@ -1195,6 +1230,7 @@ inline void teton_constructitercontrols(
     const double *epsinr, // scalar, linear solve tolerance (should be the smallest)
     const double *epsgda) // scalar, gray diffusion-like tolerance (between epstmp and epsinr)
 {
+   (void)ninmx;
    // This will be really, really chatty.
    std::cout
        << "WARNING: Calling teton_constructitercontrols with tolerance arguments is deprecated.  Please delete arguments and set tolerances via teton_adjust* functions.\n";
@@ -1571,6 +1607,8 @@ inline void teton_getedits(const int *verbose,      // deprecated and ignored, u
                            double *PowerCompton)
 { // scalar, power of Compton scattering photons
 
+   (void)verbose;
+   double deltaEMat = 0.0;
    double energyCheck = 0.0;
    teton_getedits(noutrt,
                   ninrt,
@@ -1585,6 +1623,7 @@ inline void teton_getedits(const int *verbose,      // deprecated and ignored, u
                   dtrad,
                   TrMax,
                   TeMax,
+                  &deltaEMat,
                   EnergyRadiation,
                   PowerIncident,
                   PowerEscape,
@@ -1593,6 +1632,54 @@ inline void teton_getedits(const int *verbose,      // deprecated and ignored, u
                   PowerExtSources,
                   PowerCompton,
                   &energyCheck);
+}
+
+// Another interface version:
+inline void teton_getedits(int *noutrt,             // scalar, number of thermal [outer] iterations in this cycle
+                           int *ninrt,              // scalar, number of inner [transport] iterations in this cycle
+                           int *ngdart,             // scalar, number of grey diffusion iterations
+                           int *nNLIters,           // scalar, number of nonlinear iterations
+                           int *maxNLIters,         // scalar, maximum nonlinear iterations
+                           int *TrMaxZone,          // scalar, zone id with maximum T rad
+                           int *TeMaxZone,          // scalar, zone id with maximum electron temperature
+                           int *TrMaxProcess,       // scalar, MPI process with maximum T rad
+                           int *TeMaxProcess,       // scalar, MPI process with maximum electron temperature
+                           double *dtused,          // scalar, Teton returns the time step used in cycle just completed
+                           double *dtrad,           // scalar, radiation vote for next time step
+                           double *TrMax,           // scalar, T rad maximum value
+                           double *TeMax,           // scalar, T electron maximum value
+                           double *EnergyRadiation, // scalar, energy contained in the radiation field
+                           double *PowerIncident,   // scalar, power of photons incident
+                           double *PowerEscape,     // scalar, power of photons escaping
+                           double *PowerAbsorbed,   // scalar, power of energy absorbed
+                           double *PowerEmitted,    // scalar, power of photons emitted
+                           double *PowerExtSources, // scalar, power of photons from fixed volumetric sources
+                           double *PowerCompton,    // scalar, power of Compton scattering photons
+                           double *EnergyCheck)     // scalar, total energy not accounted for this cycle.
+{
+   double dummyDeltaEMat;
+   teton_getedits(noutrt,          // scalar, number of thermal [outer] iterations in this cycle
+                  ninrt,           // scalar, number of inner [transport] iterations in this cycle
+                  ngdart,          // scalar, number of grey diffusion iterations
+                  nNLIters,        // scalar, number of nonlinear iterations
+                  maxNLIters,      // scalar, maximum nonlinear iterations
+                  TrMaxZone,       // scalar, zone id with maximum T rad
+                  TeMaxZone,       // scalar, zone id with maximum electron temperature
+                  TrMaxProcess,    // scalar, MPI process with maximum T rad
+                  TeMaxProcess,    // scalar, MPI process with maximum electron temperature
+                  dtused,          // scalar, Teton returns the time step used in cycle just completed
+                  dtrad,           // scalar, radiation vote for next time step
+                  TrMax,           // scalar, T rad maximum value
+                  TeMax,           // scalar, T electron maximum value
+                  &dummyDeltaEMat, // thrown away in old interface
+                  EnergyRadiation, // scalar, energy contained in the radiation field
+                  PowerIncident,   // scalar, power of photons incident
+                  PowerEscape,     // scalar, power of photons escaping
+                  PowerAbsorbed,   // scalar, power of energy absorbed
+                  PowerEmitted,    // scalar, power of photons emitted
+                  PowerExtSources, // scalar, power of photons from fixed volumetric sources
+                  PowerCompton,    // scalar, power of Compton scattering photons
+                  EnergyCheck);    // scalar, total energy not accounted for this cycle.
 }
 
 #endif // __TETON_INTERFACE_HH__

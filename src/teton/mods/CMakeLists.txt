@@ -17,7 +17,6 @@ target_sources( teton PRIVATE
   GroupSet_mod.F90
   Material_mod.F90
   MemoryAllocator_mod.F90
-  MeshData_mod.F90
   Options_mod.F90
   Profile_mod.F90
   QuadratureData_mod.F90
@@ -27,7 +26,7 @@ target_sources( teton PRIVATE
   SetData_mod.F90
   Size_mod.F90
   TimeStepControls_mod.F90
-  ZoneData_mod.F90
+  ZoneSet_mod.F90
   constant_mod.F90
   flags_mod.F90
   io_mod.F90

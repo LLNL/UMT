@@ -21,44 +21,26 @@ Building
 ===============
 
 UMT uses the [CMake](https://cmake.org/) build system.  A MPI compiler is
-required.  An example cmake cache file is provided in `umt/example.gnu.cmake`.
+required.
+
+More information on building UMT can be found in BUILDING.md
 
 Third party libraries
 -----------------------
 UMT depends on several libraries, some of them optionally. See the DEPENDENCIES.md file for more information.
 
-Example build steps:
-
-    mkdir build_umt
-    cd build_umt
-    cmake ../src -C ../host-configs/example.gnu.cmake -DCMAKE_INSTALL_PREFIX=<desired install path>
-    make install
-
-If you encounter any build issues verify that the CMake variable `ENABLE_MINIAPP_BUILD` is set to `TRUE`.
-
-Crooked Pipe test problem
+Crooked Pipe 2D test problem with 2500 zone mesh
 ===============
-The  test driver supports reading in serial [MFEM](https://mfem.org/) meshes.
-Parallel meshes are planned for the future.
+The  test driver also supports reading in [MFEM](https://mfem.org/) meshes.
+These meshes can be refined using MFEM at runtime to provide larger problems.
 
 A MFEM NURBs 2D mesh is provided here modeling a bent/crooked pipe problem.
 This mesh was produced using the LLNL mesh generator code
 [PMesh](https://www.osti.gov/biblio/251377).
 
-To run the problem:
-
-    cd build
-    srun -n1 test_driver -i tests/crooked_pipe_rz.mesh
-
-For help on command line arguments:
-
-    srun -n1 test_driver -h
-
-The test driver will automatically dump out teton conduit node input files using
-[Conduit](https://github.com/llnl/conduit) in the
-[Blueprint](https://llnl-conduit.readthedocs.io/en/latest/blueprint.html)
-format.  These can be manually edited to provide some limited
-configuration ability for the problem.
+Building UMT with MFEM mesh support requires several additional libraries and
+CMake options.  For assistance on this build configuration, contact a team
+member on github.
 
 References
 ==============

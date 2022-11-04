@@ -1,3 +1,4 @@
+#include "macros.h"
 !***********************************************************************
 !                        Last Update:  7/2017, PGM                     *
 !                                                                      *
@@ -19,6 +20,8 @@
 !                             2 = product quadrature                   *
 !                             3 = Lobatto (3D only)                    *
 !                                                                      *
+! TODO: Refactor this subroutine, or provide another one, that only    *
+! requires a single quadrature definition (not per group ).  --black27 *
 !***********************************************************************
 
 
@@ -57,7 +60,6 @@
    integer :: nAngles
    integer :: npolar
    integer :: nazimuthal
-   integer :: set
    integer :: NumSnSets
    integer :: totalAngles
    integer :: np
@@ -194,6 +196,19 @@
      totalAngles  = totalAngles + nAngles 
 
    enddo GroupLoop
+
+!  Verify that all groups have the same angle distribution.  The code does not currently
+!  support or is tested on different quadrature defintions per group.
+!  (If we support this in the future this check can be removed ) -- black27
+
+   do g=1,Size%ngr
+      TETON_VERIFY(QuadDef(1,g) == QuadDef(1,1), "Quadrature qtype differs across groups.")
+      TETON_VERIFY(QuadDef(2,g) == QuadDef(2,1), "Quadrature qorder differs across groups.")
+      TETON_VERIFY(QuadDef(3,g) == QuadDef(3,1), "Quadrature npolar differe across groups.")
+      TETON_VERIFY(QuadDef(4,g) == QuadDef(4,1), "Quadrature nazimu differs across groups.")
+      TETON_VERIFY(QuadDef(5,g) == QuadDef(5,1), "Quadrature paxis differs across groups.")
+      TETON_VERIFY(QuadDef(6,g) == QuadDef(6,1), "Quadrature num angles differs across groups.")
+   enddo
 
 !  The last quadrature set is for GTA 
 

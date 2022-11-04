@@ -17,8 +17,6 @@
    use kind_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
    use Material_mod
    use RadIntensity_mod
    use Quadrature_mod
@@ -36,6 +34,7 @@
    use GroupSet_mod
    use CommSet_mod
    use SetData_mod
+   use ZoneSet_mod
 
 
    implicit none
@@ -51,7 +50,6 @@
    type(GroupSet),   pointer :: GSet
    type(CommSet),    pointer :: CSet
 
-   integer         :: zone
    integer         :: setID
    integer         :: sharedID
    integer         :: nSets
@@ -74,17 +72,10 @@
    nGTASets   = getNumberOfGTASets(Quad)
    nShared    = getNumberOfShared(RadBoundary)
 
-!  Deallocate Module Memory 
-
-   do zone=1,Size% nzones
-     Z   => getZoneData(Geom, zone)
-     M   => getMesh(Geom, zone)
-
-     call destructZone( Z )
-     call destructMesh( M )
-   enddo
+!  Deallocate Geometry and Radiation modules 
 
    call destruct(Geom)
+   call destruct(Rad)
    call Mat%destruct(nonLTE)
 
 !  Deallocate Phase-Spaces Set data
@@ -93,10 +84,8 @@
 
    do setID=1,nSets
      Set => getSetData(Quad, setID)
-     Rad => getRadIntensity(Quad, setID)
 
      call Set%destruct(GTASet)
-     call destruct(Rad)
    enddo
 
    GTASet = .TRUE.
@@ -135,6 +124,10 @@
 
      call destruct(GSet)
    enddo
+
+!  Zone Sets
+
+   call destruct(ZSet)
 
 !  Communication Sets
 

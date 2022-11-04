@@ -19,7 +19,7 @@
    subroutine SweepUCBxyz_GPU(nSets, sendIndex, savePsi)
 
    use, intrinsic :: iso_c_binding, only : c_int
-   use Options_mod
+   use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
    use constant_mod
    use Size_mod
@@ -78,8 +78,8 @@
    integer    :: nCFaces
 
    integer    :: zone
+   integer    :: zone0
    integer    :: nCorner
-   integer(kind=c_int) :: nOmpMaxTeamThreads
 
    real(adqt), parameter :: fouralpha=1.82d0
 
@@ -105,7 +105,6 @@
 
 !  Constants
 
-   nOmpMaxTeamThreads = Options%getNumOmpMaxTeamThreads()
    tau        = Size% tau
    nAngleSets = getNumberOfAngleSets(Quad)
    nZoneSets  = getNumberOfZoneSets(Quad)
@@ -133,7 +132,11 @@
 
    TOMP(target data map(to: tau, sendIndex, angleList))
 
-   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) private(ASet, zSetID, setID, Angle))
+   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(private(ASet, setID, Angle) &)
+   TOMPC(shared(nZoneSets, angleList, Quad, Geom, nAngleSets) )
+
+   !TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) private(ASet, zSetID, setID, Angle))
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
@@ -144,28 +147,41 @@
        ASet  => Quad% AngSetPtr(setID)
        angle =  angleList(setID)
 
-! NOTE - This loop doesn't support a collapse(2).  OpenMP only supports
-! collapses over loops where the inner loop bounds can be expressed as a simple
-! algebraic relation to the outer loop iteration (c*2, c+2, etc).  This inner loop requires a
-! lookup (memory access) based on the outer loop bound.
-!$omp  parallel do default(none)  &
-!$omp& shared(Geom, ASet, Angle, zSetID) private(c,cface)
+! NOTE: This loop doesn't support a collapse(2), as its not a canonical form
+! loop ( the inner loop bounds can not be predetermined ); it's significantly
+! faster to split into two loops as below
 
+!$omp  parallel do collapse(2) default(none) &
+!$omp& shared(Geom, ASet, Angle, zSetID)
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
-         do cface=1,Geom% nCFacesArray(c)
+         do cface=1,3
            ASet% AfpNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_fp(:,cface,c) )
            ASet% AezNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_ez(:,cface,c) )
          enddo
        enddo
-
 !$omp end parallel do
+
+!$omp  parallel do default(none)  &
+!$omp& shared(Geom, ASet, Angle, zSetID)
+       do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+         do cface=4,Geom% nCFacesArray(c)
+           ASet% AfpNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_fp(:,cface,c) )
+           ASet% AezNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_ez(:,cface,c) )
+         enddo
+       enddo
+!$omp end parallel do
+
      enddo
 
    enddo ZoneSetLoop
 
 TOMP(end target teams distribute)
 
-TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThreads) private(ASet, zSetID, setID))
+TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+TOMPC(private(ASet) &)
+TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
+
+!!TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) private(ASet, zSetID, setID))
 
    ZoneSetLoop2: do zSetID=1,nZoneSets
 
@@ -176,7 +192,7 @@ TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThread
        ASet  => Quad% AngSetPtr(setID)
 
 !$omp  parallel do default(none)  &
-!$omp& shared(Geom, ASet, zSetID) private(c,cface)
+!$omp& shared(Geom, ASet, zSetID)
 
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          ASet% ANormSum(c) = zero
@@ -196,8 +212,12 @@ TOMP(target teams distribute num_teams(nZoneSets) thread_limit(nOmpMaxTeamThread
 TOMP(end target teams distribute)
 
 
-TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) private(Set, ASet, setID, Angle, Groups) &)
-TOMPC(private(mCycle, c, g, offSet))
+TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+TOMPC(shared(sendIndex, Quad, nSets) &)
+TOMPC(private(Set, ASet, Angle, Groups, offSet))
+
+!TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) private(Set, ASet, setID, Angle, Groups) &)
+!TOMPC(private(mCycle, c, g, offSet))
 
    SetLoop0: do setID=1,nSets
 
@@ -212,7 +232,7 @@ TOMPC(private(mCycle, c, g, offSet))
 !  list
 
 !$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Angle, Set, ASet, offSet, Groups) private(mCycle, c, g)
+!$omp& shared(Angle, Set, ASet, offSet, Groups) private(c)
      do mCycle=1,ASet% numCycles(Angle)
        do g=1,Groups
          c              = ASet% cycleList(offSet+mCycle)
@@ -223,7 +243,7 @@ TOMPC(private(mCycle, c, g, offSet))
 
 
 !$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, Groups, Angle) private(c, g)
+!$omp& shared(Set, Groups, Angle)
      do c=1,Set%nbelem
        do g=1,Groups
          Set% Psi1(g,Set%nCorner+c) = Set% PsiB(g,c,Angle)
@@ -236,8 +256,23 @@ TOMPC(private(mCycle, c, g, offSet))
 TOMP(end target teams distribute)
 
 
-TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) private(Set, ASet, GSet, HypPlanePtr, setID, Angle, Groups) &)
-TOMPC(private(nHyperPlanes, ndoneZ, hyperPlane, nzones)) 
+! TODO:
+! IBM XLF segfaults if 'hyperPlane' is not scoped to private below.
+! This should not be necessary, as this is a loop control variables which the runtime should automatically scope to
+! private.
+!
+! Relevant portions of OpenMP spec:
+! `The loop iteration variable in any associated loop of a for, parallel for,
+! taskloop, or distribute construct is private.`
+!
+! `A loop iteration variable for a sequential loop in a parallel or task
+! generating construct is private in the innermost such construct that encloses
+! the loop.`
+! 
+! Look into reporting this bug to IBM, using UMT as a reproducer.
+TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) &)
+TOMPC(private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &)
+TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane)) 
 
    SetLoop: do setID=1,nSets
 
@@ -258,7 +293,7 @@ TOMPC(private(nHyperPlanes, ndoneZ, hyperPlane, nzones))
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Set, Geom, ASet, GSet, Angle, nzones, Groups) &
 !$omp& shared(ndoneZ, tau) &
-!$omp& private(ii,g,i,c,c0,cface,cfp,ifp,cez,zone,nCorner,nCFaces) &
+!$omp& private(c0,cfp,ifp,cez,zone,zone0,nCorner,nCFaces) &
 !$omp& private(aez,aez2,area_opp,source,sig,vol) &
 !$omp& private(sigv,sigv2,sez,gnum,gden,psi_opp) &
 !$omp& private(afp,denom)
@@ -268,7 +303,8 @@ TOMPC(private(nHyperPlanes, ndoneZ, hyperPlane, nzones))
 
 !          Loop through the zones using the NEXTZ list
 
-           zone    = iabs( ASet% nextZ(ndoneZ+ii,Angle) )
+           zone0   = ASet% nextZ(ndoneZ+ii,Angle)
+           zone    = iabs( zone0 )
            nCorner = Geom% numCorner(zone)
            c0      = Geom% cOffSet(zone)
 
@@ -368,30 +404,53 @@ TOMPC(private(nHyperPlanes, ndoneZ, hyperPlane, nzones))
 
            enddo CornerLoop
 
-           do i=1,nCorner
 
-             c = ASet% nextC(c0+i,angle) 
+           if ( zone0 > 0 ) then
 
-!            Corner angular flux
-             denom             = ASet% ANormSum(c0+c) + sig*Geom% Volume(c0+c)
-             Set% Psi1(g,c0+c) = Set% S(g,c,ii)/denom
+             do i=1,nCorner
 
-!            Calculate the contribution of this flux to the sources of
-!            downstream corners in this zone. The downstream corner index is
-!            "ez_exit."
+               c = ASet% nextC(c0+i,angle) 
 
-             nCFaces = Geom% nCFacesArray(c0+c)
+!              Corner angular flux
+               denom             = ASet% ANormSum(c0+c) + sig*Geom% Volume(c0+c)
+               Set% Psi1(g,c0+c) = Set% S(g,c,ii)/denom
 
-             do cface=1,nCFaces
-               aez = ASet% AezNorm(cface,c0+c)
+!              Calculate the contribution of this flux to the sources of
+!              downstream corners in this zone. The downstream corner index is
+!              "ez_exit."
 
-               if (aez > zero) then
-                 cez              = Geom% cEZ(cface,c0+c) 
-                 Set% S(g,cez,ii) = Set% S(g,cez,ii) + aez*Set% Psi1(g,c0+c)
-               endif
+               nCFaces = Geom% nCFacesArray(c0+c)
+
+               do cface=1,nCFaces
+                 aez = ASet% AezNorm(cface,c0+c)
+
+                 if (aez > zero) then
+                   cez              = Geom% cEZ(cface,c0+c) 
+                   Set% S(g,cez,ii) = Set% S(g,cez,ii) + aez*Set% Psi1(g,c0+c)
+                 endif
+               enddo
+
              enddo
 
-           enddo
+           else
+
+!          Direct Solve (non-lower triangular, use old values of Psi1)
+             do c=1,nCorner
+               do cface=1,Geom% nCFacesArray(c0+c)
+                 aez = ASet% AezNorm(cface,c0+c)
+
+                 if (aez > zero) then
+                   cez              = Geom% cEZ(cface,c0+c)
+                   Set% S(g,cez,ii) = Set% S(g,cez,ii) + aez*Set% Psi1(g,c0+c)
+                 endif
+               enddo
+             enddo
+
+             do c=1,nCorner
+               Set% Psi1(g,c0+c) = Set% S(g,c,ii)/(ASet% ANormSum(c0+c) + sig*Geom% Volume(c0+c))
+             enddo
+
+           endif
 
          enddo GroupLoop
        enddo ZoneLoop
@@ -408,7 +467,9 @@ TOMP(end target teams distribute)
 
 !  Update Boundary data
 
-TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) private(setID, Set, ASet, BdyExitPtr, offSet, Angle, Groups))
+TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+TOMPC(shared(nSets, Quad, sendIndex)&)
+TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
 
      SetLoop3: do setID=1,nSets
 
@@ -420,7 +481,7 @@ TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) p
        BdyExitPtr => ASet% BdyExitPtr(Angle)
 
 !$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, BdyExitPtr, Groups, Angle) private(i,b,c,g)
+!$omp& shared(Set, BdyExitPtr, Groups, Angle) private(b,c)
 
        do i=1,BdyExitPtr% nxBdy
          do g=1,Groups
@@ -436,7 +497,7 @@ TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) p
 !      Update Psi in the cycle list
 
 !$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Angle, Set, ASet, offSet, Groups) private(mCycle, c, g)
+!$omp& shared(Angle, Set, ASet, offSet, Groups) private(c)
        do mCycle=1,ASet% numCycles(angle)
          do g=1,Groups
            c                              = ASet% cycleList(offSet+mCycle)
@@ -453,7 +514,9 @@ TOMP(end target teams distribute)
 
    if ( savePsi ) then
 
-TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) private(setID, Set, Angle, Groups))
+TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+TOMPC(shared(nSets, Quad, sendIndex)&)
+TOMP(private(Set, Angle, Groups))
 
      SetLoop2: do setID=1,nSets
 
@@ -462,7 +525,7 @@ TOMP(target teams distribute num_teams(nSets) thread_limit(nOmpMaxTeamThreads) p
        Angle  =  Set% AngleOrder(sendIndex)
 
 !$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, ASet, Angle, Groups) private(c,g)
+!$omp& shared(Set, ASet, Angle, Groups)
 
        CornerLoop2: do c=1,Set% nCorner
          GroupLoop2: do g=1,Groups

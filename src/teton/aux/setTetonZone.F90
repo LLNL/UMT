@@ -1,3 +1,4 @@
+#include "macros.h"
 !***********************************************************************
 !                        Version 1:  02/06, PFN                        *
 !                                                                      *
@@ -17,8 +18,6 @@
    use kind_mod
    use Size_mod
    use Geometry_mod
-   use ZoneData_mod
-   use MeshData_mod
    use BoundaryList_mod
    use Boundary_mod
 
@@ -65,6 +64,7 @@
    integer :: CToFace(Size%maxcf,Size%maxCorner)
    integer :: nCFaces(Size%maxCorner)
 
+   character(len=200)   :: bc_error_msg
 
    nCorner    = zoneNCorner 
    nSides     = nCorner
@@ -73,20 +73,25 @@
    cFP(:,:)   = 0
    cEZ(:,:)   = 0
 
-!  Find the maximum number of faces per zone - used in several routines
-!  to dimension temporary arrays
+!  Find the maximum number of sides per zone - used primarily 
+!  for PWLD 
 
-   Size% maxFaces = max(Size% maxFaces, zoneFaces)
    Size% maxSides = max(Size% maxSides, nSides)
 
 !  First set boundary element numbers
 
    faceIndex = 0
 
+! In case we need an error message:
+     write(bc_error_msg,100) Size% myRankInGroup,zoneID
+100  format("setTetonZone: Detected a zone face on the problem surface that has no boundary condition defined.  Error occured on process ",i6,2x,"local zoneID = ",i8)
+
    do face=1,zoneFaces
      numC = nCPerFace(face)
      if (zoneOpp(face) < 0) then
        bcID =  FaceToBCList(face)
+       TETON_VERIFY(bcID > 0, trim(bc_error_msg))
+
        Bdy  => getBoundary(RadBoundary, bcID)
        b0   =  getFirstBdyElement(Bdy) - 1
 
@@ -187,19 +192,10 @@
 
    endif
 
-!  Set the zone data structures
+!  Set the zone data structures in the Geometry module
 
-   Z => getZoneData(Geom, zoneID)
-   M => getMesh(Geom, zoneID)
-
-   call constructZone( Z, nCorner, corner0, zoneFaces,   &
-                       nSides, side0, cFP )
-
-   call constructMesh( M, nCorner, corner0, zoneFaces,   &
-                       zoneOpp, CToFace, nCFaces )
-
-   call setConnectivity(Geom, zoneID, nCorner, corner0,  &
-                        cFP, cEZ, nCFaces)
+   call setConnectivity(Geom, zoneID, nCorner, corner0, zoneFaces,  &
+                        zoneOpp, CToFace, cFP, cEZ, nCFaces)
 
 
    return

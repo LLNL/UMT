@@ -46,7 +46,6 @@
    integer    :: ngr
    integer    :: Groups
    integer    :: n
-   integer    :: nn
    integer    :: nVacuum
    integer    :: nSource
    integer    :: polarAngle

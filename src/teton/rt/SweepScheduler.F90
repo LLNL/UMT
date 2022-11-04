@@ -4,16 +4,37 @@
 !   SWEEPSCHEDULER - This routine determines the order in which the    *
 !                    discrete ordinates will be solved.                *
 !                                                                      *
-!   Input:                                                             *
 !                                                                      *
-!   Output:                                                            *
+! The sweep scheduler looks at three criteria for ordering the angles: *
+! 1. Reflecting Boundaries                                             *
+! 2. Angular Derivatives (RZ only)                                     *
+! 3. The net flux (incident - outgoing) on the shared boundaries for   *
+!    each angle                                                        *
 !                                                                      *
+! Scheduling the order of angles to solve first takes into #1 and #2   *
+! to account for dependencies.                                         *
+!                                                                      *
+! Then, a weight for each angle is calculated based on the net flux    *
+! (incident - outgoing ) and angle dependencies                        *
+!                                                                      *
+! The scheduler will order the angles from smallest to largest weight  *
+!                                                                      *
+! This prioritizes solving angles with the largest outgoing flux       * 
+! first, and defers solving angles with a large incident flux from     *
+! neighbors.  To intent is to allow neighboring domains to solve those *
+! angles first and minimize the amount of lagged angle data.           *
+!                                                                      *
+! Important note:                                                      *
+! The other important mechanism is the ability to dynamically iterate  *
+! and repeat sweeps on angles with lagged data from neighbors to       *
+! improve convergence.                                                 *
 !***********************************************************************
    subroutine SweepScheduler(cSetID)
 
    use kind_mod
    use constant_mod
    use mpif90_mod
+   use mpi
    use Size_mod
    use QuadratureList_mod
    use BoundaryList_mod
@@ -23,10 +44,6 @@
    use AngleSet_mod
 
    implicit none
-
-!  Include MPI
-
-   include 'mpif.h'
 
 !  Arguments
 

@@ -40,6 +40,7 @@ module AngleSet_mod
      integer                              :: NumBin0
      integer                              :: angle0       ! angle offset
      integer                              :: totalCycles
+     logical (kind=1)                     :: GTASet   
 
 !    Quadrature related
      integer,         pointer, contiguous :: nExit(:) => null()
@@ -195,6 +196,7 @@ contains
                            angle0,               &
                            nZones,               &
                            nReflecting,          &
+                           GTASet,               &
                            QuadPtr)
 
     use Size_mod
@@ -207,10 +209,11 @@ contains
 
     type(AngleSet), intent(inout)        :: self
 
-    integer,        intent(in)           :: NumAngles
-    integer,        intent(in)           :: angle0
-    integer,        intent(in)           :: nZones
-    integer,        intent(in)           :: nReflecting
+    integer,         intent(in)          :: NumAngles
+    integer,         intent(in)          :: angle0
+    integer,         intent(in)          :: nZones
+    integer,         intent(in)          :: nReflecting
+    logical(kind=1), intent(in)          :: GTASet
 
     type(Quadrature), target, intent(in) :: QuadPtr
 
@@ -220,9 +223,6 @@ contains
     integer :: ndim
     integer :: angle
     integer :: nLevels
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
 
     write(self%label,'(I0.3)') angle0
     self%label = QuadPtr%label//"_angle_set_"//self%label
@@ -233,6 +233,7 @@ contains
     self% nPolarAngles = QuadPtr% nPolarAngles
     self% angle0       = angle0
     self% Order        = QuadPtr% Order
+    self% GTASet       = GTASet
 
 !   Allocate Memory
 
@@ -258,11 +259,14 @@ contains
     self% PolarAngleList(:)   = QuadPtr% PolarAngleList(:)
 
     if (ndim > 1) then
-      call Allocator%allocate(usePinnedMemory,self%label,"nextZ",    self% nextZ,    nzones,      self% NumAngles)
-      call Allocator%allocate(usePinnedMemory,self%label,"nextC",    self% nextC,    Size%ncornr, self% NumAngles)
-      call Allocator%allocate(usePinnedMemory,self%label,"AfpNorm",  self% AfpNorm,  Size%maxcf,  Size%ncornr)
-      call Allocator%allocate(usePinnedMemory,self%label,"AezNorm",  self% AezNorm,  Size%maxcf,  Size%ncornr)
-      call Allocator%allocate(usePinnedMemory,self%label,"ANormSum", self% ANormSum, Size%ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"nextZ",    self% nextZ,    nzones,      self% NumAngles)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"nextC",    self% nextC,    Size%ncornr, self% NumAngles)
+
+      if ( .not. self% GTASet ) then
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"AfpNorm",  self% AfpNorm,  Size%maxcf,  Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"AezNorm",  self% AezNorm,  Size%maxcf,  Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"ANormSum", self% ANormSum, Size%ncornr)
+      endif
     endif
 
     nLevels = 0
@@ -387,15 +391,15 @@ contains
 
     type(AngleSet), intent(inout)    :: self
 
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
     if (Size% ndim > 1) then
-      call Allocator%deallocate(usePinnedMemory,self%label,"nextZ",    self% nextZ)
-      call Allocator%deallocate(usePinnedMemory,self%label,"nextC",    self% nextC)
-      call Allocator%deallocate(usePinnedMemory,self%label,"AfpNorm",  self% AfpNorm)
-      call Allocator%deallocate(usePinnedMemory,self%label,"AezNorm",  self% AezNorm)
-      call Allocator%deallocate(usePinnedMemory,self%label,"ANormSum", self% ANormSum)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"nextZ",    self% nextZ)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"nextC",    self% nextC)
+
+      if ( .not. self% GTASet ) then
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"AfpNorm",  self% AfpNorm)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"AezNorm",  self% AezNorm)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"ANormSum", self% ANormSum)
+      endif
     endif
 
     deallocate( self% nExit )
@@ -753,11 +757,9 @@ contains
 !   Local
 
     integer                       :: mCycle 
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
 
 !   Allocate Memory 
-    call Allocator%allocate(usePinnedMemory,self%label,"cycleList", self% cycleList, self% totalCycles+1)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"cycleList", self% cycleList, self% totalCycles+1)
 
     self% cycleList(:) = 0
 
@@ -780,11 +782,8 @@ contains
 !   Passed variables
     type(AngleSet), intent(inout) :: self
 
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
 !   Deallocate Memory 
-    call Allocator%deallocate(usePinnedMemory,self%label,"cycleList",    self% cycleList)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"cycleList",    self% cycleList)
 
 
     return

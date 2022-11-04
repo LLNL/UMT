@@ -36,7 +36,6 @@
    use Editor_mod
    use SetData_mod
    use AngleSet_mod
-   use MeshData_mod
    use radconstant_mod
    use TimeStepControls_mod
 
@@ -95,7 +94,6 @@
    integer    :: setID
    integer    :: nSets
    integer    :: c
-   integer    :: cLocal
    integer    :: cOpp
    integer    :: zface
    integer    :: cface
@@ -166,11 +164,9 @@
      zone  = Geom% cToZone(c)
 
      ! This spatial vector = the corner face center minus the centerPoint
-     M => getMesh(Geom, zone)
-     cLocal = c - M% c0
 
      if (timeShift) then
-       deltasFromCenter(:, iCornerFace) = M% px(:, cLocal)-centerPoint
+       deltasFromCenter(:, iCornerFace) = Geom% px(:,c) - centerPoint
        sqDistsFromCenter(iCornerFace) = DOT_PRODUCT(deltasFromCenter(:,iCornerFace),deltasFromCenter(:,iCornerFace))
      endif
 
@@ -180,7 +176,7 @@
      nCFaces = Geom% nCFacesArray(c)
 
      CFaceLoop : do cface=1,nCFaces
-       if (M% CToFace(cface,cLocal) == zface) then
+       if (Geom% CToFace(cface,c) == zface) then
          cFaceList(iCornerFace) = cface
          exit CFaceLoop
        endif
@@ -264,8 +260,10 @@
 
            ! Compute time shift
            if (timeShift) then
+             ! sign(1., angdota)*ASet%omega(:,angle) flips the angle if it's
+             !    incoming, does nothing if it's outgoing.
              distParallel = DOT_PRODUCT( deltasFromCenter(:,iCornerFace), &
-                                        ASet%omega(:,angle)    )
+                                        sign(one,angdota)*ASet%omega(:,angle)    )
              radTimeShift = distParallel / speed_light
              ! Compute error metric quantities:
              distPerp = sqrt(sqDistsFromCenter(iCornerFace) - &
@@ -358,7 +356,7 @@
                if (calcErrorMetricsConfirmed) then
                  tempErrEstShift(timeBin:timeBinFinal) &
                    = tempErrEstShift(timeBin:timeBinFinal) &
-                     + current*distParallel*timeBinDistribution(timeBin:timeBinFinal)
+                     + current*abs(distParallel)*timeBinDistribution(timeBin:timeBinFinal)
                  tempErrEstSrcSize(timeBin:timeBinFinal) &
                    = tempErrEstSrcSize(timeBin:timeBinFinal) &
                      + current*distPerp*timeBinDistribution(timeBin:timeBinFinal)
@@ -383,6 +381,7 @@
                else
                  current = factor*angdota*Set% Psi(g,cOpp,angle)
                endif
+               ! currents should be negative if psi are positive!
 
                if (numGroups > 1) then
                  tempTallyIncident(timeBin0+g:timeBinFinal0+g:numGroupAngleBins) = &
@@ -397,10 +396,10 @@
                if (calcErrorMetricsConfirmed) then
                  tempErrEstShift(timeBinPlusNBins:timeBinFinalPlusNBins) &
                    = tempErrEstShift(timeBinPlusNBins:timeBinFinalPlusNBins) &
-                     + current*distParallel*timeBinDistribution(timeBin:timeBinFinal)
+                     - current*abs(distParallel)*timeBinDistribution(timeBin:timeBinFinal)
                  tempErrEstSrcSize(timeBinPlusNBins:timeBinFinalPlusNBins) &
                    = tempErrEstSrcSize(timeBinPlusNBins:timeBinFinalPlusNBins) &
-                     + current*distPerp*timeBinDistribution(timeBin:timeBinFinal)
+                     - current*distPerp*timeBinDistribution(timeBin:timeBinFinal)
                endif
 
              enddo

@@ -38,10 +38,13 @@ module GreyAcceleration_mod
      real(adqt), pointer, contiguous :: Pvv(:,:)          => null()
      real(adqt), pointer, contiguous :: Tvv(:,:)          => null()
 
+     real(adqt), pointer, contiguous :: AfpNorm(:,:,:)    => null()
+     real(adqt), pointer, contiguous :: AezNorm(:,:,:)    => null()
+     real(adqt), pointer, contiguous :: ANormSum(:,:)     => null()
+
 !    Old GTA Solver only
      real(adqt), pointer, contiguous :: GreySigTotal2(:,:)   => null()
      real(adqt), pointer, contiguous :: GreySigtInv2(:,:)    => null()
-     real(adqt), pointer, contiguous :: TsaCorrection(:)     => null()
      real(adqt), pointer, contiguous :: TsaPsib(:,:)         => null()
      real(adqt), pointer, contiguous :: OldGreyCorrection(:) => null()
      real(adqt), pointer, contiguous :: eps(:)               
@@ -55,6 +58,11 @@ module GreyAcceleration_mod
 
 !    Misc
      character(len=3) :: label ! A string descriptor for this set.
+
+!    For getting new GTA working:
+
+     logical(kind=1)         :: enforceHardGTAIterMax
+     logical(kind=1)         :: forceExtraOuter
 
   end type GreyAcceleration 
 
@@ -85,8 +93,9 @@ contains
 !   Passed variables
     type(GreyAcceleration),  intent(inout) :: self
 
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
+!   Local
+
+    integer :: nAngGTA
 
     self%label = "gta"
 
@@ -96,12 +105,21 @@ contains
     self% nGreySweepIters = 2
     self% epsGrey         = 0.1_adqt
 
-    call Allocator%allocate(usePinnedMemory,self%label,"GreySource", self% GreySource, Size%ncornr)
+    if (Size% ndim == 2) then
+      nAngGTA = 6
+    elseif (Size% ndim == 3) then
+      nAngGTA = 8
+    endif
 
-    allocate( self% GreyCorrection(Size%ncornr) )
-    allocate( self% Chi(Size%ngr,Size%ncornr) )
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySource", self% GreySource, Size%ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"GreyCorrection", self% GreyCorrection, Size%ncornr)
+    call Allocator%allocate(Size%usePinnedMemory,self%label,"Chi", self% Chi, Size%ngr, Size%ncornr)
 
     self% GreyCorrection(:) = zero
+
+!   Defaults for most solvers
+    self% forceExtraOuter       = .false.
+    self% enforceHardGTAIterMax = .false.
 
     if (Size% ndim == 1) then
 
@@ -120,8 +138,8 @@ contains
 
 !     Both GTA Solvers
 
-      call Allocator%allocate(usePinnedMemory,self%label,"GreySigScat", self% GreySigScat, Size%ncornr)
-      call Allocator%allocate(usePinnedMemory,self%label,"TsaSource",   self% TsaSource,   Size%ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigScat", self% GreySigScat, Size%ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"TsaSource",   self% TsaSource,   Size%ncornr)
 
       allocate( self% GreySigScatVol(Size%ncornr) )
       allocate( self% CGDirectionB(Size%nbelem,Size%nangGTA) )
@@ -133,23 +151,28 @@ contains
 
 !       New GTA Solver only
 
-        call Allocator%allocate(usePinnedMemory,self%label,"GreySigTotal", self% GreySigTotal, Size%ncornr)
-        call Allocator%allocate(usePinnedMemory,self%label,"GreySigtInv",  self% GreySigtInv,  Size%ncornr)
-        call Allocator%allocate(usePinnedMemory,self%label,"PhiInc",       self% PhiInc,       Size%ncornr)
-        call Allocator%allocate(usePinnedMemory,self%label,"Q",            self% Q,            Size%ncornr)
-        call Allocator%allocate(usePinnedMemory,self%label,"TT",           self% TT,           Size%maxCorner,Size%ncornr)
-        call Allocator%allocate(usePinnedMemory,self%label,"Pvv",          self% Pvv,          Size%maxCorner,Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigTotal", self% GreySigTotal, Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigtInv",  self% GreySigtInv,  Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"PhiInc",       self% PhiInc,       Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"Q",            self% Q,            Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"TT",           self% TT,           Size%maxCorner,Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"Pvv",          self% Pvv,          Size%maxCorner,Size%ncornr)
+
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"AfpNorm",  self% AfpNorm,  Size%maxcf, Size%ncornr, nAngGTA)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"AezNorm",  self% AezNorm,  Size%maxcf, Size%ncornr, nAngGTA)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"ANormSum", self% ANormSum, Size%ncornr, nAngGTA)
 
         if (Size% ndim == 2) then
-          call Allocator%allocate(usePinnedMemory,self%label,"Tvv", self% Tvv, Size%maxCorner,Size%ncornr)
+          call Allocator%allocate(Size%usePinnedMemory,self%label,"Tvv", self% Tvv, Size%maxCorner,Size%ncornr)
         endif
+
+        self% enforceHardGTAIterMax = .true. ! This is needed so that BiCGSTAB doesn't accumulate roundoff errors that lead to a divergent iteration scheme
 
       else
 
 !       Old GTA Solver only
         allocate( self% GreySigTotal2(Size%ncornr,2) )
         allocate( self% GreySigtInv2(Size%ncornr,2) )
-        allocate( self% TsaCorrection(Size%ncornr) )
         allocate( self% TsaPsib(Size%nbelem,Size%nangGTA) )
         allocate( self% OldGreyCorrection(Size%ncornr) )
         allocate( self% eps(Size%ncornr) )
@@ -177,13 +200,9 @@ contains
                     
     type(GreyAcceleration),  intent(inout) :: self
                                             
-    logical :: usePinnedMemory
-    usePinnedMemory = Size%useGPU
-
-    call Allocator%deallocate(usePinnedMemory,self%label,"GreySource", self% GreySource)
-
-    deallocate( self% GreyCorrection )
-    deallocate( self% Chi )
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySource", self% GreySource)
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreyCorrection", self% GreyCorrection )
+    call Allocator%deallocate(Size%usePinnedMemory,self%label,"Chi", self% Chi )
 
     if (Size% ndim == 1) then
 
@@ -198,8 +217,8 @@ contains
 
 !     Both GTA Solvers
 
-      call Allocator%deallocate(usePinnedMemory,self%label,"GreySigScat", self% GreySigScat)
-      call Allocator%deallocate(usePinnedMemory,self%label,"TsaSource",   self% TsaSource)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigScat", self% GreySigScat)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"TsaSource",   self% TsaSource)
 
       deallocate( self% GreySigScatVol )
       deallocate( self% CGDirectionB )
@@ -211,15 +230,18 @@ contains
 
 !       New GTA Solver only
 
-        call Allocator%deallocate(usePinnedMemory,self%label,"GreySigTotal", self% GreySigTotal)
-        call Allocator%deallocate(usePinnedMemory,self%label,"GreySigtInv",  self% GreySigtInv)
-        call Allocator%deallocate(usePinnedMemory,self%label,"PhiInc",       self% PhiInc)
-        call Allocator%deallocate(usePinnedMemory,self%label,"Q",            self% Q)
-        call Allocator%deallocate(usePinnedMemory,self%label,"TT",           self% TT)
-        call Allocator%deallocate(usePinnedMemory,self%label,"Pvv",          self% Pvv)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigTotal", self% GreySigTotal)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigtInv",  self% GreySigtInv)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"PhiInc",       self% PhiInc)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"Q",            self% Q)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"TT",           self% TT)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"Pvv",          self% Pvv)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"AfpNorm",      self% AfpNorm)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"AezNorm",      self% AezNorm)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"ANormSum",     self% ANormSum)
 
         if (Size% ndim == 2) then
-          call Allocator%deallocate(usePinnedMemory,self%label,"Tvv",        self% Tvv)
+          call Allocator%deallocate(Size%usePinnedMemory,self%label,"Tvv",        self% Tvv)
         endif
 
       else
@@ -227,7 +249,6 @@ contains
 !       Old GTA Solver only
         deallocate( self% GreySigTotal2 )
         deallocate( self% GreySigtInv2 )
-        deallocate( self% TsaCorrection )
         deallocate( self% TsaPsib )
         deallocate( self% OldGreyCorrection )
         deallocate( self% eps )

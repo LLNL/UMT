@@ -1,3 +1,5 @@
+#include "macros.h"
+
 !***********************************************************************
 !                       Last Update:  10/2016, PFN                     *
 !                                                                      *
@@ -19,105 +21,90 @@
 !  Arguments
 
    real(adqt), intent(inout)    :: PsiB(Size%nbelem,Size%nangGTA) 
-   real(adqt), intent(inout)    :: p(Size%ncornr)
+   real(adqt), intent(inout)    :: P(Size%ncornr)
 
    logical (kind=1), intent(in) :: withSource
 
 !  Local
 
-   integer                     :: zone 
-   real(adqt)                  :: wtiso 
-
-   logical (kind=1)            :: useGPU
-   logical (kind=1), parameter :: SnSweep=.FALSE.
-   logical (kind=1), parameter :: savePsi=.FALSE.
-
-!  Set some constants
-
-   useGPU = getGPUStatus(Size)
-   wtiso  = Size% wtiso
+   integer            :: zone 
 
 !  Perform a transport sweep to update the grey corrections, P
 
-   GTA%TsaSource(:) = wtiso*( GTA%GreySource(:) + GTA%GreySigScat(:)*p(:) )
+   GTA%ID = 1
 
-   call ControlSweep(SnSweep, savePsi, PsiB)
+   call GTASweep(P, PsiB)
 
-   if ( useGPU ) then
-     if ( withSource ) then
-       call ScalarIntensityDecompose_GPU(P)
-     else
-       call ScalarIntensitySolve_GPU(P)
-     endif
-
-   else
-
-!$omp parallel do private(zone) shared(P, withSource) schedule(static)
-     do zone=1,Size% nzones
-       call ScalarIntensityDecompose(zone, P, withSource)
-     enddo
-!$omp end parallel do
-
-   endif
+   !$omp parallel do default(none) schedule(static) &
+   !$omp& shared(Size, P, withSource)
+   do zone=1,Size% nzones
+     call ScalarIntensityDecompose(zone, P, withSource)
+   enddo
+   !$omp end parallel do
 
 
    return
    end subroutine GreySweepNEW 
 
 
-   subroutine GreySweep(apsib, P)
+   subroutine GreySweep(PsiB, P)
 
    use kind_mod
    use constant_mod
    use Size_mod
    use GreyAcceleration_mod
+   use QuadratureList_mod
+   use SetData_mod
 
    implicit none
 
 !  Arguments
 
-   real(adqt), intent(inout) :: apsib(Size%nbelem,Size%nangGTA)
-   real(adqt), intent(inout) :: p(Size%ncornr)
+   real(adqt),    intent(inout) :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt),    intent(inout) :: p(Size%ncornr)
 
 !  Local
 
-   real(adqt)                  :: wtiso
-   logical (kind=1), parameter :: SnSweep=.FALSE.
-   logical (kind=1), parameter :: savePsi=.FALSE.
+   type(SetData), pointer       :: Set
 
-!  Set some constants
+   integer                      :: GTAsetID
+   integer                      :: nGTASets
 
-   wtiso = Size% wtiso
+   nGTASets = getNumberOfGTASets(Quad)
 
 !  Perform a transport sweep to update the grey corrections, P
 
-   GTA%TsaSource(:)         = wtiso*( GTA%GreySource(:) +  &
-                              GTA%GreySigScat(:)*p(:) )
-
-   GTA%OldGreyCorrection(:) = p(:)
-
+   GTA%OldGreyCorrection(:) = P(:)
    GTA%ID = 1
-   call ControlSweep(SnSweep, savePsi, APSIB, P)
+
+   call GTASweep(P, PsiB)
+
+   P(:) = zero
+
+   do GTAsetID=1,nGTASets
+     Set  => getGTASetData(Quad, GTAsetID)
+     P(:) =  P(:) + Set% tPhi(:)
+   enddo
 
 !  Now use "stretched" TSA as a preconditioner. 
 !  The source to the TSA equations is the residual
 !  from the grey transport sweep. The stretching parameter epsilon
 !  has been chosen such that the scattering source vanishes.
 
-   GTA%TsaCorrection(:) = zero
-   GTA%TsaPsib(:,:)     = zero
-
-   GTA%TsaSource(:)     = wtiso*GTA%eps(:)*GTA%GreySigScat(:)* &
-                        ( p(:) - GTA%OldGreyCorrection(:) )
+   GTA%TsaPsib(:,:) = zero
 
 !  Perform a "stretched" transport sweep
 
    GTA%ID = 2
-   call ControlSweep(SnSweep, savePsi, GTA%TsaPsib, GTA%TsaCorrection)
 
-!  Update the grey corrections
+   call GTASweep(P, GTA%TsaPsib)
 
-   p(:) = p(:) + GTA%TsaCorrection(:)
+!  Add the "stretched" TSA correction
+
+   do GTAsetID=1,nGTASets
+     Set  => getGTASetData(Quad, GTAsetID)
+     P(:) =  P(:) + Set% tPhi(:)
+   enddo
 
 
    return
