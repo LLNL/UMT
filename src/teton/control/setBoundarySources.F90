@@ -1,3 +1,4 @@
+#include "macros.h"
 !***********************************************************************
 !                        Last Update:  01/2012, PFN                    *
 !                                                                      *
@@ -18,6 +19,8 @@
    use constant_mod
    use Size_mod
    use QuadratureList_mod
+   use Quadrature_mod
+   use AngleSet_mod
    use BoundaryList_mod
    use Boundary_mod
    use Profile_mod
@@ -48,12 +51,19 @@
    integer         :: Groups
 
    real(adqt)      :: wtiso
+   real(adqt)      :: wtbeam
 
    logical(kind=1) :: profileOn
+
+!  Some temporary variables used for beam boundary conditions:
+   type(AngleSet), pointer :: ASet
+   integer                 :: polarAngleValue
+   real                    :: refPolarValue
 
 !  Constants
 
    Set       => getSetData(Quad, setID)
+   ASet      => getAngleSetFromSetID(Quad, setID)
 
    g0        =  Set% g0
    Groups    =  Set% Groups
@@ -84,13 +94,55 @@
 
 !      PsiB is per steradian
 
-       do angle=1,NumAngles
-         do b=b1,b2
-           do g=1,Groups
-             Set% PsiB(g,b,angle) = wtiso*ProfID% InterpValues(g0+g)
-           enddo
-         enddo
-       enddo
+       if ( ProfID%Isotropic ) then
+
+          do angle=1,NumAngles
+            do b=b1,b2
+              do g=1,Groups
+                Set% PsiB(g,b,angle) = wtiso*ProfID% InterpValues(g0+g)
+              enddo
+            enddo
+          enddo
+
+       else ! Beam along polar axis
+
+          QuadSet => getQuadrature(Quad, Set%quadID)
+          TETON_VERIFY(QuadSet%TypeName == 'lobatto', "Beam boundary conditions only work with a Lobatto quadrature set.")
+
+          ! Check whether the beam should be in the +paxis or -paxis direction
+          ! Assume all boundary elements are facing the same direction
+          if ( BdyT%A_bdy(QuadSet%PolarAxis,b1) > zero ) then
+            ! Outward normal is in +paxis direction,
+            !   so we want beam in -paxis direction
+            refPolarValue = -one
+          else
+            ! Outward normal is in -paxis direction,
+            !   so we want beam in +paxis direction
+            refPolarValue = one
+          endif
+
+          do angle=1,NumAngles ! Is it only ever the last two angles?
+
+            polarAngleValue = Set%PolarAngleList(Set%PolarAngle(angle))
+
+            if (abs(polarAngleValue-refPolarValue) > adqtEpsilon ) then
+               ! Skip this angle if it's not along the polar axis
+               cycle
+            else
+
+               wtbeam = 1./ASet%Weight(angle)
+               do b=b1,b2
+                 do g=1,Groups
+                   Set% PsiB(g,b,angle) = wtbeam*ProfID% InterpValues(g0+g)
+                 enddo
+               enddo
+               exit
+
+            endif ! angle along polar axis
+
+          enddo ! loop over angles in set
+
+       endif ! if isotropic
 
      endif CheckStatus
                                                                                          

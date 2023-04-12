@@ -265,13 +265,19 @@
      print *,"*****************     Run Time     *****************"
      print *,"                    Cycle (min)     Accumulated (min)"
      print Tformat, "RADTR          =", Size% RadtrTimeCycle,    RadtrTimeTotal 
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
      print Tformat, "Mat. Coupling  =", Size% MatCoupTimeCycle,  MatCoupTimeTotal 
+#endif
      print Tformat, "Sweep(CPU)     =", Size% SweepTimeCycle,    SweepTimeTotal
      print Tformat, "Sweep(GPU)     =", Size% GPUSweepTimeCycle, GPUSweepTimeTotal
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
      print Tformat, "Grey Tr. Accel =", Size% GTATimeCycle,      GTATimeTotal
+#endif
      print Tformat, "Initialization =", Size% InitTimeCycle,     InitTimeTotal
      print Tformat, "Finalization   =", Size% FinalTimeCycle,    FinalTimeTotal
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
      print Tformat, "Non-Rad        =",       timeNonRadCycle,   timeNonRadTotal
+#endif
      print *," "
 
      write(zoneStr, "(i7)") ConvControlZone

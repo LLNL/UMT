@@ -39,7 +39,7 @@
 !        energy/photon energy/temperature/mass/length/area/volume/time *
 !***********************************************************************
 
-   subroutine GTASolver_GPU 
+   subroutine GTASolver_GPU
 
    use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
@@ -54,6 +54,7 @@
    use GreyAcceleration_mod
    use QuadratureList_mod
    use ZoneSet_mod
+   use ieee_arithmetic
 
    implicit none
 
@@ -61,14 +62,14 @@
 
    type(IterControl), pointer  :: greyControl => NULL()
 
-   integer    :: c 
-   integer    :: c0 
-   integer    :: zone 
+   integer    :: c
+   integer    :: c0
+   integer    :: zone
    integer    :: nCorner
    integer    :: alloc_stat
    integer    :: nGreyIter
    integer    :: izRelErrPoint
-   integer    :: ngdart 
+   integer    :: ngdart
    integer    :: nzones
    integer    :: zSetID
    integer    :: nZoneSets
@@ -82,6 +83,7 @@
    real(adqt) :: phiNew
    real(adqt) :: pz
    real(adqt) :: maxRelErrGrey
+   real(adqt) :: maxRelErrGreyLocal
    real(adqt) :: rrproduct
    real(adqt) :: betaCG
    real(adqt) :: alphaCG
@@ -91,10 +93,16 @@
    real(adqt) :: omegaNum
    real(adqt) :: omegaDen
 
+!  Note that there is some logic in these functions to floor to zero to avoid
+!     underflow errors.  So scat_prod(..) == zero checks aren't as bad as they
+!     seem.  Still, we'll use scat_prod(..) < adqtSmall in place of those checks
+!     just to be safe.
    real(adqt), external :: scat_prod
    real(adqt), external :: scat_prod1
 
    logical(kind=1)      :: withSource
+
+   character(len=512)   :: descriptor
 
 !  Dynamic
 
@@ -108,16 +116,22 @@
 
    greyControl => getIterationControl(IterControls, "grey")
 
-   nZoneSets = getNumberOfZoneSets(Quad)
    nzones    = Size%nzones
+   nZoneSets = getNumberOfZoneSets(Quad)
 
-!  Allocate memory for BiConjugate Gradient 
+!  Allocate memory for BiConjugate Gradient
 
    allocate( pzOld(nzones) )
+
+
+
    allocate( CGResidual(Size% ncornr) )
    allocate( CGDirection(Size% ncornr) )
    allocate( CGAction(Size% ncornr) )
    allocate( CGActionS(Size% ncornr) )
+
+!  Initialize index of zone with maximum error:
+   izRelErrPoint  = -1
 
 !  Sum current solution over groups for convergence test
 !  Compute grey source
@@ -148,7 +162,7 @@
 
 !$omp parallel do default(none) schedule(dynamic)  &
 !$omp& shared(zSetID, Geom, Rad, ZSet) &
-!$omp& private(c0, nCorner) 
+!$omp& private(c0, nCorner)
 
      do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
        nCorner              = Geom% numCorner(zone)
@@ -182,16 +196,16 @@
 
    GTA%GreyCorrection(:) = zero
    pzOld(:)              = zero
-   CGResidual(:)         = zero 
+   CGResidual(:)         = zero
    GTA%CGResidualB(:,:)  = zero
 
 !  Initialize the CG residual using an extraneous source
 
-   nGreyIter             =  1 
+   nGreyIter             =  1
    withSource            = .TRUE.
    GTA% nGreySweepIters  =  2
 
-   call GreySweepNEW(GTA%CGResidualB, CGResidual, withSource) 
+   call GreySweepNEW(GTA%CGResidualB, CGResidual, withSource)
 
 !  Initialize the CG iteration.  Remove entries with zero scattering --
 !  they live in the null space of M, where A := [I-M].
@@ -207,13 +221,19 @@
 
 !  Begin CG loop, iterating on grey corrections
 
-   ngdart = getNumberOfIterations(greyControl) 
+   ngdart = getNumberOfIterations(greyControl)
 
    GreyIteration: do
 
-!    Exit CG if the residual is identically zero
+     ! This only does something if mod(verbose_level,10) > 2
+     write(descriptor,'(A15,I5)') "GTASolver, GreyIteration number ", nGreyIter
+     call PrintEnergies(trim(descriptor))
 
-     if (rrProductOld == zero) then
+!    Exit CG if the residual is below the minimum. This used to test against zero,
+!    but due to differences in rounding errors some platforms would return
+!    very small numbers and not zero.
+
+     if (abs(rrProductOld) < adqtSmall) then
        if (nGreyIter <= 2) then
          GTA%GreyCorrection(:) = CGResidual(:)
        endif
@@ -221,13 +241,13 @@
      endif
 
 !    increment the grey iteration counter
-     nGreyIter = nGreyIter + 2 
+     nGreyIter = nGreyIter + 2
 
-!    Perform a transport sweep to compute the action of M on the 
+!    Perform a transport sweep to compute the action of M on the
 !    conjugate direction (stored in CGAction)
 
      CGAction(:)        = CGDirection(:)
-     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:) 
+     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:)
 
      call GreySweepNEW(GTA%CGActionB, CGAction, withSource)
 
@@ -244,7 +264,7 @@
 !    Exit CG if the conjugate direction or the action of A on the
 !    conjugate direction is zero
 
-     if (dAdProduct == zero) then
+     if (abs(dAdProduct) < adqtSmall) then
        exit GreyIteration
      endif
 
@@ -257,7 +277,7 @@
      CGActionS(:)        = CGResidual(:)
      GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:)
 
-     call GreySweepNEW(GTA%CGActionSB, CGActionS, withSource) 
+     call GreySweepNEW(GTA%CGActionSB, CGActionS, withSource)
 
 !    Compute the action of the transport matrix, A, on the conjugate
 !    direction.  Recall:  A := [I-M]
@@ -268,7 +288,7 @@
      omegaNum = scat_prod(CGActionS,CGResidual)
      omegaDen = scat_prod(CGActionS,CGActionS)
 
-     if (omegaDen == zero .or. omegaNum == zero) then
+     if (abs(omegaDen) < adqtSmall .or. abs(omegaNum) < adqtSmall) then
        GTA%GreyCorrection(:) = GTA%GreyCorrection(:) + alphaCG*CGDirection(:)
 
        exit GreyIteration
@@ -301,9 +321,9 @@
      phiL2          = zero
      maxRelErrPoint = zero
 
-     do zone=1,nzones
-       nCorner = Geom% numCorner(zone) 
-       c0      = Geom% cOffSet(zone) 
+     CorrectionZoneLoop: do zone=1,nzones
+       nCorner = Geom% numCorner(zone)
+       c0      = Geom% cOffSet(zone)
 
 !      Calculate the new zonal correction PZ
 
@@ -319,16 +339,22 @@
        phiNew  = Rad% radEnergy(zone) + pz
        phiL2   = phiL2 + Geom% VolumeZone(zone)*(phiNew*phiNew)
 
-       if (phiNew /= zero) then
+       ! Is this too cumbersome? a NaN check on every zone on every GTA iteration?
+       if (ieee_is_nan(phiNew) .or. ieee_is_nan(errZone)) then
+         izRelErrPoint  = zone  ! The zone where we first see a nan
+         print *, "Teton's GTASolver encountered a NaN on iteration", nGreyIter, " on rank ", Size% myRankInGroup, " in zone ", izRelErrPoint
+         call sleep(15)
+         TETON_FATAL("Grey solver encountered a NaN!")
+       else if (phiNew /= zero) then
          relErrPoint = abs(errZone/phiNew)
          if (relErrPoint > maxRelErrPoint) then
            maxRelErrPoint = relErrPoint
-           izRelErrPoint  = zone 
+           izRelErrPoint  = zone
          endif
        endif
 
        pzOld(zone) = pz
-     enddo
+     enddo CorrectionZoneLoop
 
      if (phiL2 /= zero) then
        relErrL2 = sqrt( abs(errL2/phiL2) )
@@ -336,17 +362,34 @@
        relErrL2 = zero
      endif
 
-     maxRelErrGrey  = max(maxRelErrPoint,relErrL2)
+     maxRelErrGreyLocal  = max(maxRelErrPoint,relErrL2)
+     maxRelErrGrey       = maxRelErrGreyLocal
 
      call MPIAllReduce(maxRelErrGrey, "max", MY_COMM_GROUP)
 
 !    Check convergence of the Grey Iteration
 
-     if ( (maxRelErrGrey < getEpsilonPoint(greyControl) .or.         &
+     if ( GTA% enforceHardGTAIterMax .and. nGreyIter >= getMaxNumberOfIterations(greyControl) ) then
+
+       exit GreyIteration
+
+     else if ( (maxRelErrGrey < getEpsilonPoint(greyControl) .or. &
            nGreyIter >= getMaxNumberOfIterations(greyControl)) .and. &
            maxRelErrGrey < GTA%epsGrey ) then
 
        exit GreyIteration
+
+     else if ( nGreyIter >= 100*getMaxNumberOfIterations(greyControl)) then
+
+       ! Only print on offending ranks:
+       if (maxRelErrGreyLocal >= GTA%epsGrey) then
+          print *, "Teton's GTASolver is not converging despite nGreyIter ", nGreyIter, " >= 100*getNumberOfMaxIterations! Maximum error on rank ", Size% myRankInGroup, " is ", maxRelErrPoint, " in zone ", izRelErrPoint
+       endif
+
+       ! Provide enough time for the above statement to get printed on every rank
+       call sleep(15)
+
+       TETON_FATAL("Grey solver is not converging, has exceeded iteration control's max # iterations * 100")
 
      else
 
@@ -357,6 +400,7 @@
 
    enddo GreyIteration
 
+   call PrintEnergies("GTASolver, after end of GreyIteration")
 
    ngdart = ngdart + nGreyIter
 
@@ -373,5 +417,5 @@
 
 
    return
-   end subroutine GTASolver_GPU 
+   end subroutine GTASolver_GPU
 

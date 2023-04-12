@@ -31,7 +31,7 @@ find_library(
 )
 
 find_package_handle_standard_args(
-    mfem
+    MFEM
     DEFAULT_MSG
     MFEM_LIBRARIES MFEM_INCLUDE_DIR)
 

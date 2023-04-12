@@ -1,3 +1,4 @@
+#include "macros.h"
 ! Quadrature Module:  Contains data structures describing angular quadrature 
 
 module Quadrature_mod 
@@ -174,7 +175,7 @@ contains
       self% gnuBar(g) = sqrt( self% gnu(g+1)*self% gnu(g) )
     enddo
 
-    if (self% gnuBar(1) == zero) then
+    if (self% gnuBar(1) < adqtEpsilon*Size%tfloor) then
       self% gnuBar(1) = self% gnu(2)/sqrt(three)
     endif
 
@@ -212,6 +213,8 @@ contains
         self% nPolarAngles   = 2*self% NPolar
         self% nComputeAngles = self% NumAngles - 2*self% NPolar
         delNang              = 0
+      else
+        TETON_VERIFY(.false., "Invalid quadrature type specified for RZ. Options are level-symmetric and product (1 or 2)")
       endif
 
     elseif (Ndim == 3) then
@@ -226,6 +229,11 @@ contains
       elseif (self% TypeName == 'product') then
         pAxis              = self% PolarAxis
         self% nPolarAngles = 2*self% NPolar
+      elseif (self% TypeName == 'lobatto') then
+        pAxis              = self% PolarAxis
+        self% nPolarAngles = 2*self% NPolar+2 ! +2 for the two angles on the poles
+      else
+        TETON_VERIFY(.false., "Invalid quadrature type specified for 3D. Options are level-symmetric, product, and lobatto (1, 2, or 3)");
       endif
 
     endif
@@ -268,7 +276,7 @@ contains
 
       n = 0
       do angle=1,self% NumAngles
-        if (self% weight(angle) == zero) then
+        if (self% weight(angle) < adqtEpsilon) then
           self% PolarAngle(angle) = 0
         else
           n = n + 1
@@ -297,7 +305,7 @@ contains
       enddo
 
       do angle=1,self% NumAngles
-        if (self% weight(angle) == zero) then
+        if (self% weight(angle) < adqtEpsilon) then
           self% PolarAngle(angle) = 0
         else
           do i=1,self% nPolarAngles

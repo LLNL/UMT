@@ -1,13 +1,18 @@
-#include <sstream>
-#include <getopt.h>
-#include <unistd.h> //for getopt, access
 #include "mpi.h"
+#include <getopt.h>
+#include <sstream>
 #include <sys/stat.h> //for mkdir
+#include <unistd.h>   //for getopt, access
 
 // XLF signal handler function to emit a stack trace.
 #if defined(__ibmxl__)
 #include "signal.h"
 extern "C" void xl__trce(int, siginfo_t *, void *);
+#endif
+
+#include <signal.h>
+#if defined(__linux__)
+#include <fenv.h>
 #endif
 
 #if defined(TETON_ENABLE_OPENMP)
@@ -24,12 +29,13 @@ extern "C" void xl__trce(int, siginfo_t *, void *);
 #include "cuda_runtime_api.h"
 #endif
 
-#include "TetonInterface.hh"
 #include "TetonConduitInterface.hh"
+#include "TetonInterface.hh"
 
 #include "conduit/conduit.hpp"
-#include "conduit/conduit_relay.hpp"
 #include "conduit/conduit_blueprint.hpp"
+#include "conduit/conduit_blueprint_mesh_utils.hpp"
+#include "conduit/conduit_relay.hpp"
 
 #if defined(TETON_ENABLE_MFEM)
 #include "mfem.hpp"
@@ -37,9 +43,12 @@ extern "C" void xl__trce(int, siginfo_t *, void *);
 
 #if defined(TETON_ENABLE_CALIPER)
 #include "adiak.hpp"
-#include "caliper/cali.h"
-#include "caliper/cali-mpi.h"
 #include "caliper/cali-manager.h"
+#include "caliper/cali-mpi.h"
+#include "caliper/cali.h"
+#else
+#define CALI_MARK_BEGIN(label)
+#define CALI_MARK_END(label)
 #endif
 
 // Utility function, check if string ends with another string.
@@ -103,16 +112,17 @@ int main(int argc, char *argv[])
    int useUmpire = 1;
    int numOmpMaxThreads = -1; // Max number of CPU threads to use  If -1, use value from omp_get_max_threads()
    double fixedDT = 0.0;
-   bool all_vacuum = false;
 
 #if defined(TETON_ENABLE_MFEM)
+   int numSerialRefinementFactor = 2;
+   int numParallelRefinementFactor = 2;
    int numSerialRefinementLevels = 0;
    int numParallelRefinementLevels = 0;
    int numPolar = -1;
    int numAzimuthal = -1;
    int numGroups = 1;
-   mfem::Mesh *mesh = nullptr;
    mfem::ParMesh *pmesh = nullptr;
+   mfem::ConduitDataCollection *conduit_data_collec = nullptr;
 #endif
 
    // MPI
@@ -153,8 +163,11 @@ int main(int argc, char *argv[])
    auto configs = mgr.available_config_specs();
 #endif
 
+   CALI_MARK_BEGIN("Teton_Test_Driver");
+
    if (MPI_Init_thread(&argc, &argv, request, &provided) != MPI_SUCCESS)
    {
+      std::cerr << "Error calling MPI_Init_thread. " << std::endl;
       exit(1);
    }
 
@@ -163,15 +176,43 @@ int main(int argc, char *argv[])
    if (provided < request)
    {
       std::cerr << "Teton driver: MPI_Init_thread was only able to provided thread level support " << provided
-                << ".  Teton requested level " << request;
+                << ".  Teton requested level " << request << std::endl;
       exit(1);
    }
    if (claimed < request)
    {
       std::cerr << "Teton driver: MPI_Init_thread was only able to provided thread level support " << claimed
-                << ".  Teton requested level " << request;
+                << ".  Teton requested level " << request << std::endl;
       exit(1);
    }
+
+#ifdef SIGSEGV
+   signal(SIGSEGV, SIG_DFL);
+#endif
+#ifdef SIGILL
+   signal(SIGILL, SIG_DFL);
+#endif
+#ifdef SIGFPE
+   signal(SIGFPE, SIG_DFL);
+#endif
+#ifdef SIGINT
+   signal(SIGINT, SIG_DFL);
+#endif
+#ifdef SIGABRT
+   signal(SIGABRT, SIG_DFL);
+#endif
+#ifdef SIGTERM
+   signal(SIGTERM, SIG_DFL);
+#endif
+#ifdef SIGQUIT
+   signal(SIGQUIT, SIG_DFL);
+#endif
+#if defined(__linux__)
+   // This is in here for supporting Linux's floating point exceptions.
+   feenableexcept(FE_DIVBYZERO);
+   feenableexcept(FE_INVALID);
+   feenableexcept(FE_OVERFLOW);
+#endif
 
 #if defined(TETON_ENABLE_CALIPER)
    adiak::init((void *) &comm);
@@ -189,11 +230,6 @@ int main(int argc, char *argv[])
    adiak::value("TetonSHA1", teton_get_git_sha1(), adiak_general, "TetonBuildInfo");
    adiak::value("TetonCxxCompiler", teton_get_cxx_compiler(), adiak_general, "TetonBuildInfo");
    adiak::value("TetonFortranCompiler", teton_get_fortran_compiler(), adiak_general, "TetonBuildInfo");
-
-   if (!label.empty())
-   {
-      adiak::value("label", label, adiak_general, "RunInfo");
-   }
 #endif
 
    MPI_Comm_rank(comm, &myRank);
@@ -210,41 +246,42 @@ int main(int argc, char *argv[])
 
    while (1)
    {
-      static struct option long_options[]
-          = { {"apply_label", no_argument, 0, 'l'},
-              {"caliper", required_argument, 0, 'p'},
-              {"free_omp_resources", no_argument, 0, 'f'},
-              {"help", no_argument, 0, 'h'},
-              {"input_path", required_argument, 0, 'i'},
-              {"num_cycles", required_argument, 0, 'c'},
-              {"dt", required_argument, 0, 'D'},
-              {"num_phase_space_sets", required_argument, 0, 's'},
-              {"num_threads", required_argument, 0, 't'},
-              {"output_path", required_argument, 0, 'o'},
-              {"umpire_mode", required_argument, 0, 'u'},
-              {"use_device_aware_mpi", no_argument, 0, 'm'},
-              {"use_cuda_sweep", no_argument, 0, 'e'},
-              {"use_gpu_kernels", no_argument, 0, 'g'},
-              {"use_new_gta", no_argument, 0, 'n'},
-              {"verbose", required_argument, 0, 'v'},
-              {"all_vacuum", no_argument, 0, 'V'},
+      static struct option long_options[] = {
+         {"apply_label", no_argument, 0, 'l'},
+         {"caliper", required_argument, 0, 'p'},
+         {"help", no_argument, 0, 'h'},
+         {"input_path", required_argument, 0, 'i'},
+         {"num_cycles", required_argument, 0, 'c'},
+         {"dt", required_argument, 0, 'D'},
+         {"num_phase_space_sets", required_argument, 0, 's'},
+         {"num_threads", required_argument, 0, 't'},
+         {"output_path", required_argument, 0, 'o'},
+         {"umpire_mode", required_argument, 0, 'u'},
+         {"use_device_aware_mpi", no_argument, 0, 'm'},
+         {"use_cuda_sweep", no_argument, 0, 'e'},
+         {"use_gpu_kernels", no_argument, 0, 'g'},
+         {"use_new_gta", no_argument, 0, 'n'},
+         {"verbose", required_argument, 0, 'v'},
 #if defined(TETON_ENABLE_MFEM)
-              {"serial_refinement_levels", required_argument, 0, 'r'},
-              {"parallel_refinement_levels", required_argument, 0, 'z'},
-              {"num_Polar", required_argument, 0, 'P'},
-              {"num_Azimuthal", required_argument, 0, 'A'},
-              {"num_Groups", required_argument, 0, 'G'},
-              {"color_file", required_argument, 0, 'C'},
+         {"serial_refinement_levels", required_argument, 0, 'r'},
+         {"parallel_refinement_levels", required_argument, 0, 'z'},
+         {"serial_refinement_factor", required_argument, 0, 'R'},
+         {"parallel_refinement_factor", required_argument, 0, 'Z'},
+         {"num_Polar", required_argument, 0, 'P'},
+         {"num_Azimuthal", required_argument, 0, 'A'},
+         {"num_Groups", required_argument, 0, 'G'},
+         {"color_file", required_argument, 0, 'C'},
 #endif
-              {0, 0, 0, 0} };
+         {0, 0, 0, 0}
+      };
 
       /* getopt_long stores the option index here. */
       int option_index = 0;
 
 #if defined(TETON_ENABLE_MFEM)
-      auto optString = "A:G:P:C:c:D:efghi:l:mno:p:r:s:t:u:v:Vz:";
+      auto optString = "A:G:P:C:c:D:eghi:l:mno:p:r:R:s:t:u:v:z:Z:";
 #else
-      auto optString = "c:D:efghi:l:mno:p:s:t:u:v:V";
+      auto optString = "c:D:eghi:l:mno:p:s:t:u:v:";
 #endif
 
       opt = getopt_long(argc, argv, optString, long_options, &option_index);
@@ -260,23 +297,23 @@ int main(int argc, char *argv[])
          case 'c':
             cycles = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: cycles to execute: " << cycles << std::endl;
+            }
             break;
          case 'D':
             fixedDT = atof(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: fixed dt selected: " << fixedDT << std::endl;
+            }
             break;
          case 'e':
             useCUDASweep = true;
             if (myRank == 0)
+            {
                std::cout << "Using experimental streaming CUDA sweep." << std::endl;
-            break;
-         case 'f':
-            if (myRank == 0)
-               std::cout
-                   << "Deprecated the option to free OpenMP resources on device between cycles via omp_pause_resource_all call.  Resulted in issues on clang/xlf builds."
-                   << std::endl;
+            }
             break;
          case 'g':
             useGPU = true;
@@ -285,53 +322,56 @@ int main(int argc, char *argv[])
             if (myRank == 0)
             {
                std::cout << "Usage: " << argv[0] << "[OPTIONS]" << std::endl;
-               std::cout << " -c -num_cycles <cycles>      Number of cycles to execute." << std::endl;
+               std::cout << " -c, --num_cycles <cycles>      Number of cycles to execute." << std::endl;
                std::cout
-                   << " -e -use_cuda_sweep           Use experimental CUDA sweep.  Do not specify this option and -g at the same time."
-                   << std::endl;
+                  << " -e, --use_cuda_sweep           Use experimental CUDA sweep.  Do not specify this option and -g at the same time."
+                  << std::endl;
                std::cout
-                   << " -f -free_omp_resources       Free all OpenMP runtime resources from device after each problem cycle."
-                   << std::endl;
+                  << " -g, --use-gpu                  Run solvers on GPU and enable associated sub-options, where supported."
+                  << std::endl;
+               std::cout << " -h, --help                     Print this help and exit." << std::endl;
+               std::cout << " -i, --input_path <path>        Path to input files." << std::endl;
                std::cout
-                   << " -g -use-gpu                  Run solvers on GPU and enable associated sub-options, where supported."
-                   << std::endl;
-               std::cout << " -h -help                     Print this help and exit." << std::endl;
-               std::cout << " -i -input_path <path>        Path to input files." << std::endl;
+                  << " -l, --apply_label              Label this run.  This label will be used to identify this run in any caliper reports."
+                  << std::endl;
+               std::cout << " -m --use_device_aware_mpi     Use device-aware MPI for GPU runs." << std::endl;
+               std::cout << " -n --use_new_gta              Use newer GTA solver." << std::endl;
                std::cout
-                   << " -l -apply_label              Label this run.  This label will be used to identify this run in any caliper reports."
-                   << std::endl;
-               std::cout << " -m -use_device_aware_mpi     Use device-aware MPI for GPU runs." << std::endl;
-               std::cout << " -n -use_new_gta              Use newer GTA solver." << std::endl;
-               std::cout
-                   << " -o -output_path <path>       Path to generate output files.  If not set, will disable output files."
-                   << std::endl;
+                  << " -o, --output_path <path>       Path to generate output files.  If not set, will disable output files."
+                  << std::endl;
 #if defined(TETON_ENABLE_CALIPER)
-               std::cout
-                   << " -p -caliper <string>         Caliper configuration profile.  Use '-p help' to get supported keywords.  'None' disabled caliper.  Default is 'runtime-report'."
-                   << std::endl;
+               std::cout << " -p, --caliper <string>         Caliper configuration profile.  Set <string> to 'help'"
+                         << " to get supported keywords.  'None' disabled caliper.  Default is 'runtime-report'."
+                         << std::endl;
 #endif
-               std::cout << " -s -num_phase_space_sets <num_sets>  Number of phase-angle sets to construct."
+               std::cout << " -s, --num_phase_space_sets <num_sets>  Number of phase-angle sets to construct."
                          << std::endl;
-               std::cout << " -t -num_threads <threads>    Max number of threads for cpu OpenMP parallel regions."
+               std::cout << " -t, --num_threads <threads>    Max number of threads for cpu OpenMP parallel regions."
                          << std::endl;
+               std::cout << " -u, --umpire_mode <0,1,2>      0 - Disable umpire.  1 - Use Umpire for CPU allocations."
+                         << "  2 - Use Umpire for CPU and GPU allocations." << std::endl;
                std::cout
-                   << " -u -umpire_mode <0,1,2>      0 - Disable umpire.  1 - Use Umpire for CPU allocations.  2 - Use Umpire for CPU and GPU allocations."
-                   << std::endl;
-               std::cout
-                   << " -v -verbose [0,1,2]    0 - quite  1 - informational(default)  2 - really chatty and dump files"
-                   << std::endl;
-               std::cout << " -V -all_vacuum Use all vacuum boundary conditions" << std::endl;
+                  << " -v, --verbose [0,1,2]    0 - quite  1 - informational(default)  2 - really chatty and dump files"
+                  << std::endl;
 #if defined(TETON_ENABLE_MFEM)
                std::cout
-                   << " -r -serial_refinement_levels <int> Number of times to refine the MFEM mesh before doing parallel decomposition"
-                   << std::endl;
+                  << " -r, --serial_refinement_levels <int> Number of times to halve each edge the MFEM mesh before "
+                  << "doing parallel decomposition.  Applied after the refinement_factor. (factor of 2^((r*dim) new zones)"
+                  << std::endl;
                std::cout
-                   << " -z -parallel_refinement_levels <int> Number of times to refine the MFEM mesh after doing parallel decomposition"
-                   << std::endl;
-               std::cout << " -A -num_Azimuthal <int>      Number azimuthal angles in an octant" << std::endl;
-               std::cout << " -P -num_Polar <int>          Number polar angles in an octant" << std::endl;
-               std::cout << " -G -num_Groups <int>         Number energy groups" << std::endl;
-               std::cout << " -C -color_file <string>      color file for manual decomposition" << std::endl;
+                  << " -z, --parallel_refinement_levels <int> Number of times to halve each edge the MFEM mesh after "
+                  << "doing parallel decomposition.  Applied after the refinement_factor. (factor of 2^(z*dim) new zones)"
+                  << std::endl;
+               std::cout
+                  << " -R, --serial_refinement_factor <int> Number of subdivisions for each edge in the original MFEM "
+                  << "mesh before doing parallel decomposition. (factor of (R+1)^dim new zones)" << std::endl;
+               std::cout
+                  << " -Z, --parallel_refinement_factor <int> Number of subdivisions for each edge in the original MFEM "
+                  << "mesh after doing parallel decomposition. (factor of (Z+1)^dim new zones)" << std::endl;
+               std::cout << " -A, --num_Azimuthal <int>      Number azimuthal angles in an octant" << std::endl;
+               std::cout << " -P, --num_Polar <int>          Number polar angles in an octant" << std::endl;
+               std::cout << " -G, --num_Groups <int>         Number energy groups" << std::endl;
+               std::cout << " -C, --color_file <string>      color file for manual decomposition" << std::endl;
 #endif
             }
             return (0);
@@ -341,8 +381,10 @@ int main(int argc, char *argv[])
          case 'l':
             label = std::string(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: this run will be identified as '" << label
                          << "' in any caliper spot reports." << std::endl;
+            }
             break;
          case 'm':
             useDeviceAwareMPI = true;
@@ -350,7 +392,9 @@ int main(int argc, char *argv[])
          case 'n':
             useNewGTASolver = true;
             if (myRank == 0)
+            {
                std::cout << "Teton driver: using new gta solver." << std::endl;
+            }
             break;
          case 'o':
             outputPath = std::string(optarg);
@@ -359,79 +403,117 @@ int main(int argc, char *argv[])
          case 'p':
             caliper_config = std::string(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: using caliper configuration: " << caliper_config << std::endl;
+            }
             if (caliper_config == "help")
             {
-               std::cout << std::endl << "--- AVAILABLE CALIPER KEYWORDS ---" << std::endl;
-               for (auto str : configs)
+               if (myRank == 0)
                {
-                  std::cout << mgr.get_documentation_for_spec(str.c_str()) << std::endl;
+                  std::cout << std::endl << "--- AVAILABLE CALIPER KEYWORDS ---" << std::endl;
+                  for (auto str : configs)
+                  {
+                     std::cout << mgr.get_documentation_for_spec(str.c_str()) << std::endl;
+                  }
+                  std::cout << std::endl;
+                  std::cout << std::endl << "----------------------------------" << std::endl;
                }
-               std::cout << std::endl;
-               std::cout << std::endl << "----------------------------------" << std::endl;
                return (0);
             }
 #endif
          case 's':
             numPhaseAngleSets = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: number of phase-angle sets to create: " << numPhaseAngleSets << std::endl;
+            }
             break;
 #if defined(TETON_ENABLE_MFEM)
          case 'r':
             numSerialRefinementLevels = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: number of serial refinement levels: " << numSerialRefinementLevels
                          << std::endl;
+            }
             break;
          case 'z':
             numParallelRefinementLevels = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: number of parallel refinement levels: " << numParallelRefinementLevels
                          << std::endl;
+            }
+            break;
+         case 'R':
+            numSerialRefinementFactor = atoi(optarg);
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: serial refinement factor: " << numSerialRefinementFactor << std::endl;
+            }
+            break;
+         case 'Z':
+            numParallelRefinementFactor = atoi(optarg);
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: parallel refinement factor: " << numParallelRefinementFactor << std::endl;
+            }
             break;
          case 'A':
             numAzimuthal = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: number of azimuthal angles: " << numAzimuthal << std::endl;
+            }
             break;
          case 'P':
             numPolar = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: number of polar angles: " << numPolar << std::endl;
+            }
             break;
          case 'G':
             numGroups = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: number of energy groups: " << numGroups << std::endl;
+            }
             break;
          case 'C':
             colorFile = std::string(optarg);
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: Using color file for decomposition: " << colorFile << std::endl;
+            }
             break;
 #endif
          case 't':
             numOmpMaxThreads = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: setting max # cpu threads to " << numOmpMaxThreads << std::endl;
+            }
             break;
          case 'u':
             useUmpire = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: setting useUmpire to " << useUmpire << std::endl;
+            }
             break;
          case 'v':
             verbose = atoi(optarg);
             if (myRank == 0)
+            {
                std::cout << "Teton driver: setting verbosity to " << verbose << std::endl;
-            break;
-         case 'V':
-            all_vacuum = true;
-            if (myRank == 0)
-               std::cout << "Teton driver: using all vacuum boundary conditions" << std::endl;
+            }
             break;
          case '?':
             if (myRank == 0)
+            {
                std::cout << "Incorrect arguments, try -h to see help." << std::endl;
+            }
             break;
       }
    }
@@ -445,7 +527,10 @@ int main(int argc, char *argv[])
       mgr.add(caliper_config.c_str());
       if (mgr.error())
       {
-         std::cout << "Teton driver: Caliper config error: " << mgr.error_msg() << std::endl;
+         if (myRank == 0)
+         {
+            std::cout << "Teton driver: Caliper config error: " << mgr.error_msg() << std::endl;
+         }
       }
       mgr.start();
    }
@@ -461,7 +546,9 @@ int main(int argc, char *argv[])
       numOmpMaxThreads = omp_get_max_threads();
    }
    if (myRank == 0)
+   {
       std::cout << "Teton driver: Threading enabled, max number of threads is " << numOmpMaxThreads << std::endl;
+   }
 #endif
 
 //==========================================================
@@ -503,12 +590,8 @@ int main(int argc, char *argv[])
    conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
 
    //==========================================================
-   // Read in mesh from an mfem mesh file
-   //
-   // This functionality is currently constrained to a hard-coded
-   // crooked pipe problem.  It assumes a mfem mesh is provided
-   // with two materials and very specific boundary condition
-   // tags.
+   // Read in mesh from an mfem mesh file.  We set up a uniform
+   // temperature problem with simple source boundary conditions.
    //
    // TODO - All this hard-coding can be moved into an input file that lives
    // alongside the mfem mesh file.
@@ -520,23 +603,38 @@ int main(int argc, char *argv[])
 
    if (endsWith(inputPath, ".mesh"))
    {
+      CALI_MARK_BEGIN("Teton_Read_Mfem_Input");
       if (access(inputPath.c_str(), F_OK) != -1)
       {
 #if defined(TETON_ENABLE_MFEM)
          if (myRank == 0)
-            std::cout << "Teton driver: converting mfem mesh..." << std::endl;
+         {
+            std::cout << "Teton driver: reading mfem mesh: " << inputPath << std::endl;
+         }
 
-         mesh = new mfem::Mesh(inputPath.c_str(), 1, 1);
+         mfem::Mesh mesh(inputPath.c_str(), 1, 1);
+
          for (int l = 0; l < numSerialRefinementLevels; ++l)
          {
-            mesh->UniformRefinement();
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: Uniformly refining serial mesh, iteration " << l + 1
+                         << ", factor = " << numSerialRefinementFactor << std::endl;
+            }
+            int ref_type = mfem::BasisType::ClosedUniform;
+            mesh = mfem::Mesh::MakeRefined(mesh, numSerialRefinementFactor, ref_type);
          }
+
+         // MFEM does not support parallel refinement on NURBs meshes.
+         // Convert to high order mesh to enable basic refinement capability.
+         // Also add a grid function if we didn't have one before.
+         mesh.SetCurvature(1);
 
          if (colorFile.size() > 0)
          {
             if (access(colorFile.c_str(), F_OK) != -1)
             {
-               int nelem = mesh->GetNE();
+               int nelem = mesh.GetNE();
                std::vector<int> colorData;
                colorData.reserve(nelem);
 
@@ -556,7 +654,7 @@ int main(int argc, char *argv[])
                }
                colorFileStream.close();
 
-               pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh, colorData.data());
+               pmesh = new mfem::ParMesh(comm, mesh, colorData.data());
             }
             else
             {
@@ -566,25 +664,79 @@ int main(int argc, char *argv[])
          }
          else
          {
-            pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh);
+            // Only re-order without the color file, otherwise we won't know
+            // order the elements are.
+
+            // Sort the grid for better locality
+            mfem::Array<int> ordering;
+            mesh.GetHilbertElementOrdering(ordering);
+            mesh.ReorderElements(ordering);
+
+            // TODO Make optional.  This will use the space-filling curve for
+            // partitioning.  It's both nicer and more horrific than Metis,
+            // if that was even possible.
+            // mesh.EnsureNCMesh();
+
+            pmesh = new mfem::ParMesh(comm, mesh);
          }
+
+         mesh.Clear();
+
+         if (myRank == 0)
+         {
+            std::cout << "Teton driver: decomposing serial mesh into parallel" << std::endl;
+
+            if (int wrong = pmesh->CheckElementOrientation(true) > 0)
+            {
+               std::cout << "There were " << wrong
+                         << " 3D mesh elements with the wrong orientation after reordering.\n";
+            }
+            if (int wrong = pmesh->CheckBdrElementOrientation(true) > 0)
+            {
+               std::cout << "There were " << wrong
+                         << " 3D mesh boundary elements with the wrong orientation after reordering.\n";
+            }
+         }
+
          for (int l = 0; l < numParallelRefinementLevels; ++l)
          {
-            pmesh->UniformRefinement();
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: Uniformly refining parallel mesh, iteration " << l + 1
+                         << ", factor = " << numParallelRefinementFactor << std::endl;
+            }
+            int ref_type = mfem::BasisType::ClosedUniform;
+            *pmesh = mfem::ParMesh::MakeRefined(*pmesh, numParallelRefinementFactor, ref_type);
          }
 
-         pmesh->PrintCharacteristics();
+         if (myRank == 0)
+         {
+            std::cout << "Teton driver: Final parallel mesh characteristics are:" << std::endl;
+         }
+         pmesh->PrintInfo();
 
-         // TODO: Is this local or global?
+         if (int wrong = pmesh->CheckElementOrientation(true) > 0)
+         {
+            std::cout << "There were " << wrong << " 3D mesh elements with the wrong orientation after reordering.\n";
+         }
+         if (int wrong = pmesh->CheckBdrElementOrientation(true) > 0)
+         {
+            std::cout << "There were " << wrong
+                      << " 3D mesh boundary elements with the wrong orientation after reordering.\n";
+         }
+
+         // This is local number of elements.
          int nelem = pmesh->GetNE();
 
          // Create a blueprint node from the mfem mesh
-         mfem::ConduitDataCollection conduit_data_collec("mesh_blueprint", pmesh);
+         conduit_data_collec = new mfem::ConduitDataCollection("mfem_conduit_data_collection", pmesh);
          // Note - the mesh blueprint node contains pointers back into the mfem
          // mesh for some of the data.  For example, the coordinates.
-         // Do not delete the mfem mesh objects until this blueprint node is no
+         // ***************************
+         // DO NOT DELETE the mfem mesh objects until this blueprint node is no
          // longer needed.
-         conduit_data_collec.MeshToBlueprintMesh(pmesh, meshBlueprint);
+         // ***************************
+         conduit_data_collec->MeshToBlueprintMesh(pmesh, meshBlueprint);
 
          // Delete extra fields we don't need.  Some of these are not yet supported
          // by VisIt (https://wci.llnl.gov/simulation/computer-codes/visit)
@@ -601,7 +753,6 @@ int main(int argc, char *argv[])
             meshBlueprint.remove("fields/mesh_nodes");
          }
 
-         // TODO: Allow number of group to be set by command line argument.
          std::vector<double> gr_bounds(numGroups + 1);
          const double lowerBound = 1.0e-6;
          const double upperBound = 1.0e2;
@@ -652,23 +803,18 @@ int main(int argc, char *argv[])
          //renamed for the current mesh blueprint interface.  Need to consult
          //with haut3.  -- black27
 
-         // thin material
-         material_field_vals[1]["thermo_density"] = 0.01;
-         material_field_vals[1]["electron_specific_heat"] = 0.001;
-         material_field_vals[1]["radiation_temperature"] = 0.0005;
-         material_field_vals[1]["electron_temperature"] = 5.0e-5;
-         material_field_vals[1]["absorption_opacity"] = 0.2;
-
-         //thick material
-         material_field_vals[2]["thermo_density"] = 10.0;
-         material_field_vals[2]["electron_specific_heat"] = 1.0;
-         material_field_vals[2]["radiation_temperature"] = 0.5;
-         material_field_vals[2]["electron_temperature"] = 0.05;
-         material_field_vals[2]["absorption_opacity"] = 200.0;
+         // We only support one material on an MFEM mesh
+         material_field_vals[1]["thermo_density"] = 1.31;
+         material_field_vals[1]["electron_specific_heat"] = 0.501;
+         material_field_vals[1]["radiation_temperature"] = 0.05;
+         material_field_vals[1]["electron_temperature"] = 0.5;
+         material_field_vals[1]["absorption_opacity"] = 10.0;
 
          for (int i = 0; i < nelem; ++i)
          {
-            int attr_no = pmesh->GetAttribute(i);
+            // Ignore, we only support one.
+            //int attr_no = pmesh->GetAttribute(i);
+            int attr_no = 1;
 
             thermo_density[i] = material_field_vals[attr_no]["thermo_density"];
             electron_specific_heat[i] = material_field_vals[attr_no]["electron_specific_heat"];
@@ -716,22 +862,22 @@ int main(int argc, char *argv[])
          meshBlueprint["fields/electron_number_density/values"].set(electron_number_density.data(),
                                                                     electron_number_density.size());
 
-         // Set boundary conditions. These attribute numbers correspond to the tags in the crooked_pipe_rz.mesh file
-         // and are set in the create_crooked_pipe_mesh.py pmesh script.
+         // Make all boundaries vacuum
          std::map<int, int> boundary_id_to_type;
-         if (!all_vacuum)
+         for (int i = 0; i < pmesh->bdr_attributes.Size(); ++i)
          {
-            boundary_id_to_type[14] = 32; // bottom (reflecting Teton ID 32) for bottom wall (attribute no. 14)
-            boundary_id_to_type[12] = 32; // top wall
-            boundary_id_to_type[13] = 32; // right wall
-            boundary_id_to_type[11] = 32; // left wall
-            boundary_id_to_type[10] = 34; // source (source Teton ID 34) for left pipe wall (attribute no. 10)
-         }
-         else
-         {
-            for (int i = 0; i < mesh->bdr_attributes.Size(); ++i)
+            int ba = pmesh->bdr_attributes[i];
+            // Draco will tag untagged faces with 9999, even if they are
+            // interior.  We need to skip those.
+            if (ba != 9999)
             {
-               boundary_id_to_type[mesh->bdr_attributes[i]] = 35; // vacuum
+               int bctype = 35; // vacuum
+               // Maybe if we'd run in RZ, we need to make the axis reflecting?
+               //if( ba == 1 or ba == 4)
+               //{
+               //   int bctype = 32; // Reflecting
+               //}
+               boundary_id_to_type[pmesh->bdr_attributes[i]] = 35; // vacuum
             }
          }
 
@@ -757,8 +903,9 @@ int main(int argc, char *argv[])
          // both problem surface elements and interior shared boundaries between domains.
          // Teton only wants the surface elements.  Teton uses the adjacency lists to determine shared boundary elements.
          conduit::int_accessor bndry_vals = meshBlueprint.fetch_existing("fields/boundary_attribute/values").value();
-         conduit::int_accessor element_points
-             = meshBlueprint.fetch_existing("topologies/boundary/elements/connectivity").value();
+         conduit::int_accessor element_points = meshBlueprint
+                                                   .fetch_existing("topologies/boundary/elements/connectivity")
+                                                   .value();
          std::string element_type = meshBlueprint.fetch_existing("topologies/boundary/elements/shape").as_string();
 
          size_t num_points_in_element;
@@ -814,6 +961,10 @@ int main(int argc, char *argv[])
          {
             options["quadrature/npolar"] = numPolar;
          }
+
+         // Disable updating the mesh vertices each cycle.  This is unnecessary, as this test problem has fixed
+         // vertex positions.
+         options["mesh_motion"] = 0;
 #else
          std::cerr << "Unable to open mfem mesh, test driver was not configured with CMake's '-DENABLE_MFEM=ON'."
                    << std::endl;
@@ -825,12 +976,14 @@ int main(int argc, char *argv[])
          std::cerr << "Couldn't find mfem mesh at " << inputPath << std::endl;
          exit(1);
       }
+      CALI_MARK_END("Teton_Read_Mfem_Input");
    }
    // Assume this is an input directory with a set of conduit blueprint mesh files and problem parameter files.
    // Note: The parameter files currently have all the input duplicated for each rank.  Look into making a
    // single 'global' parameter file for global input.
    else
    {
+      CALI_MARK_BEGIN("Teton_Read_Conduit_Input");
       try
       {
          std::string input_file_path_base = inputPath + "/parameters_input_" + std::to_string(myRank);
@@ -889,6 +1042,7 @@ int main(int argc, char *argv[])
          std::cout << "Teton driver: Error loading conduit node files at " << inputPath << ": " << e.what();
          throw;
       }
+      CALI_MARK_END("Teton_Read_Conduit_Input");
    }
 
    options["memory_allocator/umpire_host_allocator_id"] = -1;
@@ -924,7 +1078,9 @@ int main(int argc, char *argv[])
    else if (useGPU == true)
    {
       if (myRank == 0)
+      {
          std::cout << "Teton driver: -g arg detected, enabling gpu kernels and associated options." << std::endl;
+      }
 
       options["size/useGPU"] = useGPU;
 
@@ -933,23 +1089,27 @@ int main(int argc, char *argv[])
       {
 #if defined(TETON_ENABLE_UMPIRE)
          if (myRank == 0)
+         {
             std::cout << "Teton driver: Enabling use of Umpire CPU and GPU memory pools..." << std::endl;
+         }
 
          auto &rm = umpire::ResourceManager::getInstance();
 
          // Create umpire allocators.
-         auto host_pinned_pool
-             = rm.makeAllocator<umpire::strategy::QuickPool>("HOST_PINNED_QUICK_POOL", rm.getAllocator("PINNED"));
+         auto host_pinned_pool = rm.makeAllocator<umpire::strategy::QuickPool>("HOST_PINNED_QUICK_POOL",
+                                                                               rm.getAllocator("PINNED"));
          auto thread_safe_host_pinned_pool = rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
-             "THREAD_SAFE_PINNED_QUICK_POOL", host_pinned_pool);
+            "THREAD_SAFE_PINNED_QUICK_POOL",
+            host_pinned_pool);
 
          options["memory_allocator/umpire_host_allocator_id"] = thread_safe_host_pinned_pool.getId();
          if (useUmpire > 1)
          {
-            auto device_pool
-                = rm.makeAllocator<umpire::strategy::QuickPool>("DEVICE_QUICK_POOL", rm.getAllocator("DEVICE"));
-            auto thread_safe_device_pool
-                = rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>("THREAD_SAFE_DEVICE_QUICK_POOL", device_pool);
+            auto device_pool = rm.makeAllocator<umpire::strategy::QuickPool>("DEVICE_QUICK_POOL",
+                                                                             rm.getAllocator("DEVICE"));
+            auto thread_safe_device_pool = rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
+               "THREAD_SAFE_DEVICE_QUICK_POOL",
+               device_pool);
             options["memory_allocator/umpire_device_allocator_id"] = thread_safe_device_pool.getId();
          }
          else
@@ -960,8 +1120,8 @@ int main(int argc, char *argv[])
          if (myRank == 0)
          {
             std::cerr
-                << "Teton driver: Unable to enable Umpire CPU and GPU memory pools, code was not built with TETON_ENABLE_UMPIRE."
-                << std::endl;
+               << "Teton driver: Unable to enable Umpire CPU and GPU memory pools, code was not built with TETON_ENABLE_UMPIRE."
+               << std::endl;
          }
          exit(1);
 #endif
@@ -999,20 +1159,106 @@ int main(int argc, char *argv[])
    conduit::Node info;
    conduit::blueprint::verify(protocol, meshBlueprint, info);
 
-   // Get rid of adjacency set entry if there are no adjacency sets.
-
+   CALI_MARK_BEGIN("Teton_Initialize");
    myTetonObject.initialize(comm);
+   CALI_MARK_END("Teton_Initialize");
 
    // If a dtrad wasn't provided in the input file, the Teton initialize()
    // call will populate it with a default value.
    double dtrad = options.fetch_existing("iteration/dtrad").value();
    double timerad = 0.0;
+   meshBlueprint["state/cycle"] = 0;
 
+   // Calculate size of PSI to provide the number of unknowns solved for benchmarking, throughput calculations, etc.
+   // This is # corners * # angles * # energy group bins
+
+   // Put code here that calculates the # unknowns being solved.
+   // TODO:
+   // Some of this code ( especially the code that calculates the # angles ) can go in a helper function later, as
+   // opposed to bloating up the test driver code.
+   // -- black27
+
+   // Get total number of corners in problem.
+   const conduit::Node &corner_topology = meshBlueprint.fetch_existing("topologies/main_corner");
+   unsigned long local_num_corners = conduit::blueprint::mesh::utils::topology::length(corner_topology);
+   unsigned long num_corners;
+   // int MPI_Reduce(_In_ void *sendbuf, _Out_opt_ void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm);
+   int error_code = MPI_Reduce(&local_num_corners, &num_corners, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, comm);
+   if (error_code != MPI_SUCCESS)
+   {
+      //TODO - error out
+   }
+
+   unsigned long num_unknowns;
+   if (myRank == 0)
+   {
+      unsigned int num_groups = options.fetch_existing("quadrature/num_groups").to_unsigned_int();
+      unsigned int num_polar_angles = options.fetch_existing("quadrature/npolar").to_unsigned_int();
+      unsigned int num_azimuthal_angles = options.fetch_existing("quadrature/nazimu").to_unsigned_int();
+      unsigned int num_angles = 0;
+      unsigned int ndims = conduit::blueprint::mesh::utils::topology::dims(corner_topology);
+      int quadrature_type = options.fetch_existing("quadrature/qtype").value();
+      if (quadrature_type == 1) //level-symmetric quadrature
+      {
+         int quadrature_order = options.fetch_existing("quadrature/qorder").value();
+         // Assume RZ, as we don't support XY
+         if (ndims == 2)
+         {
+            num_angles = quadrature_order * (quadrature_order + 6) / 2;
+         }
+         else if (ndims == 3)
+         {
+            num_angles = quadrature_order * (quadrature_order + 2);
+         }
+         else
+         {
+            //TODO - Error out.
+         }
+      }
+      else if (quadrature_type == 2)
+      {
+         // Assume RZ, as we don't support XY
+         if (ndims == 2)
+         {
+            // 2D has four quadrants, and RZ has additional starting/finishing angles, so add one to azimuthal angles.
+            num_angles = num_polar_angles * (num_azimuthal_angles + 1) * 4;
+         }
+         else if (ndims == 3)
+         {
+            // 3D has eight quadrants.
+            num_angles = num_polar_angles * num_azimuthal_angles * 8;
+         }
+         else
+         {
+            //TODO - Error out.
+         }
+      }
+
+      num_unknowns = num_corners * num_angles * num_groups;
+      std::cout << "=================================================================" << std::endl;
+      std::cout << "=================================================================" << std::endl;
+      std::cout << "Teton starting cycling\n";
+      std::cout << "=================================================================" << std::endl;
+      ;
+      std::cout << "Solving for " << num_unknowns << " global unknowns." << std::endl;
+      std::cout << "(" << num_corners << " spatial elements * " << num_angles << " directions (angles) * " << num_groups
+                << " energy groups)" << std::endl;
+      std::cout << "=================================================================" << std::endl;
+      std::cout << std::endl;
+   }
+   CALI_MARK_BEGIN("Teton_Cycle_Loop");
+
+   double start_time = MPI_Wtime();
+   double inner_start_time, inner_end_time, inner_elapsed_time;
    for (int cycle = 1; cycle <= cycles; cycle++)
    {
       if (!outputPath.empty())
       {
-         myTetonObject.dump(cycle, outputPath);
+         if (myRank == 0)
+         {
+            std::cout << "Teton driver: Dump mesh blueprint for viz purposes." << std::endl;
+         }
+         myTetonObject.dump(comm, outputPath);
       }
       if (myRank == 0)
       {
@@ -1021,7 +1267,16 @@ int main(int argc, char *argv[])
          std::cout << "----------" << std::endl;
       }
       timerad = timerad + dtrad;
+
+      inner_start_time = MPI_Wtime();
       dtrad = myTetonObject.step(cycle);
+      inner_end_time = MPI_Wtime();
+      inner_elapsed_time = inner_end_time - inner_start_time;
+      if (myRank == 0)
+      {
+         std::cout << "Teton driver: CYCLE WALL TIME = " << inner_elapsed_time << " seconds." << std::endl;
+         std::cout << "Teton driver: CYCLE UNKNOWNS/SECOND = " << num_unknowns / inner_elapsed_time << std::endl;
+      }
       // Either setTimeStep(cycle, dtrad) can be called to update time step, or
       // these can be directly updated in the options.
       if (fixedDT > 0)
@@ -1031,18 +1286,30 @@ int main(int argc, char *argv[])
       options["iteration/dtrad"] = dtrad;
       options["iteration/timerad"] = timerad;
    }
+   double end_time = MPI_Wtime();
+   CALI_MARK_END("Teton_Cycle_Loop");
 
-   std::cout << "=================================================================\n";
-   std::cout << "=================================================================\n";
-   std::cout << "Teton finished cycling\n";
-   std::cout << "=================================================================\n";
-   std::cout << "=================================================================\n";
+   if (myRank == 0)
+   {
+      double elapsed_time = end_time - start_time;
+      double avg_unknowns_per_second = num_unknowns * cycles / (end_time - start_time);
+      std::cout << std::endl;
+      std::cout << "=================================================================" << std::endl;
+      std::cout << "=================================================================" << std::endl;
+      std::cout << "Teton finished cycling\n";
+      std::cout << "=================================================================" << std::endl;
+      std::cout << "Average number of unknowns/second solved per cycle was " << avg_unknowns_per_second << std::endl;
+      std::cout << "=================================================================" << std::endl;
+      std::cout << std::endl;
+   }
 
 #if defined(TETON_ENABLE_UMPIRE)
    if (useGPU == 1 && useUmpire > 0)
    {
       if (myRank == 0)
+      {
          std::cout << "Teton driver: Deleting Umpire CPU and GPU memory pools..." << std::endl;
+      }
 
       auto &rm = umpire::ResourceManager::getInstance();
 
@@ -1085,13 +1352,17 @@ int main(int argc, char *argv[])
 #endif
 
 #if defined(TETON_ENABLE_MFEM)
-   if (endsWith(inputPath, ".mesh"))
+   if (pmesh != nullptr)
    {
-      delete mesh;
       delete pmesh;
+   }
+   if (conduit_data_collec != nullptr)
+   {
+      delete conduit_data_collec;
    }
 #endif
 
-   MPI_Finalize();
+   CALI_MARK_END("Teton_Test_Driver");
+   //   MPI_Finalize();
    return 0;
 }

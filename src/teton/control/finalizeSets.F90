@@ -68,6 +68,8 @@
    nGTASets   = getNumberOfGTASets(Quad)
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    useBoltzmannCompton = getUseBoltzmann(Compton)
+#else
+   useBoltzmannCompton = .FALSE.
 #endif
 
 !  Release GPU Memory
@@ -259,6 +261,7 @@
        TOMP(target exit data map(release:GTA% Pvv))
        TOMP(target exit data map(release:GTA% GreySigTotal))
        TOMP(target exit data map(release:GTA% GreySigScat))
+       TOMP(target exit data map(release:GTA% GreySigScatVol))
        TOMP(target exit data map(release:GTA% GreySigtInv))
        TOMP(target exit data map(release:GTA% PhiInc))
        TOMP(target exit data map(release:GTA% Q))

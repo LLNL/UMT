@@ -172,7 +172,7 @@ contains
       if (Size%useGPU .NEQV. .TRUE.) then
         if (Size%useCUDASweep .EQV. .TRUE.) then
           ! CUDA Sweep solver needs it page-locked for optimal transfer performance.
-          call Allocator%allocate(.TRUE.,self%label,"Phi",  self% Phi, Groups,nCorner )
+          call Allocator%allocate(Size%usePinnedMemory,self%label,"Phi",  self% Phi, Groups,nCorner )
         else
           ! CPU Sweep does not need this page-locked.
           allocate( self% Phi(Groups,nCorner) )

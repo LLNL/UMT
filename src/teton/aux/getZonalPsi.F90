@@ -45,7 +45,7 @@
 
    integer :: c0, nCorner, zone
 
-   numAngleSets = getNumSnSets(Quad)
+   numAngleSets = getNumberOfAngleSets(Quad)
 ! Sanity check:
    numAnglesInternal = 0
    do angleSetID = 1,numAngleSets

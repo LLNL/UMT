@@ -65,7 +65,7 @@
 
 !  Initialize Communication 
 
-   TOMP(target data map(to: wtiso))
+   TOMP(target enter data map(to: wtiso))
 
    do cSetID=nCommSets+1,nCommSets+nGTASets
 
@@ -123,7 +123,7 @@ TOMP(end target teams distribute)
 
    endif
 
-TOMP(end target data)
+TOMP(target exit data map(release: wtiso))
 
 !  Loop over angles, solving for each in turn:
 

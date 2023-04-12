@@ -14,6 +14,7 @@
    use CommSet_mod
    use iter_control_list_mod
    use iter_control_mod
+   use radconstant_mod
 
    implicit none
 
@@ -70,7 +71,7 @@
 
    totalFlux = CSet% totalIncFlux
 
-   if (totalFlux == zero) then
+   if (abs(totalFlux) < adqtEpsilon*speed_light*rad_constant*Size%tr4floor) then
 
      CSet% relError(:) = zero
 

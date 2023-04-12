@@ -54,7 +54,6 @@
    integer         :: sharedID
    integer         :: nSets
    integer         :: nGTASets
-   integer         :: nQuadSets
    integer         :: nAngleSets
    integer         :: nGroupSets
    integer         :: nCommSets
@@ -141,11 +140,9 @@
 
    endif
 
-!  Deallocate Quadrature data
+!  Deallocate Quadrature data (One for Sn, One for GTA)
 
-   nQuadSets = getNumQuadSets(Quad)
-
-   do setID=1,nQuadSets
+   do setID=1,2
      QuadSet => getQuadrature(Quad, setID)
 
      call destruct(QuadSet)

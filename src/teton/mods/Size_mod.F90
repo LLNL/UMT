@@ -213,14 +213,16 @@ contains
     endif
 
     self% useNewNonLinearSolver = useNewNonLinearSolver
-    self% useNewGTASolver       = useNewGTASolver
     self% usePWLD               = usePWLD
     self% useSurfaceMassLumping = useSurfaceMassLumping
 
-    ! GPU kernels do not support 1d meshes.
     if (ndim == 1) then
+    ! For 1D, teton uses the GDA Solver, not GTA Solver.  Set this to False.
+       self% useNewGTASolver = .FALSE.
+    ! GPU kernels do not support 1d meshes.
        self% useGPU = .FALSE.
     else
+       self% useNewGTASolver       = useNewGTASolver
        self% useGPU = useGPU
     endif
 

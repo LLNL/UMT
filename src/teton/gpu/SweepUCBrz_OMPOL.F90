@@ -128,7 +128,7 @@
    TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
    TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
-   TOMP(target data map(to: tau, sendIndex, angleList))
+   TOMP(target enter data map(to: tau, sendIndex, angleList))
 
 
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
@@ -388,7 +388,7 @@ TOMPC(private(c0,cez,zone,nCorner, sigA,sigA2,source,area,sig,sez,gnum,gden, aez
    enddo SetLoop
 
 TOMP(end target teams distribute)
-TOMP(end target data)
+TOMP(target exit data map(release: tau, sendIndex, angleList))
 
 TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
 TOMPC(shared(nSets, Quad, sendIndex)&)

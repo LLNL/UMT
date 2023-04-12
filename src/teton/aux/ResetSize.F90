@@ -44,10 +44,14 @@
    Size% betaNLTE              = betaNLTE
    Size% gammaNLTE             = gammaNLTE
    Size% DopplerShiftOn        = DopplerShiftOn
-   Size% useNewNonLinearSolver = useNewNonLinearSolver
-   Size% useNewGTASolver       = useNewGTASolver
-   Size% usePWLD               = usePWLD
-   Size% useSurfaceMassLumping = useSurfaceMassLumping
+
+!  Need to phase these out of the interface.  Changing these during runtime are
+!  not supported, they must be set at initial start time only via Size
+!  constructor
+!   Size% useNewNonLinearSolver = useNewNonLinearSolver
+!   Size% useNewGTASolver       = useNewGTASolver
+!   Size% usePWLD               = usePWLD
+!   Size% useSurfaceMassLumping = useSurfaceMassLumping
 
    return
    end subroutine ResetSize

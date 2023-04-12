@@ -13,22 +13,22 @@
 #ifndef __TETON_CONDUIT_INTERFACE_HH__
 #define __TETON_CONDUIT_INTERFACE_HH__
 
-#include <string>
-#include <mpi.h>
 #include "conduit/conduit.hpp"
+#include <mpi.h>
+#include <string>
 
 namespace Teton
 {
 class Teton
 {
-public:
+  public:
    Teton() : areSourceProfilesSet(false)
    {
    }
 
    ~Teton();
 
-   void initialize(MPI_Comm communicator, bool fromRestart=false);
+   void initialize(MPI_Comm communicator, bool fromRestart = false);
 
    // This stores the needed mesh data needed to compute
    // forces on the vertices
@@ -40,11 +40,13 @@ public:
 
    void constructEdits();
 
+   void computeGenericSurfaceFluxTally();
+
    void constructSize(int rank);
 
    void constructMemoryAllocator();
 
-   // Advance a radiation step, returns dt taken by Teton
+   // Advance a radiation step, returns dt recommended by Teton for the next time step
    double step(int cycle);
 
    void constructQuadrature();
@@ -77,13 +79,14 @@ public:
    // a member function to update opacity
    void updateOpacity();
 
-   // updates the radiation force if the fields 
-   // "radiation_force_r" (dim == 2) or "radiation_force_x" 
+   // updates the radiation force if the fields
+   // "radiation_force_r" (dim == 2) or "radiation_force_x"
    // (dim == 3) fields are present in the conduit blueprint node
    void updateRadiationForce();
    void updateZonalRadiationForce();
 
-   void dump(int cycle, std::string path = ".");
+   // Requires the mesh blueprint node to have 'state/cycle' populated.
+   void dump(MPI_Comm communicator, std::string path = ".");
 
    double *getCornerTemperature();
 
@@ -93,20 +96,19 @@ public:
 
    double getRadiationDeposited(int zone);
 
-   void setTimeStep(int cycle, double dtrad);
    void setTimeStep(int cycle, double dtrad, double timerad);
    // This updates Teton's zone vertex coordinates based on
    // changes to the mesh nodes (from hydro)
    void updateMeshPositions();
 
-   // TODO: remove this once all host codes swich to getting the 
+   // TODO: remove this once all host codes swich to getting the
    // force density fields from the conduit node
    void getRadiationForceDensity(double *RadiationForceDensityX,
                                  double *RadiationForceDensityY,
                                  double *RadiationForceDensityZ);
 
-   // Updates the field "fields/rad_energy_deposited/values" in the 
-   // blueprint conduit node if it exists 
+   // Updates the field "fields/rad_energy_deposited/values" in the
+   // blueprint conduit node if it exists
    void getRadEnergyDeposited(double *RadEnergyDeposited);
    void updateRadEnergyDeposited();
 
@@ -156,8 +158,7 @@ public:
 
    double mDTrad;
 
-private:
-
+  private:
    bool areSourceProfilesSet; // Whether or not setSourceProfiles has been called
 
    int mGTAorder; // quadrature order used for grey transport acceleration (def=2 for s2 acc)
@@ -177,7 +178,6 @@ private:
    std::vector<double> mCornerToVertexCoordY;
    std::vector<double> mCornerToVertexCoordZ;
    // REMOVE //
-
 };
 } //end namespace Teton
 

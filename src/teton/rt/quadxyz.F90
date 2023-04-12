@@ -1,8 +1,8 @@
 !***********************************************************************
 !                        Version 1:  01/93, PFN                        *
 !                                                                      *
-!   QUADXYZ - Calculates group dependent quadrature sets for Sn        *
-!             radiation transport in XYZ geometry.                     *
+!   QUADXYZ - Calculates group dependent level-symmetric quadrature    *
+!             sets for Sn radiation transport in XYZ geometry.         *
 !                                                                      *
 !   Input:   norder - quadrature order                                 *
 !            nang   - number of angles                                 *

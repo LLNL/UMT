@@ -1,3 +1,7 @@
+System libraries
+-----------------------
+UMT Requires MPI to be installed on your system to provide a C++ and Fortran compiler.
+
 Third party libraries
 -----------------------
 The code depends on several libraries.

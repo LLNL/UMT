@@ -147,6 +147,7 @@
    call theDatastore%root%set_path("rtedits/PowerEmitted", PowerEmitted)
    call theDatastore%root%set_path("rtedits/PowerExtSources", PowerExtSources)
    call theDatastore%root%set_path("rtedits/PowerCompton", PowerCompton)
+   call theDatastore%root%set_path("rtedits/EnergyCheck", EnergyCheck)
 
    if ( Options%isRankVerbose() > 0 ) then
       print *, ""

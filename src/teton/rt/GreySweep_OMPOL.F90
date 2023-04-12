@@ -41,7 +41,7 @@
 
    if ( useGPU ) then
 
-     TOMP(target data map(tofrom: P))
+     TOMP(target enter data map(to: P))
 
      call GTASweep_GPU(P, PsiB, withSource)
 
@@ -51,7 +51,7 @@
        call ScalarIntensitySolve_GPU(P)
      endif
 
-     TOMP(end target data)
+     TOMP(target exit data map(from: P))
 
    else
 

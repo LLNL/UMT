@@ -51,6 +51,7 @@ contains
 
    end subroutine fcheapSyncStream
 
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
    subroutine getBCSolverMemEstimate(num_bytes )
       use ComptonControl_mod
       use Size_mod
@@ -91,6 +92,8 @@ contains
       endif
 
       end subroutine getBCSolverMemEstimate
+
+#endif
 
    subroutine fallocateGpuMemory( ngr, tabG2Gs, tabTaus, zoneBatchSize, maxCornersPerZone )
       implicit none
