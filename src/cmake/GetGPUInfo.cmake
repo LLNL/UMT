@@ -10,11 +10,14 @@
 # This is the number of threads supported per thread team/ block on the target device.
 # OMP_TARGET_MAX_THREADS_PER_THREAD_TEAM
 
+#NVIDIA VOLTA
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "XL")
   set(OMP_DEVICE_NUM_PROCESSORS 80)
   set(OMP_DEVICE_TEAM_THREAD_LIMIT 1024)
+# AMD MI250X 
 elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
-  set(OMP_DEVICE_NUM_PROCESSORS 120)
+# Cray recommends only using 108 of the 110 CUs to leave some free for OS/runtime tasks.
+  set(OMP_DEVICE_NUM_PROCESSORS 108)
   set(OMP_DEVICE_TEAM_THREAD_LIMIT 1024)
 else()
   set(OMP_DEVICE_NUM_PROCESSORS 1)

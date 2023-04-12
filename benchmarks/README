@@ -1,0 +1,3 @@
+Helper script for creating run lines for a weak scaling study.
+Example:
+python3 generate_weak_scaling_runs.py >&  run_weak_scaling_study.sh

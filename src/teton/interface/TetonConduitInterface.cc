@@ -1,19 +1,19 @@
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <stdexcept>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <stdexcept>
 
-#include "conduit/conduit_relay.hpp"
-#include "conduit/conduit_relay_mpi_io_blueprint.hpp"
 #include "conduit/conduit_blueprint.hpp"
+#include "conduit/conduit_relay.hpp"
 #include "conduit/conduit_relay_config.h"
+#include "conduit/conduit_relay_mpi_io_blueprint.hpp"
 
-#include "TetonInterface.hh"
-#include "TetonConduitInterface.hh"
 #include "TetonBlueprint.hh"
+#include "TetonConduitInterface.hh"
+#include "TetonInterface.hh"
 #include "dbc_macros.h"
 
 #if defined(TETON_USE_CUDA)
@@ -26,9 +26,12 @@
 #else
 #define CALI_MARK_BEGIN(label)
 #define CALI_MARK_END(label)
+#define CALI_CXX_MARK_SCOPE(name)
+#define CALI_CXX_MARK_FUNCTION
 #endif
 
-extern "C" {
+extern "C"
+{
 extern conduit::Node *teton_get_datastore_cptr();
 extern conduit::Node *teton_conduitcheckpoint_get_cptr();
 
@@ -80,10 +83,7 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
       std::cerr << "Teton: Dump copy of input..." << std::endl;
       conduit::relay::io::save(options, "parameters_input_" + std::to_string(myRank) + ".conduit_json", "conduit_json");
       conduit::relay::io::save(options, "parameters_input_" + std::to_string(myRank) + ".json", "json");
-// The conduit install in /usr/workspace/teton/libraries/mapp has this added. Remove when new conduit version comes out.
-#if defined(CONDUIT_CUSTOMINSTALL_SUPPORT_PAINT_ADJSET)
       conduit::blueprint::mesh::paint_adjset("main_adjset", "main_adjset", blueprint);
-#endif
       conduit::relay::io::save(blueprint, "mesh_input_" + std::to_string(myRank) + ".conduit_json", "conduit_json");
       conduit::relay::io::save(blueprint, "mesh_input_" + std::to_string(myRank) + ".json", "json");
    }
@@ -96,25 +96,9 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
 
    if (verbose >= 2)
    {
-// The conduit install in /usr/workspace/teton/libraries/mapp has this added. Remove when new conduit version comes out.
-#if defined(CONDUIT_CUSTOMINSTALL_SUPPORT_PAINT_ADJSET)
       conduit::blueprint::mesh::paint_adjset("main_corner", "corner_adjset", blueprint);
-#endif
       std::cerr << "Teton: Dump blueprint with generated topologies..." << std::endl;
-#if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
-      std::string file_protocol = "hdf5";
-      // TODO: fix
-      // REMOVE uncomment below //
-      // REMOVE uncomment below //
-      //conduit::relay::mpi::io::blueprint::save_mesh(blueprint,
-      //                              "./blueprint_mesh",
-      //                              file_protocol,
-      //                              communicator);
-#endif
-
-      conduit::relay::io::save(
-          options, "parameters_post_processed_" + std::to_string(myRank) + ".conduit_json", "conduit_json");
-      conduit::relay::io::save(blueprint, "mesh_input_post_processed_" + std::to_string(myRank) + ".json", "json");
+      dump(communicator, ".");
    }
 
    // Set the Dt controls early, as tfloor is set here and needed by constructSize in the line below.
@@ -434,8 +418,8 @@ void Teton::constructMemoryAllocator()
 
    if (options.has_path("memory_allocator/umpire_host_allocator_id"))
    {
-      umpire_host_pinned_pool_allocator_id
-          = options.fetch_existing("memory_allocator/umpire_host_allocator_id").value();
+      umpire_host_pinned_pool_allocator_id = options.fetch_existing("memory_allocator/umpire_host_allocator_id")
+                                                .value();
    }
    if (options.has_path("memory_allocator/umpire_device_allocator_id"))
    {
@@ -445,23 +429,17 @@ void Teton::constructMemoryAllocator()
    teton_constructmemoryallocator(&umpire_host_pinned_pool_allocator_id, &umpire_device_pool_allocator_id);
 }
 
-void Teton::dump(int cycle, std::string path)
+void Teton::dump(MPI_Comm communicator, std::string path)
 {
-   conduit::Node &blueprint = getMeshBlueprint();
-
-   int rank;
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
 // This is defined in conduit_relay_config.h
 #if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
+   conduit::Node &blueprint = getMeshBlueprint();
    std::string file_protocol = "hdf5";
+   conduit::relay::mpi::io::blueprint::save_mesh(blueprint, path + "/blueprint_mesh", file_protocol, communicator);
 #else
-   std::string file_protocol = "conduit_json";
+   std::cerr << " Teton: Unable to dump mesh blueprint viz file.  Conduit was not built with HDF5 support."
+             << std::endl;
 #endif
-
-   conduit::relay::io::save(blueprint,
-                            path + "/blueprint_mesh.rank" + std::to_string(rank) + ".cycle" + std::to_string(cycle) + "." + file_protocol,
-                            file_protocol);
 }
 // ------------------------------------------------------------
 //   step() - advance one cycle
@@ -537,16 +515,34 @@ double Teton::step(int cycle)
    // Update the mesh positions, material info, and opacity info
    // ------------------------------------------------------------
 
-   // TODO: need this for mesh, material, and opacity changes
-   // Update zone vertex coordinates after hydro
+   // Updating the positions is not working when using the test_driver
+   // on an mfem mesh.
+   // At cycle two, the positions are wrong, and look like they are
+   // either getting overwritten or the memory freed in the blueprint
+   // node coordinate arrays.  This functionality works fine on
+   // conduit mesh files.
+   // For now, have the test_driver set the mesh_motion = 0 to skip
+   // updating the positions, as we're only running static meshes
+   // in our standalone meshes at present anyways.
+   // -- black27
+   //
+   // Update zone vertex coordinates this cycle.  This should be done
+   // after any mesh motion.
+   //
+   // Defaults to true, but can be disabled by setting
+   // 'mesh_motion' = 0 in the options node.
+   //
    // Calling updateMeshPositions will cause the volume difference from
    // last cycle to current cycle, that Teton tracks, to be updated.
-#if !defined(TETON_ENABLE_MINIAPP_BUILD)
-   // Having trouble with UMT with this routine, with mfem meshes.
-   // Need to troubleshoot later, but this is lower priority as UMT
-   // problems don't have mesh motion.
-   updateMeshPositions();
-#endif
+   int mesh_motion = 1;
+   if (options.has_path("mesh_motion"))
+   {
+      mesh_motion = options.fetch_existing("mesh_motion").value();
+   }
+   if (mesh_motion)
+   {
+      updateMeshPositions();
+   }
    //setMeshVelocity();
    // This updates the material properties (other than the opacities)
 
@@ -576,6 +572,9 @@ double Teton::step(int cycle)
 
    teton_settimestep(&cycle, &dtrad, &timerad, &tfloor);
 
+   // Update cycle number in mesh blueprint.  This is used by conduit or Visit if we dump this mesh.
+   blueprint["state/cycle"] = cycle;
+
    // Main function in Teton to take a radiation step
    teton_radtr();
 
@@ -586,28 +585,28 @@ double Teton::step(int cycle)
    // TODO: fix when 1D is added
    bool has_rad_force = blueprint.has_path("fields/radiation_force_z");
    std::string rad_force_type;
-   if (has_rad_force) 
+   if (has_rad_force)
    {
       rad_force_type = blueprint["fields/radiation_force_z/association"].as_string();
    }
-   if (has_rad_force && rad_force_type == "element") 
+   if (has_rad_force && rad_force_type == "element")
    {
       updateZonalRadiationForce();
    }
-   if (has_rad_force && rad_force_type != "element") 
+   if (has_rad_force && rad_force_type != "element")
    {
       updateRadiationForce();
    }
 
    // Update the radiation energy deposited to the material
-   if (blueprint.has_path("fields/electron_energy_deposited/values")) 
+   if (blueprint.has_path("fields/electron_energy_deposited/values"))
    {
       double *electron_energy_deposited = blueprint.fetch_existing("fields/electron_energy_deposited/values").value();
       getRadEnergyDeposited(electron_energy_deposited);
    }
 
    // Update the radiation energy density
-   if (blueprint.has_path("fields/radiation_energy_density/values")) 
+   if (blueprint.has_path("fields/radiation_energy_density/values"))
    {
       double *radiation_energy_density = blueprint.fetch_existing("fields/radiation_energy_density/values").value();
       teton_getradiationenergydensity(radiation_energy_density);
@@ -621,13 +620,23 @@ double Teton::step(int cycle)
    double *tec = datastore.fetch_existing("material/Tec").value();
    teton_rtedit(tec);
 
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+   computeGenericSurfaceFluxTally();
+
+   // REMOVE //
+   // int rank;
+   // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   // conduit::relay::io::save(blueprint,
+   //                          "blueprint_mesh.rank" + std::to_string(rank) + ".cycle" + std::to_string(cycle) + ".json", "json");
+   // REMOVE //
+#endif
+
    // Compute the recommended time step
    teton_dtnew(&maxOSComptonChangeCorner, &maxOSComptonChange);
 
    // put Teton's various edits in to its internal conduit node
    teton_publishedits(&mDTrad);
 
-#if !defined(TETON_ENABLE_MINIAPP_BUILD)
    double MatCoupTimeTotal, SweepTimeTotal, GPUSweepTimeTotal, GTATimeTotal;
    double RadtrTimeTotal, InitTimeTotal, FinalTimeTotal, timeNonRad = 0.0, timeOther = 0.0;
 
@@ -640,7 +649,7 @@ double Teton::step(int cycle)
                      &FinalTimeTotal,
                      &timeNonRad,
                      &timeOther);
-#endif
+
    return mDTrad;
 }
 
@@ -689,8 +698,8 @@ void Teton::constructEdits()
    }
 
    int numSpectrumAngleBins = options.fetch_existing("boundary_edits/numSpectrumAngleBins").value();
-   double *spectrumAngleBinBoundaryList_ptr
-       = options.fetch_existing("boundary_edits/spectrumAngleBinBoundaryList").value();
+   double *spectrumAngleBinBoundaryList_ptr = options.fetch_existing("boundary_edits/spectrumAngleBinBoundaryList")
+                                                 .value();
    double *RadPowerEscape_ptr = options.fetch_existing("boundary_edits/RadPowerEscape").value();
    double *RadPowerIncident_ptr = options.fetch_existing("boundary_edits/RadPowerIncident").value();
    double *PolarSectorPowerEscape_ptr = options.fetch_existing("boundary_edits/PolarSectorPowerEscape").value();
@@ -701,6 +710,88 @@ void Teton::constructEdits()
                          &RadPowerEscape_ptr[0],
                          &RadPowerIncident_ptr[0],
                          &PolarSectorPowerEscape_ptr[0]);
+}
+
+// ------------------------------------------------------------
+// computeGenericSurfaceFluxTally
+//
+// Constructs surface flux tallies
+// ------------------------------------------------------------
+void Teton::computeGenericSurfaceFluxTally()
+{
+   conduit::Node &blueprint = getMeshBlueprint();
+   conduit::Node &options = getOptions();
+   if (blueprint.has_path("teton/surface_edits"))
+   {
+      conduit::Node &surface_edits_info = options["surface_edits"];
+      conduit::Node &surface_edits = blueprint["teton/surface_edits"];
+      conduit::NodeConstIterator surface_edits_it = surface_edits.children();
+      while (surface_edits_it.has_next())
+      {
+         const conduit::Node &surface_edit = surface_edits_it.next();
+         std::string surface_edit_name = surface_edit.name();
+         const conduit::Node &surface_edit_option = surface_edits_info[surface_edit_name];
+         const int *corners_ptr = surface_edit.fetch_existing("corners").as_int_ptr();
+         const int *local_zone_faces_ptr = surface_edit.fetch_existing("local_zone_faces").as_int_ptr();
+         const int num_corner_faces = surface_edit["corners"].dtype().number_of_elements();
+         const bool transform_to_lab_frame = surface_edit_option["transform_to_lab_frame"].as_int();
+         const bool apply_time_shift = surface_edit_option["apply_time_shift"].as_int();
+
+         // if not integrating over angles, then this is equal to the number of polar levels
+         const bool integrate_over_angles = surface_edit_option["integrate_over_angles"].as_int();
+         int num_angle_bins = 1;
+         if (!integrate_over_angles)
+            teton_getnumanglebins(&num_angle_bins);
+
+         // if not integrating over all groups, then this is equal to the number of groups
+         const bool integrate_over_all_groups = surface_edit_option["integrate_over_all_groups"].as_int();
+         int num_groups = 1;
+         if (!integrate_over_all_groups)
+            num_groups = options["quadrature/num_groups"].as_int();
+
+         const double *time_bin_boundaries = surface_edit_option["time_bin_boundaries"].as_double_ptr();
+         const int num_time_bins = surface_edit_option["time_bin_boundaries"].dtype().number_of_elements() - 1;
+         // TODO: make sure don't have to swap coordinate values in rz (since host code might
+         // be in (z,r) coordinates
+         const double *center_point = surface_edit_option.fetch_existing("center_point").as_double_ptr();
+         const bool calculate_incident = surface_edit_option.fetch_existing("calculate_incident").as_int();
+         const double scale_tally = surface_edit_option.fetch_existing("scale_tally").as_double();
+         const bool calculate_error_metrics = surface_edit_option.fetch_existing("calculate_error_metrics").as_int();
+
+         double *tally = blueprint["fields/" + surface_edit_name + "_tallies/values"].as_double_ptr();
+         double *tally_incident = nullptr;
+         double *error_est_shift = nullptr;
+         double *error_est_src_size = nullptr;
+         if (calculate_incident)
+         {
+            tally_incident = blueprint["fields/" + surface_edit_name + "_tallies_incident/values"].as_double_ptr();
+         }
+         if (apply_time_shift && calculate_error_metrics)
+         {
+            error_est_shift = blueprint["fields/" + surface_edit_name + "_error_est_shift/values"].as_double_ptr();
+            error_est_src_size = blueprint["fields/" + surface_edit_name + "_error_est_src_size/values"]
+                                    .as_double_ptr();
+         }
+
+         teton_surfaceedit(&num_corner_faces,
+                           &transform_to_lab_frame,
+                           corners_ptr,
+                           local_zone_faces_ptr,
+                           &apply_time_shift,
+                           center_point,
+                           &num_angle_bins,
+                           &num_groups,
+                           &num_time_bins,
+                           time_bin_boundaries,
+                           &calculate_incident,
+                           &scale_tally,
+                           &calculate_error_metrics,
+                           tally,
+                           tally_incident,
+                           error_est_shift,
+                           error_est_src_size);
+      }
+   }
 }
 
 // ------------------------------------------------------------
@@ -723,42 +814,38 @@ void Teton::constructQuadrature()
    int paxis = options.fetch_existing("quadrature/paxis").value();
    int ngr = options.fetch_existing("quadrature/num_groups").to_int(); //coerce from unsigned int or size_t
    int gtaOrder = options.fetch_existing("quadrature/gtaorder").value();
-   int group = 0, offset = 0;
-   int D_ngr6;
+   int group = 0;
    std::vector<double> gnu;
    std::vector<int> quaddef;
 
-
-   D_ngr6 = std::max(6 * (ngr + 1), 0);
-
-   // Make sure there is room for this group
+   // Allocate memory for energy group bounds and quadrature definitions
    gnu.resize(ngr + 1);
-   quaddef.resize(D_ngr6);
+   quaddef.resize(12);
 
-// The Fortran expects the quadrature definition to be provided per-group, but should all have the
-// same definition.
+   // Set energy group bounds
    for (group = 0; group < ngr; ++group)
    {
       gnu[group] = gnu_vals[group];
       gnu[group + 1] = gnu_vals[group + 1];
-      quaddef[offset] = qtype;
-      quaddef[offset + 1] = qorder;
-      quaddef[offset + 2] = npolar;
-      quaddef[offset + 3] = nazimu;
-      quaddef[offset + 4] = paxis;
-      quaddef[offset + 5] = -1; //Number of total angles (output).  The Fortran populates this value.
-      offset = offset + 6;
    }
 
-// Configure the quadrature for the grey acceleration ( reduced # angles and groups ).
-   quaddef[offset] = 1;
-   quaddef[offset + 1] = gtaOrder;
-   quaddef[offset + 2] = 1;
-   quaddef[offset + 3] = 1;
-   quaddef[offset + 4] = 1;
-   quaddef[offset + 5] = -1; // Number of total angles (output).  The Fortran populates this.
+   // Configure the quadrature for high-order Sn sweeps (all groups have the same quadrature)
+   quaddef[0] = qtype;
+   quaddef[1] = qorder;
+   quaddef[2] = npolar;
+   quaddef[3] = nazimu;
+   quaddef[4] = paxis;
+   quaddef[5] = -1; // Number of total angles (output). The Fortran populates this value.
 
-   teton_constructquadrature(&nSetsMaster, &nSets, &quaddef[0], &gnu[0]);
+   // Configure the quadrature for GTA sweeps ( reduced # angles and groups ).
+   quaddef[6] = 1;
+   quaddef[7] = gtaOrder;
+   quaddef[8] = 1;
+   quaddef[9] = 1;
+   quaddef[10] = 1;
+   quaddef[11] = -1; // Number of total angles (output).  The Fortran populates this.
+
+   teton_constructquadrature_new(&nSetsMaster, &nSets, &quaddef[0], &gnu[0]);
 
    // Retrieve the # angles that the Fortran populated and add it to conduit so its accessible.
    // Just get the first group's value.  The Fortran performs verify checks to ensure the quadrature
@@ -859,13 +946,19 @@ void Teton::setSourceProfiles()
          }
 
          double Multiplier = options.fetch_existing(top + "Multiplier").value();
-         bool blackBody
-             = options.fetch_existing(top + "blackBody").to_int(); // Conduit doesn't support a 'bool' data type.
-         bool isotropic
-             = options.fetch_existing(top + "isotropic").to_int(); // Conduit doesn't support a 'bool' data type.
+         bool blackBody = options.fetch_existing(top + "blackBody")
+                             .to_int(); // Conduit doesn't support a 'bool' data type.
+         bool isotropic = options.fetch_existing(top + "isotropic")
+                             .to_int(); // Conduit doesn't support a 'bool' data type.
 
-         teton_addprofile(
-             &NumTimes, &NumValues, &Multiplier, &blackBody, &isotropic, &Times[0], &Values[0], &TetonProfileID);
+         teton_addprofile(&NumTimes,
+                          &NumValues,
+                          &Multiplier,
+                          &blackBody,
+                          &isotropic,
+                          &Times[0],
+                          &Values[0],
+                          &TetonProfileID);
       }
 
       // Save the TetonProfileID for later use:
@@ -996,6 +1089,8 @@ void Teton::setCommunication()
 
 void Teton::setMeshConnectivity()
 {
+   CALI_CXX_MARK_FUNCTION;
+
    conduit::Node &options = getOptions();
    conduit::Node &blueprint = getMeshBlueprint();
 
@@ -1154,7 +1249,6 @@ void Teton::updateOpacity()
    }
 #endif
 }
-
 
 void Teton::constructIterationControls()
 {
@@ -1318,14 +1412,6 @@ double Teton::getRadiationDeposited(int zone)
    return eDep;
 }
 
-// TODO - Can we deprecate this function version?  Why isn't timerad being provided?
-void Teton::setTimeStep(int cycle, double dtrad)
-{
-   double timerad = 0.0;
-
-   setTimeStep(cycle, dtrad, timerad);
-}
-
 void Teton::setTimeStep(int cycle, double dtrad, double timerad)
 {
    conduit::Node &options = getOptions();
@@ -1333,6 +1419,11 @@ void Teton::setTimeStep(int cycle, double dtrad, double timerad)
    options["iteration/cycle"] = cycle;
    options["iteration/dtrad"] = dtrad;
    options["iteration/timerad"] = timerad;
+
+   // Used by conduit or Visit if mesh is dumped for viz purposes.
+   conduit::Node &blueprint = getMeshBlueprint();
+
+   blueprint["state/cycle"] = cycle;
 }
 
 void Teton::updateMeshPositions()
@@ -1350,13 +1441,14 @@ void Teton::updateMeshPositions()
    // blueprint coords.
    if (!blueprint.has_path("arrays/zone_verts"))
    {
-      int corner_counter  = 0;
-      int zoneVertsSize   = 0;
+      int corner_counter = 0;
+      int zoneVertsSize = 0;
 
       const double *m_x = nullptr;
       const double *m_y = nullptr;
       const double *m_r = nullptr;
       const double *m_z = nullptr;
+
       if (ndim == 1)
       {
          m_x = blueprint.fetch_existing("coordsets/coords/values/x").value();
@@ -1409,7 +1501,7 @@ void Teton::updateMeshPositions()
          {
             // get the index of the vertex in the coord array, corresponding to this corner
             int corner = mZoneToCorners[corner_counter];
-            int v      = mCornerToVertex[corner];
+            int v = mCornerToVertex[corner];
 
             // store the vertex coordinates
             if (ndim == 1)
@@ -1430,7 +1522,7 @@ void Teton::updateMeshPositions()
             corner_counter += 1;
          }
       }
-      blueprint["arrays/zone_verts"].set(&zoneVerts[0], zoneVerts.size());
+      blueprint["arrays/zone_verts"].set(zoneVerts.data(), zoneVerts.size());
    }
 
    setMeshSizeAndPositions();
@@ -1534,14 +1626,14 @@ void Teton::updateRadiationForce()
       radiation_force_x = blueprint.fetch_existing("fields/radiation_force_r/values").value();
       radiation_force_y = blueprint.fetch_existing("fields/radiation_force_z/values").value();
    }
-   else if (ndim == 3) 
+   else if (ndim == 3)
    {
       radiation_force_x = blueprint.fetch_existing("fields/radiation_force_x/values").value();
       radiation_force_y = blueprint.fetch_existing("fields/radiation_force_y/values").value();
       radiation_force_z = blueprint.fetch_existing("fields/radiation_force_z/values").value();
    }
    // TODO: finish this case
-   else 
+   else
    {
       std::cerr << "1D updateRadiationForce not yet implemented! Teton is exiting . . ." << std::endl;
       exit(1);
@@ -1588,7 +1680,6 @@ void Teton::updateZonalRadiationForce()
    int maxCorner = options.fetch_existing("size/maxCorner").value();
    int nzones = options.fetch_existing("size/nzones").value();
    std::vector<double> RadiationForce(ndim * maxCorner);
-   int corner_counter = 0;
 
    double *radiation_force_x;
    double *radiation_force_y;
@@ -1598,14 +1689,14 @@ void Teton::updateZonalRadiationForce()
       radiation_force_x = blueprint.fetch_existing("fields/radiation_force_r/values").value();
       radiation_force_y = blueprint.fetch_existing("fields/radiation_force_z/values").value();
    }
-   else if (ndim == 3) 
+   else if (ndim == 3)
    {
       radiation_force_x = blueprint.fetch_existing("fields/radiation_force_x/values").value();
       radiation_force_y = blueprint.fetch_existing("fields/radiation_force_y/values").value();
       radiation_force_z = blueprint.fetch_existing("fields/radiation_force_z/values").value();
    }
    // TODO: finish this case
-   else 
+   else
    {
       std::cerr << "1D updateZonalRadiationForce not yet implemented! Teton is exiting . . ." << std::endl;
       exit(1);
@@ -1613,14 +1704,14 @@ void Teton::updateZonalRadiationForce()
 
    for (int zone = 0; zone < nzones; ++zone)
    {
-      radiation_force_x[zone] = 0.0; 
-      radiation_force_y[zone] = 0.0; 
+      radiation_force_x[zone] = 0.0;
+      radiation_force_y[zone] = 0.0;
    }
    if (ndim == 3)
    {
       for (int zone = 0; zone < nzones; ++zone)
       {
-         radiation_force_z[zone] = 0.0; 
+         radiation_force_z[zone] = 0.0;
       }
    }
 
@@ -1647,11 +1738,11 @@ void Teton::getRadEnergyDeposited(double *RadEnergyDeposited)
    int nzones = options.fetch_existing("size/nzones").value();
    for (int zone = 0; zone < nzones; ++zone)
    {
-      RadEnergyDeposited[zone] = 0.0; 
+      RadEnergyDeposited[zone] = 0.0;
    }
    for (int zone = 0; zone < nzones; ++zone)
    {
-      // Get the radiation energy deposited 
+      // Get the radiation energy deposited
       double rad_temp;
       int zoneID = zone + 1;
       teton_getradiationdeposited(&zoneID, &RadEnergyDeposited[zone], &rad_temp);

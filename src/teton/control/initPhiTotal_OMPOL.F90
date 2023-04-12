@@ -52,7 +52,7 @@
 
    if ( Size% useGPU ) then
 
-     TOMP(target data map(to: nSets, ngr))
+     TOMP(target enter data map(to: nSets, ngr))
 
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nZoneSets, Geom, Rad, ngr, Quad, nSets )&)
@@ -105,7 +105,7 @@
      enddo ZoneSetLoop1
 
      TOMP(end target teams distribute)
-     TOMP(end target data)
+     TOMP(target exit data map(release: nSets, ngr))
 
    else
 

@@ -1,5 +1,8 @@
-! QuadratureList Module:  Contains a list of source profiles
 #include "macros.h"
+
+! QuadratureList Module:  Contains structures for quadrature and phase-space
+! sets
+
 module QuadratureList_mod
 
   use kind_mod
@@ -18,8 +21,6 @@ module QuadratureList_mod
   public destruct  
   public setQuadrature
   public getQuadrature 
-  public getNumQuadSets 
-  public getNumSnSets
   public getNumberOfSets
   public getNumberOfGTASets
   public getNumberOfAngleSets
@@ -47,12 +48,9 @@ module QuadratureList_mod
 
   type, public :: QuadratureList
 
-     ! These first three variables refer to quadrature sets and NOT phase-space sets.
-     integer                         :: NumQuadSets  ! Total number of quadrature sets 
-     integer                         :: NumSnSets    ! Number of quadrature sets used for Sn sweeps
-     integer                         :: nGTASets     ! Number of quadrature sets used for GTA
+     integer                         :: nGTASets ! Number of computational sets for GTA sweeps
+     integer                         :: nSets    ! Number of computational sets for Sn sweeps
 
-     integer                         :: nSets
      ! nSets is the maximum number of sets we can break the Sn quadrature sets
      !   into, as determined by the user input nSetsMaster and also hardware
      !   constraints.
@@ -95,14 +93,6 @@ module QuadratureList_mod
 
   interface getQuadrature
     module procedure QuadratureList_getQuad
-  end interface
-
-  interface getNumQuadSets
-    module procedure QuadratureList_getNumQuadSets
-  end interface
-
-  interface getNumSnSets
-    module procedure QuadratureList_getNumSnSets
   end interface
 
   interface getNumberOfSets
@@ -207,8 +197,8 @@ contains
 ! construct interface
 !=======================================================================
 
-  subroutine QuadratureList_ctor(self, NumQuadSets, ngr,   &
-                                 totalAngles, nSetsMaster, nSets)
+  subroutine QuadratureList_ctor(self, nAnglesSn, nSetsMaster, nSets)
+
 
     use, intrinsic :: iso_c_binding, only : c_int
     use cmake_defines_mod, only : omp_device_num_processors, omp_device_team_thread_limit
@@ -220,9 +210,7 @@ contains
 !   Passed variables
 
     type(QuadratureList), intent(inout) :: self
-    integer,              intent(in)    :: NumQuadSets 
-    integer,              intent(in)    :: ngr
-    integer,              intent(in)    :: totalAngles
+    integer,              intent(in)    :: nAnglesSn 
     integer,              intent(in)    :: nSetsMaster
     integer,              intent(inout) :: nSets
 !   Warning: nSets may not be the value you think it should be.  See comments
@@ -233,13 +221,7 @@ contains
     integer :: nOmpMaxThreads
     integer :: nOmpMaxTeams
 
-    TETON_VERIFY(NumQuadSets == 2, "Teton: Support for multiple Sn quadrature sets is deprecated.")
-    ! Support for multiple Sn quad sets is being removed.
-    ! See Paul's issue for more information
-    ! https://rzlc.llnl.gov/gitlab/deterministic-transport/TRT/Teton/-/issues/43
 
-    self% NumQuadSets   = 2
-    self% NumSnSets     = 1
     self% nSets         = 1
     self% nGroupSets    = 1
     self% nZoneSets     = 1
@@ -248,14 +230,14 @@ contains
 #if defined(TETON_ENABLE_OPENMP)
     if (Size%useGPU) then
        ! If running on gpu, set these to use all available gpu processors.
-       nOmpMaxTeams = omp_device_num_processors
-       self% nSets       = max(self% NumSnSets, nOmpMaxTeams)
-       self% nZoneSets   = min(Size%nzones, nOmpMaxTeams)
+       nOmpMaxTeams    = omp_device_num_processors
+       self% nSets     = max(1, nOmpMaxTeams)
+       self% nZoneSets = min(Size%nzones, nOmpMaxTeams)
     else
        ! If not running on gpu, set these to use all available CPU threads.
-       nOmpMaxThreads = Options%getNumOmpMaxThreads()
-       self% nSets       = max(self% NumSnSets, nOmpMaxThreads)
-       self% nZoneSets   = min(Size%nzones, nOmpMaxThreads)
+       nOmpMaxThreads  = Options%getNumOmpMaxThreads()
+       self% nSets     = max(1, nOmpMaxThreads)
+       self% nZoneSets = min(Size%nzones, nOmpMaxThreads)
     endif
 #endif
 
@@ -268,8 +250,8 @@ contains
       self% nZoneSets = min(nSetsMaster, Size%nzones)
     endif
 
-    allocate( self% SetIDList(ngr,totalAngles) )
-    allocate( self% QuadPtr(self% NumQuadSets) )
+    allocate( self% SetIDList(Size% ngr,nAnglesSn) )
+    allocate( self% QuadPtr(2) )
 
     return
 
@@ -325,7 +307,7 @@ contains
 !=======================================================================
 
   subroutine QuadratureList_set(self,          &
-                                QuadID,        &
+                                quadID,        &
                                 Groups,        &
                                 NumAngles,     &
                                 NumMoments,    &
@@ -342,7 +324,7 @@ contains
 
     type(QuadratureList), intent(inout) :: self
 
-    integer,    intent(in)              :: QuadID
+    integer,    intent(in)              :: quadID
     integer,    intent(in)              :: Groups
     integer,    intent(in)              :: NumAngles
     integer,    intent(in)              :: NumMoments
@@ -366,8 +348,8 @@ contains
         TypeName = 'lobatto'
     end select 
  
-    call construct(self% QuadPtr(QuadID), &
-                         QuadID,          &
+    call construct(self% QuadPtr(quadID), &
+                         quadID,          &
                          Groups,          &
                          NumAngles ,      &
                          NumMoments,      &
@@ -383,7 +365,7 @@ contains
   end subroutine QuadratureList_set
 
 !=======================================================================
-! getSetIDfromGroup interface
+! getSetIDfromGroupAngle interface
 !=======================================================================
 
   function QuadratureList_getSetIDfromGroupAngle(self, group, angle) result(setID)
@@ -435,48 +417,9 @@ contains
   end subroutine QuadratureList_dtor
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getNumQuadSets(self) result(NumQuadSets)
-                                                                                            
-!    Returns the number of unique quadrature sets
-!      NumQuadSets   number of quadrature sets
-
-!    variable declarations
-     implicit none
-                                                                                            
-!    passed variables
-     type(QuadratureList), intent(in) :: self
-     integer                          :: NumQuadSets
-
-     NumQuadSets = self% NumQuadSets
-                                                                                            
-     return
-                                                                                            
-  end function QuadratureList_getNumQuadSets
-
-!-----------------------------------------------------------------------
-  function QuadratureList_getNumSnSets(self) result(NumSnSets)
-                                                                                            
-!    Returns the number of non-acceleration quadrature sets
-!      NumSnSets   number of Sn sets
-                                                                                            
-!    variable declarations
-     implicit none
-                                                                                            
-!    passed variables
-     type(QuadratureList), intent(in) :: self
-     integer                          :: NumSnSets
-                                                                                            
-     NumSnSets = self% NumSnSets
-                                                                                            
-     return
-                                                                                            
-  end function QuadratureList_getNumSnSets
-
-!-----------------------------------------------------------------------
   function QuadratureList_getNumberOfSets(self) result(nSets)
 
-!    Returns the number of non-acceleration quadrature sets
-!      NumSnSets   number of group/anglesets
+!    Returns the number of phase-space sets (nSets)
 
 !    variable declarations
      implicit none
@@ -622,7 +565,7 @@ contains
      type(Quadrature),     pointer    :: QuadPtr
                                                                                            
                                                                                            
-     QuadPtr => self% QuadPtr(self% NumSnSets + 1)
+     QuadPtr => self% QuadPtr(2)
                                                                                            
      return
                                                                                            
@@ -898,18 +841,14 @@ contains
 
 !    Local
      type(Quadrature), pointer    :: QuadPtr
-     integer                      :: i, ig, ng
+     integer                      :: g
      real(adqt)                   :: GrpBnds(numGroups+1)
                                                                                             
-     ng = 0
-     do i=1,self % NumSnSets
-       QuadPtr => self% QuadPtr(i)
-       do ig=1,QuadPtr% Groups+1
-         GrpBnds(ng+ig) = QuadPtr% Gnu(ig)
-       enddo
-       ng = ng + QuadPtr% Groups
+     QuadPtr => self% QuadPtr(1)
+     do g=1,numGroups+1
+       GrpBnds(g) = QuadPtr% Gnu(g)
      enddo
-                                                                                            
+
      return
                                                                                             
   end function QuadratureList_getEnergyGroups
@@ -931,18 +870,12 @@ contains
 
 !    Local
      type(Quadrature), pointer    :: QuadPtr
-     integer                      :: qset
      integer                      :: g
-     integer                      :: ng
      real(adqt)                   :: gnuBar(0:numGroups+1)
 
-     ng = 0
-     do qset=1,self% NumSnSets
-       QuadPtr => self% QuadPtr(qset)
-       do g=1,QuadPtr% Groups
-         gnuBar(ng+g) = QuadPtr% gnuBar(g)
-       enddo
-       ng = ng + QuadPtr% Groups
+     QuadPtr => self% QuadPtr(1)
+     do g=1,numGroups
+       gnuBar(g) = QuadPtr% gnuBar(g)
      enddo
 
      gnuBar(0)           = zero

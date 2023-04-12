@@ -76,7 +76,7 @@
 
    TOMP(target update to(GTA% GreyCorrection))
 
-TOMP(target data map(to: ngr))
+TOMP(target enter data map(to: ngr))
 TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
 TOMPC(shared(nZoneSets, GTA, Geom, Rad, ngr))
    do zSetID=1,nZoneSets
@@ -130,7 +130,7 @@ TOMPC(private(c0, nCorner))
 
    enddo
 TOMP(end target teams distribute)
-TOMP(end target data)
+TOMP(target exit data map(release: ngr))
 
 TOMP(target update from(Rad% radEnergy))
 

@@ -36,7 +36,7 @@ find_library(
 #    METIS_LIBRARIES METIS_INCLUDE_DIR)
 
 find_package_handle_standard_args(
-    metis
+    Metis
     DEFAULT_MSG
     METIS_LIBRARIES METIS_INCLUDE_DIR)
 

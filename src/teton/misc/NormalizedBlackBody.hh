@@ -1,8 +1,8 @@
 #ifndef NORMALIZEDBLACKBODY_HH__
 #define NORMALIZEDBLACKBODY_HH__
 
-extern "C" {
-
+extern "C"
+{
 /// \file NormalizedBlackBody.hh
 /// \brief Integrate functions of the normalized black body function over photon
 /// energies.

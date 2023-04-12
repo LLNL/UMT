@@ -138,10 +138,10 @@ contains
 
 !     Both GTA Solvers
 
-      call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigScat", self% GreySigScat, Size%ncornr)
-      call Allocator%allocate(Size%usePinnedMemory,self%label,"TsaSource",   self% TsaSource,   Size%ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigScat",     self% GreySigScat,    Size%ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"TsaSource",       self% TsaSource,      Size%ncornr)
+      call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigScatVol",  self% GreySigScatVol, Size%ncornr )
 
-      allocate( self% GreySigScatVol(Size%ncornr) )
       allocate( self% CGDirectionB(Size%nbelem,Size%nangGTA) )
       allocate( self% CGResidualB(Size%nbelem,Size%nangGTA) )
       allocate( self% CGActionB(Size%nbelem,Size%nangGTA) )
@@ -218,9 +218,9 @@ contains
 !     Both GTA Solvers
 
       call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigScat", self% GreySigScat)
+      call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigScatVol", self% GreySigScatVol)
       call Allocator%deallocate(Size%usePinnedMemory,self%label,"TsaSource",   self% TsaSource)
 
-      deallocate( self% GreySigScatVol )
       deallocate( self% CGDirectionB )
       deallocate( self% CGResidualB )
       deallocate( self% CGActionB )

@@ -11,9 +11,30 @@ cmake_policy(SET CMP0076 NEW)
 # add teton library target
 add_library ( teton STATIC )
 
+if (ENABLE_FIND_MPI)
+  target_link_libraries( teton PUBLIC MPI::MPI_Fortran MPI::MPI_CXX )
+endif()
+
 if( ENABLE_CUDA )
   add_library( tetoncuda OBJECT )
-  target_link_libraries( teton tetoncuda ${CMAKE_EXTRA_CUDA_LIBS})
+  target_link_libraries( teton PRIVATE tetoncuda )
+  target_link_libraries( teton PUBLIC CUDA::cudart
+                                      CUDA::cublas
+                                      CUDA::cupti
+                                      CUDA::nvToolsExt
+                        )
+endif()
+
+
+if( ENABLE_OPENMP )
+  target_link_libraries( teton PUBLIC OpenMP::OpenMP_CXX)
+  target_link_libraries( teton PUBLIC OpenMP::OpenMP_Fortran)
+endif()
+
+# Use CMake generator to only apply this flag on Fortran files. - black27
+# TODO - Remove OpenACC support as soon as HPE has performant OpenMP in the CCE compiler.
+if( ENABLE_OPENACC )
+  target_compile_options(teton PUBLIC "$<$<COMPILE_LANGUAGE:Fortran>:${OpenACC_Fortran_FLAGS}>")
 endif()
 
 target_sources( teton INTERFACE include/TetonInterface.hh )
@@ -25,6 +46,9 @@ if (ENABLE_UMPIRE)
                              )
 endif()
 
+# Note:
+# Caliper installs its Fortran modules down in include/caliper/fortran,
+# so we must add that additional include path
 if (ENABLE_CALIPER)
    target_include_directories( teton PRIVATE include
                                ${CALIPER_INCLUDE_DIR}
@@ -37,14 +61,24 @@ if (ENABLE_BLUEPRINT_INTERFACE)
   target_sources( teton INTERFACE include/TetonConduitInterface.hh )
 endif()
 
+# Note:
+# The MFEM conduit data collection class expects to have an include
+# path to the internal 'include/conduit' directory, so add that
+# additional include path until MFEM can fix that behavior.
 target_include_directories( teton PRIVATE include
-                               ${CONDUIT_INCLUDE_DIR}
-                               ${CONDUIT_INCLUDE_DIR}/conduit
-                               ${CONDUIT_FORTRAN_MODULES_DIR})
+                            ${CONDUIT_INCLUDE_DIR}
+                            ${CONDUIT_INCLUDE_DIR}/conduit
+                            ${CONDUIT_FORTRAN_MODULES_DIR})
 
+# Note:
+# Some installations of physicsutils may have the Fortran modules in
+# include/physicsutils instead of the base include directory.
 if (NOT ENABLE_MINIAPP_BUILD)
+   message(STATUS "PHYSICS INCLUDE DIR IS ${PHYSICSUTILS_INCLUDE_DIR}")
+   message(STATUS "PHYSICS INCLUDE FORTRAN DIR IS ${PHYSICSUTILS_INCLUDE_DIR}/PhysicsUtils")
    target_include_directories( teton PRIVATE include
                                ${PHYSICSUTILS_INCLUDE_DIR}
+                               ${PHYSICSUTILS_INCLUDE_DIR}/PhysicsUtils
                                ${SILO_INCLUDE_DIR}
                              )
 endif()
@@ -54,63 +88,7 @@ configure_file (include/TetonVersion.hh.in include/TetonVersion.hh )
 target_sources( teton INTERFACE ${PROJECT_BINARY_DIR}/teton/include/TetonVersion.hh )
 target_include_directories( teton PUBLIC include ${PROJECT_BINARY_DIR}/teton/include )
 
-#################################################################
-# WORKAROUND FOR IBM XLF COMPILER CRUSHING CPU THREAD PERFORMANCE
-# Apply the -qoffload flag to only those source files with
-# target pragmas.  Applying this flag to all source files reduces
-# CPU thread performance by 10%-20%
-#################################################################
-if (NOT "${TETON_OpenMP_Offload_Fortran_FLAGS}" STREQUAL "" )
-  set_source_files_properties(SOURCE
-                                     control/initializeSets.F90
-                                     control/initPhiTotal_OMPOL.F90
-                                     control/initializeRadiationField_OMPOL.F90
-                                     control/initializeZones_OMPOL.F90
-                                     control/finalizeSets.F90
-                                     control/getPhiTotal_OMPOL.F90
-                                     gpu/initializeGPUMemory.F90
-                                     gpu/finalizeGPUMemory.F90
-                                     gpu/InitSweepGreyUCBrz_OMPOL.F90
-                                     gpu/InitSweepGreyUCBxyz_OMPOL.F90
-                                     gpu/GTASweep_OMPOL.F90
-                                     gpu/OMPWrappers_mod.F90
-                                     gpu/SetSweep_OMPOL.F90
-                                     gpu/SweepGreyUCBrz_OMPOL.F90
-                                     gpu/SweepGreyUCBxyz_OMPOL.F90
-                                     gpu/SweepUCBrz_OMPOL.F90
-                                     gpu/SweepUCBxyz_OMPOL.F90
-                                     gpu/UpdateScalarIntensity_OMPOL.F90
-                                     rt/GTASolver_OMPOL.F90
-                                     rt/GTASolver.F90
-                                     rt/GreySweep_OMPOL.F90
-                                     rt/addGreyCorrections_OMPOL.F90
-                                     rt/getCollisionRate_OMPOL.F90
-                                     rt/setGTAOpacity_OMPOL.F90
-                                     rt/initcomm.F90
-                                     rt/RecvFlux.F90
-                                     rt/SendFlux.F90
-                                     snac/GTASweep_OMPOL.F90
-
-                              PROPERTY COMPILE_FLAGS ${TETON_OpenMP_Offload_Fortran_FLAGS})
-
-  if (NOT ENABLE_MINIAPP_BUILD)
-    set_source_files_properties(SOURCE
-                                     nlsolver/DopplerShift_OMPOL.F90
-                                     nlsolver/NonLinearSolver.F90
-                                     nlsolver/UpdateMaterialCoupling_OMPOL.F90
-                                     nlsolver/rtisofpcom_OMPOL.F90
-                              PROPERTY COMPILE_FLAGS ${TETON_OpenMP_Offload_Fortran_FLAGS})
-  endif()
-
-endif()
-
-if (NOT "${TETON_OpenMP_Offload_CXX_FLAGS}" STREQUAL "" )
-  set_source_files_properties(SOURCE driver/test_driver.cc
-                              PROPERTY COMPILE_FLAGS ${TETON_OpenMP_Offload_Fortran_FLAGS})
-endif()
-
 install( FILES "include/TetonInterface.hh" DESTINATION include )
-
 
 if (ENABLE_BLUEPRINT_INTERFACE)
    install( FILES "include/TetonConduitInterface.hh" DESTINATION include )
@@ -129,9 +107,8 @@ foreach(subdir ${SUBDIRS})
   add_subdirectory(${subdir})
 endforeach()
 
-
 ################################################
-# TEST DRIVER EXECUTABLE USING THE OLD INTERFACE
+# TEST DRIVER EXECUTABLE
 ################################################
 
 if(ENABLE_TESTS)
@@ -144,20 +121,32 @@ if(ENABLE_TESTS)
                   interface/TetonBlueprint.cc
                   driver/test_driver.cc )
 
-  if (DEFINED TETON_OpenMP_Offload_CXX_FLAGS)
-    set_source_files_properties(SOURCE
-                                driver/test_driver.cc
-                                PROPERTY COMPILE_FLAGS ${TETON_OpenMP_Offload_CXX_FLAGS})
+  if (ENABLE_FIND_MPI)
+    target_link_libraries( test_driver PUBLIC MPI::MPI_Fortran MPI::MPI_CXX )
   endif()
 
-  target_include_directories( test_driver PRIVATE
+  if( ENABLE_CUDA )
+    target_link_libraries( test_driver PRIVATE tetoncuda )
+    target_link_libraries( test_driver PUBLIC CUDA::cudart
+                                        CUDA::cublas
+                                        CUDA::cupti
+                                        CUDA::nvToolsExt
+                          )
+  endif()
+
+  # Generally preferred to link with the Fortran compiler.
+  # Intel has trouble with this, fallback on using the C++ compiler to link.
+  if ( NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL IntelLLVM)
+    set_target_properties(test_driver PROPERTIES LINKER_LANGUAGE Fortran)
+  endif ()
+
+  target_include_directories( test_driver PUBLIC
                               ../src/include
                               ${CONDUIT_INCLUDE_DIR}
                               ${CONDUIT_INCLUDE_DIR}/conduit
                             )
 
-  target_link_libraries( test_driver
-                         ${Fortran_COMPILER_LIB_DIR_LINK}
+  target_link_libraries( test_driver PUBLIC
                          teton
                          ${CONDUIT_LIBRARIES}
                          ${CONDUITRELAY_LIBRARIES}
@@ -166,67 +155,95 @@ if(ENABLE_TESTS)
                          ${CONDUITRELAYMPI_LIBRARIES}
                          ${CONDUITRELAYMPIIO_LIBRARIES}
                        )
-  
+
+# TODO - Remove OpenACC support as soon as HPE has performant OpenMP in the CCE compiler.
+  if( ENABLE_OPENACC )
+    set_target_properties(test_driver PROPERTIES LINK_FLAGS ${OpenACC_Fortran_FLAGS})
+  endif()
+
+  if( ENABLE_OPENMP )
+    target_link_libraries( test_driver PUBLIC OpenMP::OpenMP_Fortran OpenMP::OpenMP_CXX)
+
+    # The target_link_options command has trouble with adding flags if there is
+    # a space, it keeps putting quotes around the whole line.  Use the older
+    # LINK_FLAGS property instead.
+    set_target_properties( test_driver PROPERTIES LINK_FLAGS ${OpenMP_Fortran_FLAGS})
+    #target_link_options(test_driver PRIVATE ${OpenMP_Fortran_FLAGS})
+
+  endif()
+
   if(ENABLE_SILO)
-     target_link_libraries( test_driver
+     target_link_libraries( test_driver PUBLIC
                             ${SILO_LIBRARIES}
                           )
   endif()
 
+  # This is only enabled if one of the TPLs require HDF5, so it can be added to the link line.
+  # Our code does not have any direct dependencies on HDF5.
   if (ENABLE_HDF5)
-     target_link_libraries( test_driver
+     target_link_libraries( test_driver PUBLIC
                             ${HDF5_LIBRARIES}
                             ${Z_LIBRARIES}
+                            dl
                           )
   endif()
 
   if (NOT ENABLE_MINIAPP_BUILD)
-    target_link_libraries( test_driver ${PHYSICSUTILS_LIBRARIES} )
+    target_link_libraries( test_driver PUBLIC ${PHYSICSUTILS_LIBRARIES} )
   endif()
 
   if (ENABLE_UMPIRE)
-    target_include_directories( test_driver PRIVATE ${UMPIRE_INCLUDE_DIR} 
+    target_include_directories( test_driver PUBLIC ${UMPIRE_INCLUDE_DIR} 
                                                     ${UMPIRE_FORTRAN_MODULES_DIR})
-    target_link_libraries( test_driver ${UMPIRE_LIBRARIES} )
+    target_link_libraries( test_driver PUBLIC ${UMPIRE_LIBRARIES} )
     if (ENABLE_CAMP)
-      target_include_directories( test_driver PRIVATE ${CAMP_INCLUDE_DIR})
-      target_link_libraries( test_driver ${CAMP_LIBRARIES} )
+      target_include_directories( test_driver PUBLIC ${CAMP_INCLUDE_DIR})
+      target_link_libraries( test_driver PUBLIC ${CAMP_LIBRARIES} )
     endif()
   endif()
 
   if (ENABLE_CALIPER)
-    target_include_directories( test_driver PRIVATE ${CALIPER_INCLUDE_DIR} ${ADIAK_INCLUDE_DIR})
-    target_link_libraries( test_driver ${CALIPER_LIBRARIES} ${ADIAK_LIBRARIES} )
+    target_include_directories( test_driver PUBLIC ${CALIPER_INCLUDE_DIR} ${ADIAK_INCLUDE_DIR})
+    target_link_libraries( test_driver PUBLIC ${CALIPER_LIBRARIES} ${ADIAK_LIBRARIES} rt)
   endif()
 
-  if (ENABLE_CUDA OR ENABLE_OPENMP_OFFLOAD)
-    set_target_properties(test_driver PROPERTIES LINK_FLAGS "${TETON_LINK_FLAGS} ${TETON_OpenMP_Offload_LINK_FLAGS}")
-    if (NOT ENABLE_MINIAPP_BUILD)
-      target_link_libraries(test_driver ${CUBLAS_LIBRARIES}
-                                         ${CUPTI_LIBRARIES}
-                                         ${NVTOOLS_LIBRARIES})
-    endif()
-
-    target_link_libraries(test_driver ${TETON_OpenMP_Offload_LINK_LIBRARIES})
-    set_target_properties(test_driver PROPERTIES LINK_FLAGS "${TETON_LINK_FLAGS} ${TETON_OpenMP_Offload_LINK_FLAGS}")
-
-  endif()
+  target_link_options(test_driver PUBLIC "LINKER:${TETON_LINK_OPTIONS}")
 
   if (ENABLE_MFEM)
-    target_include_directories( test_driver PRIVATE ${MFEM_INCLUDE_DIR} ${HYPRE_INCLUDE_DIR})
-    target_link_libraries( test_driver ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
-  endif()
-
-  # These are additional link libraries set in the compiler config files (typically system libraries).
-  target_link_libraries( test_driver ${TETON_LINK_LIBRARIES} )
-
-  # Some compilers require linking with Fortran.
-  if ( CMAKE_Fortran_COMPILER_ID STREQUAL "Cray" )
-    set_target_properties(test_driver PROPERTIES LINKER_LANGUAGE Fortran)
+    target_include_directories( test_driver PUBLIC ${MFEM_INCLUDE_DIR} ${HYPRE_INCLUDE_DIR})
+    target_link_libraries( test_driver PUBLIC ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
   endif()
 
   install( TARGETS test_driver
            RUNTIME DESTINATION bin )
 
-endif()
+# Executable for creating unstructured box mesh.
+  if (ENABLE_MFEM)
+    add_executable( makeUnstructuredBox
+                    driver/makeUnstructuredBox.cc )
+    if (ENABLE_FIND_MPI)
+      target_link_libraries( makeUnstructuredBox PUBLIC MPI::MPI_CXX )
+    endif()
+    if (ENABLE_HDF5)
+        target_link_libraries( makeUnstructuredBox PUBLIC
+                               ${HDF5_LIBRARIES}
+                               ${Z_LIBRARIES}
+                               dl
+                             )
+    endif()
 
+# Note:
+# The MFEM conduit data collection class expects to have an include
+# path to the internal 'include/conduit' directory, so add that
+# additional include path until MFEM can fix that behavior.
+    target_include_directories( makeUnstructuredBox PUBLIC ${CONDUIT_INCLUDE_DIR}
+                                                           ${CONDUIT_INCLUDE_DIR}/conduit
+                                                           ${MFEM_INCLUDE_DIR}
+                                                           ${HYPRE_INCLUDE_DIR}
+                              )
+    target_link_libraries( makeUnstructuredBox PUBLIC ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
+    install( TARGETS makeUnstructuredBox
+             RUNTIME DESTINATION bin )
+  endif()
+
+endif()

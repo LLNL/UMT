@@ -106,12 +106,11 @@
    Geom% A_fp(1,1,c0+1) = -one
    Geom% A_fp(1,1,c0+2) = one
    ! Fill out Geom% cFP for non-boundary zones:
-   ! TODO check that the boundary cases are correct
    if ( zoneID /= 1 ) then
      Geom% cFP(1,c0+1)  = c0
    endif
    if ( zoneID /= Size% nzones ) then
-     Geom% cFP(1,c0+2)  = c0+2
+     Geom% cFP(1,c0+2)  = c0+3
    endif
 
 

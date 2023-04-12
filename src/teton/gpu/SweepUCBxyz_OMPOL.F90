@@ -130,11 +130,18 @@
    TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
    TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
-   TOMP(target data map(to: tau, sendIndex, angleList))
+   TOMP(target enter data map(to: tau, sendIndex, angleList))
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang &
+   !$acc& num_gangs(nZoneSets) &
+   !$acc& vector_length(omp_device_team_thread_limit) &
+   !$acc& private(ASet, setID, Angle)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(private(ASet, setID, Angle) &)
    TOMPC(shared(nZoneSets, angleList, Quad, Geom, nAngleSets) )
+#endif
 
    !TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) private(ASet, zSetID, setID, Angle))
 
@@ -151,35 +158,58 @@
 ! loop ( the inner loop bounds can not be predetermined ); it's significantly
 ! faster to split into two loops as below
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc loop vector collapse(2)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Geom, ASet, Angle, zSetID)
+#endif
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          do cface=1,3
            ASet% AfpNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_fp(:,cface,c) )
            ASet% AezNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_ez(:,cface,c) )
          enddo
        enddo
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc loop vector
+#else
 !$omp  parallel do default(none)  &
 !$omp& shared(Geom, ASet, Angle, zSetID)
+#endif
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          do cface=4,Geom% nCFacesArray(c)
            ASet% AfpNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_fp(:,cface,c) )
            ASet% AezNorm(cface,c) = DOT_PRODUCT( ASet% omega(:,angle),Geom% A_ez(:,cface,c) )
          enddo
        enddo
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
      enddo
 
    enddo ZoneSetLoop
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+#else
 TOMP(end target teams distribute)
+#endif
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc parallel loop gang &
+!$acc& num_gangs(nZoneSets) &
+!$acc& vector_length(omp_device_team_thread_limit) &
+!$acc& private(ASet)
+#else
 TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
 TOMPC(private(ASet) &)
 TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
+#endif
 
 !!TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) private(ASet, zSetID, setID))
 
@@ -191,8 +221,12 @@ TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
 
        ASet  => Quad% AngSetPtr(setID)
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc loop vector
+#else
 !$omp  parallel do default(none)  &
 !$omp& shared(Geom, ASet, zSetID)
+#endif
 
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          ASet% ANormSum(c) = zero
@@ -203,18 +237,31 @@ TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
          enddo
        enddo
 
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
      enddo
 
    enddo ZoneSetLoop2
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+#else
 TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc parallel loop gang &
+!$acc& num_gangs(nSets) &
+!$acc& vector_length(omp_device_team_thread_limit) &
+!$acc& private(Set, ASet, Angle, Groups, offSet)
+#else
 TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
 TOMPC(shared(sendIndex, Quad, nSets) &)
 TOMPC(private(Set, ASet, Angle, Groups, offSet))
+#endif
 
 !TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) private(Set, ASet, setID, Angle, Groups) &)
 !TOMPC(private(mCycle, c, g, offSet))
@@ -231,29 +278,46 @@ TOMPC(private(Set, ASet, Angle, Groups, offSet))
 !  Initialize boundary values in Psi1 and interior values on the cycle
 !  list
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc loop vector collapse(2) &
+!$acc& private(c)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Angle, Set, ASet, offSet, Groups) private(c)
+#endif
      do mCycle=1,ASet% numCycles(Angle)
        do g=1,Groups
          c              = ASet% cycleList(offSet+mCycle)
          Set% Psi1(g,c) = Set% cyclePsi(g,offSet+mCycle)
        enddo
      enddo
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc loop vector collapse(2)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Set, Groups, Angle)
+#endif
      do c=1,Set%nbelem
        do g=1,Groups
          Set% Psi1(g,Set%nCorner+c) = Set% PsiB(g,c,Angle)
        enddo
      enddo
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
    enddo SetLoop0
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+#else
 TOMP(end target teams distribute)
+#endif
 
 
 ! TODO:
@@ -270,9 +334,18 @@ TOMP(end target teams distribute)
 ! the loop.`
 ! 
 ! Look into reporting this bug to IBM, using UMT as a reproducer.
+
+#ifdef TETON_ENABLE_OPENACC
+!$acc parallel loop gang &
+!$acc& num_gangs(nSets) &
+!$acc& vector_length(omp_device_team_thread_limit) &
+!$acc& private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &
+!$acc& private(nHyperPlanes, ndoneZ, nzones, hyperPlane)
+#else
 TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) &)
 TOMPC(private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &)
 TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane)) 
+#endif
 
    SetLoop: do setID=1,nSets
 
@@ -290,6 +363,13 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
 
        nzones = HypPlanePtr% zonesInPlane(hyperPlane)
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc  loop vector collapse(2) &
+!$acc& private(c0,cfp,ifp,cez,zone,zone0,nCorner,nCFaces) &
+!$acc& private(aez,aez2,area_opp,source,sig,vol) &
+!$acc& private(sigv,sigv2,sez,gnum,gden,psi_opp) &
+!$acc& private(afp,denom)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Set, Geom, ASet, GSet, Angle, nzones, Groups) &
 !$omp& shared(ndoneZ, tau) &
@@ -297,6 +377,7 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
 !$omp& private(aez,aez2,area_opp,source,sig,vol) &
 !$omp& private(sigv,sigv2,sez,gnum,gden,psi_opp) &
 !$omp& private(afp,denom)
+#endif
 
        ZoneLoop: do ii=1,nzones
          GroupLoop: do g=1,Groups
@@ -455,7 +536,9 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
          enddo GroupLoop
        enddo ZoneLoop
 
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
        ndoneZ = ndoneZ + nzones
 
@@ -463,13 +546,24 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
 
    enddo SetLoop
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+#else
 TOMP(end target teams distribute)
+#endif
 
 !  Update Boundary data
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc parallel loop gang &
+!$acc& num_gangs(nSets) &
+!$acc& vector_length(omp_device_team_thread_limit) &
+!$acc& private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c)
+#else
 TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
 TOMPC(shared(nSets, Quad, sendIndex)&)
 TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
+#endif
 
      SetLoop3: do setID=1,nSets
 
@@ -480,8 +574,13 @@ TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
        offSet     =  ASet% cycleOffSet(angle)
        BdyExitPtr => ASet% BdyExitPtr(Angle)
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc  loop vector collapse(2) &
+!$acc& private(b,c)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Set, BdyExitPtr, Groups, Angle) private(b,c)
+#endif
 
        do i=1,BdyExitPtr% nxBdy
          do g=1,Groups
@@ -492,31 +591,51 @@ TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
          enddo
        enddo
 
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
 !      Update Psi in the cycle list
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc  loop vector collapse(2) &
+!$acc& private(c)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Angle, Set, ASet, offSet, Groups) private(c)
+#endif
        do mCycle=1,ASet% numCycles(angle)
          do g=1,Groups
            c                              = ASet% cycleList(offSet+mCycle)
            Set% cyclePsi(g,offSet+mCycle) = Set% Psi1(g,c)
          enddo
        enddo
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
      enddo SetLoop3
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+#else
 TOMP(end target teams distribute)
+#endif
 
 !  We only store Psi if this is the last transport sweep in the time step
 
    if ( savePsi ) then
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc parallel loop gang &
+!$acc& num_gangs(nSets) &
+!$acc& vector_length(omp_device_team_thread_limit) &
+!$acc& private(Set, Angle, Groups)
+#else
 TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none)&)
 TOMPC(shared(nSets, Quad, sendIndex)&)
 TOMP(private(Set, Angle, Groups))
+#endif
 
      SetLoop2: do setID=1,nSets
 
@@ -524,8 +643,12 @@ TOMP(private(Set, Angle, Groups))
        Groups =  Set% Groups
        Angle  =  Set% AngleOrder(sendIndex)
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc  loop vector collapse(2)
+#else
 !$omp  parallel do collapse(2) default(none) &
 !$omp& shared(Set, ASet, Angle, Groups)
+#endif
 
        CornerLoop2: do c=1,Set% nCorner
          GroupLoop2: do g=1,Groups
@@ -535,15 +658,21 @@ TOMP(private(Set, Angle, Groups))
          enddo GroupLoop2
        enddo CornerLoop2
 
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
      enddo SetLoop2
 
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+#else
 TOMP(end target teams distribute)
+#endif
 
    endif
 
-TOMP(end target data)
+TOMP(target exit data map(release: tau, sendIndex, angleList))
 
    deallocate( angleList )
 
@@ -560,4 +689,3 @@ TOMP(end target data)
 !                        in xyz-geometry.                              *
 !                                                                      *
 !***********************************************************************
-

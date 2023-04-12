@@ -8,10 +8,10 @@
 #ifndef __TETON_INTERFACE_HH__
 #define __TETON_INTERFACE_HH__
 
-#include <string>
-#include <vector>
 #include "mpi.h"
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "TetonVersion.hh"
 
@@ -19,32 +19,32 @@
 enum class tetonComptonFlag;
 
 // C versions of the Teton library interface
-extern "C" {
-
+extern "C"
+{
 // adjust Teton's outer zone average temperature iteration parameters
 void teton_adjusttemperaturegoals(
-    const int *maxIters,      // maximum number of outer temperature iterations per time step
-    const double *tolerance); // pointwise relative tolerance for zone average electron temperature
+   const int *maxIters,      // maximum number of outer temperature iterations per time step
+   const double *tolerance); // pointwise relative tolerance for zone average electron temperature
 
 // adjust Teton's convergence criteria for radiation energy density
 void teton_adjustradenergydensitygoal(
-    const double *tolerance); // pointwise relative tolerance for radiation energy density iteration
+   const double *tolerance); // pointwise relative tolerance for radiation energy density iteration
 
 // adjust grey acceleration sweeping parameters.  There are 2 sweeps per CG iteration
 void teton_adjustgreygoals(
-    const int *maxIters,      // maximum number of grey acceleration sweeps to perform in each grey acceleration
-    const double *tolerance); // pointwise relative tolerance for zone average electron temperature
+   const int *maxIters,      // maximum number of grey acceleration sweeps to perform in each grey acceleration
+   const double *tolerance); // pointwise relative tolerance for zone average electron temperature
 
 // adjust Teton's boundary exchange convergence criteria during the linear solve step of each Temperature iteration in a time step
 void teton_adjustfluxexchangegoals(
-    const int *maxIters, // maximum number of sweep halo exchanges allowed to MPI process boundary incoming fluxes
-    const double *
-        tolerance); // pointwise relative tolerance on incident angular intensities.  Default internal Teton value is 4e-5
+   const int *maxIters, // maximum number of sweep halo exchanges allowed to MPI process boundary incoming fluxes
+   const double *
+      tolerance); // pointwise relative tolerance on incident angular intensities.  Default internal Teton value is 4e-5
 
 // adjust Teton's nonlinear solver parameters
 void teton_adjustnonlinearsolvegoals(
-    const int *maxIters,      // maximum number of nonlinear iterations per outer temperature iteration
-    const double *tolerance); // pointwise relative tolerance on nonlinear iteration
+   const int *maxIters,      // maximum number of nonlinear iterations per outer temperature iteration
+   const double *tolerance); // pointwise relative tolerance on nonlinear iteration
 
 // Same function as above, but you can set only one of the values, leaving the
 // other alone.
@@ -137,11 +137,11 @@ void teton_get_default_inner_nl_max_it_internal(const int *var);
 
 // add a Teton boundary to the Teton boundary list
 void teton_addboundary(
-    const int *numBcTotal, // scalar, number of bc specified in this call
-    const int *bcType,     // array(numBcTotal), of BC type tags integers mapped to the tetonBcTypeFlag enum
-    const int *numBdyElem, // array(numBcTotal), specifying number of elements that have a given BC
-    const int
-        *neighborID); // array(numBcTotal), specifying neighboring process ID's (values used if shared boundary only)
+   const int *numBcTotal, // scalar, number of bc specified in this call
+   const int *bcType,     // array(numBcTotal), of BC type tags integers mapped to the tetonBcTypeFlag enum
+   const int *numBdyElem, // array(numBcTotal), specifying number of elements that have a given BC
+   const int
+      *neighborID); // array(numBcTotal), specifying neighboring process ID's (values used if shared boundary only)
 
 //
 //  teton_addprofile_internal
@@ -195,19 +195,19 @@ void teton_checksharedboundary();
 //  10/7/2020 - sigs and siga checking will now also check for unphysically large opacities (> 1.e40)
 //
 void teton_checkinputsanity(
-    const bool *killIfBad,              // Logical- Call MPI_ABORT on bad input
-    const int *verbosityLevel,          // Scalar- Verbosity level of complaining
-    const int *numCategoriesToCheck,    // Scalar- number of categories that will be checked
-    const int *listOfCategoriesToCheck, // array[numCategoriesToCheck] - integers corresponding to the data
-                                        // categories that are to be checked
-    int *numberOfBadCategories);        // Scalar- Number of bad input data categories
+   const bool *killIfBad,              // Logical- Call MPI_ABORT on bad input
+   const int *verbosityLevel,          // Scalar- Verbosity level of complaining
+   const int *numCategoriesToCheck,    // Scalar- number of categories that will be checked
+   const int *listOfCategoriesToCheck, // array[numCategoriesToCheck] - integers corresponding to the data
+                                       // categories that are to be checked
+   int *numberOfBadCategories);        // Scalar- Number of bad input data categories
 
 // create a Teton BoundaryList object
 void teton_constructboundary(
-    const int *numReflecting, // scalar, number of reflecting BC on this domain
-    const int *numVacuum,     // scalar, number of vacuum BC on this domain
-    const int *numSource,     // scalar, number of source/profile BC  on this domain
-    const int *numShared);    // scalar, number of boundaries this domain has with other processor domains
+   const int *numReflecting, // scalar, number of reflecting BC on this domain
+   const int *numVacuum,     // scalar, number of vacuum BC on this domain
+   const int *numSource,     // scalar, number of source/profile BC  on this domain
+   const int *numShared);    // scalar, number of boundaries this domain has with other processor domains
 
 // set-up Teton's Compton scattering options
 // comptonFlag options: (See tetonComptonFlag enum below)
@@ -227,11 +227,11 @@ inline void teton_constructcomptoncontrol_wrapper(tetonComptonFlag comptonFlag_e
 
 // construct Teton time step monitoring object
 void teton_constructdtcontrols(
-    const double *dtrad,  // scalar, initial radiation time step size
-    const double *dtrmn,  // scalar, minimum radiation time step size
-    const double *dtrmx,  // scalar, maximum radiation time step size
-    const double *delte,  // scalar, maximum relative change in electron temperature  per time step
-    const double *deltr); // scalar, change in Tr^4 per time step
+   const double *dtrad,  // scalar, initial radiation time step size
+   const double *dtrmn,  // scalar, minimum radiation time step size
+   const double *dtrmx,  // scalar, maximum radiation time step size
+   const double *delte,  // scalar, maximum relative change in electron temperature  per time step
+   const double *deltr); // scalar, change in Tr^4 per time step
 
 //
 //  teton_constructeditor
@@ -242,12 +242,12 @@ void teton_constructdtcontrols(
 //            Ex: PSPE[0] = pow_ab_0_g0 ; PSPE[1] = pow_ab_0_g1 ; ... PSPE[ngr] = pow_ab_1_g0 ...
 //          Values input here are used to initialize all polar sector output tallies.
 void teton_constructeditor(
-    const int *ngr,                           // scalar, number of groups to be output
-    const int *nAngleBins,                    // scalar, number of angular bins for polar sector output
-    const double *spectrumAngleBinBoundaries, // array[ nAngleBins + 1 ],  ascending cosines required (?)
-    const double *RadPowerEscape,             // array[ ngr ],  Values used to initialize escape tallies
-    const double *RadPowerIncident,           // array[ ngr ],  Values used to initialize inflow tallies
-    const double *PolarSectorPowerEscape); // array[ ngr * nAngleBins] used to initialize angle dependent escape tallies
+   const int *ngr,                           // scalar, number of groups to be output
+   const int *nAngleBins,                    // scalar, number of angular bins for polar sector output
+   const double *spectrumAngleBinBoundaries, // array[ nAngleBins + 1 ],  ascending cosines required (?)
+   const double *RadPowerEscape,             // array[ ngr ],  Values used to initialize escape tallies
+   const double *RadPowerIncident,           // array[ ngr ],  Values used to initialize inflow tallies
+   const double *PolarSectorPowerEscape); // array[ ngr * nAngleBins] used to initialize angle dependent escape tallies
 
 // Initialize Teton's internal geometry structures
 void teton_constructgeometry();
@@ -266,53 +266,52 @@ void teton_constructphasespacesets(const bool *fromRestart);
 void teton_constructradintensity();
 
 //
-//  teton_constructquadrature
+//  teton_constructquadrature_new
 //
-//  build the group dependent angular QuadratureList structure
+//  build the QuadratureList structure
 //
-//  Notes: Groups angles into AngleSets (see work of bailey42, Marv Adams, et. al) for parallelism
+//  Notes: Specify quadrature sets for high-order Sn and GTA sweeps
 //         Ask the Teton team what nSetsMaster and nSets should be (related to threading or not).
 //
-//          Teton will access (in Fortran) QuadDef as:
+//          Teton will access (in Fortran) QuadDef for the high-order Sn sweep as:
 //
-//            QuadDef(1,grp) = type
-//            QuadDef(2,grp) = order
-//            QuadDef(3,grp) = n polar levels
-//            QuadDef(4,grp) = azimuthal angles
-//            QuadDef(5,grp) = polar axis [1,2,or 3]
+//            QuadDef(1,1) = type
+//            QuadDef(2,1) = order
+//            QuadDef(3,1) = n polar levels
+//            QuadDef(4,1) = azimuthal angles
+//            QuadDef(5,1) = polar axis [1,2,or 3]
 //
-//          and output the number of angles in this AngleSet, in this group as
+//          and output the number of angles as
 //
-//            QuadDef(6,grp)
+//            QuadDef(6,1)
 //
-//          Since Fortran in column oriented in memory, in C/C++ define:
+//          Since Fortran is column oriented in memory, in C/C++ define:
 //
-//            int* quadInfo = new int[6*(ngrps+1)]
-//            for(int g=0; g <= ngrps; ++g)
-//               quadInfo[0 + 6*g] = type, 1D(???) ,  rz: (1,2), xyz: (1,2,3)
-//               quadInfo[1 + 6*g] = order (valid for level symmetric considerations)
-//               quadInfo[2 + 6*g] = polar angles
-//               quadInfo[3 + 6*g] = azimuthal angles
-//               quadInfo[4 + 6*g] = polar axis
+//            int* quadInfo = new int[6*2]
+//            quadInfo[0] = type, 1D(1) ,  rz: (1,2), xyz: (1,2,3)
+//            quadInfo[1] = order (valid for level symmetric considerations)
+//            quadInfo[2] = polar angles
+//            quadInfo[3] = azimuthal angles
+//            quadInfo[4] = polar axis
 //
-//           The last "group" in quadInfo is used to define the grey acceleration step angular quadrature
+//           The second 6 entries in quadInfo is used to define the grey acceleration step angular quadrature
 //
 //           For example, one can set the grey quadrature as:
-//             quaddef[offset]   = 1;
-//             quaddef[offset+1] = GTAorder;
-//             quaddef[offset+2] = 1;
-//             quaddef[offset+3] = 1;
-//             quaddef[offset+4] = 1;
+//             quaddef[6]  = 1;
+//             quaddef[7]  = GTAorder;
+//             quaddef[8]  = 1;
+//             quaddef[9]  = 1;
+//             quaddef[10] = 1;
 //
 //         The returned value of nSets is NOT the number of sets that Teton will actually use.
 //         Host codes should NOT use nSets for anything.  We will probably remove this in the future.
 //         Please see the Teton team for more information.
 //
-void teton_constructquadrature(
-    const int *nSetsMaster, // scalar, see pnowak for more information
-    int *nSets,             // scalar, don't use this, see pnowak for more information
-    int *QuadDef,           // array[ (ngrp+1 ) x 6] of angular quadrature defining data
-    const double *gnu);     // array[ ngrps + 1] that gives frequency group boundaries (lowest to highest)
+void teton_constructquadrature_new(
+   const int *nSetsMaster, // scalar, see pnowak for more information
+   int *nSets,             // scalar, don't use this, see pnowak for more information
+   int *QuadDef,           // array[ 2 x 6] of angular quadrature defining data
+   const double *gnu);     // array[ ngrps + 1] that gives frequency group boundaries (lowest to highest)
 
 // Initialize the Size module.  This module knows all there is to know when driving Teton
 // 11/19/2020 Update from Branson:
@@ -322,41 +321,41 @@ void teton_constructquadrature(
 //          It takes values 1 (constant, recommended), 2 (linear), and 3 (nearLTE ansatz).
 //     - These changes reflect updates to PhysicsUtils that improve stability of the rad/material coupling.
 void teton_constructsize(
-    const int *myRankInGroup, // scalar, rank in this process's communication group
-    const int *nzones,        // scalar, number of zones this process is responsible for
-    const int *ncornr,        // scalar, total number of corners in this domain
-    const int *nSides,        // scalar, total number of sides in this domain
-    const int *nbelem,    // scalar, total number of boundary elements (whole faces, not corner faces) on this domain
-    const int *maxcf,     // scalar, maximum number of corner faces per corner
-    const int *maxCorner, // scalar, maximum number of corners in a zone
-    const int *ncomm,     // scalar, number of processes this process communicates to
-    const int *ndim,      // scalar, number of spatial dimensions
-    const int *ngrp,      // scalar, number of energy groups
-    const int *functionRNLTE, // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics (see above comment)
-    const double *tFloor,     // scalar, temperature floor
-    const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
-    const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
-    const double *gammaNLTE,           // scalar, gamma for NLTE non-Planckian power law component
-    const bool *dopplerShiftOn,        // scalar, account for frequency shifts due to material motion
-    const bool *useNewNonLinearSolver, // scalar, this should only be used in 1D and experimentally (?)
-    const bool *useNewGTASolver,       // scalar, selects new GTA solver
-    const bool *usePWLD,               // scalar, turns on PWLD spatial discretization (rz only)
-    const bool *useSurfaceMassLumping, // scalar, turns on surface & mass lumping for PWLD
-    const bool *useGPU,                // scalar, offload calculation to the GPU (when available)
-    const bool *useCUDASweep,          // scalar, use CUDA solver on the GPU
-    const bool *useCUDASolver,         // scalar, use CUDA solver on the GPU
-    const int *zoneBatchSize,          // scalar, number of zones to process at a time in NL Compton solver kernel.
-    const int *nConcurrentBatches,     // scalar, number of NL zone batches to process concurrently.
-    const int *igeom); // scalar, int corresponding to tetonGeometryFlag underlying integer for geometry type
+   const int *myRankInGroup, // scalar, rank in this process's communication group
+   const int *nzones,        // scalar, number of zones this process is responsible for
+   const int *ncornr,        // scalar, total number of corners in this domain
+   const int *nSides,        // scalar, total number of sides in this domain
+   const int *nbelem,        // scalar, total number of boundary elements (whole faces, not corner faces) on this domain
+   const int *maxcf,         // scalar, maximum number of corner faces per corner
+   const int *maxCorner,     // scalar, maximum number of corners in a zone
+   const int *ncomm,         // scalar, number of processes this process communicates to
+   const int *ndim,          // scalar, number of spatial dimensions
+   const int *ngrp,          // scalar, number of energy groups
+   const int *functionRNLTE, // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics (see above comment)
+   const double *tFloor,     // scalar, temperature floor
+   const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
+   const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
+   const double *gammaNLTE,           // scalar, gamma for NLTE non-Planckian power law component
+   const bool *dopplerShiftOn,        // scalar, account for frequency shifts due to material motion
+   const bool *useNewNonLinearSolver, // scalar, this should only be used in 1D and experimentally (?)
+   const bool *useNewGTASolver,       // scalar, selects new GTA solver
+   const bool *usePWLD,               // scalar, turns on PWLD spatial discretization (rz only)
+   const bool *useSurfaceMassLumping, // scalar, turns on surface & mass lumping for PWLD
+   const bool *useGPU,                // scalar, offload calculation to the GPU (when available)
+   const bool *useCUDASweep,          // scalar, use CUDA solver on the GPU
+   const bool *useCUDASolver,         // scalar, use CUDA solver on the GPU
+   const int *zoneBatchSize,          // scalar, number of zones to process at a time in NL Compton solver kernel.
+   const int *nConcurrentBatches,     // scalar, number of NL zone batches to process concurrently.
+   const int *igeom); // scalar, int corresponding to tetonGeometryFlag underlying integer for geometry type
 
 // Set some optional parameters for GTA convergence.
 //   enforceHardGTAIterMax defaults to true for the new GTA.  This is needed to avoid buildup of BiCGSTAB roundoff errors that leads to divergence.
 //   forceExtraOuter defaults to false in all cases.  This may be needed to prevent the outer iteration from exiting earlier than it should when GTA is struggling.
 void teton_setgtaoptions(
-    const bool *
-        enforceHardGTAIterMax, // bool, whether or not GTA exits at grey_max_sweeps, even if minimum convergence criterion is not met.
-    const bool
-        *forceExtraOuter); // bool, whether or not the outer is forced to do an extra iteration when GTA isn't converged
+   const bool *
+      enforceHardGTAIterMax, // bool, whether or not GTA exits at grey_max_sweeps, even if minimum convergence criterion is not met.
+   const bool
+      *forceExtraOuter); // bool, whether or not the outer is forced to do an extra iteration when GTA isn't converged
 
 // Set verbosity level for controlling output
 // verbosity is a two digit number.
@@ -369,10 +368,10 @@ void teton_setverbose(const int *verbose);
 
 // construct Teton memory allocator.
 void teton_constructmemoryallocator(
-    int *
-        umpire_host_pinned_pool_allocator_id, // scalar, umpire allocator to use for pinned memory allocations on host (cpu).
-                                              // value < 0 = have teton create its own allocator, if needed.
-    int *umpire_device_pool_allocator_id); // scalar, umpire allocator to use for memory allocations on the accelerator
+   int *
+      umpire_host_pinned_pool_allocator_id, // scalar, umpire allocator to use for pinned memory allocations on host (cpu).
+                                            // value < 0 = have teton create its own allocator, if needed.
+   int *umpire_device_pool_allocator_id); // scalar, umpire allocator to use for memory allocations on the accelerator
 // device (gpu).  value < 0 = use native OpenMP or CUDA for memory allocation.
 
 // destroy mesh data in case it has changed during the simulation
@@ -512,15 +511,15 @@ void teton_getpsipointer(const int *setIdx,   // scalar, phase space set desired
 //  get the zone-averaged psi for each zone, group, and angle
 //
 void teton_getzonalpsi(
-    const int *numAngles, // scalar, number of angles, must match psi
-    double *psi); // array[nzones*ngroups*nAngles], indexed such that zone varies fastest and angle varies slowest
+   const int *numAngles, // scalar, number of angles, must match psi
+   double *psi); // array[nzones*ngroups*nAngles], indexed such that zone varies fastest and angle varies slowest
 
 // get the amount of radiation deposited in a zone within a cycle
 void teton_getradiationdeposited(
-    const int *zoneID,    // scalar, zone index
-    double *radDeposited, // scalar, amount of radiation energy deposited
-    double *
-        radTemperature); // scalar, equivalent black body temperature of radiation energy deposited (for the given zone material)
+   const int *zoneID,    // scalar, zone index
+   double *radDeposited, // scalar, amount of radiation energy deposited
+   double *
+      radTemperature); // scalar, equivalent black body temperature of radiation energy deposited (for the given zone material)
 
 //
 //  teton_getradiationenergydensity
@@ -594,9 +593,9 @@ void teton_getdtmessage(char **dtmessage);
 
 // a function for accessing Teton's dt control information:
 void teton_getdtcontrolinfo(
-    int *dtControlReason,  // scalar, reason for control, see tetonDtControlFlag below
-    int *dtControlProcess, // scalar, controlling process MPI rank (0-based indexing)
-    int *dtControlZone);   //scalar, local controlling zone ID on process dtControlProcess (1-based indexing)
+   int *dtControlReason,  // scalar, reason for control, see tetonDtControlFlag below
+   int *dtControlProcess, // scalar, controlling process MPI rank (0-based indexing)
+   int *dtControlZone);   //scalar, local controlling zone ID on process dtControlProcess (1-based indexing)
 
 //
 //  teton_getscalarintensity
@@ -688,9 +687,9 @@ void teton_reconstructpsi(double *EnergyRadiation,   // scalar, total radiation 
 //  TODO add a note about the ordering of RemappedPsi vs Set%Psi
 //
 void teton_reconstructpsifrompsi(
-    double *EnergyRadiation,    // scalar, total radiation energy density (in/out)
-    const int *numAngles,       // scalar, number of angles, must match psi
-    const double *RemappedPsi); // array[ nzones x ngroups x numAngles], input only, zone varies fastest
+   double *EnergyRadiation,    // scalar, total radiation energy density (in/out)
+   const int *numAngles,       // scalar, number of angles, must match psi
+   const double *RemappedPsi); // array[ nzones x ngroups x numAngles], input only, zone varies fastest
 
 //
 //  teton_reconstructpsifromdv
@@ -701,16 +700,16 @@ void teton_reconstructpsifromdv();
 // Change SOME iteration scheme parameters of Teton
 // See teton_constructsize for more details
 void teton_resetsize(
-    const int *functionRNLTE,          // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics
-    const double *tFloor,              // scalar, temperature floor
-    const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
-    const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
-    const double *gammaNLTE,           // scalar, gamma power law used for NLTE non-Planckian component
-    const bool *dopplerShiftOn,        // scalar, Account for frequency shifts due to material motion
-    const bool *useNewNonLinearSolver, // scalar, enable new non-linear solver
-    const bool *useNewGTASolver,       // scalar, enable new GTA solver
-    const bool *usePWLD,               // scalar, use PWLD spatial discretization (rz only)
-    const bool *useSurfaceMassLumping); // scalar, use surface and mass lumping for PWLD
+   const int *functionRNLTE,           // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics
+   const double *tFloor,               // scalar, temperature floor
+   const double *radForceMultiplier,   // scalar, if set to 0., this would turn off radiation feedback into hydro forces
+   const double *betaNLTE,             // scalar, beta used in functionRNLTE=3
+   const double *gammaNLTE,            // scalar, gamma power law used for NLTE non-Planckian component
+   const bool *dopplerShiftOn,         // scalar, Account for frequency shifts due to material motion
+   const bool *useNewNonLinearSolver,  // scalar, enable new non-linear solver
+   const bool *useNewGTASolver,        // scalar, enable new GTA solver
+   const bool *usePWLD,                // scalar, use PWLD spatial discretization (rz only)
+   const bool *useSurfaceMassLumping); // scalar, use surface and mass lumping for PWLD
 
 // reset internal, total duration, Teton timers to the values passed in
 void teton_resettimers(const double *radTrTotal,        // scalar, total wall clock time used by Teton
@@ -808,19 +807,19 @@ void teton_setnodevelocity(const int *zone,               // scalar, integer of 
 // set the absorption and scattering opacity of every group of a zone
 //   Note that opacities are clipped at 1.e50.  We may make the clip adjustable by the host-code in the future. See TETON-131.
 void teton_setopacity(
-    const int *zone,    // scalar, zone number
-    const double *siga, // array[ nGrps ] ordered from low to high with absorption opacities
-    const double *sigs, // array[ nGrps ] ordered from low to high with scattering opacities
-    const bool
-        *useTableSigmaS); // if useTableSigmaS==true, then sigs is added to the total opacity here.  else, ignore sigs
+   const int *zone,    // scalar, zone number
+   const double *siga, // array[ nGrps ] ordered from low to high with absorption opacities
+   const double *sigs, // array[ nGrps ] ordered from low to high with scattering opacities
+   const bool
+      *useTableSigmaS); // if useTableSigmaS==true, then sigs is added to the total opacity here.  else, ignore sigs
 
 // set the opposite face array within the MeshData module
 void teton_setoppositeface();
 // set the NLTE fields
 void teton_setnltefields(
-    const int *zone,        // scalar, zone number
-    const double *emis,     // array[ nGrps ] ordered from low to high with emissivity
-    const double *demisdT); // array[ nGrps ] ordered from low to high with emissivity temperature derivative
+   const int *zone,        // scalar, zone number
+   const double *emis,     // array[ nGrps ] ordered from low to high with emissivity
+   const double *demisdT); // array[ nGrps ] ordered from low to high with emissivity temperature derivative
 
 // set the NLTE flag
 void teton_setnlteflag(const int *zone,     // scalar, zone number
@@ -882,22 +881,22 @@ void teton_setsharedface(const int *bcID,   // scalar, input, index of the bound
 //
 //          FaceToBcList integers array to associate zone faces that are boundaries to the appropriate BC index
 void teton_setzone(
-    const int *zoneID,        // scalar, index of zone
-    const int *corner0,       // scalar, global index of this zone's local corner zero
-    const int *zoneFaces,     // scalar, number of zone faces this zone has that connect to other zones or boundaries
-    const int *cornerFaces,   // scalar,
-    const int *zoneNCorner,   // scalar, number of corners in this zone
-    const int *zoneOpp,       // array[ zoneFaces ] of zones opposite this zone on a given face
-    const int *CornerID,      // array[ cornerFaces ]
-    int *CornerOpp,           // array[ cornerFaces ]
-    const int *nCPerFace,     // array[ zoneFaces ]
-    const int *FaceToBCList); // array[ zoneFaces ]
+   const int *zoneID,        // scalar, index of zone
+   const int *corner0,       // scalar, global index of this zone's local corner zero
+   const int *zoneFaces,     // scalar, number of zone faces this zone has that connect to other zones or boundaries
+   const int *cornerFaces,   // scalar,
+   const int *zoneNCorner,   // scalar, number of corners in this zone
+   const int *zoneOpp,       // array[ zoneFaces ] of zones opposite this zone on a given face
+   const int *CornerID,      // array[ cornerFaces ]
+   int *CornerOpp,           // array[ cornerFaces ]
+   const int *nCPerFace,     // array[ zoneFaces ]
+   const int *FaceToBCList); // array[ zoneFaces ]
 
 // set up 1D mesh processor layout
 void teton_setzone1d(
-    const int *zoneID,     // scalar, zone index we are setting up
-    const int *numBcTotal, // scalar, total number of BC in the problem (boundaries can be communicator boundaries)
-    const int *BcZoneID);  // array[ numBcTotal ] giving communicator ID of shared boundaries
+   const int *zoneID,     // scalar, zone index we are setting up
+   const int *numBcTotal, // scalar, total number of BC in the problem (boundaries can be communicator boundaries)
+   const int *BcZoneID);  // array[ numBcTotal ] giving communicator ID of shared boundaries
 
 // set time step parameters for Teton
 void teton_settimestep(const int *ncycle,      // scalar, current cycle
@@ -937,7 +936,7 @@ inline void teton_getrunstats(const int *verbose,        // deprecated, use teto
                               double *timeNonRad,
                               double *timeOther)
 {
-   (void)verbose;
+   (void) verbose;
    teton_getrunstats(MatCoupTimeTotal,
                      SweepTimeTotal,
                      GPUSweepTimeTotal,
@@ -951,35 +950,35 @@ inline void teton_getrunstats(const int *verbose,        // deprecated, use teto
 
 // Old API for backward compatibility
 inline void teton_constructsize(
-    const int *myRankInGroup, // scalar, rank in this process's communication group
-    const int *nzones,        // scalar, number of zones this process is responsible for
-    const int *ncornr,        // scalar, total number of corners in this domain
-    const int *nSides,        // scalar, total number of sides in this domain
-    const int *nbelem,    // scalar, total number of boundary elements (whole faces, not corner faces) on this domain
-    const int *maxcf,     // scalar, maximum number of corner faces per corner
-    const int *maxCorner, // scalar, maximum number of corners in a zone
-    const int *ncomm,     // scalar, number of processes this process communicates to
-    const int *ndim,      // scalar, number of spatial dimensions
-    const int *ngrp,      // scalar, number of energy groups
-    const int *maxDynamicIters, // deprecated, will be removed next release.  use teton_adjustfluxexchangegoals instead
-    const int *functionRNLTE,   // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics (see above comment)
-    const double *tFloor,       // scalar, temperature floor
-    const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
-    const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
-    const double *gammaNLTE,           // scalar, gamma for NLTE non-Planckian power law component
-    const bool *dopplerShiftOn,        // scalar, account for frequency shifts due to material motion
-    const bool *useNewNonLinearSolver, // scalar, this should only be used in 1D and experimentally (?)
-    const bool *useNewGTASolver,       // scalar, selects new GTA solver
-    const bool *usePWLD,               // scalar, turns on PWLD spatial discretization (rz only)
-    const bool *useSurfaceMassLumping, // scalar, turns on surface & mass lumping for PWLD
-    const bool *useGPU,                // scalar, offload calculation to the GPU (when available)
-    const bool *useCUDASweep,          // scalar, use CUDA solver on the GPU
-    const bool *useCUDASolver,         // scalar, use CUDA solver on the GPU
-    const int *zoneBatchSize,          // scalar, number of zones to process at a time in NL Compton solver kernel.
-    const int *nConcurrentBatches,     // scalar, number of NL zone batches to process concurrently.
-    const int *igeom) // scalar, int corresponding to tetonGeometryFlag underlying integer for geometry type
+   const int *myRankInGroup, // scalar, rank in this process's communication group
+   const int *nzones,        // scalar, number of zones this process is responsible for
+   const int *ncornr,        // scalar, total number of corners in this domain
+   const int *nSides,        // scalar, total number of sides in this domain
+   const int *nbelem,        // scalar, total number of boundary elements (whole faces, not corner faces) on this domain
+   const int *maxcf,         // scalar, maximum number of corner faces per corner
+   const int *maxCorner,     // scalar, maximum number of corners in a zone
+   const int *ncomm,         // scalar, number of processes this process communicates to
+   const int *ndim,          // scalar, number of spatial dimensions
+   const int *ngrp,          // scalar, number of energy groups
+   const int *maxDynamicIters, // deprecated, will be removed next release.  use teton_adjustfluxexchangegoals instead
+   const int *functionRNLTE,   // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics (see above comment)
+   const double *tFloor,       // scalar, temperature floor
+   const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
+   const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
+   const double *gammaNLTE,           // scalar, gamma for NLTE non-Planckian power law component
+   const bool *dopplerShiftOn,        // scalar, account for frequency shifts due to material motion
+   const bool *useNewNonLinearSolver, // scalar, this should only be used in 1D and experimentally (?)
+   const bool *useNewGTASolver,       // scalar, selects new GTA solver
+   const bool *usePWLD,               // scalar, turns on PWLD spatial discretization (rz only)
+   const bool *useSurfaceMassLumping, // scalar, turns on surface & mass lumping for PWLD
+   const bool *useGPU,                // scalar, offload calculation to the GPU (when available)
+   const bool *useCUDASweep,          // scalar, use CUDA solver on the GPU
+   const bool *useCUDASolver,         // scalar, use CUDA solver on the GPU
+   const int *zoneBatchSize,          // scalar, number of zones to process at a time in NL Compton solver kernel.
+   const int *nConcurrentBatches,     // scalar, number of NL zone batches to process concurrently.
+   const int *igeom) // scalar, int corresponding to tetonGeometryFlag underlying integer for geometry type
 {
-   (void)maxDynamicIters;
+   (void) maxDynamicIters;
    teton_constructsize(myRankInGroup,
                        nzones,
                        ncornr,
@@ -1010,19 +1009,19 @@ inline void teton_constructsize(
 
 // old version kept for backward compatibility
 inline void teton_resetsize(
-    const int *maxDynamicIters, // deprecated, will be removed next release.  use teton_adjustfluxexchangegoals instead
-    const int *functionRNLTE,   // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics
-    const double *tFloor,       // scalar, temperature floor
-    const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
-    const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
-    const double *gammaNLTE,           // scalar, gamma power law used for NLTE non-Planckian component
-    const bool *dopplerShiftOn,        // scalar, Account for frequency shifts due to material motion
-    const bool *useNewNonLinearSolver, // scalar, enable new non-linear solver
-    const bool *useNewGTASolver,       // scalar, enable new GTA solver
-    const bool *usePWLD,               // scalar, use PWLD spatial discretization (rz only)
-    const bool *useSurfaceMassLumping) // scalar, use surface and mass lumping for PWLD
+   const int *maxDynamicIters, // deprecated, will be removed next release.  use teton_adjustfluxexchangegoals instead
+   const int *functionRNLTE,   // scalar, integer equal to 1, 2, or 3 for controlling NLTE physics
+   const double *tFloor,       // scalar, temperature floor
+   const double *radForceMultiplier,  // scalar, if set to 0., this would turn off radiation feedback into hydro forces
+   const double *betaNLTE,            // scalar, beta used in functionRNLTE=3
+   const double *gammaNLTE,           // scalar, gamma power law used for NLTE non-Planckian component
+   const bool *dopplerShiftOn,        // scalar, Account for frequency shifts due to material motion
+   const bool *useNewNonLinearSolver, // scalar, enable new non-linear solver
+   const bool *useNewGTASolver,       // scalar, enable new GTA solver
+   const bool *usePWLD,               // scalar, use PWLD spatial discretization (rz only)
+   const bool *useSurfaceMassLumping) // scalar, use surface and mass lumping for PWLD
 {
-   (void)maxDynamicIters;
+   (void) maxDynamicIters;
    teton_resetsize(functionRNLTE,
                    tFloor,
                    radForceMultiplier,
@@ -1060,32 +1059,32 @@ inline void teton_resetsize(
 //   If timeShift, the err_est arrays should be of length 2*numTimeBins if computeIncident, length numTimeBins otherwise.
 //
 inline void teton_surfaceedit(
-    const int *nCornerFaces,   // scalar, number of corner-faces that comprise the surface
-    const bool *labFrame,      // scalar, transform to lab frame (yes if true)
-    const int *cornerList,     // array[ nCornerFaces ], corner IDs on of each corner-face
-    const int *zoneFaceList,   // array[ nCornerFaces ], zone-local zone-face ID of each corner-face
-    const bool *timeShift,     // scalar, whether to apply a time shift from centerPoint
-    const double *centerPoint, // array[ nDim ], coordinates of center point.  ignored if timeShift = False
-    const int *numAngleBins,   // either 1 (integrated over all angles) or exactly what teton_getnumanglebins returns
-                               //const double* angleBinBoundaries, // Teton already has this
-    const int *numGroups,      // scalar.  must be 1 (total energy) or number of groups (spectrum)
-                               //const double* groupBinBoundaries, // Teton already has this
-    const int *numTimeBins,    // scalar, number of time bins.  Can be 1.
-    const double *
-        timeBinBoundaries, // array[ numTimeBins+1 ], values must be ascending.  times before 0/after numTimeBins are put into first/last bin
-    const bool *
-        computeIncident, // scalar, true = append incident energy to tallyIncident, false = tallyIncident is not filled (can be null)
-    const double *
-        scaleTally, // scalar multiplier on tally.  This can be used to convert from Teton units to your favorite units.  Applied AFTER AllReduction of quantities.
-    const bool *
-        calcErrorMetrics, // scalar, true = fill out error metrics if timeShift is true, false = err_est_* args below should be NULL
-    double *tally, // array[ numGroups * numAngleBins * numTimeBins], escape energy
-    double *
-        tallyIncident, // array[ numGroups * numAngleBins * numTimeBins], incident energy, ignored if tallyIncident is false
-    double *
-        err_est_shift, // array[ * ], see above for more info. error metric from distance of time shifting (See <d_{||}> in time-shifted tally notes.)
-    double *
-        err_est_srcsize) // array[ * ], see above for more info. error metric from size of source inside simulation domain (See <d_{\perp}> in time-shifted tally notes.)
+   const int *nCornerFaces,   // scalar, number of corner-faces that comprise the surface
+   const bool *labFrame,      // scalar, transform to lab frame (yes if true)
+   const int *cornerList,     // array[ nCornerFaces ], corner IDs on of each corner-face
+   const int *zoneFaceList,   // array[ nCornerFaces ], zone-local zone-face ID of each corner-face
+   const bool *timeShift,     // scalar, whether to apply a time shift from centerPoint
+   const double *centerPoint, // array[ nDim ], coordinates of center point.  ignored if timeShift = False
+   const int *numAngleBins,   // either 1 (integrated over all angles) or exactly what teton_getnumanglebins returns
+                              //const double* angleBinBoundaries, // Teton already has this
+   const int *numGroups,      // scalar.  must be 1 (total energy) or number of groups (spectrum)
+                              //const double* groupBinBoundaries, // Teton already has this
+   const int *numTimeBins,    // scalar, number of time bins.  Can be 1.
+   const double *
+      timeBinBoundaries, // array[ numTimeBins+1 ], values must be ascending.  times before 0/after numTimeBins are put into first/last bin
+   const bool *
+      computeIncident, // scalar, true = append incident energy to tallyIncident, false = tallyIncident is not filled (can be null)
+   const double *
+      scaleTally, // scalar multiplier on tally.  This can be used to convert from Teton units to your favorite units.  Applied AFTER AllReduction of quantities.
+   const bool *
+      calcErrorMetrics, // scalar, true = fill out error metrics if timeShift is true, false = err_est_* args below should be NULL
+   double *tally, // array[ numGroups * numAngleBins * numTimeBins], escape energy
+   double *
+      tallyIncident, // array[ numGroups * numAngleBins * numTimeBins], incident energy, ignored if tallyIncident is false
+   double *
+      err_est_shift, // array[ * ], see above for more info. error metric from distance of time shifting (See <d_{||}> in time-shifted tally notes.)
+   double *
+      err_est_srcsize) // array[ * ], see above for more info. error metric from size of source inside simulation domain (See <d_{\perp}> in time-shifted tally notes.)
 {
    teton_surfaceedit_internal(nCornerFaces,
                               labFrame,
@@ -1108,22 +1107,22 @@ inline void teton_surfaceedit(
 
 // Old surfaceedit interface for backward compatibility:
 inline void teton_surfaceedit(
-    const int *nCornerFaces,   // scalar, number of corner-faces that comprise the surface
-    const bool *labFrame,      // scalar, transform to lab frame (yes if true)
-    const int *cornerList,     // array[ nCornerFaces ], corner IDs on of each corner-face
-    const int *zoneFaceList,   // array[ nCornerFaces ], zone-local zone-face ID of each corner-face
-    const bool *timeShift,     // scalar, whether to apply a time shift from centerPoint
-    const double *centerPoint, // array[ nDim ], coordinates of center point.  ignored if timeShift = False
-    const int *numAngleBins,   // either 1 (integrated over all angles) or exactly what teton_getnumanglebins returns
-    const int *numGroups,      // scalar.  must be 1 (total energy) or number of groups (spectrum)
-    const int *numTimeBins,    // scalar, number of time bins.  Can be 1.
-    const double *
-        timeBinBoundaries, // array[ numTimeBins+1 ], values must be ascending.  times before 0/after numTimeBins are put into first/last bin
-    const bool *
-        computeIncident, // scalar, true = append incident energy to tallyIncident, false = tallyIncident is not filled (can be null)
-    double *tally, // array[ numGroups * numAngleBins * numTimeBins], escape energy
-    double *
-        tallyIncident) // array[ numGroups * numAngleBins * numTimeBins], incident energy, ignored if tallyIncident is false
+   const int *nCornerFaces,   // scalar, number of corner-faces that comprise the surface
+   const bool *labFrame,      // scalar, transform to lab frame (yes if true)
+   const int *cornerList,     // array[ nCornerFaces ], corner IDs on of each corner-face
+   const int *zoneFaceList,   // array[ nCornerFaces ], zone-local zone-face ID of each corner-face
+   const bool *timeShift,     // scalar, whether to apply a time shift from centerPoint
+   const double *centerPoint, // array[ nDim ], coordinates of center point.  ignored if timeShift = False
+   const int *numAngleBins,   // either 1 (integrated over all angles) or exactly what teton_getnumanglebins returns
+   const int *numGroups,      // scalar.  must be 1 (total energy) or number of groups (spectrum)
+   const int *numTimeBins,    // scalar, number of time bins.  Can be 1.
+   const double *
+      timeBinBoundaries, // array[ numTimeBins+1 ], values must be ascending.  times before 0/after numTimeBins are put into first/last bin
+   const bool *
+      computeIncident, // scalar, true = append incident energy to tallyIncident, false = tallyIncident is not filled (can be null)
+   double *tally, // array[ numGroups * numAngleBins * numTimeBins], escape energy
+   double *
+      tallyIncident) // array[ numGroups * numAngleBins * numTimeBins], incident energy, ignored if tallyIncident is false
 {
    const double scaleTally = 1.;
    const bool dumpError = false;
@@ -1157,21 +1156,22 @@ inline void teton_surfaceedit(
 //          Booleans must be 0 or 1 if using int flags instead of BOOL type data.
 //          Call after teton_constructboundary().
 inline void teton_addprofile(
-    const int *NumTimes,      // scalar, number of differnt times for the source
-    const int *NumValues,     // scalar, ==numTimes if blackbody BC.  ==numTimes*ngroups if not blackbody BC
-    const double *Multiplier, // scalar, multiplier in front of all emission terms
-    const bool *BlackBody,    // scalar, isBlackBody emission spectrum?
-    const bool *Isotropic,    // scalar, isIsotropic angular emission?
-    const double *Times,      // array[NumTimes], physical times source changes given in ascending order
-    const double *Values,     // array[NumValues], group dependent source strength values
-    int *TetonProfileID) // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
+   const int *NumTimes,      // scalar, number of differnt times for the source
+   const int *NumValues,     // scalar, ==numTimes if blackbody BC.  ==numTimes*ngroups if not blackbody BC
+   const double *Multiplier, // scalar, multiplier in front of all emission terms
+   const bool *BlackBody,    // scalar, isBlackBody emission spectrum?
+   const bool *
+      Isotropic, // scalar, isIsotropic angular emission?  Must be true unless using Lobatto quadrature.  False means radiation enters along the polar axis only.
+   const double *Times,  // array[NumTimes], physical times source changes given in ascending order
+   const double *Values, // array[NumValues], group dependent source strength values
+   int *TetonProfileID)  // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
 {
    teton_addprofile_internal(NumTimes, NumValues, Multiplier, BlackBody, Isotropic, Times, Values, TetonProfileID);
 }
 // Overloaded API for setting a constant (in time), isotropic, blackbody source:
 inline void teton_addprofile(
-    const double Value,  // scalar, blackbody source strength value
-    int *TetonProfileID) // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
+   const double Value,  // scalar, blackbody source strength value
+   int *TetonProfileID) // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
 {
    const int NumTimes = 2;
    const int NumValues = 2;
@@ -1184,9 +1184,9 @@ inline void teton_addprofile(
 }
 // Overloaded API for setting a constant (in time), isotropic, frequency-dependent source:
 inline void teton_addprofile(
-    const double *Multiplier,      // scalar, multiplier in front of all emission terms
-    std::vector<double> values_in, // vector of length ngroups, source strength value
-    int *TetonProfileID) // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
+   const double *Multiplier,      // scalar, multiplier in front of all emission terms
+   std::vector<double> values_in, // vector of length ngroups, source strength value
+   int *TetonProfileID) // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
 {
    const int NumTimes = 2;
    const int ngroups = values_in.size();
@@ -1203,8 +1203,14 @@ inline void teton_addprofile(
       }
    }
 
-   teton_addprofile_internal(
-       &NumTimes, &NumValues, Multiplier, &BlackBody, &Isotropic, Times, Values.data(), TetonProfileID);
+   teton_addprofile_internal(&NumTimes,
+                             &NumValues,
+                             Multiplier,
+                             &BlackBody,
+                             &Isotropic,
+                             Times,
+                             Values.data(),
+                             TetonProfileID);
 }
 // Old API for backward compatibility:
 inline void teton_addprofile(const int *NumTimes,
@@ -1217,23 +1223,23 @@ inline void teton_addprofile(const int *NumTimes,
                              const double *Values)
 {
    int dummyInt = -1;
-   (void)NumInterpValues;
+   (void) NumInterpValues;
    teton_addprofile_internal(NumTimes, NumValues, Multiplier, BlackBody, Isotropic, Times, Values, &dummyInt);
 }
 
 // Old API for backward compatibility:
 inline void teton_constructitercontrols(
-    const int *noutmx,    // scalar, maximum number of outer (temperature) iterations before a linear solve
-    const int *ninmx,     // scalar, maximum number of inner iterations per coupling update [not used currently]
-    const int *ngdamx,    // scalar, maximum number of gray steps before a new temperature iterate
-    const double *epstmp, // scalar, temperature solve tolerance
-    const double *epsinr, // scalar, linear solve tolerance (should be the smallest)
-    const double *epsgda) // scalar, gray diffusion-like tolerance (between epstmp and epsinr)
+   const int *noutmx,    // scalar, maximum number of outer (temperature) iterations before a linear solve
+   const int *ninmx,     // scalar, maximum number of inner iterations per coupling update [not used currently]
+   const int *ngdamx,    // scalar, maximum number of gray steps before a new temperature iterate
+   const double *epstmp, // scalar, temperature solve tolerance
+   const double *epsinr, // scalar, linear solve tolerance (should be the smallest)
+   const double *epsgda) // scalar, gray diffusion-like tolerance (between epstmp and epsinr)
 {
-   (void)ninmx;
+   (void) ninmx;
    // This will be really, really chatty.
    std::cout
-       << "WARNING: Calling teton_constructitercontrols with tolerance arguments is deprecated.  Please delete arguments and set tolerances via teton_adjust* functions.\n";
+      << "WARNING: Calling teton_constructitercontrols with tolerance arguments is deprecated.  Please delete arguments and set tolerances via teton_adjust* functions.\n";
    teton_constructitercontrols();
 
    teton_adjusttemperaturegoals(noutmx, epstmp);
@@ -1252,19 +1258,19 @@ inline void teton_constructitercontrols(
 //
 //  Profile must have already been added via teton_addprofile
 inline void teton_resetprofile(
-    const int *TetonProfileID, // scalar, use the returned value of TetonProfileID from teton_addprofile
-    const int *NumTimes,       // scalar, number of differnt times for the source
-    const int *NumValues,      // scalar, ==numTimes if blackbody BC.  ==numTimes*ngroups if not blackbody BC
-    const double *Multiplier,  // scalar, multiplier in front of all emission terms
-    const double *Times,       // array[NumTimes], physical times source changes given in ascending order
-    const double *Values)      // array[NumValues], group dependent source strength values
+   const int *TetonProfileID, // scalar, use the returned value of TetonProfileID from teton_addprofile
+   const int *NumTimes,       // scalar, number of differnt times for the source
+   const int *NumValues,      // scalar, ==numTimes if blackbody BC.  ==numTimes*ngroups if not blackbody BC
+   const double *Multiplier,  // scalar, multiplier in front of all emission terms
+   const double *Times,       // array[NumTimes], physical times source changes given in ascending order
+   const double *Values)      // array[NumValues], group dependent source strength values
 {
    teton_resetprofile_internal(TetonProfileID, NumTimes, NumValues, Multiplier, Times, Values);
 }
 // Alternative API for updating a constant-in-time blackbody temperature BC
 inline void teton_resetprofile(
-    const int *TetonProfileID, // scalar, use the returned value of TetonProfileID from teton_addprofile
-    const double Value)        // scalar, blackbody source strength value
+   const int *TetonProfileID, // scalar, use the returned value of TetonProfileID from teton_addprofile
+   const double Value)        // scalar, blackbody source strength value
 {
    const int NumTimes = 2;
    const int NumValues = 2;
@@ -1275,9 +1281,9 @@ inline void teton_resetprofile(
 }
 // Alternative API for updating a constant-in-time frequency-dependent isotropic source
 inline void teton_resetprofile(
-    const int *TetonProfileID,     // scalar, use the returned value of TetonProfileID from teton_addprofile
-    const double *Multiplier,      // scalar, multiplier in front of all emission terms
-    std::vector<double> values_in) // vector of length ngroups, source strength value
+   const int *TetonProfileID,     // scalar, use the returned value of TetonProfileID from teton_addprofile
+   const double *Multiplier,      // scalar, multiplier in front of all emission terms
+   std::vector<double> values_in) // vector of length ngroups, source strength value
 {
    const int NumTimes = 2;
    const int ngroups = values_in.size();
@@ -1532,8 +1538,8 @@ inline int teton_adjust_control(const tetonIterControlsFlag control, const doubl
          if (maxits > 0)
          {
             std::cout
-                << "WARNING: There is no maxits control for phi.  Use the outer temperature control to set a max # of iterations for the outer iteration."
-                << std::endl;
+               << "WARNING: There is no maxits control for phi.  Use the outer temperature control to set a max # of iterations for the outer iteration."
+               << std::endl;
             return -1;
          }
          break;
@@ -1607,7 +1613,7 @@ inline void teton_getedits(const int *verbose,      // deprecated and ignored, u
                            double *PowerCompton)
 { // scalar, power of Compton scattering photons
 
-   (void)verbose;
+   (void) verbose;
    double deltaEMat = 0.0;
    double energyCheck = 0.0;
    teton_getedits(noutrt,

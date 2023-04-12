@@ -111,7 +111,7 @@
 
    iang = -1
    do ia=1,NumAngles
-     if (self% weight(ia) == zero) then
+     if (self% weight(ia) < adqtEpsilon) then
        if (iang == -1) then
          self% StartingDirection(ia) = .TRUE.
          iang = -iang

@@ -32,8 +32,8 @@
    integer,    intent(inout)    :: listZone(Size%nzones)
    integer,    intent(inout)    :: cycleList(Size%ncornr)
 
-   logical (kind=1), intent(in) :: exitFace(Size%maxFaces,Size%nzones)
-   logical (kind=1), intent(in) :: onCycleList(Size%nzones)
+   logical (kind=1), intent(inout) :: exitFace(Size%maxFaces,Size%nzones)
+   logical (kind=1), intent(inout) :: onCycleList(Size%nzones)
 
 !  Local Variables
 

@@ -110,7 +110,7 @@
      TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
 
-     TOMP(target data map(to: numAngles, angleList, omega, quadwt))
+     TOMP(target enter data map(to: numAngles, angleList, omega, quadwt))
 
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nZoneSets, numAngles, Geom, GTA, omega)&)
@@ -307,7 +307,7 @@
      enddo ZoneSetLoop
 
      TOMP(end target teams distribute)
-     TOMP(end target data)
+     TOMP(target exit data map(release: numAngles, angleList, omega, quadwt))
 
 
    deallocate( angleList )

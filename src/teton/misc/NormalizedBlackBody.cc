@@ -16,8 +16,8 @@ constexpr double NBB_fifteenOverPi4()
    return 0.1539897338202650278372917L;
 }
 
-extern "C" {
-
+extern "C"
+{
 ////////////////////////////////////////////////////////////////////////////////
 
 /// This function evaluates the black body function
@@ -48,10 +48,10 @@ double NBB_cumulativeEmission(const double epsilon)
       const double b1 = 0.2807339758744;
       const double b2 = 0.07713864107538;
 
-      double Int_epsilon_Inf
-          = std::exp(-epsilon)
-            * (1.0 + epsilon * (a1 + epsilon * (a2 + epsilon * (a3 + epsilon * (a4 + epsilon * a5)))))
-            / (1. + epsilon * (b1 + epsilon * b2));
+      double Int_epsilon_Inf = std::exp(-epsilon)
+                               * (1.0
+                                  + epsilon * (a1 + epsilon * (a2 + epsilon * (a3 + epsilon * (a4 + epsilon * a5)))))
+                               / (1. + epsilon * (b1 + epsilon * b2));
 
       return 1.0 - Int_epsilon_Inf;
    }

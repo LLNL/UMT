@@ -126,12 +126,10 @@
 
 
      ! Verify we won't get out-of-bounds access in angle loop below.
-     TETON_CHECK_BOUNDS1(Quad%AngSetPtr, numAngles)
      TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
      TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
-
-     TOMP(target data map(to: numAngles, angleList, omega, quadwt, fac, quadTauW1, quadTauW2, Starting))
+     TOMP(target enter data map(to: numAngles, angleList, omega, quadwt, fac, quadTauW1, quadTauW2, Starting))
 
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nZoneSets, numAngles, omega, Geom, GTA))
@@ -350,7 +348,7 @@
      enddo ZoneSetLoop
 
      TOMP(end target teams distribute)
-     TOMP(end target data)
+     TOMP(target exit data map(release: numAngles, angleList, omega, quadwt, fac, quadTauW1, quadTauW2, Starting))
 
 
    deallocate( angleList )

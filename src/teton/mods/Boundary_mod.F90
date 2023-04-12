@@ -113,10 +113,6 @@ contains
     integer, intent(in)           :: BdyElem1
     integer, intent(in)           :: NeighborID
 
-!   Local
-
-    integer                       :: NumQuadSets 
-
 !   Set Properties
 
     self% NumBdyElem = NumBdyElem 
@@ -135,8 +131,7 @@ contains
     allocate( self% BdyToZone(self% NumBdyElem) )
 
     if (self% BCType == bcType_refl) then
-      NumQuadSets = getNumQuadSets(Quad)
-      allocate( self % iRef(NumQuadSets) )
+      allocate( self % iRef(2) )
     endif
 
 
@@ -159,15 +154,12 @@ contains
     type(Boundary), intent(inout)  :: self
 
 !   Local
-    integer                        :: NumQuadSets
     integer                        :: set
     type(ReflectedAngle), pointer  :: iRef
                                                                                                    
 !   Allocate space
 
-    NumQuadSets = getNumQuadSets(Quad)
-
-    do set=1,NumQuadSets
+    do set=1,2
       QuadSet => getQuadrature(Quad,set)
       iRef    => self% iRef(set)
 
@@ -194,15 +186,12 @@ contains
     type(Boundary), intent(inout)  :: self
 
 !   Local
-    integer                        :: NumQuadSets
     integer                        :: set
     type(ReflectedAngle), pointer  :: iRef
 
 !   Release space
 
-    NumQuadSets = getNumQuadSets(Quad)
-
-    do set=1,NumQuadSets
+    do set=1,2
       iRef    => self% iRef(set)
                                                                                                    
       deallocate( iRef% ReflAngle )

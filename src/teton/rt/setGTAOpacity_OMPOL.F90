@@ -52,7 +52,7 @@
      TOMP(target update to(Mat% Eta))
    endif
 
-   TOMP(target data map(to: tau, ngr))
+   TOMP(target enter data map(to: tau, ngr))
 
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, ZSet, Geom, Mat, tau, ngr))
@@ -214,8 +214,7 @@
 
    TOMP(end target teams distribute)
 
-   TOMP(end target data)
-
+   TOMP(target exit data map(release: tau, ngr))
 
    TOMP(target update from(GTA% GreySigScatVol))
    TOMP(target update from(GTA% Chi))

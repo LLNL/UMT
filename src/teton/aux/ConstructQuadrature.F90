@@ -1,32 +1,32 @@
 #include "macros.h"
 !***********************************************************************
-!                        Last Update:  7/2017, PGM                     *
+!                        Last Update:  11/2022, PFN                    *
 !                                                                      *
 !  ConstructQuadrature  - Wrapper for module that can be called from   * 
 !                         C++ to create the QuadratureList type.       *
 !                                                                      *
-!            QuadDef     - quadrature definition by group;             *
-!                          entry "ngr+1" is for acceleration           *
+!            QuadDef    - Quadrature Definition                        *
 !                                                                      *
-!                          1 = type                                    *
-!                          2 = order                                   *
-!                          3 = polar angles                            *
-!                          4 = azimuthal angles                        *
-!                          5 = polar axis                              *
-!                          6 = number of angles in the set (Output)    *
+!                         2nd index = 1, high-order Sn quadrature      *
+!                         2nd index = 2, GTA quadrature                *
 !                                                                      *
-!                          "type" definitions:                         *
-!                             1 = level symmetric                      *
-!                             2 = product quadrature                   *
-!                             3 = Lobatto (3D only)                    *
+!                         1 = type                                     *
+!                         2 = order                                    *
+!                         3 = polar angles                             *
+!                         4 = azimuthal angles                         *
+!                         5 = polar axis                               *
+!                         6 = number of angles in the set (Output)     *
 !                                                                      *
-! TODO: Refactor this subroutine, or provide another one, that only    *
-! requires a single quadrature definition (not per group ).  --black27 *
+!                         "type" definitions:                          *
+!                            1 = level symmetric                       *
+!                            2 = product quadrature                    *
+!                            3 = Lobatto (3D only)                     *
+!                                                                      *
 !***********************************************************************
 
 
    subroutine ConstructQuadrature(nSetsMaster, nSets, QuadDef, gnu) &
-        BIND(C,NAME="teton_constructquadrature")
+        BIND(C,NAME="teton_constructquadrature_new")
 
 !  Include
 
@@ -35,7 +35,6 @@
    use kind_mod
    use Size_mod
    use QuadratureList_mod
-   use Quadrature_mod
 
 
    implicit none
@@ -46,22 +45,18 @@
 !   Warning: nSets may not be the value you think it should be.  See comments
 !     in the QuadratureList type definition
    integer(C_INT),    intent(inout) :: nSets
-   integer(C_INT),    intent(inout) :: QuadDef(6,Size%ngr+1)
-   real(C_DOUBLE),     intent(in)   :: gnu(Size%ngr+1)
+   integer(C_INT),    intent(inout) :: QuadDef(6,2)
+   real(C_DOUBLE),    intent(in)    :: gnu(Size%ngr+1)
 
 !  Local
 
-   integer :: g 
-   integer :: NumQuadSets
+   integer :: quadID 
    integer :: quadType
-   integer :: type_set
    integer :: norder
-   integer :: norder_set
    integer :: nAngles
    integer :: npolar
    integer :: nazimuthal
-   integer :: NumSnSets
-   integer :: totalAngles
+   integer :: nAnglesSn 
    integer :: np
    integer :: na
 
@@ -73,17 +68,13 @@
      allocate (Quad)
    endif
 
-!  Find the number of angle sets 
+!  The following loop only determines the number of angles in
+!  each set based on type, order and geometry 
 
-   NumQuadSets =  0 
-   totalAngles =  0
-   type_set    = -1 
-   norder_set  = -1 
+   do quadID=1,2
 
-   GroupLoop: do g=1,Size%ngr+1
-
-     quadType = QuadDef(1,g)
-     norder   = QuadDef(2,g)
+     quadType = QuadDef(1,quadID)
+     norder   = QuadDef(2,quadID)
      nAngles  = 0
 
      ! Checks on nordermax:
@@ -100,34 +91,18 @@
 
          print *, "WARNING: Quadrature order must be an even number <= ", nordermax, " for level symmetric Teton runs in this geometry.  Teton is reducing your requested quadrature order ", norder, " to ", nordermax
          norder = nordermax
-         QuadDef(2,g) = norder
+         QuadDef(2,quadID) = norder
 
        else if (mod(norder,2) /= 0) then
 
          print *, "WARNING: Quadrature order must be an even number <= ", nordermax, " for level symmetric Teton runs in this geometry.  Teton is changing your requested quadrature order ", norder, " to ", max(2,norder-1)
          norder = max(2,norder-1)
-         QuadDef(2,g) = norder
+         QuadDef(2,quadID) = norder
 
        endif
      endif
 
-    
-     if ( quadType == type_set   .and.   &
-            norder == norder_set .and.   &
-            g < Size%ngr+1  ) then
-
-!  This group belongs to the current batch
-!  Last "group" is the grey set and should always be its own set
-
-     else
-
-       NumQuadSets = NumQuadSets + 1
-       type_set    = quadType
-       norder_set  = norder
-
-     endif
-
-!  Quadratures depend on geometry
+!  The number of angles depend on geometry and quadrature type
 
      select case (Size% igeom)
 
@@ -141,13 +116,13 @@
          nAngles = norder
 
        case (geometry_rz)
-         quadtype   = QuadDef(1,g)
-         npolar     = QuadDef(3,g)
-         nazimuthal = QuadDef(4,g)
+         quadType   = QuadDef(1,quadID)
+         npolar     = QuadDef(3,quadID)
+         nazimuthal = QuadDef(4,quadID)
 
-         if (quadtype == 1) then
+         if (quadType == 1) then
            nAngles = norder*(norder + 6)/2
-         elseif (quadtype == 2) then
+         elseif (quadType == 2) then
            if (nazimuthal > 0) then
              nAngles = 4*npolar*(nazimuthal + 1)
            else
@@ -164,13 +139,13 @@
          endif
 
        case (geometry_xyz)
-         quadtype   = QuadDef(1,g)
-         npolar     = QuadDef(3,g)
-         nazimuthal = QuadDef(4,g)
+         quadType   = QuadDef(1,quadID)
+         npolar     = QuadDef(3,quadID)
+         nazimuthal = QuadDef(4,quadID)
 
-         if (quadtype == 1) then
+         if (quadType == 1) then
            nAngles = norder*(norder + 2)
-         elseif (quadtype == 2) then
+         elseif (quadType == 2) then
            if(nazimuthal>0) then
              nAngles = 8*npolar*nazimuthal
            else
@@ -181,7 +156,7 @@
                nAngles = nAngles + 8*na
              enddo
            endif
-         elseif (quadtype == 3) then
+         elseif (quadType == 3) then
            nAngles = 8*npolar*nazimuthal + 2
          else
            call f90fatal("Invalid quadrature definition in Construct Quadrature")
@@ -192,34 +167,20 @@
 
      end select
 
-     QuadDef(6,g) = nAngles
-     totalAngles  = totalAngles + nAngles 
+     QuadDef(6,quadID) = nAngles
 
-   enddo GroupLoop
+   enddo 
 
-!  Verify that all groups have the same angle distribution.  The code does not currently
-!  support or is tested on different quadrature defintions per group.
-!  (If we support this in the future this check can be removed ) -- black27
+   nAnglesSn = QuadDef(6,1)
 
-   do g=1,Size%ngr
-      TETON_VERIFY(QuadDef(1,g) == QuadDef(1,1), "Quadrature qtype differs across groups.")
-      TETON_VERIFY(QuadDef(2,g) == QuadDef(2,1), "Quadrature qorder differs across groups.")
-      TETON_VERIFY(QuadDef(3,g) == QuadDef(3,1), "Quadrature npolar differe across groups.")
-      TETON_VERIFY(QuadDef(4,g) == QuadDef(4,1), "Quadrature nazimu differs across groups.")
-      TETON_VERIFY(QuadDef(5,g) == QuadDef(5,1), "Quadrature paxis differs across groups.")
-      TETON_VERIFY(QuadDef(6,g) == QuadDef(6,1), "Quadrature num angles differs across groups.")
-   enddo
+!  Construct the QuadratureList object:
 
-!  The last quadrature set is for GTA 
+   call construct(Quad, nAnglesSn, nSetsMaster, nSets) 
 
-   NumSnSets = NumQuadSets - 1
-
-   call construct(Quad, NumQuadSets, Size%ngr, totalAngles, &
-                  nSetsMaster, nSets)
-
-!  Set the unique angle sets
+!  Set the high-order and GTA angle sets
 
    call constructAngleSets(QuadDef, gnu)
+
 
    return
    end subroutine ConstructQuadrature

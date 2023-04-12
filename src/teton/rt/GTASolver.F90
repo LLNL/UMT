@@ -1,5 +1,6 @@
 #include "macros.h"
 #include "omp_wrappers.h"
+
 !***********************************************************************
 !                       Last Update:  10/2016, PFN                     *
 !                                                                      *
@@ -38,7 +39,7 @@
 !        energy/photon energy/temperature/mass/length/area/volume/time *
 !***********************************************************************
 
-   subroutine GTASolver 
+   subroutine GTASolver
 
    use kind_mod
    use constant_mod
@@ -88,12 +89,16 @@
    real(adqt) :: omegaNum
    real(adqt) :: omegaDen
 
-   real(adqt), external  :: scat_prod
-   real(adqt), external  :: scat_prod1
+!  Note that there is some logic in these functions to floor to zero to avoid
+!     underflow errors.  So scat_prod(..) == zero checks aren't as bad as they
+!     seem.  Still, we'll use scat_prod(..) < adqtSmall in place of those checks
+!     just to be safe.
+   real(adqt), external :: scat_prod
+   real(adqt), external :: scat_prod1
 
-   logical(kind=1)       :: withSource
+   logical(kind=1)      :: withSource
 
-   character(len=512)    :: descriptor
+   character(len=512)   :: descriptor
 
 !  Dynamic
 
@@ -103,7 +108,7 @@
    real(adqt), allocatable :: CGAction(:)
    real(adqt), allocatable :: CGActionS(:)
 
-!  Set some constants
+!  Constants
 
    greyControl => getIterationControl(IterControls, "grey")
    nzones      =  Size%nzones
@@ -112,7 +117,7 @@
 
    allocate( pzOld(nzones) )
 
-!  Allocate memory for BiConjugate Gradient 
+!  Allocate memory for BiConjugate Gradient
 
    allocate( CGResidual(Size% ncornr) )
    allocate( CGDirection(Size% ncornr) )
@@ -179,17 +184,17 @@
 
    GTA%GreyCorrection(:) = zero
    pzOld(:)              = zero
-   CGResidual(:)         = zero 
+   CGResidual(:)         = zero
    GTA%CGResidualB(:,:)  = zero
 
 !  Initialize the CG residual using an extraneous source
 
-   nGreyIter             =  1 
+   nGreyIter             =  1
    withSource            = .TRUE.
    GTA% nGreySweepIters  =  2
 
    if (Size% useNewGTASolver) then
-     call GreySweepNEW(GTA%CGResidualB, CGResidual, withSource) 
+     call GreySweepNEW(GTA%CGResidualB, CGResidual, withSource)
    else
      call GreySweep(GTA%CGResidualB, CGResidual)
    endif
@@ -209,7 +214,7 @@
 
 !  Begin CG loop, iterating on grey corrections
 
-   ngdart = getNumberOfIterations(greyControl) 
+   ngdart = getNumberOfIterations(greyControl)
 
    GreyIteration: do
 
@@ -217,11 +222,11 @@
      write(descriptor,'(A15,I5)') "GTASolver, GreyIteration number ", nGreyIter
      call PrintEnergies(trim(descriptor))
 
-!  Exit CG if the residual is below the minimum. This used to test against zero,
-!  but due to differences in rounding errors some platforms would return
-!  very small numbers and not zero. 
+!    Exit CG if the residual is below the minimum. This used to test against zero,
+!    but due to differences in rounding errors some platforms would return
+!    very small numbers and not zero.
 
-     if (rrProductOld == zero) then
+     if (abs(rrProductOld) < adqtSmall) then
        if (nGreyIter <= 2) then
          GTA%GreyCorrection(:) = CGResidual(:)
        endif
@@ -229,18 +234,18 @@
      endif
 
 !    increment the grey iteration counter
-     nGreyIter = nGreyIter + 2 
+     nGreyIter = nGreyIter + 2
 
-!  Perform a transport sweep to compute the action of M on the 
-!  conjugate direction (stored in CGAction)
+!    Perform a transport sweep to compute the action of M on the
+!    conjugate direction (stored in CGAction)
 
      CGAction(:)        = CGDirection(:)
-     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:) 
+     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:)
 
      if (Size% useNewGTASolver) then
        call GreySweepNEW(GTA%CGActionB, CGAction, withSource)
      else
-       call GreySweep(GTA%CGActionB, CGAction) 
+       call GreySweep(GTA%CGActionB, CGAction)
      endif
 
 !  Compute the action of the transport matrix, A, on the conjugate
@@ -256,7 +261,7 @@
 !    Exit CG if the conjugate direction or the action of A on the
 !    conjugate direction is zero
 
-     if (dAdProduct == zero) then
+     if (abs(dAdProduct) < adqtSmall) then
        exit GreyIteration
      endif
 
@@ -270,13 +275,13 @@
      GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:)
 
      if (Size% useNewGTASolver) then
-       call GreySweepNEW(GTA%CGActionSB, CGActionS, withSource) 
+       call GreySweepNEW(GTA%CGActionSB, CGActionS, withSource)
      else
        call GreySweep(GTA%CGActionSB, CGActionS)
      endif
 
-!  Compute the action of the transport matrix, A, on the conjugate
-!  direction.  Recall:  A := [I-M]
+!    Compute the action of the transport matrix, A, on the conjugate
+!    direction.  Recall:  A := [I-M]
 
      CGActionS(:)        = CGResidual(:)        - CGActionS(:)
      GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:) - GTA%CGActionSB(:,:)
@@ -284,7 +289,7 @@
      omegaNum = scat_prod(CGActionS,CGResidual)
      omegaDen = scat_prod(CGActionS,CGActionS)
 
-     if (omegaDen == zero .or. omegaNum == zero) then
+     if (abs(omegaDen) < adqtSmall .or. abs(omegaNum) < adqtSmall) then
        GTA%GreyCorrection(:) = GTA%GreyCorrection(:) + alphaCG*CGDirection(:)
 
        exit GreyIteration
@@ -311,17 +316,17 @@
      GTA%CGDirectionB(:,:) = GTA%CGResidualB(:,:)  + betaCG*  &
                             (GTA%CGDirectionB(:,:) - omegaCG*GTA%CGActionB(:,:))
 
-!  Compute the additive grey corrections on zones for convergence tests
+!    Compute the additive grey corrections on zones for convergence tests
 
      errL2          = zero
      phiL2          = zero
      maxRelErrPoint = zero
 
      CorrectionZoneLoop: do zone=1,nzones
-       nCorner = Geom% numCorner(zone) 
-       c0      = Geom% cOffSet(zone) 
+       nCorner = Geom% numCorner(zone)
+       c0      = Geom% cOffSet(zone)
 
-!  Calculate the new zonal correction PZ
+!      Calculate the new zonal correction PZ
 
        pz = zero
        do c=1,nCorner
@@ -345,7 +350,7 @@
          relErrPoint = abs(errZone/phiNew)
          if (relErrPoint > maxRelErrPoint) then
            maxRelErrPoint = relErrPoint
-           izRelErrPoint  = zone 
+           izRelErrPoint  = zone
          endif
        endif
 
@@ -363,7 +368,7 @@
 
      call MPIAllReduce(maxRelErrGrey, "max", MY_COMM_GROUP)
 
-!  Check convergence of the Grey Iteration
+!    Check convergence of the Grey Iteration
 
      if ( GTA% enforceHardGTAIterMax .and. nGreyIter >= getMaxNumberOfIterations(greyControl) ) then
 
@@ -409,6 +414,7 @@
 !  Free memory
 
    deallocate(pzOld,         stat=alloc_stat)
+
    deallocate(CGResidual,    stat=alloc_stat)
    deallocate(CGDirection,   stat=alloc_stat)
    deallocate(CGAction,      stat=alloc_stat)
@@ -416,5 +422,5 @@
 
 
    return
-   end subroutine GTASolver 
+   end subroutine GTASolver
 

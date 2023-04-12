@@ -31,7 +31,7 @@ find_library(
 )
 
 find_package_handle_standard_args(
-    hypre
+    Hypre
     DEFAULT_MSG
     HYPRE_LIBRARIES HYPRE_INCLUDE_DIR)
 

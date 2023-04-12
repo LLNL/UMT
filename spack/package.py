@@ -5,18 +5,19 @@
 
 import os
 import socket
+import itertools
 from os import environ as env
 
 from spack.package import *
 
-class Umt(CachedCMakePackage):
+class Umt(CachedCMakePackage, CudaPackage):
     """Umt is a LLNL mini-app based on the Teton thermal radiative transport library."""
 
     homepage = "https://github.com/LLNL/UMT"
     url = ""
     git = 'https://github.com/LLNL/UMT.git'
 
-    version("develop", branch="develop", submodules=False)
+    version("master", branch="master", submodules=False)
     maintainers = ["aaroncblack"]
 
     # The CMakeLists.txt is in 'src' directory.
@@ -26,13 +27,16 @@ class Umt(CachedCMakePackage):
     # package variants
     ###########################################################################
 
-    variant("openmp", default=True, description="Enable OpenMP support")
+    variant("openmp", default=False, description="Enable OpenMP support")
     variant("openmp_offload", default=False, description="Enable OpenMP target offload support")
     variant("caliper", default=False, description="Enable Caliper performance timers")
-    variant("mpi", default=True, description="Enable MPI support (mandatory")
     variant("mfem", default=False, description="Enable support for reading MFEM meshes")
     variant("umpire", default=False, description="Enable use of Umpire memory library")
+    variant("shared", default=False, description="Enable shared libraries")
+    variant("silo", default=False, description="Enable silo I/O support")
+    variant("find_mpi", default=True, description="Use CMake find_package(mpi) logic.  Disable to rely on mpicxx, mpif90 compiler wrappers")
 
+    conflicts('cuda_arch=none', when='+cuda', msg='CUDA architecture is required')
     ###########################################################################
     # package dependencies
     ###########################################################################
@@ -45,13 +49,34 @@ class Umt(CachedCMakePackage):
     #######################
     # Dependencies
     #######################
-    depends_on("mpi")
-    depends_on("conduit+fortran~hdf5")
-    depends_on("mfem", when="+mfem")
-    depends_on("caliper+fortran", when="+caliper")
-    depends_on("adiak", when="+caliper")
-    depends_on("umpire+fortran", when="+umpire")
+    depends_on("mpi", when="+find_mpi")
+    depends_on("mpi+wrappers", when="~find_mpi")
+
+    depends_on("cuda", when="+cuda")
+
+    depends_on("conduit+fortran+shared@develop", when="+shared")
+    depends_on("conduit+fortran~shared@develop", when="~shared")
+
+    depends_on("mfem+conduit+mpi+shared", when="+mfem+shared")
+    depends_on("mfem+conduit+mpi~shared", when="+mfem~shared")
+
+    depends_on("hypre", when="+mfem")
+    depends_on("metis", when="+mfem")
+
+    depends_on("mfem+conduit+mpi~shared", when="+mfem~shared")
+    depends_on("caliper+fortran+shared", when="+caliper+shared")
+    depends_on("caliper+fortran~shared", when="+caliper~shared")
+
+    depends_on("adiak", when="+caliper+shared")
+    depends_on("adiak~shared", when="+caliper~shared")
+
+    depends_on("umpire+fortran+shared", when="+umpire+shared")
+    depends_on("umpire+fortran~shared", when="+umpire~shared")
+
     depends_on("camp", when="+umpire")
+
+    depends_on("silo+shared", when="+silo+shared")
+    depends_on("silo~shared", when="+silo~shared")
 
     ####################################################################
     # Note: cmake, build, and install stages are handled by CMakePackage
@@ -75,23 +100,6 @@ class Umt(CachedCMakePackage):
             self.spec.compiler.version,
         )
 
-    def cmake_args(self):
-        options = []
-        return options
-
-    def _get_host_config_path(self, spec):
-        sys_type = spec.architecture
-        # if on llnl systems, we can use the SYS_TYPE
-        if "SYS_TYPE" in env:
-            sys_type = env["SYS_TYPE"]
-        host_config_path = "{0}-{1}-{2}-{3}.cmake".format(
-            socket.gethostname(), sys_type, spec.compiler, spec.dag_hash()
-        )
-        dest_dir = spec.prefix
-        host_config_path = os.path.abspath(join_path(dest_dir, host_config_path))
-
-        return host_config_path
-
     # Override the parent class function until its fixed in spack.  (Greg Becker and Chris White are aware of bug)
     def flag_handler(self, name, flags):
         if name in ("cflags", "cxxflags", "cppflags", "fflags", "ldflags"):
@@ -113,23 +121,24 @@ class Umt(CachedCMakePackage):
         entries = super(Umt, self).initconfig_compiler_entries()
 
         if "+openmp" in spec:
-            if spec.satisfies("%xl"):
-                entries.append(cmake_cache_string("TETON_OpenMP_Fortran_FLAGS_RELEASE", "-qsmp=omp"))
-                entries.append(cmake_cache_string("TETON_OpenMP_Fortran_FLAGS_DEBUG", "-qsmp=omp"))
-                entries.append(cmake_cache_string("TETON_OpenMP_CXX_FLAGS_RELEASE", "-qsmp=omp"))
-                entries.append(cmake_cache_string("TETON_OpenMP_CXX_FLAGS_DEBUG", "-qsmp=omp"))
-
-                if "+openmp" in spec:
-                    entries.append(cmake_cache_string("TETON_OpenMP_Offload_Fortran_FLAGS", "-qoffload -qtgtarch=sm_70"))
-            else:
-                entries.append(cmake_cache_string("TETON_OpenMP_Fortran_FLAGS_RELEASE", "-fopenmp"))
-                entries.append(cmake_cache_string("TETON_OpenMP_Fortran_FLAGS_DEBUG", "-fopenmp"))
-                entries.append(cmake_cache_string("TETON_OpenMP_CXX_FLAGS_RELEASE", "-fopenmp"))
-                entries.append(cmake_cache_string("TETON_OpenMP_CXX_FLAGS_DEBUG", "-fopenmp"))
+            if spec.satisfies("%cce"):
+                entries.append(cmake_cache_option("OPENMP_HAS_USE_DEVICE_ADDR", True))
+                entries.append(cmake_cache_option("OPENMP_HAS_FORTRAN_INTERFACE", True))
 
         if spec.satisfies("%cce"):
             entries.append(cmake_cache_option("STRICT_FPP_MODE", True))
-            entries.append(cmake_cache_string("TETON_OpenMP_Offload_LINK_FLAGS", "-ldl"))
+
+        if (len(self.compiler.extra_rpaths) > 0):
+            # Provide extra link options to embed rpaths to libraries.
+            # Spack is providing both the linker pass-through flag and the rpath flag in the
+            # cc_rpath_arg string.  UMT CMake logic uses the target_link_options() command
+            # to add these to its link and that requires just the paths.  Strip out the
+            # linker pass through flags before handing to CMake.
+            rpath_arg = self.compiler.cc_rpath_arg.replace(self.compiler.linker_arg, "")
+
+            link_options = []
+            link_options.extend( [rpath_arg + path for path in self.compiler.extra_rpaths] )
+            entries.append(cmake_cache_string("TETON_LINK_OPTIONS", ",".join(link_options) ))
 
         return entries
 
@@ -140,21 +149,26 @@ class Umt(CachedCMakePackage):
         #######################
         # Parallelism
         #######################
-        if "+cuda" in spec:
-            entries.append(cmake_cache_option("ENABLE_CUDA", True))
         if "+openmp" in spec:
             entries.append(cmake_cache_option("ENABLE_OPENMP", True))
         if "+openmp_offload" in spec:
             entries.append(cmake_cache_option("ENABLE_OPENMP_OFFLOAD", True))
 
-        if spec.satisfies("%cce"):
-            entries.append(cmake_cache_option("OPENMP_HAS_USE_DEVICE_ADDR", True))
-            entries.append(cmake_cache_option("OPENMP_HAS_FORTRAN_INTERFACE", True))
+        if "+cuda" in spec:
+            entries.append(cmake_cache_option("ENABLE_CUDA", True))
+            cuda_arch = spec.variants["cuda_arch"].value
+            entries.append(cmake_cache_string("CMAKE_CUDA_ARCHITECTURES", "{0}".format(cuda_arch[0])))
+        else:
+            entries.append(cmake_cache_option("ENABLE_CUDA", False))
 
         return entries
 
     def initconfig_mpi_entries(self):
         entries = super(Umt, self).initconfig_mpi_entries()
+        if "+find_mpi" in spec:
+            entries.append(cmake_cache_option("ENABLE_FIND_MPI", True))
+        else:
+            entries.append(cmake_cache_option("ENABLE_FIND_MPI", False))
 
         return entries
 
@@ -167,8 +181,17 @@ class Umt(CachedCMakePackage):
         #######################
         entries.append(cmake_cache_option("ENABLE_MINIAPP_BUILD", True))
         entries.append(cmake_cache_option("ENABLE_TESTS", True))
-        entries.append(cmake_cache_option("ENABLE_SILO", False))
-        entries.append(cmake_cache_option("ENABLE_HDF5", False))
+
+        found_hdf5_dependency = False
+        found_zlib_dependency = False
+
+        if "+silo" in self.spec:
+            entries.append(cmake_cache_option("ENABLE_SILO", True))
+            entries.append(cmake_cache_path("SILO_ROOT", self.spec["silo"].prefix))
+            if "+hdf5" in spec["silo"]:
+                found_hdf5_dependency = True
+        else:
+            entries.append(cmake_cache_option("ENABLE_SILO", False))
 
         entries.append(cmake_cache_path("CONDUIT_ROOT", spec["conduit"].prefix))
 
@@ -179,18 +202,41 @@ class Umt(CachedCMakePackage):
                 entries.append(cmake_cache_path("HYPRE_ROOT", spec["hypre"].prefix))
             if "metis" in spec:
                 entries.append(cmake_cache_path("METIS_ROOT", spec["metis"].prefix))
+            if ("+zlib" in spec["mfem"]):
+                found_zlib_dependency = True
+
+        else:
+            entries.append(cmake_cache_option("ENABLE_MFEM", False))
             
         if "+caliper" in spec:
             entries.append(cmake_cache_option("ENABLE_CALIPER", True))
             entries.append(cmake_cache_path("CALIPER_ROOT", spec["caliper"].prefix))
             if "adiak" in spec:
                 entries.append(cmake_cache_path("ADIAK_ROOT", spec["adiak"].prefix))
+        else:
+            entries.append(cmake_cache_option("ENABLE_CALIPER", False))
 
         if "+umpire" in spec:
             entries.append(cmake_cache_option("ENABLE_UMPIRE", True))
             entries.append(cmake_cache_path("UMPIRE_ROOT", spec["umpire"].prefix))
-            if "camp" in spec:
-                entries.append(cmake_cache_option("ENABLE_CAMP", True))
-                entries.append(cmake_cache_path("CAMP_ROOT", spec["camp"].prefix))
+            entries.append(cmake_cache_option("ENABLE_CAMP", True))
+            entries.append(cmake_cache_path("CAMP_ROOT", spec["camp"].prefix))
+        else:
+            entries.append(cmake_cache_option("ENABLE_UMPIRE", False))
+            entries.append(cmake_cache_option("ENABLE_CAMP", False))
+
+        if found_hdf5_dependency:
+            entries.append(cmake_cache_option("ENABLE_HDF5", True))
+            entries.append(cmake_cache_path("HDF5_ROOT", spec["hdf5"].prefix))
+
+            if "+zlib" in spec["hdf5"]:
+                found_zlib_dependency = True
+
+        if "+hdf5" in spec["conduit"]:
+            found_hdf5_dependency = True
+        if "+zlib" in spec["conduit"]:
+            found_zlib_dependency = True
+        if found_zlib_dependency:
+            entries.append(cmake_cache_path("Z_ROOT", spec["zlib"].prefix))
 
         return entries

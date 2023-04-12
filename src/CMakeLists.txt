@@ -1,50 +1,40 @@
 #<<<<<=====----------------------------------------------------------=====>>>>>
 #                      CMake script for Teton library
 #<<<<<=====----------------------------------------------------------=====>>>>>
-cmake_minimum_required( VERSION 3.13.3 )
+cmake_minimum_required( VERSION 3.18 )
 
 set(PROJECT_NAME teton)
 # Update version information in this file.
 
-set(TETON_VERSION_MAJOR 4)
-set(TETON_VERSION_MINOR 14)
+set(TETON_VERSION_MAJOR 5)
+set(TETON_VERSION_MINOR 0)
 set(TETON_VERSION_PATCH 0)
 include (cmake/Version.cmake)
 
 # The CUDA Boltzmann Compton solver source file requires C++11.
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 11)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
+# ----- Set up Teton project source files and build targets -----
+project( ${PROJECT_NAME} LANGUAGES CXX Fortran VERSION ${TETON_VERSION_MAJOR}.${TETON_VERSION_MINOR}.${TETON_VERSION_PATCH})
 
 # Tell CMake to not clear out the RPATH when installing an executable.
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-if( NOT DEFINED CMAKE_BUILD_TYPE ) # Set a default build type (i.e. Release, Debug)
-   set( CMAKE_BUILD_TYPE "Release" CACHE STRING CMAKE_BUILD_TYPE )
-endif()
+# Add third party FindXXX.cmake modules.
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/thirdparty/")
+
+# Set up our default flags for each CMake build type.
+include(cmake/InitBuildTypeCompilerFlags.cmake)
+# Set correct linker wrapper flags.  This is a workaround for HPE CCE compiler not setting this
+# for their Fortran compiler.  ( Ticket submitted to HPE  -black27).
+include(cmake/InitLinkerWrapperFlags.cmake)
 
 # ----- Set up compiler flags and defines based on user provided options -----
 
-# -----
-# NOTE: Do this BEFORE defining the Teton project below.  We want these compiler
-# flags included in the CMake compiler tests so the right compiler libraries are
-# found.
-# -----
-
-# If MPI_lang_COMPILER is set use that, otherwise assume CMAKE_lang_COMPILER is
-# an mpi compiler.
-if(DEFINED MPI_C_COMPILER)
-  set(CMAKE_C_COMPILER ${MPI_Fortran_COMPILER} CACHE STRING CMAKE_C_COMPILER FORCE)
-endif()
-if(DEFINED MPI_CXX_COMPILER)
-  set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER} CACHE STRING CMAKE_CXX_COMPILER FORCE)
-endif()
-if(DEFINED MPI_Fortran_COMPILER)
-  set(CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER} CACHE STRING CMAKE_Fortran_COMPILER FORCE)
-endif()
-
-# Limits use of preprocessor macros to conform with stricter FPP implementations.
+# Limits use of preprocessor macros to conform with strict FPP implementations.
 option( STRICT_FPP_MODE "Use preprocessor macros that strictly conform to FPP." NO)
 if(STRICT_FPP_MODE)
    message( STATUS "Use preprocessor macros that strictly conform to FPP.")
@@ -54,16 +44,11 @@ endif()
 # -----
 # Enable mini-app code version that focuses on the transport sweep algorithm.
 # This will enable the test driver, and MFEM mesh support by default.
-# This will disable SILO and HDF5, as that is not required for MFEM problem input.
 # -----
 option( ENABLE_MINIAPP_BUILD "Enable transport sweep mini-app." TRUE )
 if(ENABLE_MINIAPP_BUILD)
    message( STATUS "Enabling transport sweep mini-app build." )
    add_compile_definitions( "TETON_ENABLE_MINIAPP_BUILD" )
-   set(NOT_ENABLE_MINIAPP_BUILD FALSE)
-else()
-   set(NOT_ENABLE_MINIAPP_BUILD TRUE)
-
 endif()
 
 # Enable some extra function hooks around the intensity iteration for testing, manufactured solutions, etc.
@@ -73,75 +58,91 @@ if(ENABLE_INTENSITY_SOLVE_PREPOST_HOOKS)
    add_compile_definitions( "TETON_ENABLE_INTENSITY_SOLVE_PREPOST_HOOKS" )
 endif()
 
+# Only allows OpenACC on Cray compiler, as this is only meant to be an interim workaround for OpenMP performance issues.
+# TODO - Remove OpenACC support as soon as HPE has performant OpenMP in the CCE compiler.
+option( ENABLE_OPENACC "Enable OpenACC pragmas" NO )
+if(ENABLE_OPENACC)
+   if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Cray")
+      message( STATUS "Enable OpenACC pragmas" )
+      set(OpenACC_Fortran_VERSION 2.0)
+      set(OpenACC_Fortran_SPEC_DATE 201306)
+      set(OpenACC_Fortran_FLAGS -hacc)
+
+      message( STATUS "Compiler supports OpenACC ${OpenACC_Fortran_VERSION}" )
+      message( STATUS "Compiler supports OpenACC spec date ${OpenACC_Fortran_SPEC_DATE}")
+      message( STATUS "Compiler OpenACC Fortran flags: ${OpenACC_Fortran_FLAGS}")
+
+      add_compile_definitions( "TETON_ENABLE_OPENACC" )
+   else()
+      message(ERROR "OpenACC is only supported for Cray compiler.")
+   endif()
+endif()
+
 option( ENABLE_OPENMP "Enable OpenMP pragmas" NO )
 option( ENABLE_OPENMP_OFFLOAD "Enable OpenMP target offload pragmas" NO )
 option( OPENMP_HAS_USE_DEVICE_ADDR "Compiler OpenMP implementation includes use_device_addr pragma" NO )
 option( OPENMP_HAS_FORTRAN_INTERFACE "Compiler OpenMP implementation includes Fortran interface" NO )
 
+# TODO - add check that OpenMP_Fortran_HAVE_OMPLIB_MODULE is TRUE, since we use the omp_lib module.
 if(ENABLE_OPENMP)
    message( STATUS "Enable OpenMP pragmas" )
+
+   if(ENABLE_OPENMP_OFFLOAD)
+     message( STATUS "Enable OpenMP target offload pragmas" )
+
+     if ( ${CMAKE_Fortran_COMPILER_ID} STREQUAL "XL" )
+       message(STATUS "Detected XL compiler, manually adding -qoffload to OpenMP flags...")
+       set(OpenMP_Fortran_FLAG "-qsmp=omp -qoffload")
+     endif()
+
+     if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "XLClang")
+       set(OpenMP_CXX_FLAG "-qsmp=omp -qoffload")
+     endif()
+
+     add_compile_definitions( "TETON_ENABLE_OPENMP_OFFLOAD" )
+
+     if(OPENMP_HAS_USE_DEVICE_ADDR)
+       message( STATUS "Enable use of OpenMP use_device_addr pragmas" )
+       add_compile_definitions( "TETON_OPENMP_HAS_USE_DEVICE_ADDR" )
+     endif()
+   endif()
+
+   find_package(OpenMP REQUIRED COMPONENTS Fortran CXX)
+
+   message( STATUS "Compiler supports OpenMP ${OpenMP_Fortran_VERSION}" )
+   message( STATUS "Compiler supports OpenMP spec date ${OpenMP_Fortran_SPEC_DATE}")
+   message( STATUS "Compiler OpenMP C++ flags: ${OpenMP_CXX_FLAGS}")
+   message( STATUS "Compiler OpenMP Fortran flags: ${OpenMP_Fortran_FLAGS}")
+
    add_compile_definitions( "TETON_ENABLE_OPENMP" )
 
    if(OPENMP_HAS_FORTRAN_INTERFACE)
       message( STATUS "OpenMP includes Fortran interface, disable creation of iso_c_bindings." )
       add_compile_definitions( "TETON_OPENMP_HAS_FORTRAN_INTERFACE" )
    endif()
-
-   if(ENABLE_OPENMP_OFFLOAD)
-      message( STATUS "Enable OpenMP target offload pragmas" )
-      add_compile_definitions( "TETON_ENABLE_OPENMP_OFFLOAD" )
-
-      if(OPENMP_HAS_USE_DEVICE_ADDR)
-         message( STATUS "Enable use of OpenMP use_device_addr pragmas" )
-         add_compile_definitions( "TETON_OPENMP_HAS_USE_DEVICE_ADDR" )
-      endif()
-   endif()
 endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-   message( STATUS "Configuring Release build type.")
-   if(ENABLE_OPENMP)
-      set( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${TETON_OpenMP_Fortran_FLAGS_RELEASE}" CACHE STRING CMAKE_Fortran_FLAGS FORCE )
-      set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TETON_OpenMP_CXX_FLAGS_RELEASE}" CACHE STRING CMAKE_CXX_FLAGS FORCE )
-   endif()
-elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-   message( STATUS "Configuring Debug build type.")
-   if(ENABLE_OPENMP)
-      set( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${TETON_OpenMP_Fortran_FLAGS_DEBUG}" CACHE STRING CMAKE_Fortran_FLAGS FORCE )
-      set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TETON_OpenMP_CXX_FLAGS_DEBUG}" CACHE STRING CMAKE_CXX_FLAGS FORCE )
-   endif()
-   add_compile_definitions( "TETON_CHECK_OUT_OF_BOUNDS_ARRAY_ACCESSES" )
-elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-   message( STATUS "Configuring Release with Debug info build type.")
-   if(ENABLE_OPENMP)
-# Use the release flags for OpenMP.  Sierra doesn't support debug symbols on optimized GPU kernels.
-      set( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${TETON_OpenMP_Fortran_FLAGS_RELEASE}" CACHE STRING CMAKE_Fortran_FLAGS FORCE )
-      set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TETON_OpenMP_CXX_FLAGS_RELEASE}" CACHE STRING CMAKE_CXX_FLAGS FORCE )
-   endif()
-   add_compile_definitions( "TETON_CHECK_OUT_OF_BOUNDS_ARRAY_ACCESSES" )
-else()
-   if(ENABLE_OPENMP)
-      message(FATAL_ERROR "Missing OpenMP flags for build type: ${CMAKE_BUILD_TYPE}, check Teton CMakeLists.txt.")
-   endif()
-endif()
-
 
 option( ENABLE_CUDA "Enable compiling CUDA code" NO )
 if( ENABLE_CUDA )
    message( STATUS "Enable CUDA kernels" )
-   enable_language( CUDA )
 
-   if( NOT DEFINED CUDA_HOME ) # Read the CUDA_HOME environment variable
-      execute_process( COMMAND printenv CUDA_HOME OUTPUT_VARIABLE CUDA_HOME )
-      string( STRIP ${CUDA_HOME} CUDA_HOME ) # CUDA_HOME not specified, use env var CUDA_HOME
-   endif()
-   message( STATUS "Using CUDA at ${CUDA_HOME}" )
-   set( CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER} )
-   set( CMAKE_CUDA_COMPILER ${CUDA_HOME}/bin/nvcc CACHE STRING CMAKE_CUDA_COMPILER )
-   set( CMAKE_CUDA_FLAGS "-ccbin ${CMAKE_CUDA_HOST_COMPILER} -Xcompiler '${CMAKE_CXX_FLAGS}'" )
-   include_directories( ${CUDA_HOME}/include )
-   set( CMAKE_Fortran_FLAGS " ${Fortran_CUDA_FLAGS} ${CMAKE_Fortran_FLAGS}" CACHE STRING CMAKE_Fortran_FLAGS FORCE )
+   set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+   enable_language( CUDA )
+   find_package(CUDAToolkit REQUIRED)
    add_compile_definitions( "TETON_ENABLE_CUDA" )
+
+endif()
+
+# CMake fails to find the MPI libraries and flags on some mixed vendor compiler configurations, for
+# example Clang + XLF on BLUEOS.  In these cases, disable the cmake find package for mpi and instead
+# use the mpi compiler wrappers.
+# Requires that MPI_CXX_COMPILER and MPI_Fortran_COMPILER are set.
+option(ENABLE_FIND_MPI "Enables CMake's Find MPI support (Turn off when compiling with the mpi wrapper directly)" ON)
+if (ENABLE_FIND_MPI)
+  find_package(MPI REQUIRED COMPONENTS Fortran CXX)
+else()
+  set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
+  set(CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
 endif()
 
 option( ENABLE_TOMP_TRACES "Enable print traces before any OpenMP target pragmas." NO )
@@ -154,29 +155,18 @@ option( ENABLE_TESTS "Enable test driver executable." ${ENABLE_MINIAPP_BUILD} )
 if (ENABLE_TESTS)
    message( STATUS "Enable teton test driver." )
    option( ENABLE_MFEM "Enable mfem mesh support." ${ENABLE_MINIAPP_BUILD} )
+   message( STATUS "ENABLE_MFEM is ${ENABLE_MFEM}")
    if (ENABLE_MFEM)
       message( STATUS "Enable mfem mesh support.")
       add_compile_definitions( "TETON_ENABLE_MFEM" )
-   else()
-      message( STATUS "Disable mfem mesh support.")
    endif()
 else()
    message( STATUS "Disable teton test driver." )
 endif()
 
-# ----- Set up Teton project source files and build targets -----
-project( ${PROJECT_NAME} LANGUAGES CXX Fortran VERSION ${TETON_VERSION_MAJOR}.${TETON_VERSION_MINOR}.${TETON_VERSION_PATCH})
-
 
 # ----- Gather gpu hardware details, will be set in Teton build_info module.
 include (cmake/GetGPUInfo.cmake)
-
-# ----- Check if any additional Fortran library directories are needed at link time.
-#       These are used if compiling the test driver.
-include(cmake/FindFortranCompilerLibraries.cmake)
-
-# Add third party FindXXX.cmake modules.
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/thirdparty/")
 
 option( ENABLE_UMPIRE "Link and enable the use of the UMPIRE memory library." NO )
 if(ENABLE_UMPIRE)
@@ -204,7 +194,7 @@ find_package(ConduitBlueprint)
 find_package(ConduitBlueprintMPI)
 
 # Needed for restart SILO file support.
-option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." ${NOT_ENABLE_MINIAPP_BUILD})
+option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." NO)
 if (ENABLE_SILO)
    find_package(Silo)
 endif()
@@ -212,14 +202,6 @@ endif()
 if(NOT ENABLE_MINIAPP_BUILD)
    # Need the source headers for these, regardless of whether we compile the test driver executable.
    find_package(PhysicsUtils)
-endif()
-
-
-# Needed if conduit was built against HDF5.
-option( ENABLE_HDF5 "Link in the HDF5 library." ${NOT_ENABLE_MINIAPP_BUILD} )
-if (ENABLE_HDF5)
-   find_package(HDF5)
-   find_package(Z)
 endif()
 
 if (ENABLE_TESTS)
@@ -231,12 +213,14 @@ if (ENABLE_TESTS)
    endif()
 endif()
 
-if(ENABLE_CUDA)
-  find_package(NVTools)
-  find_package(Cublas)
-  if(ENABLE_CALIPER)
-    find_package(Cupti)
-  endif()
+# Needed if conduit was built against HDF5.
+option( ENABLE_HDF5 "Link in the HDF5 library." NO)
+if (ENABLE_HDF5)
+   find_package(HDF5)
+   find_package(Z)
 endif()
 
 add_subdirectory(teton)
+
+message(STATUS "User specified CXX Flags: ${CMAKE_CXX_FLAGS}")
+message(STATUS "User specific Fortran Flags: ${CMAKE_Fortran_FLAGS}")

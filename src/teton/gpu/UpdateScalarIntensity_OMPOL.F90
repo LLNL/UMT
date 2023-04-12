@@ -49,7 +49,7 @@
    wtiso     = Size% wtiso
 
 
-   TOMP(target data map(to: wtiso))
+   TOMP(target enter data map(to: wtiso))
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, P, Geom, GTA, wtiso)&)
    TOMPC(private(cc,c0,nCorner,diagInv,t,v))
@@ -139,8 +139,7 @@
    enddo ZoneSetLoop
 
    TOMP(end target teams distribute)
-   TOMP(end target data)
-
+   TOMP(target exit data map(release: wtiso))
 
    return
    end subroutine ScalarIntensityDecompose_GPU

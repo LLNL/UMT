@@ -1,6 +1,8 @@
 UMT Introduction
 ==================
 
+![Teton obscured by clouds](img/TetonAboveCloudsCropped.jpg "Teton obscured by clouds")
+
 UMT (Unstructured Mesh Transport) is an LLNL ASC proxy application (mini-app)
 that solves a thermal radiative transport equation using discrete ordinates
 (Sn).  It utilizes an upstream corner balance method to compute the solution to
@@ -13,7 +15,7 @@ parallel computing platforms with tens of processors per node.
 To achieve scalability, the application exploits both spatial decomposition
 using message passing between nodes and a threading algorithm across angles
 and energy groups across processors within the node.  More recent versions of
-UMT are also capable of utilizing both CPUs and GPUs on heterogenous platforms.
+UMT are also capable of utilizing both CPUs and GPUs on heterogeneous platforms.
 
 The code is primarily written in Fortran 2003 with some C++ and Cuda.
 
@@ -29,18 +31,21 @@ Third party libraries
 -----------------------
 UMT depends on several libraries, some of them optionally. See the DEPENDENCIES.md file for more information.
 
-Crooked Pipe 2D test problem with 2500 zone mesh
+Test problems
 ===============
-The  test driver also supports reading in [MFEM](https://mfem.org/) meshes.
-These meshes can be refined using MFEM at runtime to provide larger problems.
+UMT includes an unstructured mesh 3d test problem using a [MFEM](https://mfem.org/) mesh
+This mesh can be refined using MFEM at run time to provide larger problems.
 
-A MFEM NURBs 2D mesh is provided here modeling a bent/crooked pipe problem.
-This mesh was produced using the LLNL mesh generator code
-[PMesh](https://www.osti.gov/biblio/251377).
-
-Building UMT with MFEM mesh support requires several additional libraries and
-CMake options.  For assistance on this build configuration, contact a team
-member on github.
+To run this problem:
+1. Build UMT.  This will produce a test_driver and makeUnstructuredBox executable.
+2. Run the makeUnstructuredBox to produce the 3d test mesh.
+```
+srun -n1 /path/to/install/bin/makeUnstructuredBox
+```
+3. Run the test driver.  In the below example the problem will run for 10 cycles and the mesh will be refined.  Run 'test_driver -h' for more info on the arguments.
+```
+srun -n2 path/to/install/bin/test_driver -i ./unstructBox3D.mesh -c 10 -r 1 -R 6
+```
 
 References
 ==============

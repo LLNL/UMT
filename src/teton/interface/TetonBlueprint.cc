@@ -1,13 +1,13 @@
 
+#include "TetonBlueprint.hh"
 #include "conduit/conduit.hpp"
 #include "conduit/conduit_blueprint.hpp"
-#include "conduit/conduit_blueprint_mpi.hpp"
 #include "conduit/conduit_blueprint_mesh_utils.hpp"
+#include "conduit/conduit_blueprint_mpi.hpp"
 #include "conduit/conduit_blueprint_o2mrelation.hpp"
 #include "conduit/conduit_blueprint_o2mrelation_iterator.hpp"
 #include "conduit/conduit_relay.hpp"
 #include "conduit/conduit_relay_mpi_io_blueprint.hpp"
-#include "TetonBlueprint.hh"
 #include "dbc_macros.h"
 
 #if defined(TETON_ENABLE_CALIPER)
@@ -15,18 +15,374 @@
 #else
 #define CALI_MARK_BEGIN(label)
 #define CALI_MARK_END(label)
+#define CALI_CXX_MARK_SCOPE(name)
+#define CALI_CXX_MARK_FUNCTION
 #endif
 
-#include <map>
-#include <vector>
-#include <set>
 #include <algorithm> // for sort
+#include <limits>
+#include <map>
+#include <set>
+#include <vector>
+
+#include <string>
 
 using std::cout;
 using std::endl;
 //using namespace mfem;
 // access one-to-many index types
 namespace O2MIndex = conduit::blueprint::o2mrelation;
+
+//---------------------------------------------------------------------------
+// Utilities
+//---------------------------------------------------------------------------
+/**
+ @brief This class takes a list of ids and makes a unique index from the
+        values. The index can then be added as a pair (index,id) that 
+        can be looked up later. This is used to do things like build a
+        set of unique faces and then look up the id of a face from points
+        later to see if it exists in the set.
+ */
+template <typename T> class unique
+{
+  public:
+   using IdType = T;
+   using IndexType = std::uint64_t;
+
+   void beginConstruction(std::int64_t size)
+   {
+      buffer.reserve(16);
+      buffer.clear();
+      index_to_id.clear();
+      index_to_id.reserve(size);
+   }
+
+   IndexType makeIndex(const IdType *ids, size_t n)
+   {
+      // Copy the ids into the buffer and sort the buffer
+      if (buffer.capacity() < n)
+         buffer.reserve(n);
+      buffer.clear();
+      for (size_t i = 0; i < n; i++)
+         buffer.push_back(ids[i]);
+      std::sort(buffer.begin(), buffer.end());
+
+      return hashBuffer();
+   }
+
+   void add(IndexType index, IdType id)
+   {
+      index_to_id.push_back(std::make_pair(index, id));
+   }
+
+   void endConstruction()
+   {
+      // Sort by the index component.
+      std::sort(index_to_id.begin(),
+                index_to_id.end(),
+                [](const std::pair<IndexType, IdType> &lhs, const std::pair<IndexType, IdType> &rhs)
+                { return lhs.first < rhs.first; });
+   }
+
+   bool find(IndexType index, IdType &id) const
+   {
+      std::int64_t i = -1;
+      std::int64_t left = 0;
+      std::int64_t right = index_to_id.size() - 1;
+      while (left <= right)
+      {
+         std::int64_t m = (left + right) / 2;
+         if (index_to_id[m].first < index)
+            left = m + 1;
+         else if (index_to_id[m].first > index)
+            right = m - 1;
+         else
+         {
+            i = m;
+            break;
+         }
+      }
+      bool retval = (i != -1) && (index_to_id[i].first == index);
+      id = retval ? index_to_id[i].second : 0;
+      return retval;
+   }
+
+  private:
+   IndexType hashBuffer() const
+   {
+// NOTE: When a new Conduit is out, use conduit::utils::hash.
+#ifdef CONDUIT_HAS_INDEX_T_HASH
+      return conduit::utils::hash(buffer.data(), buffer.size());
+#else
+      return hash_uint8(reinterpret_cast<const std::uint8_t *>(buffer.data()), buffer.size() * sizeof(IdType));
+#endif
+   }
+
+#ifndef CONDUIT_HAS_INDEX_T_HASH
+   // TODO: use conduit::utils::hash when it becomes available.
+   std::uint64_t hash_uint8(const std::uint8_t *data, size_t n) const
+   {
+      std::uint32_t hashF = 0;
+
+      // Build the length into the hash so {1} and {0,1} hash to different values.
+      const auto ldata = reinterpret_cast<const std::uint8_t *>(&n);
+      for (size_t e = 0; e < sizeof(n); e++)
+      {
+         hashF += ldata[e];
+         hashF += hashF << 10;
+         hashF ^= hashF >> 6;
+      }
+      // hash the data forward and backwards.
+      std::uint32_t hashB = hashF;
+      for (size_t i = 0; i < n; i++)
+      {
+         hashF += data[i];
+         hashF += hashF << 10;
+         hashF ^= hashF >> 6;
+
+         hashB += data[n - 1 - i];
+         hashB += hashB << 10;
+         hashB ^= hashB >> 6;
+      }
+      hashF += hashF << 3;
+      hashF ^= hashF >> 11;
+      hashF += hashF << 15;
+
+      hashB += hashB << 3;
+      hashB ^= hashB >> 11;
+      hashB += hashB << 15;
+
+      // Combine the forward, backward into a uint64_t.
+      return (static_cast<std::uint64_t>(hashF) << 32) | (static_cast<std::uint64_t>(hashB));
+   }
+#endif
+
+   std::vector<IdType> buffer;
+   std::vector<std::pair<IndexType, IdType>> index_to_id;
+};
+
+//---------------------------------------------------------------------------
+/**
+ @brief This class copies data from one Conduit node to another, using src_dest
+        as a map that determines how elements are copied. If the source is -1
+        then a fill value is written into dest. Otherwise the copy happens like
+        this: dest[src_dest.second] = src[src_dest.first]. Data are copied
+        without using Conduit-style casting for a subset of fast-paths.
+ */
+class copier
+{
+  public:
+   // Copy src to dest using a src_dest as a guide.
+   void operator()(const conduit::Node &src,
+                   conduit::Node &dest,
+                   const std::vector<std::pair<int, int>> &src_dest,
+                   double value)
+   {
+      bool handled = false;
+      // Handle common cases using concrete types.
+      if (src.dtype().id() == dest.dtype().id())
+      {
+         if (src.dtype().is_float())
+            handled = copy_type(src.as_float_ptr(), dest.as_float_ptr(), src_dest, static_cast<float>(value));
+         else if (src.dtype().is_double())
+            handled = copy_type(src.as_double_ptr(), dest.as_double_ptr(), src_dest, value);
+         else if (src.dtype().is_int())
+            handled = copy_type(src.as_int_ptr(), dest.as_int_ptr(), src_dest, static_cast<int>(value));
+         else if (src.dtype().is_int64())
+            handled = copy_type(src.as_int64_ptr(), dest.as_int64_ptr(), src_dest, static_cast<conduit::int64>(value));
+      }
+      else if (src.dtype().is_float() && dest.dtype().is_double())
+         handled = copy_type(src.as_float_ptr(), dest.as_double_ptr(), src_dest, static_cast<double>(value));
+      else if (src.dtype().is_double() && dest.dtype().is_float())
+         handled = copy_type(src.as_double_ptr(), dest.as_float_ptr(), src_dest, static_cast<float>(value));
+
+      // Do the Conduit cast style as a backup case.
+      if (!handled)
+      {
+         size_t n = src_dest.size();
+         conduit::Node src_data, dest_data;
+         for (size_t i = 0; i < n; i++)
+         {
+            // Set up src.
+            src_data.reset();
+            if (src_dest[i].first >= 0)
+            {
+               src_data.set_external(conduit::DataType(src.dtype().id(), 1),
+                                     (void *) src.element_ptr(src_dest[i].first));
+            }
+            else
+            {
+               src_data.set(value);
+            }
+            // Copy src into dest.
+            dest_data.set_external(conduit::DataType(dest.dtype().id(), 1),
+                                   (void *) dest.element_ptr(src_dest[i].second));
+            src_data.to_data_type(dest_data.dtype().id(), dest_data);
+         }
+      }
+   }
+
+  private:
+   template <typename Tsrc, typename Tdest>
+   bool copy_type(const Tsrc *src, Tdest *dest, const std::vector<std::pair<int, int>> &src_dest, Tdest value)
+   {
+      size_t n = src_dest.size();
+      for (size_t i = 0; i < n; i++)
+         dest[src_dest[i].second] = (src_dest[i].first >= 0) ? src[src_dest[i].first] : value;
+      return true;
+   }
+};
+
+//---------------------------------------------------------------------------
+/**
+ @brief This function iterates over elements in a topology (we use it for faces)
+        and calls a functor or lambda function on the current element.
+
+ @param topology The topology to use for iteration.
+ @param topo_length The topology length - we pass it in because it can be 
+                    calculated externally and used for other things such as
+                    sizing arrays.
+ @param func The operation to be applied to the current element.
+ */
+template <typename Func> void iterate_topology(const conduit::Node &topology, int topo_length, Func &&func)
+{
+   const int *conn = topology.fetch_existing("elements/connectivity").value();
+   const int *points = conn;
+
+   if (topology.has_path("elements/sizes"))
+   {
+      conduit::int_accessor sizes = topology.fetch_existing("elements/sizes").value();
+      for (int f = 0; f < topo_length; ++f)
+      {
+         int size = sizes[f];
+         func(f, points, size);
+         // Move to the next element.
+         points += size;
+      }
+   }
+   else
+   {
+      // No sizes -- all shapes are the same.
+      conduit::blueprint::mesh::utils::ShapeType shape(topology);
+      int size = static_cast<int>(shape.indices);
+      for (int f = 0; f < topo_length; ++f)
+      {
+         func(f, points, size);
+         // Move to the next element.
+         points += size;
+      }
+   }
+}
+
+//---------------------------------------------------------------------------
+/**
+ @brief This class helps compute the point for a point in the topology. We
+        use this as a replacement for Conduit's unstructured::topology so
+        we can get more performance by maintaining some internal state and
+        just computing the point that we want. Using the internal state
+        again and again saves us from having to do a bunch of Conduit
+        node lookups, whose costs add up.
+ */
+class CornerPointHelper
+{
+  public:
+   CornerPointHelper(const conduit::Node &n)
+      : topo_shape(n),
+        piter(),
+        eiter(),
+        pidx_node(nullptr),
+        eidx_node(nullptr),
+        is_polygonal(false)
+   {
+      is_polygonal = topo_shape.is_polygonal();
+      if (is_polygonal)
+      {
+         const conduit::Node &enode = n["elements"];
+         piter = conduit::blueprint::o2mrelation::O2MIterator(enode);
+         pidx_node = enode.fetch_ptr("connectivity");
+      }
+      else
+      {
+         const conduit::Node &enode = n["subelements"];
+         piter = conduit::blueprint::o2mrelation::O2MIterator(enode);
+         eiter = conduit::blueprint::o2mrelation::O2MIterator(n["elements"]);
+         pidx_node = enode.fetch_ptr("connectivity");
+         eidx_node = n.fetch_ptr("elements/connectivity");
+      }
+   }
+
+   conduit::index_t corner_point(const conduit::index_t ei)
+   {
+      return is_polygonal ? corner_point_polygonal(ei) : corner_point_polyhedral(ei);
+   }
+
+  private:
+   conduit::index_t corner_point_polygonal(const conduit::index_t ei)
+   {
+      conduit::index_t retval = 0;
+      conduit::index_t_accessor pidxs_vals = pidx_node->value();
+
+      // Look at the points in polygon ei.
+      piter.to(ei, O2MIndex::ONE);
+      piter.to_front(O2MIndex::MANY);
+      bool compare = false;
+      while (piter.has_next(O2MIndex::MANY))
+      {
+         piter.next(O2MIndex::MANY);
+         const conduit::index_t ptidx = pidxs_vals[piter.index(O2MIndex::DATA)];
+         if (compare)
+            retval = std::min(retval, ptidx);
+         else
+         {
+            retval = ptidx;
+            compare = true;
+         }
+      }
+      return retval;
+   }
+
+   conduit::index_t corner_point_polyhedral(const conduit::index_t ei)
+   {
+      conduit::index_t retval = 0;
+      conduit::index_t_accessor pidxs_vals = pidx_node->value();
+      conduit::index_t_accessor eidxs_vals = eidx_node->value();
+
+      // Iterates the faces for the ei'th PH element. These should be unique.
+      eiter.to(ei, O2MIndex::ONE);
+      eiter.to_front(O2MIndex::MANY);
+      bool compare = false;
+      while (eiter.has_next(O2MIndex::MANY))
+      {
+         eiter.next(O2MIndex::MANY);
+         const conduit::index_t faceidx = eidxs_vals[eiter.index(O2MIndex::DATA)];
+
+         // Look at the points in the face.
+         piter.to(faceidx, O2MIndex::ONE);
+         piter.to_front(O2MIndex::MANY);
+         while (piter.has_next(O2MIndex::MANY))
+         {
+            piter.next(O2MIndex::MANY);
+            const conduit::index_t ptidx = pidxs_vals[piter.index(O2MIndex::DATA)];
+            if (compare)
+               retval = std::min(retval, ptidx);
+            else
+            {
+               retval = ptidx;
+               compare = true;
+            }
+         }
+      }
+      return retval;
+   }
+
+  private:
+   conduit::blueprint::mesh::utils::ShapeType topo_shape;
+   conduit::blueprint::o2mrelation::O2MIterator piter, eiter;
+   const conduit::Node *pidx_node;
+   const conduit::Node *eidx_node;
+   bool is_polygonal;
+};
+//---------------------------------------------------------------------------
 
 void TetonBlueprint::verifyInput(conduit::Node &meshNode, MPI_Comm comm)
 {
@@ -43,6 +399,15 @@ void TetonBlueprint::verifyInput(conduit::Node &meshNode, MPI_Comm comm)
       info.print();
       TETON_FATAL_C(par_rank, "Blueprint mesh input failed verify.");
    }
+}
+
+void TetonBlueprint::GenerateElementOffsets(conduit::Node &topo, const std::string &key)
+{
+   // Generate the offsets only if they do not already exist. This safeguards
+   // against the offset type changing for polyhedral topologies in certain versions
+   // of Conduit.
+   if (!topo.has_path(key))
+      conduit::blueprint::mesh::topology::unstructured::generate_offsets(topo, topo[key]);
 }
 
 void TetonBlueprint::ComputeCornerOffsets(int nzones)
@@ -178,7 +543,7 @@ int TetonBlueprint::GetOppositeCorner(int zone, int face, int corner, int rank)
       }
       catch (const std::exception &e)
       {
-         TETON_FATAL_C(rank, e.what() )
+         TETON_FATAL_C(rank, e.what())
       }
    }
    return -1;
@@ -296,7 +661,7 @@ void TetonBlueprint::ComputeSharedFaces(int rank)
       }
       catch (const std::exception &e)
       {
-         TETON_FATAL_C(rank, e.what() )
+         TETON_FATAL_C(rank, e.what())
       }
       shared_faces_array_ptr[sface_offset + 2] = halfface;
       if (ndim == 3)
@@ -319,6 +684,8 @@ void TetonBlueprint::ComputeSharedFaces(int rank)
 
 void TetonBlueprint::ComputeTetonMeshConnectivityArray(int rank)
 {
+   CALI_CXX_MARK_FUNCTION;
+
    int nzones = mParametersNode.fetch_existing("size/nzones").as_int32();
    int ncorners = mParametersNode.fetch_existing("size/ncornr").as_int32();
    //int ndim = mParametersNode.fetch_existing("size/ndim").as_int32();
@@ -399,6 +766,8 @@ void TetonBlueprint::ComputeTetonMeshConnectivityArray(int rank)
 
 void TetonBlueprint::CreateTetonMeshCornerCoords()
 {
+   CALI_CXX_MARK_FUNCTION;
+
    int nzones = mParametersNode.fetch_existing("size/nzones").as_int32();
    int ndim = mParametersNode.fetch_existing("size/ndim").as_int32();
    std::vector<double> zone_verts;
@@ -431,10 +800,10 @@ void TetonBlueprint::CreateTetonMeshCornerCoords()
    mMeshNode["arrays/zone_verts"].set(zone_verts.data(), zone_verts.size());
 }
 
-
-
 void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm comm)
 {
+   CALI_CXX_MARK_FUNCTION;
+
    int rank;
    MPI_Comm_rank(comm, &rank);
 
@@ -445,35 +814,11 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    // zone-to-vertices
    conduit::Node &base_topology = meshNode.fetch_existing("topologies/main");
    conduit::Node &base_coordset = meshNode.fetch_existing("coordsets/coords");
-   conduit::blueprint::mesh::topology::unstructured::generate_offsets(base_topology, base_topology["elements/offsets"]);
+   GenerateElementOffsets(base_topology, "elements/offsets");
    const int nzones = conduit::blueprint::mesh::utils::topology::length(base_topology);
    const int dim = conduit::blueprint::mesh::utils::topology::dims(base_topology);
 
    TETON_VERIFY_C(rank, (dim == 2 || dim == 3), "Only 2d or 3d blueprint meshes supported.");
-
-   std::vector<std::vector<int>> zone_to_vertices(nzones);
-   conduit::int32 *zone_to_verts_offsets = base_topology.fetch_existing("elements/offsets").as_int32_ptr();
-   conduit::int32 *zone_to_verts = base_topology.fetch_existing("elements/connectivity").as_int32_ptr();
-   int nzone2verts = base_topology.fetch_existing("elements/connectivity").dtype().number_of_elements();
-   for (int zone = 0; zone < nzones; ++zone)
-   {
-      int offset = zone_to_verts_offsets[zone];
-      int nverts_for_zone;
-      if (zone == (nzones - 1)) // last zone
-      {
-         nverts_for_zone = nzone2verts - offset;
-      }
-      else
-      {
-         int offset2 = zone_to_verts_offsets[zone + 1];
-         nverts_for_zone = offset2 - offset;
-      }
-      for (int v = 0; v < nverts_for_zone; ++v)
-      {
-         int vid = zone_to_verts[offset + v];
-         zone_to_vertices[zone].push_back(vid);
-      }
-   }
 
    // Create the zone-to-corner and corner-to-zone connectivity info
    conduit::Node &corner_topology = meshNode["topologies/main_corner"];
@@ -484,6 +829,8 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    // Call the correct version of generate_corners for a serial vs parallel mesh.
    if (meshNode.has_path("adjsets/main_adjset"))
    {
+      CALI_CXX_MARK_SCOPE("generate_corners 1");
+
       // Store adjset temporarily in this node, until we convert it to pairwise.
       conduit::Node &corner_temp_adjset = meshNode["adjsets/temp_corner"];
 
@@ -505,12 +852,16 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    }
    else
    {
-      conduit::blueprint::mesh::topology::unstructured::generate_corners(
-          base_topology, corner_topology, corner_coords, zone2corner_map, corner2zone_map);
+      CALI_CXX_MARK_SCOPE("generate_corners 2");
+      conduit::blueprint::mesh::topology::unstructured::generate_corners(base_topology,
+                                                                         corner_topology,
+                                                                         corner_coords,
+                                                                         zone2corner_map,
+                                                                         corner2zone_map);
    }
 
-   conduit::blueprint::mesh::topology::unstructured::generate_offsets(corner_topology,
-                                                                      corner_topology["elements/offsets"]);
+   GenerateElementOffsets(corner_topology, "elements/offsets");
+
    // For creating the Teton connectivity array
    zone_to_corners = zone2corner_map["values"].as_int32_ptr();
    conduit::int32 *zone_to_ncorner = zone2corner_map["sizes"].as_int32_ptr();
@@ -518,14 +869,27 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    // corner-to-verts
    const int ncorners = conduit::blueprint::mesh::utils::topology::length(corner_topology);
    std::vector<int> corner_to_vertex(ncorners);
+   CALI_MARK_BEGIN("Making corner_to_node");
+
    zone_to_corners2.resize(nzones);
    corner_to_node_x.resize(ncorners);
    corner_to_node_y.resize(ncorners);
    corner_to_node_z.resize(ncorners);
    corner_to_zone.resize(ncorners);
 
-   const conduit::Node &zone2corner_data = zone2corner_map["values"];
+   // Get the axis names being used in the coordset and prepare accessors
+   // to get at the data. The code already assumes 2d-3d so this should be ok.
+   // If 2d, the base_coordset_zc value will alias the x coordinates and won't
+   // be used.
+   const auto base_axes = conduit::blueprint::mesh::utils::coordset::axes(base_coordset);
+   const conduit::Node &bc_values = base_coordset.fetch_existing("values");
+   const auto base_coordset_xc = bc_values.fetch_existing(base_axes[0]).as_double_accessor();
+   const auto base_coordset_yc = bc_values.fetch_existing(base_axes[1]).as_double_accessor();
+   const auto base_coordset_zc = bc_values.fetch_existing(base_axes[dim == 3 ? 2 : 0]).as_double_accessor();
+
+   const auto zone2corner_data = zone2corner_map["values"].as_index_t_accessor();
    conduit::blueprint::o2mrelation::O2MIterator z2c_iter(zone2corner_map);
+   CornerPointHelper cph(corner_topology);
    while (z2c_iter.has_next(O2MIndex::DATA))
    {
       z2c_iter.next(O2MIndex::ONE);
@@ -536,32 +900,25 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
       {
          z2c_iter.next(O2MIndex::MANY);
          const conduit::index_t cidx = z2c_iter.index(O2MIndex::DATA);
-
-         conduit::Node cdata(
-             conduit::DataType(zone2corner_data.dtype().id(), 1), (void *) zone2corner_data.element_ptr(cidx), true);
-         const conduit::index_t cid = cdata.to_index_t();
+         const conduit::index_t cid = zone2corner_data[cidx];
 
          zone_to_corners2[zid].push_back(cid);
          corner_to_zone[cid] = zid;
 
-         CALI_MARK_BEGIN("Teton_Conduit_Points");
-         const std::vector<conduit::index_t> corner_points
-             = conduit::blueprint::mesh::utils::topology::unstructured::points(corner_topology, cid);
-         CALI_MARK_END("Teton_Conduit_Points");
-
-         const conduit::index_t cvid = corner_points.front();
-         const std::vector<conduit::float64> this_corner_coords
-             = conduit::blueprint::mesh::utils::coordset::_explicit::coords(base_coordset, cvid);
+         // Compute the points here.
+         conduit::index_t cvid = cph.corner_point(cid);
 
          corner_to_vertex[cid] = cvid;
-         corner_to_node_x[cid] = this_corner_coords[0];
-         corner_to_node_y[cid] = this_corner_coords[1];
+         // Set the x,y,[z] values for the corner.
+         corner_to_node_x[cid] = base_coordset_xc[cvid];
+         corner_to_node_y[cid] = base_coordset_yc[cvid];
          if (dim == 3)
          {
-            corner_to_node_z[cid] = this_corner_coords[2];
+            corner_to_node_z[cid] = base_coordset_zc[cvid];
          }
       }
    }
+   CALI_MARK_END("Making corner_to_node");
 
    // Create the zone-to-face and face-to-zone connectivity info
    conduit::Node &face_topology = meshNode["topologies/main_face"];
@@ -571,6 +928,8 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    // Call the correct version of generate_faces/lines corners for a serial vs parallel mesh.
    if (meshNode.has_path("adjsets/main_adjset"))
    {
+      CALI_CXX_MARK_SCOPE("Generate faces/lines");
+
       // Store adjset temporarily in this node, until we convert it to pairwise.
       conduit::Node &face_temp_adjset = meshNode["adjsets/temp_face"];
 
@@ -602,29 +961,38 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    }
    else
    {
+      CALI_CXX_MARK_SCOPE("Generate faces/lines 2");
+
       if (dim == 3)
       {
-         conduit::blueprint::mesh::topology::unstructured::generate_faces(
-             base_topology, face_topology, zone2face_map, face2zone_map);
+         conduit::blueprint::mesh::topology::unstructured::generate_faces(base_topology,
+                                                                          face_topology,
+                                                                          zone2face_map,
+                                                                          face2zone_map);
       }
       else if (dim == 2)
       {
-         conduit::blueprint::mesh::topology::unstructured::generate_lines(
-             base_topology, face_topology, zone2face_map, face2zone_map);
+         conduit::blueprint::mesh::topology::unstructured::generate_lines(base_topology,
+                                                                          face_topology,
+                                                                          zone2face_map,
+                                                                          face2zone_map);
       }
    }
 
-   conduit::blueprint::mesh::topology::unstructured::generate_offsets(face_topology, face_topology["elements/offsets"]);
+   GenerateElementOffsets(face_topology, "elements/offsets");
    if (mMeshNode.has_path("topologies/boundary"))
    {
+      CALI_CXX_MARK_SCOPE("Generate offsets for boundaries");
+
       conduit::Node &bndry_topology = meshNode["topologies/boundary"];
-      conduit::blueprint::mesh::topology::unstructured::generate_offsets(bndry_topology,
-                                                                         bndry_topology["elements/offsets"]);
+      GenerateElementOffsets(bndry_topology, "elements/offsets");
    }
    // zone-to-faces
+   CALI_MARK_BEGIN("zones_to_faces");
    zone_to_faces = zone2face_map["values"].as_int32_ptr();
    conduit::int32 *zone_to_face_offsets = zone2face_map["offsets"].as_int32_ptr();
    conduit::int32 *zone_to_nfaces = zone2face_map["sizes"].as_int32_ptr();
+
    zone_to_faces2.resize(nzones);
    for (int zone = 0; zone < nzones; ++zone)
    {
@@ -636,7 +1004,10 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
          zone_to_faces2[zone].push_back(fid);
       }
    }
+   CALI_MARK_END("zones_to_faces");
+
    // face-to-zones
+   CALI_MARK_BEGIN("faces_to_zones");
    face_to_zones = face2zone_map["values"].as_int32_ptr();
    conduit::int32 *face_to_zone_offsets = face2zone_map["offsets"].as_int32_ptr();
    conduit::int32 *face_to_nzones = face2zone_map["sizes"].as_int32_ptr();
@@ -652,7 +1023,10 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
          face_to_zones2[face].push_back(zid);
       }
    }
+   CALI_MARK_END("faces_to_zones");
+
    // face-to-vertices
+   CALI_MARK_BEGIN("faces_to_vertices");
    std::vector<std::vector<int>> face_to_vertices(nfaces);
    conduit::int32 *face_to_verts_offsets = face_topology["elements/offsets"].as_int32_ptr();
    conduit::int32 *face_to_verts = face_topology["elements/connectivity"].as_int32_ptr();
@@ -676,12 +1050,14 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
          face_to_vertices[face].push_back(vid);
       }
    }
+   CALI_MARK_END("faces_to_vertices");
 
    // Create face_to_corners
    // Note: we use that the vertex ID for each face is shared
    // by exactly one corner in each zone that has this face
    // TODO: need to reverse order of corners for one zone of each pair of zones
    // sharing a face
+   CALI_MARK_BEGIN("faces_to_corners");
    face_to_corners2.resize(nfaces);
    for (int face = 0; face < nfaces; ++face)
    {
@@ -756,6 +1132,7 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
          }
       }
    }
+   CALI_MARK_END("faces_to_corners");
 
    // save for mesh motion and forces
    meshNode["arrays/corner_to_vertex"].set(corner_to_vertex.data(), corner_to_vertex.size());
@@ -765,6 +1142,7 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
 
 void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int rank)
 {
+   CALI_CXX_MARK_FUNCTION;
    // Create face boundary condition field.
    conduit::Node src_data, dst_data;
 
@@ -783,49 +1161,211 @@ void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int ra
    face_field["values"].set(conduit::DataType::int32(nfaces));
    conduit::Node &face_values = face_field["values"];
 
-   std::map<std::set<int>, int> verts_bndryid_map; // {face vertices => face mfem id}
-   const conduit::Node *face_topos[] = {&bndry_topo, &face_topology};
-   for (int i = 0; i < 2; ++i)
-   {
-      const conduit::Node &face_topo = *face_topos[i];
-      const int face_topo_length = conduit::blueprint::mesh::utils::topology::length(face_topo);
-      for (int f = 0; f < face_topo_length; ++f)
-      {
-         std::vector<conduit::index_t> face_points
-             = conduit::blueprint::mesh::utils::topology::unstructured::points(face_topo, f);
-         std::set<int> face_vertices(face_points.begin(), face_points.end());
+   // Go through the boundary faces and make unique faces.
+   unique<int> facemap;
+   const int bndry_topo_length = conduit::blueprint::mesh::utils::topology::length(bndry_topo);
+   facemap.beginConstruction(bndry_topo_length);
+   iterate_topology(bndry_topo,
+                    bndry_topo_length,
+                    [&facemap](int f, const int *face_points, int nface_points)
+                    {
+      // Make an id for this face.
+      auto index = facemap.makeIndex(face_points, nface_points);
 
-         if (i == 0)
+      // Add (index,id) to the map,
+      facemap.add(index, f);
+   });
+   facemap.endConstruction();
+
+   // Now, go through the face_topo and use it and the verts_bndryid_map to
+   // make the face attributes.
+   const int face_topo_length = conduit::blueprint::mesh::utils::topology::length(face_topology);
+   std::vector<std::pair<int, int>> src_dest;
+   src_dest.reserve(face_topo_length);
+   iterate_topology(face_topology,
+                    face_topo_length,
+                    [&facemap, &src_dest](int f, const int *face_points, int nface_points)
+                    {
+      // Make an id for this face.
+      auto index = facemap.makeIndex(face_points, nface_points);
+
+      // Look up this face to see if we already know it.
+      unique<int>::IdType id;
+      bool found = facemap.find(index, id);
+
+      // If the face is a boundary face, use the attribute for the associated
+      // boundary. Otherwise, give -1 as the source so the copier will assign
+      // a default value.
+      src_dest.push_back(std::make_pair(found ? id : -1, f));
+   });
+
+   // Copy boundary values to face_values. If the face isn't a boundary face
+   // (its src is -1), set its attribute value to 0
+   copier c;
+   c(bndry_values, face_values, src_dest, 0);
+}
+
+// WORKING ON //
+// TODO: fix for AMR meshes
+// NOTE: Compare to template <typename Mesh> void Teton<Mesh>::makeCornerLists
+// This function outputs, for the jth surface:
+// a list surf_edits_loczonefaces[j] of local zone face IDs (i.e., local to the zone) associated with the jth surface
+// a list surf_edits_corners[j] of global corner IDs associated with the jth surface
+
+void TetonBlueprint::ProcessSurfaceEdits(int rank)
+{
+   std::vector<std::vector<int>> surf_edits_loczonefaces;
+   std::vector<std::vector<int>> surf_edits_corners;
+
+   // Create the map {face vertices => face}. Here the face IDs are those
+   // generated by the call to generate_faces. We need to match these face IDs
+   // with the vertices associated with the surface edit faces
+   conduit::Node &face_topo = mMeshNode["topologies/main_face"];
+   std::map<std::set<int>, int> verts_face_map; // {face vertices => face}
+   const int face_topo_length = conduit::blueprint::mesh::utils::topology::length(face_topo);
+   for (int f = 0; f < face_topo_length; ++f)
+   {
+      std::vector<conduit::index_t> face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(
+         face_topo,
+         f);
+      std::set<int> face_vertices(face_points.begin(), face_points.end());
+      verts_face_map[face_vertices] = f;
+   }
+
+   // NOTE: the call to CreateConnectivityArrays creates and stores
+   // arrays/corner_to_vertex, so need this function to be called before
+   // the call to ProcessSurfaceEdits
+   if (!mMeshNode.has_path("arrays/corner_to_vertex"))
+   {
+      TETON_FATAL_C(
+         rank,
+         "TetonBlueprint::ProcessSurfaceEdits: field arrays/corner_to_vertex has not yet been created; need to call CreateConnectivityArrays first");
+   }
+   int *corner_to_vertex = mMeshNode.fetch_existing("arrays/corner_to_vertex").value();
+
+   // Loop over surface_edit topologies
+   conduit::Node &topos = mMeshNode["topologies"];
+   conduit::Node &surface_edits = mParametersNode["surface_edits"];
+   conduit::NodeConstIterator surface_edits_it = surface_edits.children();
+   int num_surfaces = surface_edits.number_of_children();
+   surf_edits_loczonefaces.resize(num_surfaces);
+   surf_edits_corners.resize(num_surfaces);
+   int surface_id = 0;
+   while (surface_edits_it.has_next())
+   {
+      const conduit::Node &param_surface_edit = surface_edits_it.next();
+      // get the surface topology
+      std::string surface_edit_name_str = param_surface_edit["zone_face_topology_name"].as_string();
+      conduit::Node &surf_face_topo = topos[surface_edit_name_str];
+      const int surf_face_topo_length = conduit::blueprint::mesh::utils::topology::length(surf_face_topo);
+      for (int f = 0; f < surf_face_topo_length; ++f)
+      {
+         std::vector<conduit::index_t> face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(
+            surf_face_topo,
+            f);
+         std::set<int> face_vertices(face_points.begin(), face_points.end());
+         int face;
+         if (verts_face_map.find(face_vertices) != verts_face_map.end())
          {
-            verts_bndryid_map[face_vertices] = f;
+            face = verts_face_map.at(face_vertices);
          }
          else
          {
-            src_data.reset();
-            // if the face isn't a boundary face, set its attribute value to 0
-            if (verts_bndryid_map.find(face_vertices) == verts_bndryid_map.end())
+            TETON_FATAL_C(
+               rank,
+               "TetonBlueprint::ProcessSurfaceEdits: surface edit face doesn't have vertices that correspond to a mesh face");
+         }
+
+         // This mesh face shares (generically) two zones---need to determine the
+         // correct zone based on the vertex orientation of the vertices on the face
+         // NOTE: this logic will not work for AMR meshes
+         // TODO: fix for AMR meshes
+         // The code below uses that face_to_corners2[face] has a list of corners
+         // associated with the mesh face, face. Generically this list will involves two
+         // zones, and the orientation will be according to the left-hand rule. Using the association between each corner and vertex (for non-AMR meshes), we want to find the zone with the same orientation
+         int vert1 = face_points[0];
+         int vert2 = face_points[1];
+         int zone1 = face_to_zones2[face][0];
+         int zone_for_surf_face = zone1;
+         if (face_to_zones2[face].size() > 1)
+         {
+            int zone2 = face_to_zones2[face][1];
+            zone_for_surf_face = zone2;
+            // Loop over corners associated with first zone that
+            // shares this face. For non-AMR meshes, each vertex
+            // in the zone corresponds to a corner
+            int nverts_for_face = face_to_corners2[face].size() / 2;
+            for (int c = 0; c < nverts_for_face - 1; ++c)
             {
-               src_data.set(0);
+               int corner1 = face_to_corners2[face][c];
+               int corner2 = face_to_corners2[face][c + 1];
+               int vert_tail = corner_to_vertex[corner1];
+               int vert_head = corner_to_vertex[corner2];
+               if ((vert1 == vert_tail) && (vert2 == vert_head))
+               {
+                  zone_for_surf_face = zone1;
+                  continue;
+               }
             }
-            // if face is a boundary face, then use the attribute for the associated boundary
-            else
+            if (nverts_for_face > 2) // true if dim == 3
             {
-               try
+               int corner1 = face_to_corners2[face][nverts_for_face - 1];
+               int corner2 = face_to_corners2[face][0];
+               int vert_tail = corner_to_vertex[corner1];
+               int vert_head = corner_to_vertex[corner2];
+               if ((vert1 == vert_tail) && (vert2 == vert_head))
                {
-                  int b = verts_bndryid_map.at(face_vertices);
-                  src_data.set_external(conduit::DataType(bndry_values.dtype().id(), 1),
-                                        (void *) bndry_values.element_ptr(b));
-               }
-               catch (const std::exception &e)
-               {
-                  TETON_FATAL_C(rank, e.what() )
+                  zone_for_surf_face = zone1;
                }
             }
-            dst_data.set_external(conduit::DataType(face_values.dtype().id(), 1), (void *) face_values.element_ptr(f));
-            src_data.to_data_type(dst_data.dtype().id(), dst_data);
+         }
+
+         // Determine the local zone face ID associated with
+         // the pair (zoneID, faceID)
+         int nfaces_in_zone = zone_to_faces2[zone_for_surf_face].size();
+         int local_face = -1;
+         for (int f1 = 0; f1 < nfaces_in_zone; ++f1)
+         {
+            int face_in_zone = zone_to_faces2[zone_for_surf_face][f1];
+            if (face_in_zone == face)
+               local_face = f1;
+         }
+         if (local_face == -1)
+         {
+            TETON_FATAL_C(
+               rank,
+               "TetonBlueprint::ProcessSurfaceEdits: surface edit face doesn't have vertices that correspond to a mesh face");
+         }
+
+         // Finally, push the global corner IDs and local zone face IDs
+         // associated with the pair (zoneID, faceID)
+         int ncorner_faces = face_to_corners2[face].size();
+         for (int c = 0; c < ncorner_faces; ++c)
+         {
+            int corner = face_to_corners2[face][c];
+            int zone = corner_to_zone[corner];
+            if (zone != zone_for_surf_face)
+            {
+               continue;
+            }
+            // Note: incremenet because Teton uses 1-based indexing
+            surf_edits_loczonefaces[surface_id].push_back(local_face + 1);
+            surf_edits_corners[surface_id].push_back(corner + 1);
          }
       }
+
+      // Append to blueprint mesh node
+      mMeshNode["teton/surface_edits/" + surface_edit_name_str + "/corners"].set(surf_edits_corners[surface_id].data(),
+                                                                                 surf_edits_corners[surface_id].size());
+      mMeshNode["teton/surface_edits/" + surface_edit_name_str + "/local_zone_faces"].set(
+         surf_edits_loczonefaces[surface_id].data(),
+         surf_edits_corners[surface_id].size());
+      surface_id += 1;
    }
+
+   // REMOVE //
+   // conduit::relay::io::save(mMeshNode["teton/surface_edits"], "surface_edits.json", "json");
+   // REMOVE //
 }
 
 void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
@@ -835,16 +1375,19 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
                                     std::vector<int> &face_to_bcid,
                                     int rank)
 {
-
+   CALI_CXX_MARK_FUNCTION;
 
    std::map<int, int> boundary_id_to_type;
    if (mParametersNode.has_path("boundary_conditions/id_to_type_map"))
    {
+      conduit::int_accessor boundary_ids = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/ids")
+                                              .value();
+      conduit::int_accessor teton_bc_types = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/types")
+                                                .value();
 
-      conduit::int_accessor boundary_ids = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/ids").value();
-      conduit::int_accessor teton_bc_types = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/types").value();
-
-      TETON_VERIFY_C(rank, boundary_ids.number_of_elements() == teton_bc_types.number_of_elements(), "boundary ids list length != boundary types list length");
+      TETON_VERIFY_C(rank,
+                     boundary_ids.number_of_elements() == teton_bc_types.number_of_elements(),
+                     "boundary ids list length != boundary types list length");
 
       for (int i = 0; i < boundary_ids.number_of_elements(); ++i)
       {
@@ -884,7 +1427,7 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
          // condition definitions needed.
          TETON_FATAL_C(rank,
                        "No boundary condition definition exists for value "
-                           << bc_id << ", found in the boundary attributes field.  "  << e.what())
+                          << bc_id << ", found in the boundary attributes field.  " << e.what())
       }
       boundary_id_to_ncornerfaces[bc_id] = 0;
       for (size_t j = 0; j < (itr->second).size(); ++j)
@@ -916,8 +1459,8 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
    int nreflec, nvacuum; //, nsource;
    nreflec = boundaries_types[0];
    nvacuum = boundaries_types[1];
-//   nsource = boundaries_types[2];
-//   We don't appear to use nsource for anything -- black27
+   //   nsource = boundaries_types[2];
+   //   We don't appear to use nsource for anything -- black27
    std::vector<int> bc_ids_ordered(num_bndrs);
    int jreflect = 0, jvaccuum = 0, jsource = 0;
    for (auto itr = boundaries.begin(); itr != boundaries.end(); ++itr)
@@ -983,9 +1526,11 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
             const int face = face_data.to_int();
 
             // Make sure that the shared face is actually a shared face
-            if (face_to_zones2[face].size() > 1) 
+            if (face_to_zones2[face].size() > 1)
             {
-               std::cout << "WARNING (TetonBlueprint::ComputeFaceIDs): the shared face " << face << " on rank " << rank <<  " is actually an interior face " << "\n";
+               std::cout << "WARNING (TetonBlueprint::ComputeFaceIDs): the shared face " << face << " on rank " << rank
+                         << " is actually an interior face "
+                         << "\n";
                continue;
             }
 
@@ -1101,6 +1646,7 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
 
 void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
 {
+   CALI_CXX_MARK_FUNCTION;
    verifyInput(mMeshNode, comm);
 
    //  face_to_corners2.
@@ -1157,7 +1703,7 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
       }
       catch (const std::exception &e)
       {
-         TETON_FATAL_C(rank, e.what() )
+         TETON_FATAL_C(rank, e.what())
       }
    }
    // Tag each face with a boundary condition ID (i.e., compute
@@ -1172,8 +1718,7 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
    int nbelem_corner_faces = 0;
    m_face_to_bcid.resize(nfaces);
 
-   ComputeFaceIDs(
-       boundaries, nbelem_corner_faces, boundaries_types, boundary_conditions, m_face_to_bcid, rank);
+   ComputeFaceIDs(boundaries, nbelem_corner_faces, boundaries_types, boundary_conditions, m_face_to_bcid, rank);
 
    // Compute the shared faces arrays
 
@@ -1198,33 +1743,37 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
          std::map<int, int> cpoint_to_gindex;
          for (int cp = 0; cp < fn_corners.dtype().number_of_elements(); cp++)
          {
-            conduit::Node corner_data(
-                conduit::DataType(fn_corners.dtype().id(), 1), (void *) fn_corners.element_ptr(cp), true);
+            conduit::Node corner_data(conduit::DataType(fn_corners.dtype().id(), 1),
+                                      (void *) fn_corners.element_ptr(cp),
+                                      true);
             cpoint_to_gindex[corner_data.to_int()] = cp;
          }
 
          for (int f = 0; f < fn_faces.dtype().number_of_elements(); f++)
          {
-            conduit::Node face_data(
-                conduit::DataType(fn_faces.dtype().id(), 1), (void *) fn_faces.element_ptr(f), true);
+            conduit::Node face_data(conduit::DataType(fn_faces.dtype().id(), 1),
+                                    (void *) fn_faces.element_ptr(f),
+                                    true);
             const int face = face_data.to_int();
 
             // Makes sure a shared face is really a shared face
-            if (face_to_zones2[face].size() > 1) continue;
+            if (face_to_zones2[face].size() > 1)
+               continue;
 
             const int bcid = m_face_to_bcid[face];
             const int zone = face_to_zones2[face].front(); // only 1 b/c on boundary
             const std::vector<int> corners = face_to_corners2[face];
 
-            const std::vector<conduit::index_t> face_points
-                = conduit::blueprint::mesh::utils::topology::unstructured::points(face_topology, face);
+            const std::vector<conduit::index_t>
+               face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(face_topology, face);
 
             std::map<int, int> fpoint_to_corner;
             for (size_t c = 0; c < corners.size(); c++)
             {
                const int corner = corners[c];
-               const std::vector<conduit::index_t> corner_points
-                   = conduit::blueprint::mesh::utils::topology::unstructured::points(corner_topology, corner);
+               const std::vector<conduit::index_t>
+                  corner_points = conduit::blueprint::mesh::utils::topology::unstructured::points(corner_topology,
+                                                                                                  corner);
                // NOTE: A corner's vertices are ordered such that the corner vertex
                // is first, which will be the same vertex as is used on the face.
                fpoint_to_corner[corner_points.front()] = corner;
@@ -1288,7 +1837,24 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
    if (ndim == 2)
    {
       mParametersNode["size/maxcf"] = 2;
-      mParametersNode["size/maxCorner"] = 4;
+      if (base_topology.has_path("elements/shape") && base_topology["elements/shape"].as_string() == "polygonal")
+      {
+         conduit::int_accessor counts = base_topology.fetch_existing("elements/sizes").value();
+#if 1
+         // For use with earlier Conduit versions that lack conduit::DataAccessor::max().
+         int counts_max = std::numeric_limits<int>::lowest();
+         for (conduit::index_t ci = 0; ci < counts.number_of_elements(); ci++)
+            counts_max = std::max(counts_max, counts[ci]);
+         mParametersNode["size/maxCorner"] = counts_max;
+#else
+         // For use with later Conduit versions (re-enable later).
+         mParametersNode["size/maxCorner"] = counts.max();
+#endif
+      }
+      else
+      {
+         mParametersNode["size/maxCorner"] = 4;
+      }
       mParametersNode["size/geomType"] = 44; // rz
    }
    else
@@ -1320,6 +1886,12 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
    // the format that standalone Teton expects
    ComputeTetonMeshConnectivityArray(rank);
    CreateTetonMeshCornerCoords();
+
+   //  Transform surface flux tally information to a format that Teton can use
+   if (mParametersNode.has_path("surface_edits"))
+   {
+      ProcessSurfaceEdits(rank);
+   }
 
    verifyInput(mMeshNode, comm);
 }

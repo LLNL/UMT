@@ -17,7 +17,7 @@
 
    integer(C_INT), intent(out)    :: numSNSets
 
-   numSNSets = Quad% NumSnSets
+   numSNSets = 1 
 
    return
    end subroutine getNumSNSets

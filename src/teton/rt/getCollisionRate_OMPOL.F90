@@ -44,7 +44,7 @@
 !  Calculate the total energy absorption rate density 
 
 
-TOMP(target data map(to: ngr))
+TOMP(target enter data map(to: ngr))
 TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
 TOMPC(shared(nZoneSets, ZSet, Geom, Rad, Mat, ngr) &)
 TOMPC(private(zone))
@@ -64,7 +64,7 @@ TOMPC(private(zone))
 
    enddo
 TOMP(end target teams distribute)
-TOMP(end target data)
+TOMP(target exit data map(release: ngr))
 
    if (residualFlag == 0) then
 

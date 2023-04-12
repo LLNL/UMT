@@ -102,7 +102,7 @@
 
      if (zone == 1) then
        Bdy% A_bdy(1,1) = -one
-       Bdy% Radius(1)  = zero
+       Bdy% Radius(1)  = Geom% px(1,1)
        Bdy% BdyToC(1)  = 1
      elseif (zone == nzones) then
        c0              = 2*(nzones - 1)
