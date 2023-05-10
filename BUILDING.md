@@ -21,7 +21,7 @@ Brief walkthrough on building with Spack.
 ``` spack compiler find```
 
 6. Add your mpi to the spack environment.  This example is using mvapich2 but other mpi versions, such as openmpi, are fine also.
-``` spack external find mvapich2
+``` spack external find mvapich2 ```
 
 6. Add umt to your environment.
 ``` spack add umt+mfem %gcc@8.1.0 ```
