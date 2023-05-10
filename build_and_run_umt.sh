@@ -7,7 +7,7 @@
 # CXX = C++ compiler
 # FC = Fortran compiler
 
-# Examples of supported compilers
+# Examples of support compilers
 # Intel
 # CC=icx
 # CXX=icpx

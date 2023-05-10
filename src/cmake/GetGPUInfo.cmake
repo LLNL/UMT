@@ -17,7 +17,8 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "XL")
 # AMD MI250X 
 elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
 # Cray recommends only using 108 of the 110 CUs to leave some free for OS/runtime tasks.
-  set(OMP_DEVICE_NUM_PROCESSORS 108)
+# However, Teton runs faster with 110 vs. 108
+  set(OMP_DEVICE_NUM_PROCESSORS 110)
   set(OMP_DEVICE_TEAM_THREAD_LIMIT 1024)
 else()
   set(OMP_DEVICE_NUM_PROCESSORS 1)

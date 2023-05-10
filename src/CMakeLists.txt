@@ -1,20 +1,20 @@
 #<<<<<=====----------------------------------------------------------=====>>>>>
 #                      CMake script for Teton library
 #<<<<<=====----------------------------------------------------------=====>>>>>
-cmake_minimum_required( VERSION 3.18 )
+cmake_minimum_required( VERSION 3.14 )
 
 set(PROJECT_NAME teton)
 # Update version information in this file.
 
 set(TETON_VERSION_MAJOR 5)
-set(TETON_VERSION_MINOR 0)
+set(TETON_VERSION_MINOR 1)
 set(TETON_VERSION_PATCH 0)
 include (cmake/Version.cmake)
 
 # The CUDA Boltzmann Compton solver source file requires C++11.
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 # ----- Set up Teton project source files and build targets -----
@@ -125,11 +125,15 @@ endif()
 option( ENABLE_CUDA "Enable compiling CUDA code" NO )
 if( ENABLE_CUDA )
    message( STATUS "Enable CUDA kernels" )
-
-   set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
    enable_language( CUDA )
-   find_package(CUDAToolkit REQUIRED)
+   set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
    add_compile_definitions( "TETON_ENABLE_CUDA" )
+
+   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0") 
+      find_package(CUDAToolkit REQUIRED)
+   else()
+      message( STATUS "Older CMake version detected (pre-3.18.0).  CUDA compiler flags will need to be manually added by cmake config file or on command line.")
+   endif()
 
 endif()
 
@@ -194,7 +198,7 @@ find_package(ConduitBlueprint)
 find_package(ConduitBlueprintMPI)
 
 # Needed for restart SILO file support.
-option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." NO)
+option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." YES)
 if (ENABLE_SILO)
    find_package(Silo)
 endif()

@@ -178,7 +178,11 @@
          START_RANGE("Teton_Sweep_GPU")
 
          if (ndim == 3) then
+#ifdef TETON_ENABLE_OPENACC
+           call CornerSweepUCBxyz_GPU(nSets, sendIndex, savePsi)
+#else
            call SweepUCBxyz_GPU(nSets, sendIndex, savePsi)
+#endif
          elseif (ndim == 2) then
            call SweepUCBrz_GPU(nSets, sendIndex, savePsi)
          endif

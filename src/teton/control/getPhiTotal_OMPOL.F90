@@ -51,24 +51,38 @@
 
    if (Size%useGPU) then
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc data copyin(nSets, ngr, sendIndex)
+
+   !$acc parallel loop gang num_gangs(nZoneSets) &
+   !$acc& vector_length(omp_device_team_thread_limit) &
+   !$acc& private(Set, ASet, g0, Groups, Angle, quadwt)
+#else
      TOMP(target enter data map(to: nSets, ngr, sendIndex))
 
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
      TOMPC(shared(Geom, Rad, ngr, nZoneSets, sendIndex, nSets, Quad)&)
      TOMPC(private(Set, ASet, g0, Groups, Angle, quadwt))
+#endif
 
      ZoneSetLoop1: do zSetID=1,nZoneSets
 
        if (sendIndex == 1) then
 
+#ifdef TETON_ENABLE_OPENACC
+         !$acc loop vector collapse(2)
+#else
          !$omp  parallel do collapse(2) default(none)  &
          !$omp& shared(Geom, Rad, ngr, zSetID)
+#endif
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do g=1,ngr
              Rad% PhiTotal(g,c) = zero 
            enddo
          enddo
+#ifndef TETON_ENABLE_OPENACC
          !$omp end parallel do
+#endif
 
        endif
 
@@ -86,8 +100,12 @@
 
          if (.not. ASet% StartingDirection(Angle) ) then
 
+#ifdef TETON_ENABLE_OPENACC
+         !$acc loop vector collapse(2)
+#else
          !$omp  parallel do collapse(2) default(none)  &
          !$omp& shared(Geom, Rad, Set, g0, Groups, quadwt, zSetID)
+#endif
 
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do g=1,Groups
@@ -95,7 +113,9 @@
            enddo
          enddo
 
+#ifndef TETON_ENABLE_OPENACC
          !$omp end parallel do
+#endif
 
          endif
 
@@ -103,9 +123,13 @@
 
      enddo ZoneSetLoop1
 
-
-     TOMP(end target teams distribute)
-     TOMP(target exit data map(release: nSets, ngr, sendIndex))
+#ifdef TETON_ENABLE_OPENACC
+!$acc end parallel loop
+!$acc end data
+#else
+TOMP(end target teams distribute)
+TOMP(target exit data map(release: nSets, ngr, sendIndex))
+#endif
 
    else
 

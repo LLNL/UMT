@@ -251,6 +251,7 @@ int main(int argc, char *argv[])
       mesh3D.PrintInfo();
    }
 
+   /*
    mesh3D.SetCurvature(1);
    mfem::ParMesh pmesh(comm, mesh3D);
 
@@ -266,6 +267,6 @@ int main(int argc, char *argv[])
    {
       std::cout << "There were " << wrong << " 3D mesh boundary elements with the wrong orientation.\n";
    }
-
+*/
    return 0;
 }

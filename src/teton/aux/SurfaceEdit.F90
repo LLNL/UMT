@@ -129,11 +129,10 @@
 
    ! Check some inputs:
    if (numGroups /= 1) then
-     tetonAssert(Size% ngr == numGroups, &
-      "numGroups in teton_surfaceedit must be either 1 or the # of Teton groups")
+     tetonAssert(Size% ngr == numGroups, "numGroups in teton_surfaceedit must be either 1 or the # of Teton groups")
    endif
    tetonAssert(numTimeBins > 0, "Number of time bins must be positive.")
-   tetonAssert(min(cornerList) > 0, "corner indices must be greater than 0")
+   tetonAssert(minval(cornerList) > 0, "corner indices must be greater than 0")
 
 !  Constants
 
@@ -182,8 +181,7 @@
        endif
      enddo CFaceLoop
 
-     tetonAssert(cFaceList(iCornerFace) > 0, &
-      "Could not find corner face from corner "//c//" and zface"//zface)
+     tetonAssert(cFaceList(iCornerFace) > 0, "Could not find corner face from corner "//char(c)//" and zface"//char(zface))
    enddo
 
 !  Initialize temporary arrays:
@@ -222,8 +220,7 @@
      endif
 
      if (numAngleBins /= 1) then
-       tetonAssert(ASet% nPolarAngles == numAngleBins, &
-                   "numAngleBins must either be 1 or # of Teton polar angles")
+       tetonAssert(ASet% nPolarAngles == numAngleBins, "numAngleBins must either be 1 or # of Teton polar angles")
      else
        polarAngle = 1
      endif
@@ -309,8 +306,7 @@
              enddo
              timeBinDistribution(timeBinFinal) = (shiftedRadTimes(2)-timeBinBoundaries(timeBinFinal))/dtrad
            endif
-           tetonAssert(abs(sum(timeBinDistribution) - one) < 1.e-14_adqt, &
-                       "timeBinDistribution must sum to one.")
+           tetonAssert(abs(sum(timeBinDistribution) - one) < 1.e-14_adqt, "timeBinDistribution must sum to one.")
 
            ! offsets for timeBin and timeBinFinal:
            timeBin0 = (timeBin-1)*numGroupAngleBins+polarAngle0
@@ -335,8 +331,7 @@
            elseif (Size% igeom == geometry_sphere) then
              factor = weight*geometryFactorTimesDt*lambdaD3*Geom% Radius(c)*Geom% Radius(c)
            else
-             tetonAssert(.false., &
-                         "Unknown geometry type in Teton's SurfaceEdit.F90")
+             tetonAssert(.false., "Unknown geometry type in Teton's SurfaceEdit.F90")
            endif
 
            if (angdota > zero) then
@@ -367,8 +362,7 @@
 
              ! Note that we only ever reach this part of the code if
              !  computeIncident = true
-             tetonAssert(computeIncident, &
-              "Should not try to compute incident power in SurfaceEdit if computeIncident is .false.")
+             tetonAssert(computeIncident, "Should not try to compute incident power in SurfaceEdit if computeIncident is .false.")
              tetonAssert(cOpp > 0, "cOpp must be a positive index")
 
              timeBinPlusNBins = timeBin + numTimeBins
