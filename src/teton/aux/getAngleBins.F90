@@ -43,8 +43,7 @@
 
       ASet   => getAngleSetData(Quad, angleSetID)
 
-      tetonAssert(ASet% nPolarAngles == numAngleBins, &
-       "numAngleBins must be # of Teton polar angles in teton_getanglebins")
+      tetonAssert(ASet% nPolarAngles == numAngleBins, "numAngleBins must be # of Teton polar angles in teton_getanglebins")
 
       NumAngles = ASet% NumAngles
 
@@ -56,8 +55,7 @@
 
    enddo
 
-   tetonAssert(abs(sum(angleBinBoundaries) - one/Size%wtiso) < 1.e-14_adqt, &
-               "Error in getAngleBins.F90: sum(angle weights) != 1")
+   tetonAssert(abs(sum(angleBinBoundaries) - one/Size%wtiso) < 1.e-14_adqt, "Error in getAngleBins.F90: sum(angle weights) != 1")
 
    angleBinBoundaries(:) = angleBinBoundaries(:)*Size%wtiso*2
    angleBinBoundaries(1) = -one
@@ -68,8 +66,7 @@
    enddo
 
 ! Check that the final weight is close enough to one:
-   tetonAssert((angleBinBoundaries(numAngleBins+1) - one) < 1.e-14_adqt, &
-               "Error in getAngleBins.F90: Last bin boundary != 1")
+   tetonAssert((angleBinBoundaries(numAngleBins+1) - one) < 1.e-14_adqt, "Error in getAngleBins.F90: Last bin boundary != 1")
 
 ! Then set it to one explicitly:
    angleBinBoundaries(numAngleBins+1) = one

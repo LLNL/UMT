@@ -491,9 +491,9 @@ contains
 
     allocate( HypPlanePtr% zonesInPlane(nHyperPlanes) )
     allocate( HypPlanePtr% badCornerList(meshCycles+1) )
-    allocate( HypPlanePtr% hplane1(nDomains) )
+    allocate( HypPlanePtr% hplane1(nDomains+1) )
     allocate( HypPlanePtr% hplane2(nDomains) )
-    allocate( HypPlanePtr% ndone(nDomains) )
+    allocate( HypPlanePtr% ndone(nDomains+1) )
 
     domID                 = 1
     zoneSum               = 0

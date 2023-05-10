@@ -234,7 +234,7 @@ contains
     self% usePinnedMemory       = .FALSE.
 #endif
 
-    if (self% useGPU .AND. .NOT. self% usePinnedMemory) then
+    if (self% useGPU .AND. .NOT. self% usePinnedMemory .AND. myRankInGroup == 0) then
        print *, "TETON WARNING: Detected that GPU kernels are enabled, but UMPIRE pinned memory is not enabled.  This is not recommended and will result in severe performance degradation."
     endif
 
@@ -248,7 +248,9 @@ contains
     ! activate CUDA Sweep.
     if ( useCUDASweep ) then
       if ( .not. self%useGPU ) then
-        print *, "ACTIVATING CUDA SWEEP"
+        if ( myRankInGroup == 0) then
+           print *, "ACTIVATING CUDA SWEEP"
+        endif
         self% useCUDASweep          = useCUDASweep
       else
         call f90fatal( "EXITING: CUDA SWEEP NOT ACTIVATED, please set useGPU=false" )

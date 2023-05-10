@@ -11,26 +11,27 @@
 !                                                                      *
 !***********************************************************************
    subroutine cyclebreaker(ndoneZ, MESHCYCLES, nextZone, addedZones,  &
-                           needZ, listZone, cycleList, exitFace, &
-                           onCycleList) 
+                           needZ, listZone, cycleList,  &
+                           exitFace, onCycleList) 
 
    use kind_mod
    use constant_mod
    use Size_mod
+   use Geometry_mod
 
    implicit none
 
 !  Arguments
 
-   integer,    intent(in)       :: ndoneZ
+   integer,    intent(in)          :: ndoneZ
 
-   integer,    intent(inout)    :: meshcycles 
-   integer,    intent(inout)    :: nextZone
-   integer,    intent(inout)    :: addedZones
+   integer,    intent(inout)       :: meshcycles 
+   integer,    intent(inout)       :: nextZone
+   integer,    intent(inout)       :: addedZones
 
-   integer,    intent(inout)    :: needZ(Size%nzones)
-   integer,    intent(inout)    :: listZone(Size%nzones)
-   integer,    intent(inout)    :: cycleList(Size%ncornr)
+   integer,    intent(inout)       :: needZ(Size%nzones)
+   integer,    intent(inout)       :: listZone(Size%nzones)
+   integer,    intent(inout)       :: cycleList(Size%ncornr)
 
    logical (kind=1), intent(inout) :: exitFace(Size%maxFaces,Size%nzones)
    logical (kind=1), intent(inout) :: onCycleList(Size%nzones)
@@ -123,7 +124,8 @@
 
    else
 
-     addedZones = 0
+     addedZones   = 0
+
      do i=1,nBreaks
        zone = zoneBreakList(i)
 

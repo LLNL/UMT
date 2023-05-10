@@ -18,13 +18,14 @@ endif()
 if( ENABLE_CUDA )
   add_library( tetoncuda OBJECT )
   target_link_libraries( teton PRIVATE tetoncuda )
-  target_link_libraries( teton PUBLIC CUDA::cudart
-                                      CUDA::cublas
-                                      CUDA::cupti
-                                      CUDA::nvToolsExt
-                        )
-endif()
 
+  if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
+     target_link_libraries( teton PUBLIC CUDA::cublas
+                                         CUDA::cupti
+                                         CUDA::nvToolsExt
+                          )
+  endif()
+endif()
 
 if( ENABLE_OPENMP )
   target_link_libraries( teton PUBLIC OpenMP::OpenMP_CXX)
@@ -127,11 +128,13 @@ if(ENABLE_TESTS)
 
   if( ENABLE_CUDA )
     target_link_libraries( test_driver PRIVATE tetoncuda )
-    target_link_libraries( test_driver PUBLIC CUDA::cudart
-                                        CUDA::cublas
-                                        CUDA::cupti
-                                        CUDA::nvToolsExt
-                          )
+    if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
+      target_link_libraries( test_driver PUBLIC CUDA::cudart
+                                          CUDA::cublas
+                                          CUDA::cupti
+                                          CUDA::nvToolsExt
+                            )
+    endif()
   endif()
 
   # Generally preferred to link with the Fortran compiler.

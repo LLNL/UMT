@@ -52,8 +52,7 @@
       ASet => getAngleSetData(Quad,angleSetID)
       numAnglesInternal = numAnglesInternal + ASet%NumAngles
    enddo
-   tetonAssert(numAngles == numAnglesInternal, &
-    "numAngles given to getZonalPsi does not match Teton's internal total number of angles")
+   tetonAssert(numAngles == numAnglesInternal, "numAngles given to getZonalPsi does not match Teton's internal total number of angles")
 
    numSets = getNumberOfSets(Quad)
    do setID = 1,numSets

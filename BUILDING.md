@@ -3,6 +3,8 @@ For more info on spack see https://github.com/spack/spack
 
 Alternatively, if you want to build UMT and its required libraries by hand, see the script 'build_and_run_umt.sh'.  It is recommended that you are conversant with CMake.
 
+For required dependencies on UMT, see DEPENDENCIES.md.
+
 Brief walkthrough on building with Spack.
 
 1. git clone spack from github
@@ -20,16 +22,19 @@ Brief walkthrough on building with Spack.
 5. Tell spack to find and add support for your compiler.  The below command will add all compilers that it finds.  Be sure that your compiler is in your path, for spack to find it.  This example assumes that you have gcc version 8.1.0 in your path.
 ``` spack compiler find```
 
-6. Add your mpi to the spack environment.  This example is using mvapich2 but other mpi versions, such as openmpi, are fine also.
+6. Add your mpi to the spack environment.  This example is using mvapich2.
 ``` spack external find mvapich2 ```
 
-6. Add umt to your environment.
+7. Add cmake to your spack environment.
+``` spack external find cmake ```
+
+8. Add umt to your environment.
 ``` spack add umt+mfem %gcc@8.1.0 ```
 
-7. Concretize your environment
+9. Concretize your environment
 ``` spack concretize ```
 
-Spack will list all the libraries and dependencies it needs to build.  This list can be reduced by adding more external packages to your spack environment and spack will make use of them instead of building them from scratch.  The perl library is one example that is needed and frequently available on systems already.
+Spack will list all the libraries and dependencies it needs to build.  This list can be reduced by adding more external packages to your spack environment and spack will make use of them instead of building them from scratch.  The perl library is one example that is needed by the Hypre library and is frequently available on systems already.
 
 ```
 [me@mymachine:spack]$ spack external find perl

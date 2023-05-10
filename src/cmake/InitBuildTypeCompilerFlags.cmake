@@ -15,6 +15,9 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
    endif()
 
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+      set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 
 	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 
@@ -44,15 +47,16 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
 
 	if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "GNU")
       set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -DNDEBUG -ffree-line-length-none")
-      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG -ffree-line-length-none")
-      set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -ffree-line-length-none")
+      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-fcheck=all -O3 -g -DNDEBUG -ffree-line-length-none")
+      set(CMAKE_Fortran_FLAGS_DEBUG "-fcheck=all -O0 -g -ffree-line-length-none")
 
 	elseif("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Clang") # For Clang or AppleClang
 
  	elseif("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "XL")
-      set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -qstrict -qarch=auto -qtune=auto -qlargepage -qmaxmem=-1 -qsuppress=1500-036")
-      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O3 -qstrict -g -qarch=auto -qtune=auto -qlargepage -qmaxmem=-1 -qcheck -qflttrap=enable:nanq:invalid:zerodivide -qsuppress=1500-036")
-      set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -qcheck -qfullpath -qflttrap=enable:nanq:invalid:zerodivide -qsuppress=1500-036")
+      # Enable F2003 support via the below -qxlf2003 flag list.  This behavior is the default if xlf2003 compiler is used, but not if xlf is used.
+      set(CMAKE_Fortran_FLAGS_RELEASE "-qxlf2003=autorealloc,bozlitargs,nodynamicacval,nooldnaninf,polymorphic,signdzerointr,stopexcept,volatile -O3 -qstrict -qarch=auto -qtune=auto -qlargepage -qmaxmem=-1 -qsuppress=1500-036")
+      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-qxlf2003=autorealloc,bozlitargs,nodynamicacval,nooldnaninf,polymorphic,signdzerointr,stopexcept,volatile -O3 -qstrict -g -qarch=auto -qtune=auto -qlargepage -qmaxmem=-1 -qcheck -qflttrap=enable:nanq:invalid:zerodivide -qsuppress=1500-036")
+      set(CMAKE_Fortran_FLAGS_DEBUG "-qxlf2003=autorealloc,bozlitargs,nodynamicacval,nooldnaninf,polymorphic,signdzerointr,stopexcept,volatile -O0 -g -qcheck -qfullpath -qflttrap=enable:nanq:invalid:zerodivide -qsuppress=1500-036")
 
 # There's a new feature of Fortran 2018 called IMPLICIT NONE (EXTERNAL), which, if you specify it, requires that any procedure you call have the EXTERNAL attribute,
 # which you typically get from an explicit interface.  Disable the warning on this, as we're not using F2018 across all our compilers.

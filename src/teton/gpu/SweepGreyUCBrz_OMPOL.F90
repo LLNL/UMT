@@ -108,7 +108,23 @@
      angle              = Set% AngleOrder(sendIndex)
      angleList(1,setID) = Set% AngleOrder(sendIndex)
      angleList(2,setID) = Set% angle0
-     angleList(3,setID) = Set% angle0 + angle + 1 - setID
+
+     ! Compute the global non-finishing angle index:
+     if (nGTASets == 1) then
+        ! This else-logic is fine if there is exactly one finishing direction per set.
+        ! But it fails if there's only one gta set.  In that case, we have
+        !    angles 4 and 8 as finishing directions.
+
+        ! Assume that the finishing directions are indexed ASet%numAngles/2 and
+        !    ASet%numAngles
+        if (angle > ASet%numAngles/2) then
+           angleList(3,setID) = angle-1
+        else
+           angleList(3,setID) = angle
+        endif
+     else
+        angleList(3,setID) = Set% angle0 + angle + 1 - setID
+     endif
 
      FinishingDirection = ASet% FinishingDirection(angle)
    enddo

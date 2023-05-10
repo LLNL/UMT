@@ -31,18 +31,22 @@ module MemoryAllocator_mod
       procedure :: ar1 => allocate_host_real_c_double_1
       procedure :: ar2 => allocate_host_real_c_double_2
       procedure :: ar3 => allocate_host_real_c_double_3
+      procedure :: ar4 => allocate_host_real_c_double_4
       procedure :: ai1 => allocate_host_integer_c_int_1
       procedure :: ai2 => allocate_host_integer_c_int_2
       procedure :: ai3 => allocate_host_integer_c_int_3
+      procedure :: ai4 => allocate_host_integer_c_int_4
       procedure :: dr1 => deallocate_host_real_c_double_1
       procedure :: dr2 => deallocate_host_real_c_double_2
       procedure :: dr3 => deallocate_host_real_c_double_3
+      procedure :: dr4 => deallocate_host_real_c_double_4
       procedure :: di1 => deallocate_host_integer_c_int_1
       procedure :: di2 => deallocate_host_integer_c_int_2
       procedure :: di3 => deallocate_host_integer_c_int_3
+      procedure :: di4 => deallocate_host_integer_c_int_4
 
-      generic, public :: allocate => ar1, ar2, ar3, ai1, ai2, ai3
-      generic, public :: deallocate => dr1, dr2, dr3, di1, di2, di3
+      generic, public :: allocate => ar1, ar2, ar3, ar4, ai1, ai2, ai3, ai4
+      generic, public :: deallocate => dr1, dr2, dr3, dr4, di1, di2, di3, di4
       
    end type AllocatorType
 
@@ -146,6 +150,9 @@ contains
 #include "MemoryAllocator_mod.F90.templates"
 
 #define FTM_RANK 3
+#include "MemoryAllocator_mod.F90.templates"
+
+#define FTM_RANK 4 
 #include "MemoryAllocator_mod.F90.templates"
 
 end module MemoryAllocator_mod
