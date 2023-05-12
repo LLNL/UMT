@@ -64,6 +64,6 @@ perl@5.16.3
 ```spack install -j NN ```
 where NN is the number of make tasks you want to use.
 
-UMT will now be installed in your spack installation directory under "spack/opt/spack/<platform>/<compiler>"
+UMT will now be installed in your spack installation directory under "spack/opt/spack/PLATFORM/COMPILER"
 
 If you are testing code changes to UMT, you can make needed changes and recompile the code using Spack by using its 'developer' mode.  See the Spack tutorial on this feature at https://spack-tutorial.readthedocs.io/en/latest/tutorial_developer_workflows.html.
