@@ -42,6 +42,12 @@ UMT supports additional options by adding '+<option>' or '~<option>' to enable/d
 For a list of supported options, spack provides the 'info' command.
 ``` spack info umt ```
 
+NOTE on supported build options through Spack - 
+UMT supports additional options by adding '+<option>' or '~<option>' to enable/disable them.  For example, OpenMP threading can be enabled with the '+openmp' option.
+``` spack add umt+mfem+openmp %gcc@8.1.0 ```
+For a list of supported options, spack provides the 'info' command.
+``` spack info umt ```
+
 9. Concretize your environment
 ``` spack concretize ```
 

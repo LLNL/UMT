@@ -198,7 +198,7 @@ find_package(ConduitBlueprint)
 find_package(ConduitBlueprintMPI)
 
 # Needed for restart SILO file support.
-option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." YES)
+option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." FALSE)
 if (ENABLE_SILO)
    find_package(Silo)
 endif()
