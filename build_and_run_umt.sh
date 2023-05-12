@@ -18,6 +18,9 @@
 # CXX=g++
 # FC=gfortran
 
+# This script will compile a basic Release build of UMT.  Additional CMake options can be added to the command line args of this script, and they will be picked up and added to the UMT CMake command at the bottom of this script.
+# For a list of supported CMake options, run 'ccmake /path/to/umt/src'.
+
 # This script can either download tarballs for metis, conduit, hypre, and mfem, or it can copy them from a file system directory.  If you have the tarballs already present on the file system, then set this:
 # TARBALLS=path/to/tarballs
 
@@ -90,11 +93,11 @@ cd ..
 mkdir build_umt
 cd build_umt
 
-# If needed, additional cmake arguments for the UMT build can be provided on the script command line args.  This line will pick them up via the $1 on the next line.
+# Run CMake on UMT, compile, and install.
 cmake ${UMT_PATH}/src -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DMETIS_ROOT=${INSTALL_PATH} -DHYPRE_ROOT=${INSTALL_PATH} -DMFEM_ROOT=${INSTALL_PATH} -DCONDUIT_ROOT=${INSTALL_PATH} $1
 gmake -j install
 cd ..
 
-# Test UMT on 10 cycles of an unstructured 3d mesh problem. Refine the mesh via -r and -R arguments.
+# Test UMT on SSP1 unstructured 3d mesh problem on two mpi ranks. Refine the mesh via -r and -R arguments.
 srun -n1 ${INSTALL_PATH}/bin/makeUnstructuredBox
-srun -n2 ${INSTALL_PATH}/bin/test_driver -i ./unstructBox3D.mesh -c 10 -r 1 -R 6
+srun -n2 ${INSTALL_PATH}/bin/test_driver -i ./unstructBox3D.mesh -r 1 -R 6 -b 1

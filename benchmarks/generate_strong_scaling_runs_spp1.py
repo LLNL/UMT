@@ -15,12 +15,10 @@ memory_tolerance = 0.02
 max_ranks = 112
 output_dir = "."
 
-# For UMT SP#1 use a=3, g=128
-# For UMT SP#2 use a=2, g=16
-# Number of polar x azimuthal angles to use in the product quadrature set
-a = 2
+# Number of polar by azimuthal angles to use in the product quadrature set
+a = 3
 # Number of energy groups to use
-g = 16
+g = 128
 
 # upper and lower bound of memory usage to calculate series for, in bytes.
 mem_lower_bound = node_memory * node_memory_target * (1 - memory_tolerance) * 1024 * 1024 * 1024
@@ -40,4 +38,4 @@ for r in range(1,1000):
       print(f"srun -n1 --exclusive ./test_driver -i unstructBox3D.mesh -c 0 -r 1 -R {r} -o {output_dir}")
 
 for r in range(1,max_ranks+1):
-   print(f"srun -n {r} --exclusive ./test_driver -c 1 -b 1 -i {output_dir}/refined_mesh.mesh -o {output_dir} >& run.{r}_ranks.{a}x{a}_product_quad.{angles}_angles.{g}_groups.{zones}_zones.{totalDOFs}_dofs.log")
+   print(f"srun -n {r} --exclusive ./test_driver -c 1 -b 1 -i {output_dir}/refined_mesh.mesh -o {output_dir} >& run.spp1.{r}_ranks.{zones}_zones.{totalDOFs}_dofs.log")
