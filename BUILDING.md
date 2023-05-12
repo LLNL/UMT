@@ -34,7 +34,13 @@ It is recommended that developers are familiar with Spack before trying to build
 ``` spack external find cmake ```
 
 8. Add umt to your environment.
-``` spack add umt+mfem %gcc@8.1.0 ```
+``` spack add umt+mfem %gcc@8.1.0 ^mvapich2```
+
+NOTE on supported build options through Spack - 
+UMT supports additional options by adding '+<option>' or '~<option>' to enable/disable them.  For example, OpenMP threading can be enabled with the '+openmp' option.
+``` spack add umt+mfem+openmp %gcc@8.1.0 ```
+For a list of supported options, spack provides the 'info' command.
+``` spack info umt ```
 
 9. Concretize your environment
 ``` spack concretize ```
@@ -51,3 +57,7 @@ perl@5.16.3
 8. Build umt
 ```spack install -j NN ```
 where NN is the number of make tasks you want to use.
+
+UMT will now be installed in your spack installation directory under "spack/opt/spack/<platform>/<compiler>"
+
+If you are testing code changes to UMT, you can make needed changes and recompile the code using Spack by using its 'developer' mode.  See the Spack tutorial on this feature at https://spack-tutorial.readthedocs.io/en/latest/tutorial_developer_workflows.html.
