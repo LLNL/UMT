@@ -16,9 +16,9 @@ node_memory_target = 0.50
 memory_tolerance = 0.05
 
 # Number of polar x azimuthal angles to use in the product quadrature set
-a = 3
+a = 2
 # Number of energy groups to use
-g = 128
+g = 16
 
 # upper and lower bound of memory usage to calculate series for, in bytes, per rank
 mem_lower_bound = node_memory * node_memory_target * (1 - memory_tolerance) * 1024 * 1024 * 1024 / max_ranks
@@ -38,4 +38,4 @@ for r in range(1,1000):
       if mem_per_rank >= mem_lower_bound and mem_per_rank <= mem_upper_bound:
          DOFsPerRank = int(totalDOFs / p)
          if 8*p < zones:
-            print(f"srun -N1-1 -n {p} --exclusive ./test_driver -c 1 -G {g} -A {a} -P {a} -r 1 -R {r} -o . -i unstructBox3D.mesh >& run.{a}x{a}_product_quad.{angles}_angles.{g}_groups.{p}_ranks.{DOFsPerRank}_dofs_per_rank.{zones}_zones.{totalDOFs}_total_dofs.log")
+            print(f"srun -N1-1 -n {p} --exclusive ./test_driver -c 1 -b 1 -r 1 -R {r} -o . -i unstructBox3D.mesh >& run.spp2.{p}_ranks.{DOFsPerRank}_dofs_per_rank.{zones}_zones.{totalDOFs}_total_dofs.log")

@@ -1,4 +1,4 @@
 Helper script for creating run lines for a weak and strong scaling study.
 Example:
-python3 generate_weak_scaling_runs.py >&  run_weak_scaling_study.sh
-python3 generate_strong_scaling_runs.py >&  run_strong_scaling_study.sh
+python3 generate_weak_scaling_runs_spp1.py >&  run_weak_scaling_study_spp1.sh
+python3 generate_strong_scaling_runs_spp1.py >&  run_strong_scaling_study_spp1.sh
