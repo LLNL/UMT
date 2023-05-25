@@ -110,8 +110,9 @@
           TETON_VERIFY(QuadSet%TypeName == 'lobatto', "Beam boundary conditions only work with a Lobatto quadrature set.")
 
           ! Check whether the beam should be in the +paxis or -paxis direction
-          ! Assume all boundary elements are facing the same direction
-          if ( BdyT%A_bdy(QuadSet%PolarAxis,b1) > zero ) then
+          ! Assume all boundary elements are facing the same direction,
+          !    so we should just check the first one.
+          if ( BdyT%A_bdy(QuadSet%PolarAxis,1) > zero ) then
             ! Outward normal is in +paxis direction,
             !   so we want beam in -paxis direction
             refPolarValue = -one

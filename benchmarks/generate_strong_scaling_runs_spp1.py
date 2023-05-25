@@ -11,14 +11,15 @@
 node_memory = 256
 # Use 50% of node's memory, within +/- 5%.
 node_memory_target = 0.50
-memory_tolerance = 0.02
+memory_tolerance = 0.05
 max_ranks = 112
-output_dir = "."
 
 # Number of polar by azimuthal angles to use in the product quadrature set
 a = 3
 # Number of energy groups to use
 g = 128
+# Additional memory required factor.  Amount of additional memory needed, on top of memory to hold the radiation energy density field.
+memFactor = 1.3
 
 # upper and lower bound of memory usage to calculate series for, in bytes.
 mem_lower_bound = node_memory * node_memory_target * (1 - memory_tolerance) * 1024 * 1024 * 1024
@@ -30,12 +31,11 @@ for r in range(1,1000):
    zones = 12*(r**3)
    angles = a * a * 8
    totalDOFs = zones * 8 * g * angles 
-   mem = totalDOFs * 8
+   mem = totalDOFs * 8 * memFactor
    memGB = mem/1024/1024/1024
    if mem >= mem_lower_bound and mem <= mem_upper_bound:
       print(f"#You will need to refine the mesh {r} times and generate a mesh of {zones} zones to use {memGB} GB of memory for your problem configuration.")
-      print(f"./makeUnstructuredBox")
-      print(f"srun -n1 --exclusive ./test_driver -i unstructBox3D.mesh -c 0 -r 1 -R {r} -o {output_dir}")
+      print(f"./makeUnstructuredBox -r {r} -o umt_spp1.mesh")
 
 for r in range(1,max_ranks+1):
-   print(f"srun -n {r} --exclusive ./test_driver -c 1 -b 1 -i {output_dir}/refined_mesh.mesh -o {output_dir} >& run.spp1.{r}_ranks.{zones}_zones.{totalDOFs}_dofs.log")
+   print(f"srun -n {r} --exclusive ./test_driver -c 1 -b 1 -i ./umt_spp1.mesh >& run.spp1.{r}_ranks.{zones}_zones.{totalDOFs}_dofs.log")

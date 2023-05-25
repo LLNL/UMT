@@ -77,7 +77,6 @@ cmake ${UMT_REPO_PATH}/src -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX
 gmake -j install
 cd ..
 
-# Test UMT on SSP1 and SSP2 unstructured 3d mesh problems on two mpi ranks. Refine the mesh via -r and -R arguments.
+# Test UMT on SSP1 unstructured 3d mesh problem on two mpi ranks. Refine the mesh via -r and -R arguments.
 srun -n1 ${INSTALL_PATH}/bin/makeUnstructuredBox
 srun -n2 ${INSTALL_PATH}/bin/test_driver -i ./unstructBox3D.mesh -r 1 -R 6 -b 1
-srun -n2 ${INSTALL_PATH}/bin/test_driver -i ./unstructBox3D.mesh -r 1 -R 6 -b 2

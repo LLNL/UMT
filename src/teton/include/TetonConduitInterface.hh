@@ -26,6 +26,8 @@ class Teton
    {
    }
 
+   // Teton destructor.  Important note:  This function requires MPI to still be
+   // active ( not finalized ), as it uses MPI when tearing down Teton.
    ~Teton();
 
    void initialize(MPI_Comm communicator, bool fromRestart = false);
