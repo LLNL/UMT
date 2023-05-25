@@ -45,7 +45,7 @@ endif()
 # Enable mini-app code version that focuses on the transport sweep algorithm.
 # This will enable the test driver, and MFEM mesh support by default.
 # -----
-option( ENABLE_MINIAPP_BUILD "Enable transport sweep mini-app." FALSE )
+option( ENABLE_MINIAPP_BUILD "Enable transport sweep mini-app." TRUE )
 if(ENABLE_MINIAPP_BUILD)
    message( STATUS "Enabling transport sweep mini-app build." )
    add_compile_definitions( "TETON_ENABLE_MINIAPP_BUILD" )
@@ -198,7 +198,7 @@ find_package(ConduitBlueprint)
 find_package(ConduitBlueprintMPI)
 
 # Needed for restart SILO file support.
-option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." YES)
+option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." FALSE)
 if (ENABLE_SILO)
    find_package(Silo)
 endif()
