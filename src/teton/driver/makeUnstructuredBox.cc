@@ -1,6 +1,7 @@
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>
+#include <unistd.h>
 
 mfem::Mesh makeUnstructBoxMesh(int zoneSplits)
 {
@@ -218,55 +219,63 @@ int main(int argc, char *argv[])
    MPI_Comm_rank(comm, &myRank);
    MPI_Comm_size(comm, &mySize);
 
-   //int zoneSplit = 10;
+   int opt;
+
    int zoneSplit = 0;
+   std::string outputFile = "unstructBox3D.mesh";
+   bool dumpViz = false;
+
+   // put ':' in the starting of the string so that program can
+   // distinguish between '?' and ':'
+   while ((opt = getopt(argc, argv, "r:o:")) != -1)
+   {
+      switch (opt)
+      {
+         case 'r':
+            std::cout << "Refining mesh by splitting each cell edge into " << optarg << " sections..." << std::endl;
+            zoneSplit = atoi(optarg);
+            break;
+         case 'o':
+            outputFile = std::string(optarg);
+            break;
+         case 'v':
+            dumpViz = true;
+            break;
+         case '?':
+            std::cerr << "Unknown option: " << optopt << std::endl;
+            return 1;
+      }
+   }
 
    mfem::Mesh mesh3D = makeUnstructBoxMesh(zoneSplit);
 
    // Make it harder.  Only do once on the fully refined mesh.
    //mesh3D.Transform(twist);
 
-   if (myRank == 0)
+   if (int wrong = mesh3D.CheckElementOrientation(true) > 0)
    {
-      if (int wrong = mesh3D.CheckElementOrientation(true) > 0)
-      {
-         std::cout << "There were " << wrong << " 3D mesh elements with the wrong orientation after reordering.\n";
-      }
-      if (int wrong = mesh3D.CheckBdrElementOrientation(true) > 0)
-      {
-         std::cout << "There were " << wrong
-                   << " 3D mesh boundary elements with the wrong orientation after reordering.\n";
-      }
+      std::cout << "There were " << wrong << " 3D mesh elements with the wrong orientation after reordering.\n";
+   }
+   if (int wrong = mesh3D.CheckBdrElementOrientation(true) > 0)
+   {
+      std::cout << "There were " << wrong
+                << " 3D mesh boundary elements with the wrong orientation after reordering.\n";
+   }
 
-      mfem::VisItDataCollection vdc("unstructBox3D", &mesh3D);
+   if (dumpViz)
+   {
+      mfem::VisItDataCollection vdc(outputFile, &mesh3D);
       vdc.Save();
-
-      // Save mesh to file
-      std::ofstream mesh_ofs("unstructBox3D.mesh");
-      mesh_ofs.precision(16);
-      mesh3D.Print(mesh_ofs);
-      mesh_ofs.close();
-
-      // Show info about the mesh.
-      mesh3D.PrintInfo();
    }
 
-   /*
-   mesh3D.SetCurvature(1);
-   mfem::ParMesh pmesh(comm, mesh3D);
+   // Save mesh to file
+   std::ofstream mesh_ofs(outputFile);
+   mesh_ofs.precision(16);
+   mesh3D.Print(mesh_ofs);
+   mesh_ofs.close();
 
-   int ref_type = mfem::BasisType::ClosedUniform;
-   pmesh = mfem::ParMesh::MakeRefined(pmesh, 2, ref_type);
-   pmesh.PrintInfo();
+   // Show info about the mesh.
+   mesh3D.PrintInfo();
 
-   if (int wrong = pmesh.CheckElementOrientation(true) > 0)
-   {
-      std::cout << "There were " << wrong << " 3D mesh elements with the wrong orientation.\n";
-   }
-   if (int wrong = pmesh.CheckBdrElementOrientation(true) > 0)
-   {
-      std::cout << "There were " << wrong << " 3D mesh boundary elements with the wrong orientation.\n";
-   }
-*/
    return 0;
 }
