@@ -625,7 +625,7 @@ contains
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
      integer,                intent(in) :: comm
-     integer,                intent(in) :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -662,7 +662,7 @@ contains
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
      integer,                intent(in) :: comm
-     integer,                intent(in) :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -699,7 +699,7 @@ contains
      integer,             intent(in) :: isend
      integer,             intent(in) :: tag
      integer,             intent(in) :: comm
-     integer,             intent(in) :: request
+     integer,             intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -736,7 +736,7 @@ contains
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
      integer,                intent(in)    :: comm
-     integer,                intent(in)    :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -773,7 +773,7 @@ contains
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
      integer,                intent(in)    :: comm
-     integer,                intent(in)    :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -810,7 +810,7 @@ contains
      integer,             intent(in)    :: irecv
      integer,             intent(in)    :: tag
      integer,             intent(in)    :: comm
-     integer,             intent(in)    :: request
+     integer,             intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -848,7 +848,7 @@ contains
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
      integer,                intent(in) :: comm
-     integer,                intent(in) :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -886,7 +886,7 @@ contains
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
      integer,                intent(in) :: comm
-     integer,                intent(in) :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -925,7 +925,7 @@ contains
      integer,             intent(in) :: isend
      integer,             intent(in) :: tag
      integer,             intent(in) :: comm
-     integer,             intent(in) :: request
+     integer,             intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -964,7 +964,7 @@ contains
      integer,             intent(in) :: isend
      integer,             intent(in) :: tag
      integer,             intent(in) :: comm
-     integer,             intent(in) :: request
+     integer,             intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -1002,7 +1002,7 @@ contains
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
      integer,                intent(in)    :: comm
-     integer,                intent(in)    :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -1040,7 +1040,7 @@ contains
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
      integer,                intent(in)    :: comm
-     integer,                intent(in)    :: request
+     integer,                intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -1079,7 +1079,7 @@ contains
      integer,             intent(in)    :: irecv
      integer,             intent(in)    :: tag
      integer,             intent(in)    :: comm
-     integer,             intent(in)    :: request
+     integer,             intent(out) :: request
 
 !    local variables
      integer :: ierror
@@ -1118,7 +1118,7 @@ contains
      integer,             intent(in)    :: irecv
      integer,             intent(in)    :: tag
      integer,             intent(in)    :: comm
-     integer,             intent(in)    :: request
+     integer,             intent(out) :: request
 
 !    local variables
      integer :: ierror
