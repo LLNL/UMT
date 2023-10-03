@@ -456,6 +456,7 @@ contains
                                    nDomains, zonesInPlane, cycleList)
 
     use Size_mod
+    use MemoryAllocator_mod
 
     implicit none
 
@@ -489,7 +490,8 @@ contains
 
     HypPlanePtr => self% HypPlanePtr(angle)
 
-    allocate( HypPlanePtr% zonesInPlane(nHyperPlanes) )
+    call Allocator%allocate(Size%usePinnedMemory,self%label, "zonesInPlane", HypPlanePtr% zonesInPlane, nHyperPlanes)
+
     allocate( HypPlanePtr% badCornerList(meshCycles+1) )
     allocate( HypPlanePtr% hplane1(nDomains+1) )
     allocate( HypPlanePtr% hplane2(nDomains) )
@@ -608,6 +610,7 @@ contains
 !=======================================================================
   subroutine AngleSet_dtorHypPlane(self)
 
+    use MemoryAllocator_mod
     implicit none
 
 !   Passed variables
@@ -625,7 +628,8 @@ contains
 
         HypPlanePtr => self% HypPlanePtr(angle)
 
-        deallocate( HypPlanePtr% zonesInPlane )
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"zonesInPlane",HypPlanePtr% zonesInPlane)
+
         deallocate( HypPlanePtr% badCornerList )
         deallocate( HypPlanePtr% hplane1 )
         deallocate( HypPlanePtr% hplane2 )

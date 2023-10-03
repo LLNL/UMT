@@ -88,26 +88,58 @@ if(ENABLE_OPENMP)
    message( STATUS "Enable OpenMP pragmas" )
 
    if(ENABLE_OPENMP_OFFLOAD)
-     message( STATUS "Enable OpenMP target offload pragmas" )
+      message( STATUS "Enable OpenMP target offload pragmas" )
 
-     if ( ${CMAKE_Fortran_COMPILER_ID} STREQUAL "XL" )
-       message(STATUS "Detected XL compiler, manually adding -qoffload to OpenMP flags...")
-       set(OpenMP_Fortran_FLAG "-qsmp=omp -qoffload")
-     endif()
+      if ( ${CMAKE_Fortran_COMPILER_ID} STREQUAL "XL" )
+         message(STATUS "Detected XLF compiler, manually adding -qoffload to OpenMP flags...")
+         set(OpenMP_Fortran_FLAG "-qsmp=omp -qoffload")
+      endif()
 
-     if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "XLClang")
-       set(OpenMP_CXX_FLAG "-qsmp=omp -qoffload")
-     endif()
+      if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "XL" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "XLClang")
+         message(STATUS "Detected XLC compiler, manually adding -qoffload to OpenMP flags...")
+         set(OpenMP_CXX_FLAG "-qsmp=omp -qoffload")
+      endif()
 
-     add_compile_definitions( "TETON_ENABLE_OPENMP_OFFLOAD" )
+      add_compile_definitions( "TETON_ENABLE_OPENMP_OFFLOAD" )
 
-     if(OPENMP_HAS_USE_DEVICE_ADDR)
-       message( STATUS "Enable use of OpenMP use_device_addr pragmas" )
-       add_compile_definitions( "TETON_OPENMP_HAS_USE_DEVICE_ADDR" )
-     endif()
+      if(OPENMP_HAS_USE_DEVICE_ADDR)
+         message( STATUS "Enable use of OpenMP use_device_addr pragmas" )
+         add_compile_definitions( "TETON_OPENMP_HAS_USE_DEVICE_ADDR" )
+       endif()
    endif()
 
    find_package(OpenMP REQUIRED COMPONENTS Fortran CXX)
+
+   if(ENABLE_OPENMP_OFFLOAD)
+      # Add custom logic here to add in the HIP backend libraries needed by Cray for openmp offload kernels.
+      # Note: These are only added for Fortran OpenMP offload compiler lines for now.
+      # If we need C++ support, then Cray needs to provide a way to distinguish amdclang vs craycc, as they both identify as 'Clang' to CMake. -- Aaron
+      if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
+
+         message( STATUS "Detected Cray Fortran OpenMP offload support requested.  Adding additional flags to pull in HIP backend needed by Cray Fortran compiler.")
+
+         if (DEFINED HIP_ROOT_DIR)
+            message( STATUS "Using HIP installation at ${HIP_ROOT_DIR}")
+         else()
+            message( FATAL_ERROR " Must set HIP_ROOT_DIR when using Cray compiler openmp offload functionality.")
+         endif()
+
+         if (DEFINED CMAKE_HIP_ARCHITECTURES)
+            message( STATUS "Setting target gpu architecture to ${CMAKE_HIP_ARCHITECTURES}")
+         else()
+            message( FATAL_ERROR " Must set CMAKE_HIP_ARCHITECTURES when using Cray compiler openmp offload functionality.")
+         endif()
+
+         find_package(hip REQUIRED)
+         add_compile_definitions( "TETON_ENABLE_HIP" )
+
+         target_link_options( OpenMP::OpenMP_Fortran INTERFACE $<$<COMPILE_LANGUAGE:Fortran>:--rocm-path=${HIP_ROOT_DIR} -target-accel=amd_${CMAKE_HIP_ARCHITECTURES}>)
+         target_compile_options( OpenMP::OpenMP_Fortran INTERFACE $<$<COMPILE_LANGUAGE:Fortran>:--rocm-path=${HIP_ROOT_DIR} -target-accel=amd_${CMAKE_HIP_ARCHITECTURES}>)
+         target_link_libraries( OpenMP::OpenMP_Fortran INTERFACE hip::amdhip64)
+         target_include_directories( OpenMP::OpenMP_Fortran INTERFACE ${HIP_ROOT_DIR}/include)
+
+      endif()
+   endif()
 
    message( STATUS "Compiler supports OpenMP ${OpenMP_Fortran_VERSION}" )
    message( STATUS "Compiler supports OpenMP spec date ${OpenMP_Fortran_SPEC_DATE}")
@@ -158,12 +190,6 @@ endif()
 option( ENABLE_TESTS "Enable test driver executable." ${ENABLE_MINIAPP_BUILD} )
 if (ENABLE_TESTS)
    message( STATUS "Enable teton test driver." )
-   option( ENABLE_MFEM "Enable mfem mesh support." ${ENABLE_MINIAPP_BUILD} )
-   message( STATUS "ENABLE_MFEM is ${ENABLE_MFEM}")
-   if (ENABLE_MFEM)
-      message( STATUS "Enable mfem mesh support.")
-      add_compile_definitions( "TETON_ENABLE_MFEM" )
-   endif()
 else()
    message( STATUS "Disable teton test driver." )
 endif()
@@ -197,24 +223,25 @@ find_package(ConduitRelayMPIIO)
 find_package(ConduitBlueprint)
 find_package(ConduitBlueprintMPI)
 
-# Needed for restart SILO file support.
-option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." FALSE)
-if (ENABLE_SILO)
-   find_package(Silo)
-endif()
 
 if(NOT ENABLE_MINIAPP_BUILD)
    # Need the source headers for these, regardless of whether we compile the test driver executable.
    find_package(PhysicsUtils)
+
+   # Needed for restart SILO file support.
+   option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." YES)
+   if (ENABLE_SILO)
+      find_package(Silo)
+   endif()
 endif()
 
-if (ENABLE_TESTS)
-   # Only needed if we compile the test driver mfem support.
-   if (ENABLE_MFEM)
-      find_package(MFEM)
-      find_package(Hypre)
-      find_package(Metis)
-   endif()
+option( ENABLE_MFEM "Enable support for reading in mfem test meshes." NO)
+if (ENABLE_MFEM)
+   message( STATUS "Enable mfem mesh support.")
+   add_compile_definitions( "TETON_ENABLE_MFEM" )
+   find_package(MFEM)
+   find_package(Hypre)
+   find_package(Metis)
 endif()
 
 # Needed if conduit was built against HDF5.

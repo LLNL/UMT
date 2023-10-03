@@ -82,10 +82,10 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
    # Note : Cray Fortran completely fails to provide any initial set of flags for build types.  Ticket has been submitted to HPE. --black27
    # For now, don't append to existing flags ( since there are none ), just set the optimization and debug symbols flag ourselves.
 	elseif("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Cray")
-      set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -DNDEBUG")
+      set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -DNDEBUG")
       # G2 is the only level that doesn't disable OpenMP loop collapsing and still provides debug information.
       # A ticket has been submitted to ask HPE to update the -G# flag to be consistent with the "-g" flag in their C++ compiler.
-      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O3 -G2 -DNDEBUG")
+      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O2 -G2 -DNDEBUG")
       set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -G2")
    endif()
 

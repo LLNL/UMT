@@ -436,6 +436,101 @@ void TetonBlueprint::ComputeLocalCornersInZone(int nzones, int ncorners)
    }
 }
 
+int TetonBlueprint::ComputeMaxCorners(const conduit::Node &topo) const
+{
+   const int ndim = conduit::blueprint::mesh::utils::topology::dims(topo);
+   int nc;
+
+   if (ndim == 3)
+   {
+      // Assume 8 by default.
+      nc = 8;
+      if (topo.has_path("elements/shape"))
+      {
+         std::string shape(topo["elements/shape"].as_string());
+         if (shape == "tet")
+         {
+            nc = 4;
+         }
+         else if (shape == "wedge")
+         {
+            nc = 6;
+         }
+         else if (shape == "pyramid")
+         {
+            nc = 5;
+         }
+         else if (shape == "hex")
+         {
+            nc = 8;
+         }
+         else if (shape == "polyhedral")
+         {
+            int maxZoneCorners = 0;
+
+            conduit::int_accessor zoneFaces = topo.fetch_existing("elements/connectivity").value();
+            conduit::int_accessor zoneFacesSize = topo.fetch_existing("elements/sizes").value();
+            conduit::int_accessor faceConn = topo.fetch_existing("subelements/connectivity").value();
+            conduit::int_accessor faceSizes = topo.fetch_existing("subelements/sizes").value();
+            conduit::int_accessor faceOffsets = topo.fetch_existing("subelements/offsets").value();
+
+            // Iterate over all zones and find the max number of corners for
+            // each zone. Keep the largest one we find.
+            conduit::index_t nzone = zoneFacesSize.number_of_elements();
+            conduit::index_t zoneOffset = 0;
+            for (conduit::index_t ei = 0; ei < nzone; ei++)
+            {
+               std::set<int> zoneUniqueVertices;
+               conduit::index_t nfaces = zoneFacesSize[ei];
+               for (conduit::index_t fi = 0; fi < nfaces; fi++)
+               {
+                  int faceId = zoneFaces[zoneOffset + fi];
+                  int faceOffset = faceOffsets[faceId];
+                  int faceSize = faceSizes[faceId];
+                  // Insert all of the face vertices into the set.
+                  for (int vi = 0; vi < faceSize; vi++)
+                     zoneUniqueVertices.insert(faceConn[faceOffset + vi]);
+               }
+               zoneOffset += nfaces;
+
+               const int nZoneCorners = static_cast<int>(zoneUniqueVertices.size());
+               maxZoneCorners = std::max(nZoneCorners, maxZoneCorners);
+            }
+
+            if (nzone > 0)
+               nc = maxZoneCorners;
+         }
+      }
+   }
+   else if (ndim == 2)
+   {
+      if (topo.has_path("elements/shape") && topo["elements/shape"].as_string() == "polygonal")
+      {
+         conduit::int_accessor counts = topo.fetch_existing("elements/sizes").value();
+#if 1
+         // For use with earlier Conduit versions that lack conduit::DataAccessor::max().
+         int counts_max = std::numeric_limits<int>::lowest();
+         for (conduit::index_t ci = 0; ci < counts.number_of_elements(); ci++)
+            counts_max = std::max(counts_max, counts[ci]);
+         nc = counts_max;
+#else
+         // For use with later Conduit versions (re-enable later).
+         nc = counts.max();
+#endif
+      }
+      else
+      {
+         nc = 4;
+      }
+   }
+   else // ndim == 1
+   {
+      nc = 2;
+   }
+
+   return nc;
+}
+
 void TetonBlueprint::ComputeZoneFaceToHalfFaceDict()
 {
    size_t nzones = zone_to_faces2.size();
@@ -457,7 +552,6 @@ void TetonBlueprint::ComputeZoneFaceToHalfFaceDict()
          loffset += 1;
       }
    }
-   nhalffaces = offset;
 }
 
 int TetonBlueprint::GetOppositeZone(int zone, int face)
@@ -538,6 +632,7 @@ int TetonBlueprint::GetOppositeCorner(int zone, int face, int corner, int rank)
       zoneface.second = face;
       try
       {
+         const int nbelem = mParametersNode.fetch_existing("size/nbelem").to_int32();
          int halfface = zoneface_to_halfface.at(zoneface);
          return -(nbelem + halfface + 1);
       }
@@ -1831,36 +1926,15 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
    mParametersNode["size/ncornr"] = ncorners_total;
    mParametersNode["size/nsides"] = ncorners_total;
    mParametersNode["size/nbelem"] = nbelem_corner_faces;
-   // TODO: CHANGE THIS!!!!
-   nbelem = nbelem_corner_faces;
-   // TODO: CHANGE THIS!!!!
+   mParametersNode["size/maxCorner"] = ComputeMaxCorners(base_topology);
    if (ndim == 2)
    {
       mParametersNode["size/maxcf"] = 2;
-      if (base_topology.has_path("elements/shape") && base_topology["elements/shape"].as_string() == "polygonal")
-      {
-         conduit::int_accessor counts = base_topology.fetch_existing("elements/sizes").value();
-#if 1
-         // For use with earlier Conduit versions that lack conduit::DataAccessor::max().
-         int counts_max = std::numeric_limits<int>::lowest();
-         for (conduit::index_t ci = 0; ci < counts.number_of_elements(); ci++)
-            counts_max = std::max(counts_max, counts[ci]);
-         mParametersNode["size/maxCorner"] = counts_max;
-#else
-         // For use with later Conduit versions (re-enable later).
-         mParametersNode["size/maxCorner"] = counts.max();
-#endif
-      }
-      else
-      {
-         mParametersNode["size/maxCorner"] = 4;
-      }
       mParametersNode["size/geomType"] = 44; // rz
    }
    else
    {
       mParametersNode["size/maxcf"] = 3;
-      mParametersNode["size/maxCorner"] = 8;
       mParametersNode["size/geomType"] = 45; // xyz
    }
 

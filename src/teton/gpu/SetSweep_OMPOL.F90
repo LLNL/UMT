@@ -26,6 +26,7 @@
    use iter_control_list_mod
    use iter_control_mod
    use OMPWrappers_mod
+   use Options_mod
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    use ComptonControl_mod
 #endif
@@ -61,6 +62,7 @@
    integer                       :: nConv
    integer                       :: nNotConv
    integer                       :: maxIters
+   integer                       :: sweepVersion
 
    real(adqt)                    :: time1
    real(adqt)                    :: time2
@@ -80,6 +82,7 @@
    nCommSets           =  getNumberOfCommSets(Quad)
    ndim                =  Size% ndim
    SnSweep             = .TRUE.
+   sweepVersion        = Options%getSweepVersion()
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    useBoltzmannCompton = getUseBoltzmann(Compton)
 #endif
@@ -178,11 +181,13 @@
          START_RANGE("Teton_Sweep_GPU")
 
          if (ndim == 3) then
-#ifdef TETON_ENABLE_OPENACC
-           call CornerSweepUCBxyz_GPU(nSets, sendIndex, savePsi)
-#else
-           call SweepUCBxyz_GPU(nSets, sendIndex, savePsi)
-#endif
+           if (sweepVersion == 0) then
+             call SweepUCBxyz_GPU(nSets, sendIndex, savePsi)
+           elseif (sweepVersion == 1) then
+             call CornerSweepUCBxyz_GPU(nSets, sendIndex, savePsi)
+           else
+             TETON_FATAL("Invalid value set for Sweep kernel version to use.")
+           endif
          elseif (ndim == 2) then
            call SweepUCBrz_GPU(nSets, sendIndex, savePsi)
          endif
