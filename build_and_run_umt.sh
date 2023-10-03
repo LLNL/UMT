@@ -12,10 +12,13 @@ CC=gcc
 CXX=g++
 FC=gfortran
 
+FFLAGS=-fallow-argument-mismatch
+
 # Intel example
 # CC=icx
 # CXX=icpx
 # FC=ifx
+
 
 # This script will compile a basic Release build of UMT.  Additional CMake options can be added to the command line args of this script, and they will be picked up and added to the UMT CMake command at the bottom of this script.
 # For a list of supported CMake options, run 'ccmake /path/to/umt/src'.
@@ -37,46 +40,19 @@ echo Libraries will be installed to: ${INSTALL_PATH}
 
 cd umt_workspace
 
-# Clone the UMT_TPLS repo to get tarballs of necessary libraries.
-# UMT provides its own repository of these tarballs, for reliability of access.  The University of Minnesota link for Metis frequently goes down.
-git clone https://github.com/LLNL/UMT_TPLS.git
-
-tar xvzf UMT_TPLS/metis-5.1.0.tar.gz
-cd metis-5.1.0
-cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} -DGKLIB_PATH=${PWD}/GKlib
-gmake -j install
-cd ..
-
-tar xvzf UMT_TPLS/conduit-v0.8.8-src-with-blt.tar.gz
+git clone --recurse-submodules  https://github.com/LLNL/conduit.git conduit
 mkdir build_conduit
 cd build_conduit
-cmake ${PWD}/../conduit-v0.8.8/src -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DMPI_CXX_COMPILER=mpicxx -DMPI_Fortran_COMPILER=mpifort -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTS=OFF -DENABLE_EXAMPLES=OFF -DENABLE_DOCS=OFF -DENABLE_FORTRAN=ON -DENABLE_MPI=ON -DENABLE_PYTHON=OFF
+cmake ${PWD}/../conduit/src -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DMPI_CXX_COMPILER=mpicxx -DMPI_Fortran_COMPILER=mpifort -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTS=OFF -DENABLE_EXAMPLES=OFF -DENABLE_DOCS=OFF -DENABLE_FORTRAN=ON -DENABLE_MPI=ON -DENABLE_PYTHON=OFF
 gmake -j install
 cd ..
-
-tar xvzf UMT_TPLS/v2.24.0.tar.gz
-mkdir build_hypre
-cd build_hypre
-cmake ${PWD}/../hypre-2.24.0/src -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC}
-gmake -j install
-cd ..
-
-unzip UMT_TPLS/v4.4.zip
-mkdir build_mfem
-cd build_mfem
-cmake ${PWD}/../mfem-4.4 -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} -DMPI_CXX_COMPILER=mpicxx -DMFEM_USE_MPI=TRUE -DMFEM_USE_CONDUIT=TRUE -DMFEM_USE_METIS_5=TRUE -DCMAKE_PREFIX_PATH=${INSTALL_PATH}}
-gmake -j install
-cd ..
-
-# Build UMT
-mkdir build_umt
-cd build_umt
 
 # Run CMake on UMT, compile, and install.
-cmake ${UMT_REPO_PATH}/src -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DMETIS_ROOT=${INSTALL_PATH} -DHYPRE_ROOT=${INSTALL_PATH} -DMFEM_ROOT=${INSTALL_PATH} -DCONDUIT_ROOT=${INSTALL_PATH} $1
+cmake ${UMT_REPO_PATH}/src -DCMAKE_Fortran_FLAGS=${FFLAGS} -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCONDUIT_ROOT=${INSTALL_PATH} $1
 gmake -j install
 cd ..
 
+srun -n 8 ${INSTALL_PATH}/bin/test_driver -c 10 -B -d 8,8,0 --benchmark_problem 2
+srun -n 8 ${INSTALL_PATH}/bin/test_driver -c 10 -B -d 4,4,4 --benchmark_problem 2
+
 # Test UMT on SSP1 unstructured 3d mesh problem on two mpi ranks. Refine the mesh via -r and -R arguments.
-srun -n1 ${INSTALL_PATH}/bin/makeUnstructuredBox
-srun -n2 ${INSTALL_PATH}/bin/test_driver -i ./unstructBox3D.mesh -r 1 -R 6 -b 1

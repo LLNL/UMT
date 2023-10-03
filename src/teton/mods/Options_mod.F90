@@ -21,6 +21,7 @@ module Options_mod
     procedure :: isRankVerbose
     procedure :: isRankZeroVerbose
     procedure :: setVerbose
+    procedure :: getSweepVersion
   end type options_type
 
   public :: setVerboseOldCVersion
@@ -46,13 +47,16 @@ contains
     logical*4 :: temp
     integer :: omp_cpu_max_threads
 
-    ! Default to current max number of threads value set in OpenMP runtime.
+    ! Default to current max number of threads value set in OpenMP runtime
+    temp = theDatastore%root%has_path("options/concurrency/omp_cpu_max_threads")
+    if (.NOT. temp) then
 #if defined(TETON_ENABLE_OPENMP)
-       omp_cpu_max_threads = omp_get_max_threads()
+      omp_cpu_max_threads = omp_get_max_threads()
 #else
-       omp_cpu_max_threads = 1
+      omp_cpu_max_threads = 1
 #endif
-    call theDatastore%root%set_path("options/concurrency/omp_cpu_max_threads", omp_cpu_max_threads)
+      call theDatastore%root%set_path("options/concurrency/omp_cpu_max_threads", omp_cpu_max_threads)
+    endif
 
     ! Default to not using device (GPU) addresses for MPI
     call theDatastore%root%set_path("options/mpi/useDeviceAddresses", 0)
@@ -219,5 +223,42 @@ contains
 
       return
    end subroutine setVerboseOldCVersion
+
+!***********************************************************************
+!    setSweepVersion - Set the sweep implementation version to use
+!    from the input.
+!***********************************************************************
+  subroutine setSweepVersion(sweepversion) BIND(C,NAME="teton_setsweepversion")
+    integer(kind=C_INT), intent(in) :: sweepversion
+
+    ! 0 = zone sweep
+    ! 1 = corner sweep
+    ! Do not set this to anything else, getSweepVersion will handle the zone sweep case.
+    if ( sweepversion == 1 ) then
+       call theDatastore%initialize()
+
+       call theDatastore%root%set_path("options/sweep/kernel/version", sweepversion)
+    endif
+
+    return
+  end subroutine setSweepVersion
+
+!***********************************************************************
+!    getSweepVersion - Return the sweep implementation version to use
+!    from the input.
+!***********************************************************************
+  integer(kind=c_int) function getSweepVersion(self) result(sweepVersion)
+    class(options_type) :: self
+    logical*4 :: temp
+
+    temp = theDatastore%root%has_path("options/sweep/kernel/version")
+    if (.NOT. temp) then
+      sweepVersion = 0
+    else
+      sweepVersion = theDataStore%root%fetch_path_as_int32("options/sweep/kernel/version")
+    endif
+
+    return
+  end function
 
 end module Options_mod
