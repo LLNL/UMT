@@ -140,7 +140,7 @@ if(ENABLE_TESTS)
 
   # Generally preferred to link with the Fortran compiler.
   # Intel has trouble with this, fallback on using the C++ compiler to link.
-  if ( NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL IntelLLVM)
+  if ( NOT CMAKE_Fortran_COMPILER_ID STREQUAL Intel AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL IntelLLVM AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL NVHPC)
     set_target_properties(test_driver PROPERTIES LINKER_LANGUAGE Fortran)
   endif ()
 
