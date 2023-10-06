@@ -780,7 +780,7 @@ int TetonDriver::execute()
          {
             options["iteration/relativeTolerance"] = 1e-10;
             fixedDT = 1e-3;
-            cycles = 2;
+            cycles = 5;
             numPolarUser = 3;
             numAzimuthalUser = 3;
             numGroupsUser = 128;
@@ -791,7 +791,7 @@ int TetonDriver::execute()
          {
             options["iteration/relativeTolerance"] = 1e-10;
             fixedDT = 1e-3;
-            cycles = 2;
+            cycles = 5;
             numPolarUser = 2;
             numAzimuthalUser = 2;
             numGroupsUser = 16;
