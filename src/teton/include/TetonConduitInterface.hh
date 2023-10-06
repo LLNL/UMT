@@ -36,15 +36,16 @@ class Teton
    // forces on the vertices
    void storeMeshData();
 
-   void constructBoundaries(int rank);
+   void constructBoundaries();
 
    void constructComptonControl();
 
    void constructEdits();
 
    void computeGenericSurfaceFluxTally();
+   void dumpTallyToJson() const;
 
-   void constructSize(int rank);
+   void constructSize();
 
    void constructMemoryAllocator();
 
@@ -147,6 +148,16 @@ class Teton
    {
       return getDatastore()["options"];
    }
+   // Const version of above functions:
+   const conduit::Node &getMeshBlueprint() const
+   {
+      return getDatastore()["blueprint"];
+   }
+   const conduit::Node &getDatastore() const;
+   const conduit::Node &getOptions() const
+   {
+      return getDatastore()["options"];
+   }
 
    // ---------------------------------------------------------------------------
    // Functions pertaining to checkpoints/restarts
@@ -165,6 +176,10 @@ class Teton
 
    int mGTAorder; // quadrature order used for grey transport acceleration (def=2 for s2 acc)
    int mInternalComptonFlag;
+
+   // Cached MPI communicator details:
+   MPI_Comm mCommunicator;
+   int mRank;
 
    // To compute radiation forces on the vertices, Teton
    // needs to hang on to this connectivity array

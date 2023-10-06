@@ -5,7 +5,7 @@
 !=======================================================================
 
 module system_info_mod
-   use, intrinsic :: iso_c_binding, only : C_SIZE_T, C_INT
+   use iso_c_binding, only: c_int, c_size_t
    implicit none
 
 contains
@@ -16,14 +16,26 @@ contains
 subroutine getGPUMemInfo(free_bytes, total_bytes)
 
 #if defined (TETON_ENABLE_CUDA)
-   use cudafor, only : cudaMemGetInfo, cudaGetDevice
+   interface
+      integer(kind=c_int) function gpuMemGetInfo(free_bytes, total_bytes) bind(c, name="cudaMemGetInfo")
+         use iso_c_binding, only: c_int, c_size_t
+         integer(kind=c_size_t), intent(inout) :: free_bytes, total_bytes
+      end function gpuMemGetInfo
+   end interface
+#elif defined(TETON_ENABLE_HIP)
+   interface
+      integer(kind=c_int) function gpuMemGetInfo(free_bytes, total_bytes) bind(c, name="hipMemGetInfo")
+         use iso_c_binding, only: c_int, c_size_t
+         integer(kind=c_size_t), intent(inout) :: free_bytes, total_bytes
+      end function gpuMemGetInfo
+   end interface
 #endif
 
-   integer(kind=C_SIZE_T), intent(inout) :: free_bytes, total_bytes
-   integer :: status_code
+   integer(kind=c_size_t), intent(inout) :: free_bytes, total_bytes
+   integer(kind=c_int) :: status_code
 
-#if defined (TETON_ENABLE_CUDA)
-   status_code = cudaMemGetInfo(free_bytes, total_bytes)
+#if defined (TETON_ENABLE_CUDA) || defined(TETON_ENABLE_HIP)
+   status_code = gpuMemGetInfo(free_bytes, total_bytes)
 #else
    free_bytes = 0
    total_bytes = 0
@@ -34,6 +46,7 @@ end subroutine getGPUMemInfo
 
 subroutine printGPUMemInfo(rank)
    use mpi
+   use MemoryAllocator_mod
 
    integer, intent(in) :: rank
    integer(kind=C_SIZE_T) :: gpu_total_bytes, gpu_free_bytes
@@ -42,15 +55,21 @@ subroutine printGPUMemInfo(rank)
    integer :: ierr, resultlen
 
    call getGPUMemInfo(gpu_free_bytes, gpu_total_bytes)
-   call get_environment_variable("CUDA_VISIBLE_DEVICES", cuda_visible_devices)
    call mpi_get_processor_name(host_name, resultlen, ierr) 
 
-   print *, "TETON GPU used mem rpt: rank ", rank, "host ", trim(host_name), ", CUDA_VISIBLE_DEVICES:", trim(cuda_visible_devices), &
-     ", currently free: ", gpu_free_bytes/(2**20), "MB, currently used: ",  (gpu_total_bytes-gpu_free_bytes)/(2**20), "MB"
+   print *, "TETON GPU used mem: rank ", rank, "host ", trim(host_name), ", currently free: ", gpu_free_bytes/(2**20), &
+      "MB, currently used: ",  (gpu_total_bytes-gpu_free_bytes)/(2**20), "MB"
+
+#if defined(TETON_ENABLE_UMPIRE)
+   if (Allocator%umpire_device_allocator_id > -1) then
+      print *, "TETON UMPIRE device pool size: ", Allocator%umpire_device_allocator%get_current_size() / (2**20), "MB"
+   endif
+#endif
 
 end subroutine printGPUMemInfo
 
 subroutine printGPUMemRequired(rank)
+
    use mpi
    use MemoryAllocator_mod
 
@@ -61,35 +80,33 @@ subroutine printGPUMemRequired(rank)
    integer, intent(in) :: rank
 
    integer(kind=C_SIZE_T) :: gpu_total_bytes, gpu_free_bytes, &
-                             umpire_cpu_allocator_used_bytes, nlsolver_estimated_bytes
-   character(len=80) :: cuda_visible_devices
+                             mem_estimate_bytes, cuda_bc_solver_bytes
    character(len=80) :: host_name
    integer :: ierr, resultlen
 
-   nlsolver_estimated_bytes = 0
-   umpire_cpu_allocator_used_bytes = 0
-
-   ! Use UMPIRE pinned memory allocation size as an estimator for amount of device memory needed.
 #if defined(TETON_ENABLE_UMPIRE)
-   umpire_cpu_allocator_used_bytes = Allocator%umpire_host_allocator%get_current_size()
+   ! Use UMPIRE pinned memory allocation size as an estimator for amount of device memory needed.
+   ! Skip estimating the memory usage if we are not using an umpire cpu allocator.
+   if (Allocator%umpire_host_allocator_id > -1) then
+      mem_estimate_bytes = Allocator%umpire_host_allocator%get_current_size()
+
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+#   if defined(TETON_ENABLE_CUDA)
+      ! TODO - The NLsolver is not currently using UMPIRE, need to use specific call to get estimated memory.
+      call getBCSolverMemEstimate(cuda_bc_solver_bytes)
+      mem_estimate_bytes = mem_estimate_bytes + cuda_bc_solver_bytes
+#   endif
 #endif
 
-#if defined(TETON_ENABLE_CUDA)
-#  if !defined(TETON_ENABLE_MINIAPP_BUILD)
-   ! TODO - The NLsolver is not currently using UMPIRE, need to use specific call to get estimated memory.
-   call getBCSolverMemEstimate(nlsolver_estimated_bytes)
-#  endif
+      call getGPUMemInfo(gpu_free_bytes, gpu_total_bytes)
+      call mpi_get_processor_name(host_name, resultlen, ierr) 
+
+      print *, "TETON GPU mem estimate: rank ", rank, "host ", trim(host_name), ", Problem requires: ", &
+         (mem_estimate_bytes)/(2**20), "MB.  Currently free: ", gpu_free_bytes/(2**20), "MB.  Currently used: ", &
+         (gpu_total_bytes-gpu_free_bytes)/(2**20), "MB"
+
+   endif
 #endif
-
-   call getGPUMemInfo(gpu_free_bytes, gpu_total_bytes)
-   call get_environment_variable("CUDA_VISIBLE_DEVICES", cuda_visible_devices)
-   call mpi_get_processor_name(host_name, resultlen, ierr) 
-
-   print *, "TETON GPU mem estimate rpt: rank ", rank, "host ", trim(host_name), ", CUDA_VISIBLE_DEVICES:", trim(cuda_visible_devices), &
-     ", Problem requires: Sweep ", (umpire_cpu_allocator_used_bytes)/(2**20), "MB + Scattering solver ", (nlsolver_estimated_bytes)/(2**20), &
-     "MB = Total ", (umpire_cpu_allocator_used_bytes+nlsolver_estimated_bytes)/(2**20), "MB", &
-     ", currently free: ", gpu_free_bytes/(2**20), "MB, currently used: ",  (gpu_total_bytes-gpu_free_bytes)/(2**20), "MB"
-
 end subroutine printGPUMemRequired
 
 end module system_info_mod

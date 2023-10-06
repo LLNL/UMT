@@ -155,6 +155,7 @@ void teton_addprofile_internal(const int *NumTimes,
                                const double *Times,
                                const double *Values,
                                int *TetonProfileID);
+
 //
 //  teton_resetprofile_internal
 //
@@ -365,6 +366,11 @@ void teton_setgtaoptions(
 //     verbose=0x - rank 0 at verbose level x
 //     verbose=1x - all ranks at verbose level x
 void teton_setverbose(const int *verbose);
+
+// Set sweep version.
+// 0 - zone sweep (original)
+// 1 - corner sweep (improved parallelism)
+void teton_setsweepversion(const int *sweepversion);
 
 // construct Teton memory allocator.
 void teton_constructmemoryallocator(

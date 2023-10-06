@@ -14,6 +14,7 @@
 #include "TetonBlueprint.hh"
 #include "TetonConduitInterface.hh"
 #include "TetonInterface.hh"
+#include "TetonSurfaceTallies.hh"
 #include "dbc_macros.h"
 
 #if defined(TETON_USE_CUDA)
@@ -47,20 +48,26 @@ namespace Teton
 
 Teton::~Teton()
 {
-   conduit::Node &options = getOptions();
-   bool enableNLTE = options.fetch_existing("size/enableNLTE").as_int();
-
+   bool enableNLTE = false;
+   if (getDatastore().has_path("options"))
+   {
+      conduit::Node &options = getOptions();
+      if (options.has_path("size/enableNLTE"))
+      {
+         enableNLTE = options.fetch_existing("size/enableNLTE").as_int();
+      }
+   }
    teton_destructmeshdata(&enableNLTE);
 }
 
 void Teton::initialize(MPI_Comm communicator, bool fromRestart)
 {
-   int myRank;
    CALI_MARK_BEGIN("Teton_Initialize");
 
+   mCommunicator = communicator;
    MPI_Fint fcomm = MPI_Comm_c2f(communicator);
 
-   MPI_Comm_rank(communicator, &myRank);
+   MPI_Comm_rank(communicator, &mRank);
 
    conduit::Node &datastore = getDatastore();
    conduit::Node &options = getOptions();
@@ -70,7 +77,7 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
    if (options.has_path("verbose"))
    {
       verbose = options.fetch_existing("verbose").value();
-      if (verbose && myRank == 0)
+      if (verbose && mRank == 0)
          std::cout << "Teton: setting verbosity to " << verbose << std::endl;
    }
    else
@@ -80,34 +87,40 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
 
    if (verbose >= 2)
    {
-      std::cerr << "Teton: Dump copy of input..." << std::endl;
-      conduit::relay::io::save(options, "parameters_input_" + std::to_string(myRank) + ".conduit_json", "conduit_json");
-      conduit::relay::io::save(options, "parameters_input_" + std::to_string(myRank) + ".json", "json");
+      if (mRank == 0)
+      {
+         std::cerr << "Teton: Dump copy of input..." << std::endl;
+      }
+      conduit::relay::io::save(options, "parameters_input_" + std::to_string(mRank) + ".conduit_json", "conduit_json");
+      conduit::relay::io::save(options, "parameters_input_" + std::to_string(mRank) + ".json", "json");
       conduit::blueprint::mesh::paint_adjset("main_adjset", "main_adjset", blueprint);
-      conduit::relay::io::save(blueprint, "mesh_input_" + std::to_string(myRank) + ".conduit_json", "conduit_json");
-      conduit::relay::io::save(blueprint, "mesh_input_" + std::to_string(myRank) + ".json", "json");
+      conduit::relay::io::save(blueprint, "mesh_input_" + std::to_string(mRank) + ".conduit_json", "conduit_json");
+      conduit::relay::io::save(blueprint, "mesh_input_" + std::to_string(mRank) + ".json", "json");
    }
 
    // Create secondary (corner) mesh topology and connectivity arrays.
    CALI_MARK_BEGIN("Teton_Construct_Corner_Mesh");
    TetonBlueprint blueprintHelper(blueprint, options);
-   blueprintHelper.OutputTetonMesh(myRank, communicator);
+   blueprintHelper.OutputTetonMesh(mRank, communicator);
    CALI_MARK_END("Teton_Construct_Corner_Mesh");
 
    if (verbose >= 2)
    {
       conduit::blueprint::mesh::paint_adjset("main_corner", "corner_adjset", blueprint);
-      std::cerr << "Teton: Dump blueprint with generated topologies..." << std::endl;
+      if (mRank == 0)
+      {
+         std::cerr << "Teton: Dump blueprint with generated topologies..." << std::endl;
+      }
       dump(communicator, ".");
    }
 
    // Set the Dt controls early, as tfloor is set here and needed by constructSize in the line below.
    constructDtControls();
 
-   constructSize(myRank);
+   constructSize();
    constructMemoryAllocator();
    constructQuadrature();
-   constructBoundaries(myRank);
+   constructBoundaries();
    setSourceProfiles();
    teton_constructgeometry();
    setMeshConnectivity();
@@ -156,6 +169,16 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
 
    constructEdits();
    constructIterationControls();
+
+   // Initialize default sweep kernel selection, if not provided.
+   // Valid values are:
+   // 0 - a sweep implementation that loops over the zones in each hyperplane, and the corners within those zones.
+   // 1 - a sweep implementation that loops directly over the corners of each hyperplane.
+   if (!options.has_path("sweep/kernel/version"))
+   {
+      // Default to the original 'loop over zones' version.
+      options["sweep/kernel/version"] = 0;
+   }
 
    if (blueprint.has_path("fields/absorption_opacity/values"))
    {
@@ -230,7 +253,7 @@ void Teton::storeMeshData()
    }
 }
 
-void Teton::constructBoundaries(int rank)
+void Teton::constructBoundaries()
 {
    conduit::Node &options = getOptions();
 
@@ -251,7 +274,7 @@ void Teton::constructBoundaries(int rank)
    std::vector<int> BCCornerFaces(BCCornerFaces64, BCCornerFaces64 + numBCTotal);
    std::vector<int> BCNeighborID(BCNeighborID64, BCNeighborID64 + numBCTotal);
 
-   TETON_VERIFY_C(rank, (numBCTotal > 0), "No boundary conditions defined.");
+   TETON_VERIFY_C(mRank, (numBCTotal > 0), "No boundary conditions defined.");
 
    teton_addboundary(&numBCTotal, &BCTypeInt[0], &BCCornerFaces[0], &BCNeighborID[0]);
 }
@@ -274,7 +297,7 @@ void Teton::constructComptonControl()
 }
 #endif
 
-void Teton::constructSize(int rank)
+void Teton::constructSize()
 {
    conduit::Node &options = getOptions();
    conduit::Node &node = options.fetch_existing("size");
@@ -381,7 +404,7 @@ void Teton::constructSize(int rank)
    //Temperature floor is already set, from constructDtControls
    double tfloor = options.fetch_existing("iteration/tfloor").value();
 
-   teton_constructsize(&rank,
+   teton_constructsize(&mRank,
                        &nzones,
                        &ncornr,
                        &nsides,
@@ -558,10 +581,6 @@ double Teton::step(int cycle)
       updateOpacity();
    }
 
-   // ------------------------------------------------------------
-   // Run the step
-   // ------------------------------------------------------------
-
    // Set the time step information
    // A host code can either set these values in conduit, or can
    // setTimeStep() and that function will add these entries.
@@ -569,6 +588,10 @@ double Teton::step(int cycle)
    double dtrad = options.fetch_existing("iteration/dtrad").value();
    double timerad = options.fetch_existing("iteration/timerad").value();
    double tfloor = options.fetch_existing("iteration/tfloor").value();
+
+   // ------------------------------------------------------------
+   // Run the step
+   // ------------------------------------------------------------
 
    teton_settimestep(&cycle, &dtrad, &timerad, &tfloor);
 
@@ -624,10 +647,10 @@ double Teton::step(int cycle)
    computeGenericSurfaceFluxTally();
 
    // REMOVE //
-   // int rank;
-   // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   // int mRank;
+   // MPI_Comm_rank(MPI_COMM_WORLD, &mRank);
    // conduit::relay::io::save(blueprint,
-   //                          "blueprint_mesh.rank" + std::to_string(rank) + ".cycle" + std::to_string(cycle) + ".json", "json");
+   //                          "blueprint_mesh.rank" + std::to_string(mRank) + ".cycle" + std::to_string(cycle) + ".json", "json");
    // REMOVE //
 #endif
 
@@ -635,6 +658,7 @@ double Teton::step(int cycle)
    teton_dtnew(&maxOSComptonChangeCorner, &maxOSComptonChange);
 
    // put Teton's various edits in to its internal conduit node
+   // This also puts the recommended timestep for the next iteration in mDTrad
    teton_publishedits(&mDTrad);
 
    double MatCoupTimeTotal, SweepTimeTotal, GPUSweepTimeTotal, GTATimeTotal;
@@ -649,6 +673,17 @@ double Teton::step(int cycle)
                      &FinalTimeTotal,
                      &timeNonRad,
                      &timeOther);
+
+   options["iteration/dtcontrol/dtrec"] = mDTrad;
+   int dtControlReason, dtControlProcess, dtControlZone;
+   teton_getdtcontrolinfo(&dtControlReason, &dtControlProcess, &dtControlZone);
+   options["iteration/dtcontrol/flag"] = dtControlReason;
+   options["iteration/dtcontrol/process"] = dtControlProcess;
+   options["iteration/dtcontrol/zone"] = dtControlZone;
+   char *dtmessage_ptr;
+   teton_getdtmessage(&dtmessage_ptr);
+   std::string dtmsg = dtmessage_ptr;
+   options["iteration/dtcontrol/message"] = dtmsg;
 
    return mDTrad;
 }
@@ -719,21 +754,27 @@ void Teton::constructEdits()
 // ------------------------------------------------------------
 void Teton::computeGenericSurfaceFluxTally()
 {
+   // The tally definition is split into two places.
+   // The SURFACE information is in blueprint.
+   // The other details of the tally (shape, groups, frame, etc.) live in options.
    conduit::Node &blueprint = getMeshBlueprint();
    conduit::Node &options = getOptions();
+
    if (blueprint.has_path("teton/surface_edits"))
    {
-      conduit::Node &surface_edits_info = options["surface_edits"];
-      conduit::Node &surface_edits = blueprint["teton/surface_edits"];
-      conduit::NodeConstIterator surface_edits_it = surface_edits.children();
-      while (surface_edits_it.has_next())
+      conduit::Node &surface_edit_options_all = options["surface_edits"];
+      conduit::Node &surface_edit_blueprint_all = blueprint["teton/surface_edits"];
+      conduit::NodeConstIterator surface_edit_blueprint_it = surface_edit_blueprint_all.children();
+      while (surface_edit_blueprint_it.has_next())
       {
-         const conduit::Node &surface_edit = surface_edits_it.next();
-         std::string surface_edit_name = surface_edit.name();
-         const conduit::Node &surface_edit_option = surface_edits_info[surface_edit_name];
-         const int *corners_ptr = surface_edit.fetch_existing("corners").as_int_ptr();
-         const int *local_zone_faces_ptr = surface_edit.fetch_existing("local_zone_faces").as_int_ptr();
-         const int num_corner_faces = surface_edit["corners"].dtype().number_of_elements();
+         const conduit::Node &surface_info = surface_edit_blueprint_it.next(); // surface info
+         std::string surface_edit_name = surface_info.name();
+         const conduit::Node &surface_edit_option = surface_edit_options_all[surface_edit_name]; // options for tallying
+
+         const int *corners_ptr = surface_info.fetch_existing("corners").as_int_ptr();
+         const int *local_zone_faces_ptr = surface_info.fetch_existing("local_zone_faces").as_int_ptr();
+         const int num_corner_faces = surface_info["corners"].dtype().number_of_elements();
+
          const bool transform_to_lab_frame = surface_edit_option["transform_to_lab_frame"].as_int();
          const bool apply_time_shift = surface_edit_option["apply_time_shift"].as_int();
 
@@ -793,6 +834,23 @@ void Teton::computeGenericSurfaceFluxTally()
       }
    }
 }
+
+void Teton::dumpTallyToJson() const
+{
+   // The tally definition is split into two places.
+   // The surface information associated with the tally is in blueprint.
+   // The other details of the tally (shape, groups, frame, etc.) live in options.
+
+   const conduit::Node &blueprint = getMeshBlueprint();
+   const conduit::Node &options = getOptions();
+
+   if (mRank == 0 && blueprint.has_path("teton/surface_edits"))
+   {
+      TetonSurfaceTallies::dumpTallyToJson(blueprint, options, mRank);
+   }
+
+   MPI_Barrier(mCommunicator);
+} // end SnRad_dumpTally()
 
 // ------------------------------------------------------------
 // constructQuadrature
@@ -1185,9 +1243,14 @@ void Teton::setMaterials()
    double *tec = datastore.fetch_existing("material/Tec").value();
    teton_initmaterial(tec);
 
+   double scm = 1.;
+   if (options.has_path("compton/stim_compton_mult"))
+   {
+      scm = options.fetch_existing("compton/stim_compton_mult").value();
+   }
+
    for (int zone = 0; zone < nzones; ++zone)
    {
-      double scm = 0.;
       int zoneID = zone + 1;
       double rho = density_ptr[zone];
       double cv = cv_ptr[zone];
@@ -1394,6 +1457,11 @@ double Teton::getMaterialTemperature(int zone)
 }
 
 conduit::Node &Teton::getDatastore()
+{
+   return *teton_get_datastore_cptr();
+}
+
+const conduit::Node &Teton::getDatastore() const
 {
    return *teton_get_datastore_cptr();
 }
@@ -1618,19 +1686,19 @@ void Teton::updateRadiationForce()
    std::vector<double> RadiationForce(ndim * maxCorner);
    int corner_counter = 0;
 
-   double *radiation_force_x;
-   double *radiation_force_y;
-   double *radiation_force_z;
+   double *radiation_force_x = nullptr;
+   double *radiation_force_y = nullptr;
+   double *radiation_force_z = nullptr;
    if (ndim == 2)
    {
-      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_r/values").value();
-      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_z/values").value();
+      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_r/values").as_double_ptr();
+      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_z/values").as_double_ptr();
    }
    else if (ndim == 3)
    {
-      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_x/values").value();
-      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_y/values").value();
-      radiation_force_z = blueprint.fetch_existing("fields/radiation_force_z/values").value();
+      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_x/values").as_double_ptr();
+      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_y/values").as_double_ptr();
+      radiation_force_z = blueprint.fetch_existing("fields/radiation_force_z/values").as_double_ptr();
    }
    // TODO: finish this case
    else
@@ -1681,19 +1749,19 @@ void Teton::updateZonalRadiationForce()
    int nzones = options.fetch_existing("size/nzones").value();
    std::vector<double> RadiationForce(ndim * maxCorner);
 
-   double *radiation_force_x;
-   double *radiation_force_y;
-   double *radiation_force_z;
+   double *radiation_force_x = nullptr;
+   double *radiation_force_y = nullptr;
+   double *radiation_force_z = nullptr;
    if (ndim == 2)
    {
-      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_r/values").value();
-      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_z/values").value();
+      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_r/values").as_double_ptr();
+      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_z/values").as_double_ptr();
    }
    else if (ndim == 3)
    {
-      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_x/values").value();
-      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_y/values").value();
-      radiation_force_z = blueprint.fetch_existing("fields/radiation_force_z/values").value();
+      radiation_force_x = blueprint.fetch_existing("fields/radiation_force_x/values").as_double_ptr();
+      radiation_force_y = blueprint.fetch_existing("fields/radiation_force_y/values").as_double_ptr();
+      radiation_force_z = blueprint.fetch_existing("fields/radiation_force_z/values").as_double_ptr();
    }
    // TODO: finish this case
    else

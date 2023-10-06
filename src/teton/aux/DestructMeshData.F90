@@ -64,7 +64,6 @@
 !  Constants
 
    nSets      = getNumberOfSets(Quad)
-   nGTASets   = getNumberOfGTASets(Quad)
    nAngleSets = getNumberOfAngleSets(Quad)
    nGroupSets = getNumberOfGroupSets(Quad)
    nCommSets  = getNumberOfCommSets(Quad)

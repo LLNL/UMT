@@ -59,6 +59,7 @@ endif()
 
 if (ENABLE_BLUEPRINT_INTERFACE)
   target_sources( teton INTERFACE include/TetonBlueprint.hh )
+  target_sources( teton INTERFACE include/TetonSurfaceTallies.hh )
   target_sources( teton INTERFACE include/TetonConduitInterface.hh )
 endif()
 
@@ -75,11 +76,10 @@ target_include_directories( teton PRIVATE include
 # Some installations of physicsutils may have the Fortran modules in
 # include/physicsutils instead of the base include directory.
 if (NOT ENABLE_MINIAPP_BUILD)
-   message(STATUS "PHYSICS INCLUDE DIR IS ${PHYSICSUTILS_INCLUDE_DIR}")
-   message(STATUS "PHYSICS INCLUDE FORTRAN DIR IS ${PHYSICSUTILS_INCLUDE_DIR}/PhysicsUtils")
    target_include_directories( teton PRIVATE include
                                ${PHYSICSUTILS_INCLUDE_DIR}
                                ${PHYSICSUTILS_INCLUDE_DIR}/PhysicsUtils
+                               ${PHYSICSUTILS_INCLUDE_DIR}/fortran
                                ${SILO_INCLUDE_DIR}
                              )
 endif()
@@ -94,6 +94,7 @@ install( FILES "include/TetonInterface.hh" DESTINATION include )
 if (ENABLE_BLUEPRINT_INTERFACE)
    install( FILES "include/TetonConduitInterface.hh" DESTINATION include )
    install( FILES "include/TetonBlueprint.hh" DESTINATION include )
+   install( FILES "include/TetonSurfaceTallies.hh" DESTINATION include )
 endif()
 
 install( FILES "${PROJECT_BINARY_DIR}/teton/include/TetonVersion.hh" DESTINATION include )
@@ -129,7 +130,7 @@ if(ENABLE_TESTS)
   if( ENABLE_CUDA )
     target_link_libraries( test_driver PRIVATE tetoncuda )
     if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
-      target_link_libraries( test_driver PUBLIC CUDA::cudart
+      target_link_libraries( test_driver PRIVATE CUDA::cudart
                                           CUDA::cublas
                                           CUDA::cupti
                                           CUDA::nvToolsExt
@@ -210,12 +211,12 @@ if(ENABLE_TESTS)
     target_link_libraries( test_driver PUBLIC ${CALIPER_LIBRARIES} ${ADIAK_LIBRARIES} rt)
   endif()
 
-  target_link_options(test_driver PUBLIC "LINKER:${TETON_LINK_OPTIONS}")
-
   if (ENABLE_MFEM)
     target_include_directories( test_driver PUBLIC ${MFEM_INCLUDE_DIR} ${HYPRE_INCLUDE_DIR})
     target_link_libraries( test_driver PUBLIC ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
   endif()
+
+  target_link_options(test_driver PUBLIC "LINKER:${TETON_LINK_OPTIONS}")
 
   install( TARGETS test_driver
            RUNTIME DESTINATION bin )
@@ -244,6 +245,7 @@ if(ENABLE_TESTS)
                                                            ${MFEM_INCLUDE_DIR}
                                                            ${HYPRE_INCLUDE_DIR}
                               )
+    target_link_options( makeUnstructuredBox PUBLIC "LINKER:${TETON_LINK_OPTIONS}")
     target_link_libraries( makeUnstructuredBox PUBLIC ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
     install( TARGETS makeUnstructuredBox
              RUNTIME DESTINATION bin )

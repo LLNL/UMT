@@ -164,7 +164,7 @@
      TOMP(target teams distribute collapse(2) num_teams(nHyperDomains*nGTASets) &)
      TOMPC(thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nGTASets, nHyperDomains, Geom, GTA, Quad, nSets, angleList)&)
-     TOMPC(private(Set, ASet, HypPlanePtr, angle0, angle, angGTA, hplane1, hplane2, ndoneZ, nzones, zone, nCorner) &)
+     TOMPC(private(Set, ASet, HypPlanePtr, angle0, angle, angGTA, hyperPlane, hplane1, hplane2, ndoneZ, nzones, zone, nCorner) &)
      TOMPC(private(c0, ifp, cez, cfp, nCFaces, aez, area_opp, sigv, sigv2, gnum, gtau, sez, psi_opp, denom, afp))
 
    GTASetLoop: do setID=1,nGTASets

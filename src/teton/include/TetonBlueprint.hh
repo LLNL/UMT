@@ -110,6 +110,7 @@ class TetonBlueprint
                                   int rank);
 
    void ComputeLocalCornersInZone(int nzones, int ncorners);
+   int ComputeMaxCorners(const conduit::Node &topo) const;
    void ComputeCornerOffsets(int nzones);
    void ComputeZoneFaceToHalfFaceDict();
    void ComputeSharedFaces(int rank);
@@ -141,9 +142,6 @@ class TetonBlueprint
 
    //TODO: Investigate if some of these can be made local variables and passed between methods so they are freed when
    //      the method exits.
-
-   int nbelem = 0;
-   int nhalffaces = 0;
 
    conduit::int32 *m_zone_to_faces;
    conduit::int32 *m_zone_to_corners;
