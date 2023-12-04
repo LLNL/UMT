@@ -81,23 +81,12 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
    if (options.has_path("verbose"))
    {
       verbose = options.fetch_existing("verbose").value();
+      if (verbose && mRank == 0)
+         std::cout << "Teton: setting verbosity to " << verbose << std::endl;
    }
    else
    {
       options["verbose"] = verbose;
-   }
-
-   // Check to see if TETON_VERBOSE env variable is set.  This will override any setting
-   // from the input file, to aid developers in debugging.
-   char *val = std::getenv("TETON_VERBOSE");
-   if (val != NULL)
-   {
-      options["verbose"] = atoi(val);
-   }
-
-   if (verbose && mRank == 0)
-   {
-      std::cout << "Teton: setting verbosity to " << verbose << std::endl;
    }
 
    if (verbose >= 2)
