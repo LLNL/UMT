@@ -538,16 +538,19 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
                                 half*aez*gden*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) ) )/ &
                               ( gnum + gden*sig)
 
-                   Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
-                   Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
-
                  else
 
-                   sez              = half*aez*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) )/sig
-                   Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
-                   Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
+                   sez = half*aez*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) )/sig
 
                  endif TestOppositeFace
+
+                 ATOMIC_UPDATE
+                 Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
+                 ATOMIC_END
+
+                 ATOMIC_UPDATE
+                 Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
+                 ATOMIC_END
 
                endif
 
@@ -643,16 +646,19 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
                                 half*aez*gden*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) ) )/ &
                               ( gnum + gden*sig)
 
-                   Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
-                   Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
-
                  else
 
-                   sez              = half*aez*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) )/sig
-                   Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
-                   Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
+                   sez = half*aez*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) )/sig
 
                  endif TestOppositeFace1
+
+                 ATOMIC_UPDATE
+                 Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
+                 ATOMIC_END
+
+                 ATOMIC_UPDATE
+                 Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
+                 ATOMIC_END
 
                endif
 

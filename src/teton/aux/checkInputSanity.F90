@@ -75,8 +75,8 @@ subroutine checkInputSanity(killOnBad,   &
    ! Category format string
 100 FORMAT('Bad ',A20,' Data. ',I10, ' Entries out of' , I12, ' were bad')
 
-   ! sigma format string
-200 FORMAT('Zone: ',I8, ' Group: ',I4,' Sigma',A20,' is bad: ',ES20.8)
+   ! Zone and group-dependent format string
+200 FORMAT('Zone: ',I8, ' Group: ',I4, 1X, A20,' is bad: ',ES20.8)
 
    ! Zone material property
 300 FORMAT('Zone: ' , I8, 1X , A20, ' is bad: ',ES20.8)
@@ -90,7 +90,8 @@ subroutine checkInputSanity(killOnBad,   &
 
    do cats=1,numCatsToCheck
       select case ( arrayOfCatsToCheck(cats) )
-      case(1)
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+      case (1)
          ! **************************************
          ! sigs
          ! **************************************
@@ -224,6 +225,7 @@ subroutine checkInputSanity(killOnBad,   &
                WRITE( nout , 100) categoryName, numBadEntries, numEntries
             endif
          endif
+#endif
       case (7)
       ! **************************************
       ! Corner volumes

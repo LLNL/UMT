@@ -34,8 +34,8 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
 
 	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "IntelLLVM")
 		set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
-		set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -diag-enable=remark -traceback")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -diag-enable=remark -traceback")
+		set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -diag-enable=remark")
+		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -diag-enable=remark")
 
 	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 
@@ -74,8 +74,8 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
 
 	elseif("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "IntelLLVM")
 		set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -DNDEBUG")
-		set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O2 -g -warn all,noexternal,nointerfaces -diag-enable=remark -fpen=0-traceback")
-		set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -warn all,noexternal,nointerfaces -diag-enable=remark -check all -fpen=0 -traceback")
+		set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O2 -g -warn all,noexternal,nointerfaces -diag-enable=remark -fpe-all=0 -fpe0 -traceback")
+		set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -warn all,noexternal,nointerfaces -diag-enable=remark -check all -fpe-all=0 -fpe0 -traceback")
 
 	elseif("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "PGI")
 

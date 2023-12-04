@@ -13,6 +13,7 @@ target_sources( teton PRIVATE
   AdjustRadEnergyDensityRelTol.F90
   AdjustTemperatureRelTol.F90
   AdjustTemperatureMaxIts.F90
+  AppendSourceToPsi.F90
   ConstructBoundary.F90
   ConstructDtControls.F90
   ConstructEditor.F90

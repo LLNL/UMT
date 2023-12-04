@@ -57,9 +57,6 @@
    integer :: numSets
    integer :: Groups
 
-   logical(kind=c_bool) :: useDeviceAwareMPI
-   useDeviceAwareMPI = Options%getMPIUseDeviceAddresses() .AND. Size%useGPU
-
 !  Wait for all nodes to arrive
 
    CSet       => getCommSetData(Quad, cSetID)
@@ -95,48 +92,14 @@
        offset = (myRank + neighbor)*NumAngles
        tag    = tagBase + offset + Angle
 
-       if (useDeviceAwareMPI) then
-         ! Workaround for XLF internal compiler error if use_device_ptr is used
-         ! on a variable like <derived_type>%<member>.
-       
-         associate(psibrecv => CommT%psibrecv, &
-                   psibsend => CommT%psibsend)
+       if (nrecv > 0) then
+         call MPIRecvInit(CommT%psibrecv, nrecv, neighbor, tag,   &
+                          COMM_GROUP, CommT% irequest(2)) 
+       endif
 
-       ! TODO - See if these use_device_ptr constructs can be applied to the
-       ! entire CSet%CommPtr array instead of on each array member within this
-       ! loop.
-       ! -- Aaron
-#if defined(TETON_OPENMP_HAS_USE_DEVICE_ADDR)
-         TOMP(target data use_device_addr( psibrecv, psibsend ))
-#else
-         TOMP(target data use_device_ptr( psibrecv, psibsend ))
-#endif
-
-         if (nrecv > 0) then
-           call MPIRecvInit(psibrecv, nrecv, neighbor, tag,   &
-                            COMM_GROUP, CommT% irequest(2)) 
-         endif
-
-         if (nsend > 0) then
-           call MPISendInit(psibsend, nsend, neighbor, tag,  & 
-                            COMM_GROUP, CommT% irequest(1)) 
-         endif
-
-         TOMP(end target data)
-         end associate
-
-       else
-
-         if (nrecv > 0) then
-           call MPIRecvInit(CommT%psibrecv, nrecv, neighbor, tag,   &
-                            COMM_GROUP, CommT% irequest(2)) 
-         endif
-
-         if (nsend > 0) then
-           call MPISendInit(CommT%psibsend, nsend, neighbor, tag,  & 
-                            COMM_GROUP, CommT% irequest(1)) 
-         endif
-
+       if (nsend > 0) then
+         call MPISendInit(CommT%psibsend, nsend, neighbor, tag,  & 
+                          COMM_GROUP, CommT% irequest(1)) 
        endif
 
      enddo CommunicatorLoop

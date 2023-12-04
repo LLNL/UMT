@@ -153,7 +153,7 @@ void conduit_debug_err_handler(const std::string &s1, const std::string &s2, int
 class TetonDriver
 {
   public:
-   TetonDriver();
+   TetonDriver() = default;
    ~TetonDriver();
 
    void initialize();
@@ -188,110 +188,62 @@ class TetonDriver
    void release();
 
   private:
-   int return_status;
-   int myRank;
-   int mySize;
-   unsigned int cycles;
-   int numPhaseAngleSets;
-   int useUmpire;
-   int numOmpMaxThreads; // Max number of CPU threads to use  If -1, use value from omp_get_max_threads()
-   double fixedDT;
-   bool dumpViz;
-   double energy_check_tolerance;
+   int return_status{0};
+   int myRank{0};
+   int mySize{0};
+   unsigned int cycles{0};
+   int numPhaseAngleSets{0};
+   int useUmpire{2};
+   int numOmpMaxThreads{-1}; // Max number of CPU threads to use  If -1, use value from omp_get_max_threads()
+   double fixedDT{0.0};
+   bool dumpViz{false};
+   double energy_check_tolerance{1.0e-9};
+   int input_sanitizer_level{1};
 
-   unsigned int benchmarkProblem;
-   int numPolarUser;
-   int numAzimuthalUser;
-   int numGroupsUser;
+   unsigned int benchmarkProblem{0};
+   int numPolarUser{-1};
+   int numAzimuthalUser{-1};
+   int numGroupsUser{0};
 #if defined(TETON_ENABLE_MFEM)
-   int numSerialRefinementFactor;
-   int numParallelRefinementFactor;
-   int numSerialRefinementLevels;
-   int numParallelRefinementLevels;
-   mfem::Mesh *mesh;
-   mfem::ParMesh *pmesh;
-   mfem::ConduitDataCollection *conduit_data_collec;
+   int numSerialRefinementFactor{2};
+   int numParallelRefinementFactor{2};
+   int numSerialRefinementLevels{0};
+   int numParallelRefinementLevels{0};
+   mfem::Mesh *mesh{nullptr};
+   mfem::ParMesh *pmesh{nullptr};
+   mfem::ConduitDataCollection *conduit_data_collec{nullptr};
 #endif
 
    // MPI
-   MPI_Comm comm;
-   int verbose;
+   MPI_Comm comm{MPI_COMM_WORLD};
+   int verbose{1};
 
-   bool useGPU;
-   bool useCUDASweep;
-   int gta_kernel;
-   int sweep_kernel;
-   std::string scattering_kernel;
-   bool useDeviceAwareMPI; // Pass device addresses to MPI ( device-aware MPI ).
+   bool useGPU{false};
+   bool useCUDASweep{false};
+   int gta_kernel{1};
+   int sweep_kernel{-1};
+   std::string scattering_kernel{};
 
-   ::Teton::Teton myTetonObject;
-   std::string inputPath;
-   std::string outputPath;
-   std::string label;
-   std::string colorFile;
-   std::string caliper_config;
-   std::string meshOrdering;
-#if defined(TETON_ENABLE_CALIPER)
-   cali::ConfigManager mgr;
-#endif
-   bool blueprintMesh;
-   int dims[3]; //!< Number of cells in blueprint mesh.
-};
-
-//---------------------------------------------------------------------------
-TetonDriver::TetonDriver()
-   : return_status(0),
-     myRank(0),
-     mySize(0),
-     cycles(1),
-     numPhaseAngleSets(0),
-     useUmpire(2),
-     numOmpMaxThreads(-1), // Max number of CPU threads to use  If -1, use value from omp_get_max_threads()
-     fixedDT(0.0),
-     dumpViz(false),
-     energy_check_tolerance(0.0),
-     benchmarkProblem(0),
-     numPolarUser(-1),
-     numAzimuthalUser(-1),
-     numGroupsUser(0),
-#if defined(TETON_ENABLE_MFEM)
-     numSerialRefinementFactor(2),
-     numParallelRefinementFactor(2),
-     numSerialRefinementLevels(0),
-     numParallelRefinementLevels(0),
-     mesh(nullptr),
-     pmesh(nullptr),
-     conduit_data_collec(nullptr),
-#endif
-     comm(MPI_COMM_WORLD),
-     verbose(1),
-     useGPU(false),
-     useCUDASweep(false),
-     gta_kernel(1),
-     sweep_kernel(-1),
-     scattering_kernel(""),
-     useDeviceAwareMPI(false),
-     myTetonObject(),
-     inputPath("."),
-     outputPath("."),
-     label(""),
-     colorFile(""),
+   ::Teton::Teton myTetonObject{};
+   std::string inputPath{"."};
+   std::string outputPath{"."};
+   std::string label{};
+   std::string colorFile{};
+   std::string caliper_config
+   {
 #if defined(TETON_ENABLE_CUDA)
-     caliper_config("runtime-report,nvprof")
+      "runtime-report,nvprof"
 #else
-     caliper_config("runtime-report")
+      "runtime-report"
 #endif
-     ,
-     meshOrdering("kdtree")
+   };
+   std::string meshOrdering{"kdtree"};
 #if defined(TETON_ENABLE_CALIPER)
-     ,
-     mgr()
+   cali::ConfigManager mgr{};
 #endif
-     ,
-     blueprintMesh(false)
-{
-   dims[2] = dims[1] = dims[0] = 10;
-}
+   bool blueprintMesh{false};
+   int dims[3]{10, 10, 10}; //!< Number of cells in blueprint mesh.
+};
 
 //---------------------------------------------------------------------------
 TetonDriver::~TetonDriver()
@@ -393,6 +345,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
          {"blueprint", no_argument, 0, 'B'},
          {"dims", required_argument, 0, 'd'},
          {"caliper", required_argument, 0, 'p'},
+         {"input_sanitizer_level", required_argument, 0, 'y'},
          {"handler", no_argument, 0, 'H'},
          {"help", no_argument, 0, 'h'},
          {"input_path", required_argument, 0, 'i'},
@@ -428,10 +381,10 @@ int TetonDriver::processArguments(int argc, char *argv[])
       int option_index = 0;
 
 #if defined(TETON_ENABLE_MFEM)
-      auto optString = "A:Bb:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:" // Base options
-                       "C:R:r:z:Z:";                                   // MFEM-only options
+      auto optString = "A:Bb:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:y:" // Base options
+                       "C:R:r:z:Z:";                                     // MFEM-only options
 #else
-      auto optString = "A:Bb:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:"; // Base options
+      auto optString = "A:Bb:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:y:"; // Base options
 #endif
 
       int opt = getopt_long(argc, argv, optString, long_options, &option_index);
@@ -528,9 +481,6 @@ int TetonDriver::processArguments(int argc, char *argv[])
             {
                throw std::runtime_error("Unsupported mesh ordering " + meshOrdering);
             }
-            break;
-         case 'm':
-            useDeviceAwareMPI = true;
             break;
          case 'n':
             gta_kernel = atoi(optarg);
@@ -675,6 +625,13 @@ int TetonDriver::processArguments(int argc, char *argv[])
                std::cout << "Teton driver: setting verbosity to " << verbose << std::endl;
             }
             break;
+         case 'y':
+            input_sanitizer_level = atoi(optarg);
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: setting input_sanitizer_level to " << input_sanitizer_level << std::endl;
+            }
+            break;
          case '?':
             if (myRank == 0)
             {
@@ -699,7 +656,7 @@ void TetonDriver::printUsage(const std::string &argv0) const
    std::cout
       << " -e, --use_cuda_sweep           Use experimental CUDA sweep.  Do not specify this option and -g at the same time."
       << std::endl;
-   std::cout << " -g, --use-gpu-kernels          Run solvers on GPU and enable associated sub-options, where supported."
+   std::cout << " -g, --use_gpu_kernels          Run solvers on GPU and enable associated sub-options, where supported."
              << std::endl;
    std::cout << " -H, --handler                  Install an alternate Conduit error handler for debugging."
              << std::endl;
@@ -728,9 +685,12 @@ void TetonDriver::printUsage(const std::string &argv0) const
    std::cout << " -t, --num_threads <threads>    Max number of threads for cpu OpenMP parallel regions." << std::endl;
    std::cout << " -u, --umpire_mode <0,1,2>      0 - Disable umpire.  1 - Use Umpire for CPU allocations."
              << "  2 - Use Umpire for CPU and GPU allocations." << std::endl;
-   std::cout << " -V, --write-viz-file           Output blueprint mesh vizualization file each cycle" << std::endl;
+   std::cout << " -V, --write_viz_file           Output blueprint mesh vizualization file each cycle" << std::endl;
    std::cout << " -v, --verbose [0,1,2]    0 - quite  1 - informational(default)  2 - really chatty and dump files"
              << std::endl;
+   std::cout
+      << " -y, --input_sanitizer_level  0 - don't check inputs\n 1 - print one message for each bad input category\n 2 - print one message for each bad value of each bad category"
+      << std::endl;
 #if defined(TETON_ENABLE_MFEM)
    std::cout << " -r, --serial_refinement_levels <int> Number of times to halve each edge the MFEM mesh before "
              << "doing parallel decomposition.  Applied after the refinement_factor. (factor of 2^((r*dim) new zones)"
@@ -778,24 +738,32 @@ int TetonDriver::execute()
       {
          if (benchmarkProblem == 1)
          {
-            options["iteration/relativeTolerance"] = 1e-10;
+            double relTol = 1.0e-10;
+            options["iteration/relativeTolerance"] = relTol;
             fixedDT = 1e-3;
-            cycles = 5;
+            if (cycles == 0)
+            {
+               cycles = 2;
+            }
             numPolarUser = 3;
             numAzimuthalUser = 3;
             numGroupsUser = 128;
-            energy_check_tolerance = 1.0e-11;
+            energy_check_tolerance = 10 * relTol;
             label = "UMTSPP1";
          }
          else if (benchmarkProblem == 2)
          {
-            options["iteration/relativeTolerance"] = 1e-10;
+            double relTol = 1.0e-10;
+            options["iteration/relativeTolerance"] = relTol;
             fixedDT = 1e-3;
-            cycles = 5;
+            if (cycles == 0)
+            {
+               cycles = 2;
+            }
             numPolarUser = 2;
             numAzimuthalUser = 2;
             numGroupsUser = 16;
-            energy_check_tolerance = 1.0e-11;
+            energy_check_tolerance = 10 * relTol;
             label = "UMTSPP2";
          }
          else
@@ -932,7 +900,7 @@ int TetonDriver::execute()
       writeEndSummary(end_time, start_time, num_unknowns, local_num_unknowns);
    }
 
-   return 0;
+   return return_status;
 }
 
 //---------------------------------------------------------------------------
@@ -1511,11 +1479,6 @@ void TetonDriver::setOptions()
 
    options["size/useCUDASweep"] = false;
 
-   if (useDeviceAwareMPI == true)
-   {
-      options["mpi/useDeviceAddresses"] = 0;
-   }
-
    if (!scattering_kernel.empty())
    {
       int tetonComptonFlag;
@@ -1642,6 +1605,10 @@ void TetonDriver::setOptions()
 
    //Set verbosity level ( default is 1 )
    options["verbose"] = verbose;
+
+   // Set sanitizer options:
+   options["iteration/sanitizer/level"] = input_sanitizer_level;
+   options["iteration/sanitizer/kill_if_bad"] = 1; // Have TetonConduitInterface kill the code
 
    if (fixedDT > 0)
    {
@@ -1914,7 +1881,7 @@ void TetonDriver::writeStartSummary(unsigned int ndims,
       if (options.has_path("iteration/relativeTolerance"))
       {
          double relative_tol = options.fetch_existing("iteration/relativeTolerance").value();
-         std::cout << "Relative tolerance set to " << relative_tol << "." << std::endl;
+         std::cout << "Iteration control: relative tolerance set to " << relative_tol << "." << std::endl;
       }
       std::cout << "=================================================================" << std::endl;
       std::cout << std::endl;
@@ -1983,28 +1950,26 @@ void TetonDriver::writeEndSummary(double end_time,
 
          outfile.close();
 
-#if defined(TETON_ENABLE_MINIAPP_BUILD)
-         if (benchmarkProblem <= 2)
+         if (std::abs(energy_check) / (std::abs(energy_radiation) + 1.0e-50) <= energy_check_tolerance)
          {
-            if (energy_check <= energy_check_tolerance)
-            {
-               std::cout << "RESULT CHECK PASSED: Energy check " << energy_check << " exceeded tolerance of "
-                         << energy_check_tolerance << std::endl;
-            }
-            else
-            {
-               std::cerr << "RESULT CHECK FAILED: Energy check " << energy_check << " exceeded tolerance of "
-                         << energy_check_tolerance << std::endl;
-               return_status = 1;
-            }
+            std::cout << "RESULT CHECK PASSED: Energy check " << energy_check << " within tolerance of +/- "
+                      << energy_check_tolerance << "; check '" << filePath << "' for tally details\n"
+                      << std::endl;
          }
          else
          {
-            std::cerr << "Benchmark problem " << benchmarkProblem << " does not have reference data to compare against."
+            std::cerr << "RESULT CHECK FAILED: Energy check " << energy_check << " exceeded tolerance of +/- "
+                      << energy_check_tolerance << "; check '" << filePath << "' for tally details\n"
                       << std::endl;
-         }
 
-#endif
+            std::cerr << "Energy radiation: " << energy_radiation << std::endl;
+            std::cerr << "Power incident: " << power_incident << std::endl;
+            std::cerr << "Power escaped: " << power_escape << std::endl;
+            std::cerr << "Power absorbed: " << power_absorbed << std::endl;
+            std::cerr << "Power emitted: " << power_emitted << std::endl << std::endl;
+
+            return_status = 1;
+         }
       }
    }
 }
@@ -2047,12 +2012,6 @@ void TetonDriver::finalize()
       if (myRank == 0)
          print_gpu_mem("Teton driver: After Umpire device pool release.");
    }
-#endif
-
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-   omp_pause_resource_all(omp_pause_hard);
-   if (myRank == 0)
-      print_gpu_mem("Teton driver: After omp_pause_resource_all at end of run.");
 #endif
 
    release();

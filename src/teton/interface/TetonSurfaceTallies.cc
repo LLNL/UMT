@@ -26,15 +26,15 @@ void dumpTallyToJson(const conduit::Node &blueprint, const conduit::Node &option
       std::string conduit_base_path = "xray/surfaceTallies/";
 
       const int ngroups_teton = options["quadrature/num_groups"].as_int();
-      const double *group_bounds = options.fetch_existing("quadrature/gnu").value();
+      const double *group_bounds = options.fetch_existing("quadrature/gnu").as_double_ptr();
 
       int nanglebin_teton = -1;
       teton_getnumanglebins(&nanglebin_teton);
 
       std::string tally_file_name = "radenergyflux.tal";
-      if (options.has_path("surface_edits/tally_file_name"))
+      if (options.has_path("surface_edits_output_filename"))
       {
-         tally_file_name = options.fetch_existing("surface_edits/tally_file_name").to_string();
+         tally_file_name = options.fetch_existing("surface_edits_output_filename").as_string();
       }
 
       const conduit::Node &surface_edit_options_all = options["surface_edits"];

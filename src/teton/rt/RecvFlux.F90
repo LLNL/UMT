@@ -45,10 +45,6 @@
    integer                             :: angle0
    integer                             :: sharedID
    integer                             :: nShared
-   logical(kind=c_bool)                :: useDeviceAwareMPI
-
-!  Constants
-   useDeviceAwareMPI = Options%getMPIUseDeviceAddresses() .AND. Size%useGPU
 
    nShared =  getNumberOfShared(RadBoundary)
    CSet    => getCommSetData(Quad, cSetID)
@@ -66,9 +62,6 @@
 !      Check for completion of the receive
 
          call MPIWait(CommT% irequest(2))
-         if (useDeviceAwareMPI) then
-           TOMP(target update from(CommT%psibrecv))
-         endif
 
 !  Loop over boundary elements that are incident for this communicator
 
@@ -96,9 +89,6 @@
 !      Check for completion of the receive
 
          call MPIWait(CommT% irequest(2))
-         if (useDeviceAwareMPI) then
-           TOMP(target update from(CommT%psibrecv))
-         endif
 
 !  Loop over boundary elements that are incident for this communicator
 

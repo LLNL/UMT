@@ -30,42 +30,18 @@
 
 !  Delete the arrays
 
-   TOMP(target exit data map(release:Quad% SetDataPtr(setID)% AngleOrder))
-
    if (Size% ndim == 2) then
 
-     TOMP(target exit data map(release:Quad% SetDataPtr(setID)% PsiM))
+     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% PsiM)
 
    endif
 
-     if (Allocator%umpire_device_allocator_id >= 0) then
-       err_code = target_free_and_unpair_ptrs(Quad% SetDataPtr(setID)% Psi)
-       err_code = target_free_and_unpair_ptrs(Quad% SetDataPtr(setID)% Psi1)
-       err_code = target_free_and_unpair_ptrs(Quad% SetDataPtr(setID)% PsiB)
-       err_code = target_free_and_unpair_ptrs(Quad% SetDataPtr(setID)% Q)
-       err_code = target_free_and_unpair_ptrs(Quad% SetDataPtr(setID)% S)
-       err_code = target_free_and_unpair_ptrs(Quad% SetDataPtr(setID)% cyclePsi)
-
-       ! I'm assuming these are necessary to force the runtime to perform the
-       ! pointer unattachments between the derived types and their pointer
-       ! members. --Aaron
-       TOMP(target exit data map(always, release:Quad% SetDataPtr(setID)% Psi))
-       TOMP(target exit data map(always, release:Quad% SetDataPtr(setID)% Psi1))
-       TOMP(target exit data map(always, release:Quad% SetDataPtr(setID)% PsiB))
-       TOMP(target exit data map(always, release:Quad% SetDataPtr(setID)% Q))
-       TOMP(target exit data map(always, release:Quad% SetDataPtr(setID)% S))
-       TOMP(target exit data map(always, release:Quad% SetDataPtr(setID)% cyclePsi))
-
-     else
-
-       TOMP(target exit data map(release:Quad% SetDataPtr(setID)% Psi))
-       TOMP(target exit data map(release:Quad% SetDataPtr(setID)% Psi1))
-       TOMP(target exit data map(release:Quad% SetDataPtr(setID)% PsiB))
-       TOMP(target exit data map(release:Quad% SetDataPtr(setID)% Q))
-       TOMP(target exit data map(release:Quad% SetDataPtr(setID)% S))
-       TOMP(target exit data map(release:Quad% SetDataPtr(setID)% cyclePsi))
-
-     endif
+   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% Psi)
+   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% Psi1)
+   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% PsiB)
+   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% Q)
+   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% S)
+   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% cyclePsi)
 
    return
    end subroutine finalizeGPUMemory

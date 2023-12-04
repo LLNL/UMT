@@ -13,6 +13,7 @@
 #ifndef __TETON_CONDUIT_INTERFACE_HH__
 #define __TETON_CONDUIT_INTERFACE_HH__
 
+#include "TetonSources.hh"
 #include "conduit/conduit.hpp"
 #include <mpi.h>
 #include <string>
@@ -22,7 +23,7 @@ namespace Teton
 class Teton
 {
   public:
-   Teton() : areSourceProfilesSet(false)
+   Teton() : areSourceProfilesSet(false), mIsInitialized(false)
    {
    }
 
@@ -35,6 +36,16 @@ class Teton
    // This stores the needed mesh data needed to compute
    // forces on the vertices
    void storeMeshData();
+
+   // sanitizer_node must have `level`:
+   //   0 - no sanitizer (does nothing and returns
+   //   1 - quieter sanitizer
+   //   2 - noisy sanitizer
+   // Optional entries:
+   //   -`cat_list` (defaults to all inputs except \sigma_s)
+   //   -`kill_if_bad` (defaults to false)
+   // Returns the number of bad input categories
+   int checkInputSanity(const conduit::Node &sanitizer_node) const;
 
    void constructBoundaries();
 
@@ -104,8 +115,9 @@ class Teton
    // changes to the mesh nodes (from hydro)
    void updateMeshPositions();
 
-   // TODO: remove this once all host codes swich to getting the
+   // TODO: remove these once all host codes swich to getting the
    // force density fields from the conduit node
+   void getRadiationForceDensity1D(double *RadiationForceDensityX);
    void getRadiationForceDensity(double *RadiationForceDensityX,
                                  double *RadiationForceDensityY,
                                  double *RadiationForceDensityZ);
@@ -173,6 +185,7 @@ class Teton
 
   private:
    bool areSourceProfilesSet; // Whether or not setSourceProfiles has been called
+   bool mIsInitialized;       // Whether or not Teton::initialize has been called
 
    int mGTAorder; // quadrature order used for grey transport acceleration (def=2 for s2 acc)
    int mInternalComptonFlag;
@@ -180,6 +193,10 @@ class Teton
    // Cached MPI communicator details:
    MPI_Comm mCommunicator;
    int mRank;
+
+   // list of sources to be appended to right hand side before each time step
+   // these could be point sources, MMS, etc.
+   TetonSourceManager mSourceManager;
 
    // To compute radiation forces on the vertices, Teton
    // needs to hang on to this connectivity array
@@ -190,11 +207,6 @@ class Teton
    std::vector<int> mZoneToNCorners;
    std::vector<int> mZoneToCorners;
    std::vector<int> mCornerToZone;
-   // REMOVE //
-   std::vector<double> mCornerToVertexCoordX;
-   std::vector<double> mCornerToVertexCoordY;
-   std::vector<double> mCornerToVertexCoordZ;
-   // REMOVE //
 };
 } //end namespace Teton
 

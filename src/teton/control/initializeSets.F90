@@ -28,6 +28,7 @@
    use Material_mod
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    use ComptonControl_mod
+   use flags_mod
 #endif
    use RadIntensity_mod
    use MemoryAllocator_mod
@@ -125,7 +126,7 @@
 #endif
 
 !    Map Quadrature List
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad)
+     TOMP(target enter data map(to:Quad))
      TOMP_TARGET_ENTER_DATA_MAP_TO(Quad%SetDataPtr)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Quad%GrpSetPtr)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Quad%AngSetPtr)
@@ -138,7 +139,7 @@
 
 !    Map ZoneSets
 
-     TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet)
+     TOMP(target enter data map(to:ZSet))
      TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% AL)
      TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% AU)
      TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% nCornerSet)
@@ -169,56 +170,6 @@
      TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% dComptonDT)
      TOMP_TARGET_ENTER_DATA_MAP_TO(ZSet% comptonSe)
 
-
-     if (Options%getMPIUseDeviceAddresses()) then
-  !    Map Comm Sets
-       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr)
-
-       CommSetLoop1: do cSetID=1,nCommSets+nGTASets
-
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% NangBinList)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% AngleToBin)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% AngleOrder)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% AngleOrder0)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% RecvOrder0)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% RecvOrder)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% request)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% IncFlux)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% IncFluxOld)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% NetFlux)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% relError)
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% Converged)
-
-         TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommPtr)
-
-         ! Loop over communicators
-         do commID=1,Size%ncomm
-           do angle=1,Quad%CommSetPtr(cSetID)%NumAngles
-             if (Quad%CommSetPtr(cSetID)% CommPtr(commID, angle)%nSend > 0) then
-                 TOMP_TARGET_ENTER_DATA_MAP_ALLOC(Quad% CommSetPtr(cSetID)% CommPtr(commID, angle)% psibsend)
-!              TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommPtr(commID, angle)% ListSend)
-             endif
-
-             if (Quad%CommSetPtr(cSetID)% CommPtr(commID, angle)%nRecv > 0) then
-!             TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommPtr(commID, angle)% ListRecv)
-               TOMP_TARGET_ENTER_DATA_MAP_ALLOC(Quad% CommSetPtr(cSetID)% CommPtr(commID, angle)% psibrecv)
-             endif
-
-!           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommPtr(commID, angle)% irequest)
-           end do
-         end do
-
-!       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommFluxPtr)
-       ! Loops over communicator fluxes
-!         do commID=1,Size%ncomm
-!           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommFluxPtr(commID)% irequest)
-!           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommFluxPtr(commID)% IncFlux)
-!           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% CommSetPtr(cSetID)% CommFluxPtr(commID)% ExitFlux)
-!         enddo
-       enddo CommSetLoop1
-
-     endif ! Options%getMPIUseDeviceAddresses()
-
 !    Map Angle Sets
      do aSetID=1,nAngleSets+nGTASets
 
@@ -244,13 +195,15 @@
 
        do angle=1,Quad% AngSetPtr(aSetID)% numAngles
 
-         TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% BdyExitPtr(angle)% bdyList)
+         ! Unable to map this to UMPIRE device pool, causes a segfault.
+         TOMP(target enter data map(to: Quad% AngSetPtr(aSetID)% BdyExitPtr(angle)% bdyList))
 
          if ( .not. Quad% AngSetPtr(aSetID)% FinishingDirection(angle) ) then
-           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane)
-           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1)
-           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2)
-           TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone)
+           ! Unable to map these to UMPIRE device pool, causes a segfault or wrong answers.
+           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1))
+           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2))
+           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone))
          endif
 
        enddo
@@ -265,7 +218,7 @@
 
 !    Geometry
 
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Geom)
+     TOMP(target enter data map(to:Geom))
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% Volume)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% VolumeOld)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Geom% VolumeZone)
@@ -291,21 +244,24 @@
 
 !    Radiation Intensity
 
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Rad)
+     TOMP(target enter data map(to:Rad))
      TOMP_TARGET_ENTER_DATA_MAP_TO(Rad% PhiTotal)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Rad% radEnergy)
 
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamMean)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamSqdDGam)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamCubedDGam)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamD)
+     TOMP(target enter data map(to:Compton))
+
+     if (getComptonFlag(Compton) /= comptonType_None) then
+       TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamMean)
+       TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamSqdDGam)
+       TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamCubedDGam)
+       TOMP_TARGET_ENTER_DATA_MAP_TO(Compton% gamD)
+     endif
 #endif
 
 !    GTA
 
-     TOMP_TARGET_ENTER_DATA_MAP_TO(GTA)
+     TOMP(target enter data map(to:GTA))
      TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreySource)
      TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% GreyCorrection)
      TOMP_TARGET_ENTER_DATA_MAP_TO(GTA% Chi)
@@ -332,15 +288,11 @@
 
 !  Initialize communication handles for persistent communicators
 
-!  Moved from findexit routine.   This needs to be done after the comm data is
-!  mapped to the GPU, as these are set up with the device addresses of these buffers.
-!  -- Aaron
 !  QUESTION - We're passing in angle set IDs, but inside the initcomm the
-!  parameter is 'cSetID'.  Should this be a loop over comm sets or angle sets??
+!  parameter is 'cSetID'.  Should this be a loop over comm sets or angle sets?? -black27
    do aSetID=1,nAngleSets+nGTASets
      call initcomm(aSetID)
    enddo
-
 
 !  Begin Initialize Phase
 
@@ -384,11 +336,8 @@
 !$omp end parallel do
 
    if (Size%useGPU) then
-     do cSetID=1,nCommSets
-       CSet => getCommSetData(Quad, cSetID)
-       do setID=CSet% set1,CSet% set2
-         TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% AngleOrder)
-       enddo
+     do setID=1,nSets
+       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% AngleOrder)
      enddo
    endif
 
@@ -408,7 +357,7 @@
 !    Material
 
    if ( Size% useGPU ) then
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Mat)
+     TOMP(target enter data map(to:Mat))
      TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Tec)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% Tecn)
      TOMP_TARGET_ENTER_DATA_MAP_TO(Mat% denec)

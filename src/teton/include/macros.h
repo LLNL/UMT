@@ -85,4 +85,15 @@
 # define TETON_OPENMP_HAS_USE_DEVICE_ADDR
 #endif
 
+#ifdef TETON_ENABLE_OPENACC
+# define ATOMIC_UPDATE !$acc atomic update
+# define ATOMIC_END !$acc end atomic
+#elif defined(TETON_ENABLE_OPENMP_OFFLOAD)
+# define ATOMIC_UPDATE !$omp atomic update
+# define ATOMIC_END !$omp end atomic
+#else
+# define ATOMIC_UPDATE
+# define ATOMIC_END
+#endif
+
 #endif
