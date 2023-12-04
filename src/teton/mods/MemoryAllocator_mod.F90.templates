@@ -27,17 +27,15 @@
 !-----------------------------------------------------------------------------
 ! C_DOUBLE subroutines
 !-----------------------------------------------------------------------------
-   subroutine FTM_CAT4(allocate_host,real,c_double,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr, FTM_DIMS)
-
+   subroutine FTM_CAT4(allocate_host,real,c_double,FTM_RANK) (self, preferUmpire, parentName, varName, varPtr, FTM_DIMS)
       class(AllocatorType) :: self
-      logical, intent(in) :: pinnedMemory
+      logical, intent(in) :: preferUmpire
       character(len=*), intent(in) :: parentName
       character(len=*), intent(in) :: varName
       real(kind=c_double), pointer, contiguous, dimension( FTM_RANK_STRING ), intent(inout) :: varPtr
       integer :: FTM_DIMS
 
       integer, dimension( FTM_RANK ) :: theShape
-      integer(kind=c_size_t) :: numElements
 
       theShape = [ FTM_DIMS ]
 
@@ -45,42 +43,32 @@
       TETON_VERIFY(.NOT. associated(varPtr), "MemoryAllocator: Unable to allocate memory for "//parentName//"/"//varName//", pointer is already associated!")
       nullify(varPtr)
 
-      if (pinnedMemory) then
-         TETON_VERIFY(self%umpire_host_allocator_id /= -1, "MemoryAllocator: Unable to allocate in pinned memory, an Umpire host allocator was not provided.")
+      if (preferUmpire .AND. self%host_allocator_present) then
 #if defined(TETON_ENABLE_UMPIRE)
          call self%umpire_host_allocator%allocate(varPtr, theShape)
-#else
-         TETON_FATAL("MemoryAllocator: Unable to allocate in pinned memory, Teton was not compiled with Umpire support.")
 #endif
       else
-         allocate( varPtr( FTM_DIMS ) )
+         allocate( varPtr( FTM_DIMS ))
       endif
 
       TETON_VERIFY(associated(varPtr), "MemoryAllocator: Allocation failed for "//parentName//"/"//varName//".")
 
-      numElements = PRODUCT(theShape)
-
-      if (numElements > 0) then
-        ! Initialize contents to zero
-        varPtr = 0
-      endif
+      varPtr( FTM_RANK_STRING ) = 0.0
 
 !$omp end critical
 
       return
    end subroutine FTM_CAT4(allocate_host,real,c_double,FTM_RANK)
 !-----------------------------------------------------------------------------
-   subroutine FTM_CAT4(deallocate_host,real,c_double,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr)
-
+   subroutine FTM_CAT4(deallocate_host,real,c_double,FTM_RANK) (self, preferUmpire, parentName, varName, varPtr)
       class(AllocatorType) :: self
-      logical, intent(in) :: pinnedMemory
+      logical, intent(in) :: preferUmpire
       character(len=*), intent(in) :: parentName
       character(len=*), intent(in) :: varName
       real(kind=c_double), pointer, contiguous, dimension( FTM_RANK_STRING ), intent(inout) :: varPtr
 
 !$omp critical
-      if (pinnedMemory) then
-         TETON_VERIFY(self%umpire_host_allocator_id /= -1, "MemoryAllocator: Unable to deallocate from pinned memory, an Umpire host allocator was not provided.")
+      if (preferUmpire .AND. self%host_allocator_present) then
 #if defined(TETON_ENABLE_UMPIRE)
       call self%umpire_host_allocator%deallocate(varPtr)
 #endif
@@ -96,17 +84,15 @@
 !-----------------------------------------------------------------------------
 ! C_INT subroutines
 !-----------------------------------------------------------------------------
-   subroutine FTM_CAT4(allocate_host,integer,c_int,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr, FTM_DIMS)
-
+   subroutine FTM_CAT4(allocate_host,integer,c_int,FTM_RANK) (self, preferUmpire, parentName, varName, varPtr, FTM_DIMS)
       class(AllocatorType) :: self
-      logical, intent(in) :: pinnedMemory
+      logical, intent(in) :: preferUmpire
       character(len=*), intent(in) :: parentName
       character(len=*), intent(in) :: varName
       integer(kind=c_int), pointer, contiguous, dimension( FTM_RANK_STRING ), intent(inout) :: varPtr
       integer :: FTM_DIMS
 
       integer, dimension( FTM_RANK ) :: theShape
-      integer(kind=c_size_t) :: numElements
 
       theShape = [ FTM_DIMS ]
 
@@ -114,10 +100,9 @@
       TETON_VERIFY(.NOT. associated(varPtr), "MemoryAllocator: Unable to allocate memory for "//parentName//"/"//varName//", pointer is already associated!")
       nullify(varPtr)
 
-      if (pinnedMemory) then
-         TETON_VERIFY(self%umpire_host_allocator_id /= -1, "MemoryAllocator: Unable to allocate in pinned memory, an Umpire host allocator was not provided.")
+      if (preferUmpire .AND. self%host_allocator_present) then
 #if defined(TETON_ENABLE_UMPIRE)
-      call self%umpire_host_allocator%allocate(varPtr, theShape)
+         call self%umpire_host_allocator%allocate(varPtr, theShape)
 #else
          TETON_FATAL("MemoryAllocator: Unable to allocate in pinned memory, Teton was not compiled with Umpire support.")
 #endif
@@ -127,29 +112,23 @@
 
       TETON_VERIFY(associated(varPtr), "MemoryAllocator: Allocation failed for "//parentName//"/"//varName//".")
 
-      numElements = PRODUCT(theShape)
-
-      if (numElements > 0) then
-        ! Initialize contents to zero
-        varPtr = 0
-      endif
+      varPtr( FTM_RANK_STRING ) = 0
 
 !$omp end critical
 
       return
    end subroutine FTM_CAT4(allocate_host,integer,c_int,FTM_RANK)
 !-----------------------------------------------------------------------------
-   subroutine FTM_CAT4(deallocate_host,integer,c_int,FTM_RANK) (self, pinnedMemory, parentName, varName, varPtr)
+   subroutine FTM_CAT4(deallocate_host,integer,c_int,FTM_RANK) (self, preferUmpire, parentName, varName, varPtr)
 
       class(AllocatorType) :: self
-      logical, intent(in) :: pinnedMemory
+      logical, intent(in) :: preferUmpire
       character(len=*), intent(in) :: parentName
       character(len=*), intent(in) :: varName
       integer(kind=c_int), pointer, contiguous, dimension( FTM_RANK_STRING ), intent(inout) :: varPtr
 
 !$omp critical
-      if (pinnedMemory) then
-         TETON_VERIFY(self%umpire_host_allocator_id /= -1, "MemoryAllocator: Unable to deallocate from pinned memory, an Umpire host allocator was not provided.")
+      if (preferUmpire .AND. self%host_allocator_present) then
 #if defined(TETON_ENABLE_UMPIRE)
       call self%umpire_host_allocator%deallocate(varPtr)
 #endif

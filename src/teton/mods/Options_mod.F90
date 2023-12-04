@@ -14,7 +14,6 @@ module Options_mod
   type :: options_type
   contains
     procedure :: getNumOmpMaxThreads
-    procedure :: getMPIUseDeviceAddresses
     procedure :: initialize
     procedure :: check
     procedure :: getVerbose
@@ -58,9 +57,6 @@ contains
       call theDatastore%root%set_path("options/concurrency/omp_cpu_max_threads", omp_cpu_max_threads)
     endif
 
-    ! Default to not using device (GPU) addresses for MPI
-    call theDatastore%root%set_path("options/mpi/useDeviceAddresses", 0)
-
     ! Build information.
     ! These are populated in the cmake_defines_mod.F90
     call theDatastore%root%set_path("build_meta_data/cmake_install_prefix",install_prefix)
@@ -98,9 +94,6 @@ contains
     temp = theDatastore%root%has_path("options/concurrency/omp_cpu_max_threads")
     TETON_VERIFY(temp, "Options is missing concurrency/omp_cpu_max_threads.")
 
-    temp = theDatastore%root%has_path("options/mpi/useDeviceAddresses")
-    TETON_VERIFY(temp, "Options tree is missing mpi/useDeviceAddresses.")
-
     temp = theDatastore%root%has_path("options/verbose")
     TETON_VERIFY(temp, "Options tree is missing verbose.")
 
@@ -111,19 +104,6 @@ contains
   integer(kind=int32) function getNumOmpMaxThreads(self) result(numOmpMaxThreads)
     class(options_type) :: self
     numOmpMaxThreads = theDatastore%root%fetch_path_as_int32("options/concurrency/omp_cpu_max_threads")
-  end function
-
-  logical(kind=c_bool) function getMPIUseDeviceAddresses(self) result(useDeviceAddresses)
-    class(options_type) :: self
-    integer(kind=int32) :: useDeviceAddressesInt
-    useDeviceAddressesInt = theDataStore%root%fetch_path_as_int32("options/mpi/useDeviceAddresses")
-
-    if (useDeviceAddressesInt == 0) then
-      useDeviceAddresses = .FALSE.
-    else
-      useDeviceAddresses = .TRUE.
-    endif
-
   end function
 
 !***********************************************************************

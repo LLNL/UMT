@@ -227,7 +227,7 @@ contains
     endif
 
 ! Pinned memory improves CPU<->GPU memory transfer performance, so default to
-! using this if running GPU kernels.  Allocating data in pinned memory requires Umpire.
+! preferring to use Umpire for pinned memory allocations on CPU.
 #if defined(TETON_ENABLE_UMPIRE)
     self% usePinnedMemory       = self%useGPU
 #else
@@ -235,7 +235,7 @@ contains
 #endif
 
     if (self% useGPU .AND. .NOT. self% usePinnedMemory .AND. myRankInGroup == 0) then
-       print *, "TETON WARNING: Detected that GPU kernels are enabled, but UMPIRE pinned memory is not enabled.  This is not recommended and will result in severe performance degradation."
+       print *, "TETON WARNING: Detected that GPU kernels are enabled, but UMPIRE support is not enabled.  This may impact CPU<->GPU memory transfer performance."
     endif
 
     self% useCUDASolver         = useCUDASolver

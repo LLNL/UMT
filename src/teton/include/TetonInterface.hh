@@ -156,6 +156,22 @@ void teton_addprofile_internal(const int *NumTimes,
                                const double *Values,
                                int *TetonProfileID);
 
+// append source terms to the right hand side for the next time step
+//
+// the units of sourceValues are such that sourceValues[angle][zone][group]*c*dt has the same units as psi
+//   group varies fastest, angle varies slowest.
+//
+// if numSourceAngles == 1, then all source values will be divided by wtiso (4pi)
+// if numSourceAngles == numPolarAngles, then all source values will be divided by half of wtiso (2pi)
+//
+// Future TODO: variants of this function for isotropic sources?
+void teton_appendsourcetopsi(
+   const int *numSourceZones,   // scalar
+   const int *numSourceAngles,  // scalar, must be 1, # of polar angles, or # of angles
+   const int *numSourceGroups,  // scalar, must match # of groups in Teton
+   const int *sourceZoneList,   // array of length numSourceZone
+   const double *sourceValues); // numAngles x numSourceZones x numGroups, same units as \psi/c/dt
+
 //
 //  teton_resetprofile_internal
 //

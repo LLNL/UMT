@@ -58,6 +58,7 @@ if (ENABLE_CALIPER)
 endif()
 
 if (ENABLE_BLUEPRINT_INTERFACE)
+  target_sources( teton INTERFACE include/TetonSources.hh )
   target_sources( teton INTERFACE include/TetonBlueprint.hh )
   target_sources( teton INTERFACE include/TetonSurfaceTallies.hh )
   target_sources( teton INTERFACE include/TetonConduitInterface.hh )
@@ -95,6 +96,7 @@ if (ENABLE_BLUEPRINT_INTERFACE)
    install( FILES "include/TetonConduitInterface.hh" DESTINATION include )
    install( FILES "include/TetonBlueprint.hh" DESTINATION include )
    install( FILES "include/TetonSurfaceTallies.hh" DESTINATION include )
+   install( FILES "include/TetonSources.hh" DESTINATION include )
 endif()
 
 install( FILES "${PROJECT_BINARY_DIR}/teton/include/TetonVersion.hh" DESTINATION include )
@@ -120,7 +122,6 @@ if(ENABLE_TESTS)
   endif()
 
   add_executable( test_driver
-                  interface/TetonBlueprint.cc
                   driver/test_driver.cc )
 
   if (ENABLE_FIND_MPI)
@@ -140,7 +141,7 @@ if(ENABLE_TESTS)
 
   # Generally preferred to link with the Fortran compiler.
   # Intel has trouble with this, fallback on using the C++ compiler to link.
-  if ( NOT CMAKE_Fortran_COMPILER_ID STREQUAL Intel AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL IntelLLVM AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL NVHPC)
+  if ( NOT CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL IntelLLVM)
     set_target_properties(test_driver PROPERTIES LINKER_LANGUAGE Fortran)
   endif ()
 

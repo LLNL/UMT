@@ -7,7 +7,7 @@ set(PROJECT_NAME teton)
 # Update version information in this file.
 
 set(TETON_VERSION_MAJOR 5)
-set(TETON_VERSION_MINOR 1)
+set(TETON_VERSION_MINOR 3)
 set(TETON_VERSION_PATCH 0)
 include (cmake/Version.cmake)
 

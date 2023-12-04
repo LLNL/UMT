@@ -3,6 +3,7 @@
 module MemoryAllocator_mod
 
    use iso_c_binding, only : c_int, c_double, c_bool, C_SIZE_T, c_f_pointer, c_ptr, c_loc
+   use Size_mod, only : Size
 #if defined(TETON_ENABLE_UMPIRE)
    use umpire_mod
 #endif
@@ -21,7 +22,8 @@ module MemoryAllocator_mod
 #endif
       integer, public :: umpire_host_allocator_id = -1
       integer, public :: umpire_device_allocator_id = -1
-      logical, public :: use_internal_host_allocator = .FALSE.
+      logical, public :: host_allocator_present = .FALSE.
+      logical, public :: device_allocator_present = .FALSE.
 
    contains
 
@@ -59,8 +61,6 @@ module MemoryAllocator_mod
 contains
 
    subroutine AllocatorType_construct(self, umpire_host_allocator_id, umpire_device_allocator_id)
-      use Size_mod, only: Size
-
       class(AllocatorType), intent(inout) :: self
       integer :: umpire_host_allocator_id
       integer :: umpire_device_allocator_id
@@ -68,39 +68,18 @@ contains
 #if defined(TETON_ENABLE_UMPIRE)
       type(UmpireResourceManager) :: umpire_resource_manager
 
-      ! These are used if teton needs to create its own host pinned pool allocator.
-      integer(kind=C_SIZE_T) :: initial_pool_size ! Initial size in bytes for a pool allocator
-      integer(kind=C_SIZE_T) :: pool_growth_size ! Size of additional blocks to allocate, if pool needs to grow.
-
-      initial_pool_size = 512*1024*1024 ! 512MB is default for Umpire
-      pool_growth_size = 1*1024*1024 ! 1MB is default for Umpire
-
       umpire_resource_manager = umpire_resource_manager%get_instance()
 
       if (umpire_host_allocator_id >= 0) then
          self%umpire_host_allocator = umpire_resource_manager%get_allocator_by_id(umpire_host_allocator_id)
          self%umpire_host_allocator_id = umpire_host_allocator_id
-      else
-! If Teton is using OpenMP target offload kernel or CUDA kernels, it requires an
-! umpire allocator to allocate memory in page-locked ( pinned ) memory.  If one
-! was not provided then Teton will create its own.
-!
-! We should check the Size%useGPU variable to see if we are executing
-! kernels on the GPU.  However, the Size module is not constructed until _after_
-! the memory allocator module.  This needs to be refactored.  Until then, we'll
-! default to constructing an allocator if Teton was compiled with gpu kernel
-! support.
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-         self%use_internal_host_allocator = .TRUE.
-         self%umpire_host_allocator = umpire_resource_manager%get_allocator_by_name("PINNED")
-         self%umpire_host_allocator = umpire_resource_manager%make_allocator_quick_pool("POOL", self%umpire_host_allocator, initial_pool_size, pool_growth_size)
-         self%umpire_host_allocator_id = self%umpire_host_allocator%get_id()
-#endif
+         self%host_allocator_present = .TRUE.
       endif
 
       if (umpire_device_allocator_id >= 0) then
          self%umpire_device_allocator = umpire_resource_manager%get_allocator_by_id(umpire_device_allocator_id)
          self%umpire_device_allocator_id = umpire_device_allocator_id
+         self%device_allocator_present = .TRUE.
       endif
 #endif
 
@@ -112,13 +91,6 @@ contains
    subroutine AllocatorType_destruct(self)
 
       class(AllocatorType), intent(inout) :: self
-
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-      !if (use_internal_host_allocator) then
-      !  TODO Ask Umpire how to teardown allocators.
-      !  Need to tear down the pinned pool allocator.
-      !endif
-#endif
 
    end subroutine AllocatorType_destruct
 

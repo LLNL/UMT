@@ -47,11 +47,6 @@
    integer                          :: sharedID
    integer                          :: nShared
 
-   logical(kind=c_bool)             :: useDeviceAwareMPI
-
-!  Constants
-   useDeviceAwareMPI = Options%getMPIUseDeviceAddresses() .AND. Size%useGPU
-
    nShared =  getNumberOfShared(RadBoundary)
    CSet    => getCommSetData(Quad, cSetID)
 
@@ -82,10 +77,6 @@
          enddo
 
 !  Start send for this communicator (odd numbered handle)
-
-         if (useDeviceAwareMPI) then
-           TOMP(target update to(CommT%psibsend))
-         endif
          call MPIStart(CommT% irequest(1))
 
        endif
@@ -103,10 +94,6 @@
          enddo
 
 !  Start send for this communicator (odd numbered handle)
-
-         if (useDeviceAwareMPI) then
-           TOMP(target update to(CommT%psibsend))
-         endif
          call MPIStart(CommT% irequest(1))
 
        endif
