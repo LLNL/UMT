@@ -1950,9 +1950,9 @@ void TetonDriver::writeEndSummary(double end_time,
 
          outfile.close();
 
-         double relative_energy_check = energy_check / (energy_radiation + 1.0e-50);
+         double relative_energy_check = std::abs(energy_check / (energy_radiation + 1.0e-50));
          std::cerr << "VERIFICATION STEP:  Unaccounted for residual energy, relative to total radiation energy, is " << relative_energy_check << "." << std::endl;
-         if (abs(relative_energy_check) <= energy_check_tolerance)
+         if (relative_energy_check <= energy_check_tolerance)
          {
             std::cerr << "VERIFICATION PASSED: Residual energy is within tolerance of +/-" << energy_check_tolerance << "." << std::endl;
          }
