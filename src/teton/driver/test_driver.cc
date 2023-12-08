@@ -1950,18 +1950,19 @@ void TetonDriver::writeEndSummary(double end_time,
 
          outfile.close();
 
-         if (std::abs(energy_check) / (std::abs(energy_radiation) + 1.0e-50) <= energy_check_tolerance)
+         double relative_energy_check = energy_check / (energy_radiation + 1.0e-50);
+         std::cerr << "VERIFICATION STEP:  Unaccounted for residual energy, relative to total radiation energy, is " << relative_energy_check << "." << std::endl;
+         if (abs(relative_energy_check) <= energy_check_tolerance)
          {
-            std::cout << "RESULT CHECK PASSED: Energy check " << energy_check << " within tolerance of +/- "
-                      << energy_check_tolerance << "; check '" << filePath << "' for tally details\n"
-                      << std::endl;
+            std::cerr << "VERIFICATION PASSED: Residual energy is within tolerance of +/-" << energy_check_tolerance << "." << std::endl;
          }
          else
          {
-            std::cerr << "RESULT CHECK FAILED: Energy check " << energy_check << " exceeded tolerance of +/- "
-                      << energy_check_tolerance << "; check '" << filePath << "' for tally details\n"
-                      << std::endl;
+            std::cerr << "VERIFICATION FAILED: Residual energy exceeds tolerance of +/-" << energy_check_tolerance << "." << std::endl;
 
+            std::cerr << "Residual energy ( absolute ): " << energy_check << std::endl;
+            std::cerr << "Residual energy ( relative ): " << relative_energy_check << std::endl;
+            std::cerr << "Residual energy tolerance ( relative ): " << energy_check_tolerance << std::endl;
             std::cerr << "Energy radiation: " << energy_radiation << std::endl;
             std::cerr << "Power incident: " << power_incident << std::endl;
             std::cerr << "Power escaped: " << power_escape << std::endl;
