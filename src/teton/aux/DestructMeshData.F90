@@ -129,15 +129,11 @@
 
 !  Communication Sets
 
-   if (Size% ndim >= 2) then
+   do setID=1,nCommSets+nGTASets
+     CSet  => getCommSetData(Quad, setID)
 
-     do setID=1,nCommSets+nGTASets
-       CSet  => getCommSetData(Quad, setID)
-
-       call destruct(CSet)
-     enddo
-
-   endif
+     call destruct(CSet)
+   enddo
 
 !  Deallocate Quadrature data (One for Sn, One for GTA)
 

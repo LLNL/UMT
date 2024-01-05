@@ -1229,6 +1229,21 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
    meshNode["arrays/zone_to_corners"].set(zone_to_corners, ncorners);
 }
 
+/**
+ @brief This method creates a face_attribute field for the main_face topology
+        with values that come from boundary_attribute where a face matches a
+        boundary face and 0 for other faces.
+
+        The boundary topology is iterated and for each face, we compute a hash
+        of the ids and map them to the id of the boundary face. The face topology
+        is then iterated and a hash is made for each of its faces. We look up that
+        hash to try and map a face in the boundary topology. If we find a matching
+        hash then its id is used to copy from the boundary_attributes to the
+        face_attribute field.
+
+ @param meshNode The Conduit node that contaisn the meshes.
+ @param rank The MPI rank.
+ */
 void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int rank)
 {
    CALI_CXX_MARK_FUNCTION;
@@ -1453,6 +1468,23 @@ void TetonBlueprint::ProcessSurfaceEdits(int rank)
    }
 }
 
+/**
+ @brief Compute data that lives on the face and associates a face with boundaries,
+        if applicable. If the face is not associated with a boundary then it is a
+        face that is shared with another domain, figure out which using the face
+        adjset. The face adjset is an element-associated adjset that contains a list
+        of face ids that touch other domains.
+
+ @param boundaries A map of boundaries to faces where the keys in the map are values
+                   present in the fields/boundary_attribute/values field and the
+                   values are vectors of face ids in the main_faces topology that
+                   use those boundary numbers.
+ @param[out] nbelem_corner_faces The number of corner faces that touch boundary faces.
+ @param[out] boundaries_types Counts of the various boundary types (how many faces of each)
+ @param[out] boundary_conditions An encoding of boundary condition ids, number of corner faces.
+ @param[out] face_to_bcid A "field" for the face mesh that indicates for each face
+                          the boundary condition id for that face.
+ */
 void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
                                     int &nbelem_corner_faces,
                                     std::vector<int> &boundaries_types,
@@ -1733,24 +1765,24 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
 //     BCTypeInt = {type1, type2}, where 31 <= type1 <= 37 is Teton's boundary ID type mapping,
 //     where type1 corresponds to the first boundary and type2 corresponds to the second boundary.
 //     Here BCCornerFaces = {1,1} since always 1 corner per boundary condition (is this ever not true?).
-//     BCNeighborID = {rank1, rank2}, where rank1 corresponds to the corresponding rank of a shared boundary. 
-//     If not a shared boundary, then rank1 = -1 (same with rank2). 
+//     BCNeighborID = {rank1, rank2}, where rank1 corresponds to the corresponding rank of a shared boundary.
+//     If not a shared boundary, then rank1 = -1 (same with rank2).
 //     teton_addboundary(&numBCTotal, &BCTypeInt[0], &BCCornerFaces[0], &BCNeighborID[0]);
 // Also need
 //         teton_setzone1d(&zoneID, &numBCTotal, &BCZoneID[0]);
-// Here numBCTotal = 2 (is this ever not true)? and 
+// Here numBCTotal = 2 (is this ever not true)? and
 //    Teton expects two boundary conditions, one for zone1D == 1 and one for zoneID == nzones
 //    Here BCZoneID[0] == 1, BCZoneID[1] == nzones or BCZoneID[0] == nzones and BCZoneID[1] == 1
 
-void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to vertex mapping
-                                      int *boundary_attributes, // boundary to mesh attribute mapping
+void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity,         // boundary to vertex mapping
+                                      int *boundary_attributes,           // boundary to mesh attribute mapping
                                       std::vector<int> &boundaries_types, // boundary to Teton boundary type mapping
                                       int rank)
 {
    // need to fill these out and store them in mMeshNode
    std::vector<int> bc_type_int(2);
    std::vector<int> bc_corner_faces(2);
-   std::vector<int> bc_nghbr_id(2); 
+   std::vector<int> bc_nghbr_id(2);
    std::vector<int> bc_zone_id(2);
 
    // TODO: check if there is ever a case where this doesn't hold
@@ -1761,11 +1793,14 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to
    // map boundary ID to corresponding Teton boundary type (c.g. 34 for a vaccuum boundary condition)
    if (mParametersNode.has_path("boundary_conditions/id_to_type_map"))
    {
+      conduit::int_accessor boundary_ids = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/ids")
+                                              .value();
+      conduit::int_accessor teton_bc_types = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/types")
+                                                .value();
 
-      conduit::int_accessor boundary_ids = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/ids").value();
-      conduit::int_accessor teton_bc_types = mParametersNode.fetch_existing("boundary_conditions/id_to_type_map/types").value();
-
-      TETON_VERIFY_C(rank, boundary_ids.number_of_elements() == teton_bc_types.number_of_elements(), "boundary ids list length != boundary types list length");
+      TETON_VERIFY_C(rank,
+                     boundary_ids.number_of_elements() == teton_bc_types.number_of_elements(),
+                     "boundary ids list length != boundary types list length");
 
       for (int i = 0; i < boundary_ids.number_of_elements(); ++i)
       {
@@ -1784,9 +1819,9 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to
    //for (int face = 0; face < nfaces; ++face)
    //   elem_to_bcid[face] = 0;
 
-   for (int j = 0; j < 2; ++j) 
+   for (int j = 0; j < 2; ++j)
    {
-      int bc_id = boundary_attributes[j]; 
+      int bc_id = boundary_attributes[j];
       {
          int bc_type = boundary_id_to_type.at(bc_id);
          number_boundary_types[bc_type] += 1;
@@ -1813,41 +1848,41 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to
    int nreflec, nvacuum; //, nsource;
    nreflec = boundaries_types[0];
    nvacuum = boundaries_types[1];
-//   nsource = boundaries_types[2];
-//   We don't appear to use nsource for anything -- black27
+   //   nsource = boundaries_types[2];
+   //   We don't appear to use nsource for anything -- black27
    std::vector<int> bc_ids_ordered(num_bndrs);
    int jreflect = 0, jvaccuum = 0, jsource = 0;
-   for (int j = 0; j < 2; ++j) 
+   for (int j = 0; j < 2; ++j)
    {
       int bc_id = boundary_attributes[j];
       int bc_type = boundary_id_to_type.at(bc_id);
       if (bc_type == BC_Type::bc_reflecting) // reflecting
       {
          bc_ids_ordered[jreflect] = bc_id;
-         bc_type_int[jreflect] = bc_type; 
+         bc_type_int[jreflect] = bc_type;
          int bc_vertex_id = boundary_connectivity[j];
-         if (bc_vertex_id == 0) 
+         if (bc_vertex_id == 0)
          {
-             bc_zone_id[jreflect] = 1; // vertexID 0 corresponds to zoneID = 1 in Teton
+            bc_zone_id[jreflect] = 1; // vertexID 0 corresponds to zoneID = 1 in Teton
          }
          else
          {
-             bc_zone_id[jreflect] = bc_vertex_id; // vertexID nzones corresponds to zoneID = nzones in Teton
+            bc_zone_id[jreflect] = bc_vertex_id; // vertexID nzones corresponds to zoneID = nzones in Teton
          }
       }
       else if (bc_type == BC_Type::bc_vaccuum) // vaccuum
       {
          int index = jvaccuum + nreflec;
          bc_ids_ordered[index] = bc_id;
-         bc_type_int[index] = bc_type; 
+         bc_type_int[index] = bc_type;
          int bc_vertex_id = boundary_connectivity[j];
-         if (bc_vertex_id == 0) 
+         if (bc_vertex_id == 0)
          {
-             bc_zone_id[index] = 1; // vertexID 0 corresponds to zoneID = 1 in Teton
+            bc_zone_id[index] = 1; // vertexID 0 corresponds to zoneID = 1 in Teton
          }
          else
          {
-             bc_zone_id[index] = bc_vertex_id; // vertexID nzones corresponds to zoneID = nzones in Teton
+            bc_zone_id[index] = bc_vertex_id; // vertexID nzones corresponds to zoneID = nzones in Teton
          }
          jvaccuum += 1;
       }
@@ -1855,15 +1890,15 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to
       {
          int index = jsource + nreflec + nvacuum;
          bc_ids_ordered[index] = bc_id;
-         bc_type_int[index] = bc_type; 
+         bc_type_int[index] = bc_type;
          int bc_vertex_id = boundary_connectivity[j];
-         if (bc_vertex_id == 0) 
+         if (bc_vertex_id == 0)
          {
-             bc_zone_id[index] = 1; // vertexID 0 corresponds to zoneID = 1 in Teton
+            bc_zone_id[index] = 1; // vertexID 0 corresponds to zoneID = 1 in Teton
          }
          else
          {
-             bc_zone_id[index] = bc_vertex_id; // vertexID nzones corresponds to zoneID = nzones in Teton
+            bc_zone_id[index] = bc_vertex_id; // vertexID nzones corresponds to zoneID = nzones in Teton
          }
          jsource += 1;
       }
@@ -1887,8 +1922,8 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to
 
          //int *szones_ptr = group["values"].value();
          const conduit::int32 *szones_ptr = group["values"].as_int32_ptr();
-         bc_type_int[index] = BC_Type::bc_shared; // shared boundary 
-         bc_zone_id[index] = szones_ptr[0]; // only one shared zone per face-neighbor in 1d 
+         bc_type_int[index] = BC_Type::bc_shared; // shared boundary
+         bc_zone_id[index] = szones_ptr[0];       // only one shared zone per face-neighbor in 1d
          bc_nghbr_id[index] = nbr_rank;
          bc_corner_faces[index] = 1;
       }
@@ -1905,34 +1940,32 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity, // boundary to
    mParametersNode["boundary_conditions/num_total"] = num_bndrs;
 
    std::vector<int> elem_ids(2);
-   int nelem = mMeshNode["topologies/mesh/elements/dims/i"].value(); 
+   int nelem = mMeshNode["topologies/mesh/elements/dims/i"].value();
    mParametersNode["boundary_conditions/type"].set(bc_type_int.data(), 2);
    mParametersNode["boundary_conditions/zone_ids"].set(bc_zone_id.data(), 2);
    mParametersNode["boundary_conditions/neighbor_ids"].set(bc_nghbr_id.data(), 2);
    mParametersNode["boundary_conditions/bc_ncorner_faces"].set(bc_corner_faces.data(), 2);
-
 }
-
 
 void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
 {
    const conduit::Node &coords = mMeshNode["coordsets/coords/values"];
    if (!coords.has_path("y") && !coords.has_path("z"))
    {
-      int nelem = mMeshNode["topologies/mesh/elements/dims/i"].value(); 
+      int nelem = mMeshNode["topologies/mesh/elements/dims/i"].value();
       // TODO Move to mesh conduit Node
       //  TODO: fix rank
-      int rank = 0; 
+      int rank = 0;
       mParametersNode["size/ndim"] = 1;
       mParametersNode["size/rank"] = rank;
       mParametersNode["size/nzones"] = nelem;
-      mParametersNode["size/nverts"] = 2*nelem;
-      mParametersNode["size/ncornr"] = 2*nelem;
-      mParametersNode["size/nsides"] = 2*nelem;
+      mParametersNode["size/nverts"] = 2 * nelem;
+      mParametersNode["size/ncornr"] = 2 * nelem;
+      mParametersNode["size/nsides"] = 2 * nelem;
       mParametersNode["size/nbelem"] = 2;
       mParametersNode["size/maxcf"] = 2;
       mParametersNode["size/maxCorner"] = 2;
-     // TODO: enable slab geometry option as well
+      // TODO: enable slab geometry option as well
       mParametersNode["size/geomType"] = 42; //spherical
       //mParametersNode["size/geomType"] = 41; //slab
       int num_face_nbrs_teton = mParametersNode["boundary_conditions/num_comm"].value();
@@ -1974,6 +2007,7 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
       // for each face
       CreateConduitFaceAttributes(mMeshNode, rank);
 
+      // Populate boundaries, a list of face ids for each boundary condition id.
       const conduit::int32 *face_to_attr = mMeshNode["fields/face_attribute/values"].as_int32_ptr();
 
       try
@@ -1988,7 +2022,6 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
                int bdnry_cond_id = face_to_attr[face];
                if (boundaries.find(bdnry_cond_id) == boundaries.end())
                {
-                  //int newface = face_to_newface_mapping[face];
                   boundaries[bdnry_cond_id] = {face};
                }
                else
@@ -2025,7 +2058,6 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
    if (mMeshNode.has_path("adjsets/main_face"))
    {
       const conduit::Node &face_adjset = mMeshNode["adjsets/main_face"];
-      //const conduit::Node &corner_adjset = mMeshNode["adjsets/main_corner"];
       conduit::NodeConstIterator groups_it = face_adjset["groups"].children();
       while (groups_it.has_next())
       {
@@ -2171,5 +2203,3 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
 
    verifyInput(mMeshNode, comm);
 }
-
-

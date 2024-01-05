@@ -39,7 +39,8 @@ UMT can run different test problems, depending on how it was configured and buil
 Blueprint test problem
 ------------------------
 UMT can dynamically generate an unstructured 2D or 3D mesh when built against Conduit
-version 0.8.9 or later. This mode is selected using the -B command line argument.
+version 0.8.9 or later, or their develop branch as of 1/1/2024 or later.  This mode is
+selected using the -B command line argument.
 Each MPI rank in UMT will construct a mesh domain by repeating a Blueprint tile topology
 into a larger, repeated pattern arranged as a square tiling of the tile topology.
 By default, UMT will use the tile pattern that is built into Conduit, although other

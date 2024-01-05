@@ -32,16 +32,28 @@
 
    if (Size% ndim == 2) then
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% PsiM)
+     UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% PsiM)
+     TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% PsiM))
 
    endif
 
-   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% Psi)
-   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% Psi1)
-   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% PsiB)
-   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% Q)
-   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% S)
-   TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% cyclePsi)
+   UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% Psi)
+   TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% Psi))
+
+   UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% Psi1)
+   TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% Psi1))
+
+   UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% PsiB)
+   TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% PsiB))
+
+   UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% Q)
+   TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% Q))
+
+   UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% S)
+   TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% S))
+
+   UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% cyclePsi)
+   TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% cyclePsi))
 
    return
    end subroutine finalizeGPUMemory

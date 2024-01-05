@@ -65,23 +65,16 @@
         ! Allocate device memory via umpire allocator
 
 !$omp critical
-#if defined(TETON_ENABLE_UMPIRE)
         d_ptr = Allocator%umpire_device_allocator%allocate_pointer(num_bytes)
-#endif
 !$omp end critical
         ! Verify that pointer now points to something.
         TETON_VERIFY( C_ASSOCIATED(d_ptr), "Failed to allocate " // label // " on device.")
 
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
         ! Associate host and device c pointers.
         err_code = omp_target_associate_ptr( C_LOC(h_ptr), d_ptr, num_bytes, offset, omp_get_default_device() )
-#endif
 
         TETON_VERIFY( err_code == 0, "Failed to associate host variable " // label // " with device pointer.")
-
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
         TETON_VERIFY( omp_target_is_present(C_LOC(h_ptr), omp_get_default_device()) /= 0, "Runtime failed to add " // label // " in host<->device table.") 
-#endif
       endif
 
    end subroutine FTM_CAT4(target_alloc_and_pair_ptrs,FTM_TYPE,FTM_KIND,FTM_RANK)
@@ -114,24 +107,18 @@
         TETON_VERIFY( c_associated(d_ptr), "Failed to retrieve device pointer for " // label )
 
       ! Disassociate the pointer
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
 !  Workaround for El Capitan EA platform.  Otherwise, the runtime complains about an invalid reference count in the pointer table.
 !  (Kostas has put in a bug ticket to compiler team already)
         TOMP(target exit data map(release:h_ptr))
 
         err_code = omp_target_disassociate_ptr( C_LOC(h_ptr), omp_get_default_device() )
-#endif
 
         TETON_VERIFY( err_code == 0, "Failed to disassociate host variable " // label )
 
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
         TETON_VERIFY( omp_target_is_present(C_LOC(h_ptr), omp_get_default_device()) == 0, "Runtime failed to remove variable " // label // " from host<->device table.") 
-#endif
 
 !$omp critical 
-#if defined(TETON_ENABLE_UMPIRE)
         call Allocator%umpire_device_allocator%deallocate_pointer(d_ptr)
-#endif
 !$omp end critical
 
       endif

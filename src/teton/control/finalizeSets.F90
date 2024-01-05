@@ -91,55 +91,137 @@
 
      ! Unmap zone sets
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% nCornerSet)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% nCornerBatch)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% offset)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% cornerList)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% cornerMap)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% zoneList)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% cornerConverged)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% Te)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% TeOld)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% delta)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% sumT)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% netRate)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% dTCompton)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% B)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% dBdT)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% Snu0)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% dSnu0dT)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% AD)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% z)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% fk2)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% nI)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% nS)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% ex)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% expPH)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% comptonDeltaEr)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% dComptonDT)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% comptonSe)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% AU)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(ZSet% AL)
+     UMPIRE_DEVICE_POOL_FREE(ZSet% nCornerSet)
+     TOMP(target exit data map(always,release:ZSet% nCornerSet))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% nCornerBatch)
+     TOMP(target exit data map(always,release:ZSet% nCornerBatch))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% offset)
+     TOMP(target exit data map(always,release:ZSet% offset))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% cornerList)
+     TOMP(target exit data map(always,release:ZSet% cornerList))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% cornerMap)
+     TOMP(target exit data map(always,release:ZSet% cornerMap))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% zoneList)
+     TOMP(target exit data map(always,release:ZSet% zoneList))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% cornerConverged)
+     TOMP(target exit data map(always,release:ZSet% cornerConverged))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% Te)
+     TOMP(target exit data map(always,release:ZSet% Te))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% TeOld)
+     TOMP(target exit data map(always,release:ZSet% TeOld))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% delta)
+     TOMP(target exit data map(always,release:ZSet% delta))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% sumT)
+     TOMP(target exit data map(always,release:ZSet% sumT))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% netRate)
+     TOMP(target exit data map(always,release:ZSet% netRate))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% dTCompton)
+     TOMP(target exit data map(always,release:ZSet% dTCompton))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% B)
+     TOMP(target exit data map(always,release:ZSet% B))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% dBdT)
+     TOMP(target exit data map(always,release:ZSet% dBdT))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% Snu0)
+     TOMP(target exit data map(always,release:ZSet% Snu0))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% dSnu0dT)
+     TOMP(target exit data map(always,release:ZSet% dSnu0dT))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% AD)
+     TOMP(target exit data map(always,release:ZSet% AD))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% z)
+     TOMP(target exit data map(always,release:ZSet% z))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% fk2)
+     TOMP(target exit data map(always,release:ZSet% fk2))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% nI)
+     TOMP(target exit data map(always,release:ZSet% nI))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% nS)
+     TOMP(target exit data map(always,release:ZSet% nS))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% ex)
+     TOMP(target exit data map(always,release:ZSet% ex))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% expPH)
+     TOMP(target exit data map(always,release:ZSet% expPH))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% comptonDeltaEr)
+     TOMP(target exit data map(always,release:ZSet% comptonDeltaEr))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% dComptonDT)
+     TOMP(target exit data map(always,release:ZSet% dComptonDT))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% comptonSe)
+     TOMP(target exit data map(always,release:ZSet% comptonSe))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% AU)
+     TOMP(target exit data map(always,release:ZSet% AU))
+
+     UMPIRE_DEVICE_POOL_FREE(ZSet% AL)
+     TOMP(target exit data map(always,release:ZSet% AL))
+
      TOMP(target exit data map(release: ZSet))
 
      ! Unmap group sets
      do gSetID=1,nGroupSets
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% GrpSetPtr(gSetID)% STotal)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% GrpSetPtr(gSetID)% Sigt)
+       UMPIRE_DEVICE_POOL_FREE(Quad% GrpSetPtr(gSetID)% STotal)
+       TOMP(target exit data map(always,release:Quad% GrpSetPtr(gSetID)% STotal))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% GrpSetPtr(gSetID)% Sigt)
+       TOMP(target exit data map(always,release:Quad% GrpSetPtr(gSetID)% Sigt))
+
      enddo
 
      do aSetID=1,nAngleSets+nGTASets
 
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% nextZ)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% nextC)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% StartingDirection)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% FinishingDirection)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% Omega)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% Weight)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% numCycles)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% cycleOffSet)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% cycleList)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% nHyperPlanes)
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% nextZ)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% nextZ))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% nextC)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% nextC))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% StartingDirection)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% StartingDirection))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% FinishingDirection)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% FinishingDirection))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% Omega)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% Omega))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% Weight)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% Weight))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% numCycles)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% numCycles))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% cycleOffSet)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% cycleOffSet))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% cycleList)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% cycleList))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% nHyperPlanes)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% nHyperPlanes))
+
 
        ! This loop unmaps internal components of HypPlanePtr and BdyExitPtr.
        ! Delay unmapping these until this loop is done.
@@ -156,21 +238,36 @@
          endif
        enddo
 
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% HypPlanePtr)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% BdyExitPtr)
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% HypPlanePtr)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% HypPlanePtr))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% BdyExitPtr)
+       TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% BdyExitPtr))
+
 
        if ( aSetID <= nAngleSets ) then
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% AfpNorm)
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% AezNorm)
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% ANormSum)
+         UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% AfpNorm)
+         TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% AfpNorm))
+
+         UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% AezNorm)
+         TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% AezNorm))
+
+         UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% ANormSum)
+         TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% ANormSum))
+
        endif
 
 
        if (Size% ndim == 2) then
 
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% angDerivFac)
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% quadTauW1)
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% AngSetPtr(aSetID)% quadTauW2)
+         UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% angDerivFac)
+         TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% angDerivFac))
+
+         UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% quadTauW1)
+         TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% quadTauW1))
+
+         UMPIRE_DEVICE_POOL_FREE(Quad% AngSetPtr(aSetID)% quadTauW2)
+         TOMP(target exit data map(always,release:Quad% AngSetPtr(aSetID)% quadTauW2))
 
        endif
 
@@ -178,101 +275,223 @@
 
 !    Geometry
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% Volume)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% VolumeOld)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% VolumeZone)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% cOffSet)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% numCorner)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% CToZone)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% corner1)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% corner2)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% zone1)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% zone2)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% cEZ)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% cFP)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% A_ez)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% A_fp)
+     UMPIRE_DEVICE_POOL_FREE(Geom% Volume)
+     TOMP(target exit data map(always,release:Geom% Volume))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% VolumeOld)
+     TOMP(target exit data map(always,release:Geom% VolumeOld))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% VolumeZone)
+     TOMP(target exit data map(always,release:Geom% VolumeZone))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% cOffSet)
+     TOMP(target exit data map(always,release:Geom% cOffSet))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% numCorner)
+     TOMP(target exit data map(always,release:Geom% numCorner))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% CToZone)
+     TOMP(target exit data map(always,release:Geom% CToZone))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% corner1)
+     TOMP(target exit data map(always,release:Geom% corner1))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% corner2)
+     TOMP(target exit data map(always,release:Geom% corner2))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% zone1)
+     TOMP(target exit data map(always,release:Geom% zone1))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% zone2)
+     TOMP(target exit data map(always,release:Geom% zone2))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% cEZ)
+     TOMP(target exit data map(always,release:Geom% cEZ))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% cFP)
+     TOMP(target exit data map(always,release:Geom% cFP))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% A_ez)
+     TOMP(target exit data map(always,release:Geom% A_ez))
+
+     UMPIRE_DEVICE_POOL_FREE(Geom% A_fp)
+     TOMP(target exit data map(always,release:Geom% A_fp))
+
 
      if (Size% ndim == 2) then
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% Area)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% RadiusEZ)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% RadiusFP)
+       UMPIRE_DEVICE_POOL_FREE(Geom% Area)
+       TOMP(target exit data map(always,release:Geom% Area))
+
+       UMPIRE_DEVICE_POOL_FREE(Geom% RadiusEZ)
+       TOMP(target exit data map(always,release:Geom% RadiusEZ))
+
+       UMPIRE_DEVICE_POOL_FREE(Geom% RadiusFP)
+       TOMP(target exit data map(always,release:Geom% RadiusFP))
+
      elseif (Size% ndim == 3) then
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Geom% nCFacesArray)
+       UMPIRE_DEVICE_POOL_FREE(Geom% nCFacesArray)
+       TOMP(target exit data map(always,release:Geom% nCFacesArray))
+
      endif
 
      TOMP(target exit data map(release:Geom))
 
 !    Radiation Intensity
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Rad% PhiTotal)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Rad% radEnergy)
+     UMPIRE_DEVICE_POOL_FREE(Rad% PhiTotal)
+     TOMP(target exit data map(always,release:Rad% PhiTotal))
+
+     UMPIRE_DEVICE_POOL_FREE(Rad% radEnergy)
+     TOMP(target exit data map(always,release:Rad% radEnergy))
+
      TOMP(target exit data map(release:Rad))
 
 !    GTA
 
      if (Size%useNewGTASolver) then
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% TT)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% Pvv)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% GreySigTotal)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% GreySigScat)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% GreySigScatVol)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% GreySigtInv)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% PhiInc)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% Q)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% TsaSource)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% AfpNorm)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% AezNorm)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% ANormSum)
+       UMPIRE_DEVICE_POOL_FREE(GTA% TT)
+       TOMP(target exit data map(always,release:GTA% TT))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% Pvv)
+       TOMP(target exit data map(always,release:GTA% Pvv))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% GreySigTotal)
+       TOMP(target exit data map(always,release:GTA% GreySigTotal))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% GreySigScat)
+       TOMP(target exit data map(always,release:GTA% GreySigScat))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% GreySigScatVol)
+       TOMP(target exit data map(always,release:GTA% GreySigScatVol))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% GreySigtInv)
+       TOMP(target exit data map(always,release:GTA% GreySigtInv))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% PhiInc)
+       TOMP(target exit data map(always,release:GTA% PhiInc))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% Q)
+       TOMP(target exit data map(always,release:GTA% Q))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% TsaSource)
+       TOMP(target exit data map(always,release:GTA% TsaSource))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% AfpNorm)
+       TOMP(target exit data map(always,release:GTA% AfpNorm))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% AezNorm)
+       TOMP(target exit data map(always,release:GTA% AezNorm))
+
+       UMPIRE_DEVICE_POOL_FREE(GTA% ANormSum)
+       TOMP(target exit data map(always,release:GTA% ANormSum))
+
 
        if (Size% ndim == 2) then
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% Tvv)
+         UMPIRE_DEVICE_POOL_FREE(GTA% Tvv)
+         TOMP(target exit data map(always,release:GTA% Tvv))
+
        endif
      endif
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% GreySource)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% GreyCorrection)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(GTA% Chi)
+     UMPIRE_DEVICE_POOL_FREE(GTA% GreySource)
+     TOMP(target exit data map(always,release:GTA% GreySource))
+
+     UMPIRE_DEVICE_POOL_FREE(GTA% GreyCorrection)
+     TOMP(target exit data map(always,release:GTA% GreyCorrection))
+
+     UMPIRE_DEVICE_POOL_FREE(GTA% Chi)
+     TOMP(target exit data map(always,release:GTA% Chi))
+
      TOMP(target exit data map(release:GTA))
 
      do setID=nSets+1,nSets+nGTASets
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% AngleOrder)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% tPsi)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% pInc)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% src)
+       UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% AngleOrder)
+       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% AngleOrder))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% tPsi)
+       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% tPsi))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% pInc)
+       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% pInc))
+
+       UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% src)
+       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% src))
+
 
        if (Size% ndim == 2) then
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% tPsiM)
-         TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% tInc)
+         UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% tPsiM)
+         TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% tPsiM))
+
+         UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% tInc)
+         TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% tInc))
+
        endif
      enddo
 
 !    Material
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% Tec)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% Tecn)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% denec)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% cve)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% rho)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% nez)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% stimComptonMult)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% Siga)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% Sigs)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% Eta)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% EmissionRate)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% SMatEff)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% PowerEmitted)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% PowerCompton)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Mat% nonLinearIterations)
+     UMPIRE_DEVICE_POOL_FREE(Mat% Tec)
+     TOMP(target exit data map(always,release:Mat% Tec))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% Tecn)
+     TOMP(target exit data map(always,release:Mat% Tecn))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% denec)
+     TOMP(target exit data map(always,release:Mat% denec))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% cve)
+     TOMP(target exit data map(always,release:Mat% cve))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% rho)
+     TOMP(target exit data map(always,release:Mat% rho))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% nez)
+     TOMP(target exit data map(always,release:Mat% nez))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% stimComptonMult)
+     TOMP(target exit data map(always,release:Mat% stimComptonMult))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% Siga)
+     TOMP(target exit data map(always,release:Mat% Siga))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% Sigs)
+     TOMP(target exit data map(always,release:Mat% Sigs))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% Eta)
+     TOMP(target exit data map(always,release:Mat% Eta))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% EmissionRate)
+     TOMP(target exit data map(always,release:Mat% EmissionRate))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% SMatEff)
+     TOMP(target exit data map(always,release:Mat% SMatEff))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% PowerEmitted)
+     TOMP(target exit data map(always,release:Mat% PowerEmitted))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% PowerCompton)
+     TOMP(target exit data map(always,release:Mat% PowerCompton))
+
+     UMPIRE_DEVICE_POOL_FREE(Mat% nonLinearIterations)
+     TOMP(target exit data map(always,release:Mat% nonLinearIterations))
+
      TOMP(target exit data map(release:Mat))
 
 ! IF THESE ARE UNALLOCATED WILL CRASH?
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
      if (getComptonFlag(Compton) /= comptonType_None) then
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Compton% gamMean)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Compton% gamSqdDGam)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Compton% gamCubedDGam)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Compton% gamD)
+       UMPIRE_DEVICE_POOL_FREE(Compton% gamMean)
+       TOMP(target exit data map(always,release:Compton% gamMean))
+
+       UMPIRE_DEVICE_POOL_FREE(Compton% gamSqdDGam)
+       TOMP(target exit data map(always,release:Compton% gamSqdDGam))
+
+       UMPIRE_DEVICE_POOL_FREE(Compton% gamCubedDGam)
+       TOMP(target exit data map(always,release:Compton% gamCubedDGam))
+
+       UMPIRE_DEVICE_POOL_FREE(Compton% gamD)
+       TOMP(target exit data map(always,release:Compton% gamD))
+
      endif
 
      TOMP(target exit data map(release:Compton))
@@ -295,7 +514,9 @@
      if ( Size% useGPU ) then
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
        call finalizeGPUMemory(setID)
-       TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad% SetDataPtr(setID)% AngleOrder)
+       UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% AngleOrder)
+       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% AngleOrder))
+
 #endif
      endif
 
@@ -325,9 +546,16 @@
 
    if ( Size% useGPU ) then
 
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad%AngSetPtr)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad%GrpSetPtr)
-     TOMP_TARGET_EXIT_DATA_MAP_RELEASE(Quad%SetDataPtr)
+     UMPIRE_DEVICE_POOL_FREE(Quad%AngSetPtr)
+
+     TOMP(target exit data map(always,release:Quad%AngSetPtr))
+
+     UMPIRE_DEVICE_POOL_FREE(Quad%GrpSetPtr)
+     TOMP(target exit data map(always,release:Quad%GrpSetPtr))
+
+     UMPIRE_DEVICE_POOL_FREE(Quad%SetDataPtr)
+     TOMP(target exit data map(always,release:Quad%SetDataPtr))
+
      TOMP(target exit data map(release:Quad))
 
    endif

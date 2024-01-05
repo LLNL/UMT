@@ -8,16 +8,16 @@
 # FC = <path to Fortran compiler>
 
 # Default to GNU
-CC=gcc
-CXX=g++
-FC=gfortran
+#CC=gcc
+#CXX=g++
+#FC=gfortran
 
-FFLAGS=-fallow-argument-mismatch
+#FFLAGS=-fallow-argument-mismatch
 
 # Intel example
-# CC=icx
-# CXX=icpx
-# FC=ifx
+CC=icx
+CXX=icpx
+FC=ifx
 
 
 # This script will compile a basic Release build of UMT.  Additional CMake options can be added to the command line args of this script, and they will be picked up and added to the UMT CMake command at the bottom of this script.
@@ -52,7 +52,7 @@ cmake ${UMT_REPO_PATH}/src -DCMAKE_Fortran_FLAGS=${FFLAGS} -DCMAKE_BUILD_TYPE=Re
 gmake -j install
 cd ..
 
-srun -n 8 ${INSTALL_PATH}/bin/test_driver -c 10 -B -d 8,8,0 --benchmark_problem 2
-srun -n 8 ${INSTALL_PATH}/bin/test_driver -c 10 -B -d 4,4,4 --benchmark_problem 2
+srun -n 8 ${INSTALL_PATH}/bin/test_driver -c 10 -B local -d 8,8,0 --benchmark_problem 2
+srun -n 8 ${INSTALL_PATH}/bin/test_driver -c 10 -B local -d 4,4,4 --benchmark_problem 2
 
 # Test UMT on SSP1 unstructured 3d mesh problem on two mpi ranks. Refine the mesh via -r and -R arguments.

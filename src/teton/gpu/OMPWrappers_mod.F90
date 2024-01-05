@@ -4,12 +4,6 @@
 !   OMPWrappers -  A set of subroutines that wrap OpenMP operations for       *
 !                  mapping data structures to/from a target device, or        *
 !                  updating data between the host and device.                 *
-!                                                                             *
-! Providing this API layer over the OpenMP pragmas provides two main features *
-! - the ability to provide custom OpenMP map and update implementations,      *
-!   allowing for the use of an external memory allocator such as UMPIRE. (WIP)*
-! - Specific to SIERRA XLF - the ability to minimize compiler OpenMP offload  *
-!   flags on source files.                                                    *
 !******************************************************************************
 
 module OMPWrappers_mod
@@ -17,6 +11,14 @@ module OMPWrappers_mod
 #if defined(TETON_ENABLE_OPENMP)
    use omp_lib
 #endif
+
+!******************************************************************************
+! If using the UMPIRE library with OpenMP offload kernels, a family of
+! procedures is provided below to allow the code to make use of UMPIRE for
+! device allocations.
+!******************************************************************************
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD) && defined(TETON_ENABLE_UMPIRE)
+
    use iso_c_binding, only : c_double, c_int, c_bool, c_size_t, c_ptr, c_null_ptr, c_loc, c_associated
    use AngleSet_mod, only : AngleSet, HypPlane, BdyExit
    use Geometry_mod, only : Geometry
@@ -58,8 +60,7 @@ module OMPWrappers_mod
                        target_free_and_unpair_ptrs_type_SetData_1
    end interface
 
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-#if  !defined(TETON_OPENMP_HAS_FORTRAN_INTERFACE)
+#if !defined(TETON_OPENMP_HAS_FORTRAN_INTERFACE)
 
    public :: omp_target_alloc, omp_target_free, omp_target_associate_ptr, omp_target_disassociate_ptr, omp_target_is_present
 
@@ -109,7 +110,6 @@ module OMPWrappers_mod
    end interface
 
 #  endif
-#endif
 
 contains
 
@@ -182,5 +182,7 @@ contains
 #define FTM_KIND BdyExit
 #define FTM_RANK 1
 #include "OMPWrappers.F90.templates"
+
+#endif
 
 end module OMPWrappers_mod

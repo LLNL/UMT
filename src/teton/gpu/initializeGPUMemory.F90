@@ -32,15 +32,28 @@
    do setID=1,nSets
 
      if (Size% ndim == 2) then
-       TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID) % PsiM)
+       UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID) % PsiM)
+       TOMP(target enter data map(always,to:Quad% SetDataPtr(setID) % PsiM))
+
      endif
 
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% Psi)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% Psi1)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% PsiB)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% Q)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% S)
-     TOMP_TARGET_ENTER_DATA_MAP_TO(Quad% SetDataPtr(setID)% cyclePsi)
+     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% Psi)
+     TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% Psi))
+
+     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% Psi1)
+     TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% Psi1))
+
+     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% PsiB)
+     TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% PsiB))
+
+     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% Q)
+     TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% Q))
+
+     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% S)
+     TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% S))
+
+     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% cyclePsi)
+     TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% cyclePsi))
 
    enddo
 

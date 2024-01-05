@@ -14,23 +14,17 @@
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
 #  define TOMP(source) !$omp source
 #  define TOMPC(source) !$omp& source
+#  if defined(TETON_ENABLE_UMPIRE)
+#    define UMPIRE_DEVICE_POOL_ALLOC(source) call target_alloc_and_pair_ptrs(source)
+#    define UMPIRE_DEVICE_POOL_FREE(source) call target_free_and_unpair_ptrs(source)
+#  else
+#    define UMPIRE_DEVICE_POOL_ALLOC(source)
+#    define UMPIRE_DEVICE_POOL_FREE(source)
+#  endif
 
-#define TOMP_TARGET_ENTER_DATA_MAP_TO(source) \
-call target_alloc_and_pair_ptrs(source, "source");\
-!$omp target enter data map(always,alloc:source);\
-!$omp target update to(source)
-
-#define TOMP_TARGET_EXIT_DATA_MAP_RELEASE(source) \
-call target_free_and_unpair_ptrs(source, "source"); \
-!$omp target exit data map(always, release:source)
-
-#  define TOMP_TARGET_ENTER_DATA_MAP_ALLOC(source) !$omp target enter data map(alloc:source)
-#  define TOMP_TARGET_ENTER_DATA_MAP_FROM(source) !$omp target exit data map(from:source)
 #else
 #  define TOMP(source)
 #  define TOMPC(source)
-#  define TOMP_TARGET_ENTER_DATA_MAP_TO(source)
-#  define TOMP_TARGET_ENTER_DATA_MAP_ALLOC(source)
-#  define TOMP_TARGET_ENTER_DATA_MAP_FROM(source)
-#  define TOMP_TARGET_EXIT_DATA_MAP_RELEASE(source)
+#  define UMPIRE_DEVICE_POOL_ALLOC(source)
+#  define UMPIRE_DEVICE_POOL_FREE(source)
 #endif

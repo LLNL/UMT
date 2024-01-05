@@ -131,8 +131,11 @@ void Teton::initialize(MPI_Comm communicator, bool fromRestart)
    MPI_Barrier(communicator);
 
    int ndim = options.fetch_existing("size/ndim").value();
-   if (ndim > 1) teton_setoppositeface(); //Prerequisite for calling setMeshSizeAndPositions() in 2D/3D
-   setCommunication();      //Prerequisite for calling setMeshSizeAndPositions()
+   if (ndim > 1)
+   {
+      teton_setoppositeface(); //Prerequisite for calling setMeshSizeAndPositions() in 2D/3D
+      setCommunication();      //Prerequisite for calling setMeshSizeAndPositions()
+   }
    setMeshSizeAndPositions();
 
    // This is an awful hack to make sure Z%VolumeOld is initialized
@@ -318,9 +321,8 @@ void Teton::constructBoundaries()
       int *BCNeighborID = options.fetch_existing("boundary_conditions/neighbor_ids").as_int_ptr();
       int *BCCornerFaces = options.fetch_existing("boundary_conditions/bc_ncorner_faces").as_int_ptr();
       int numBCTotal = 2;
-      
-      teton_addboundary(&numBCTotal, &BCTypeInt[0], &BCCornerFaces[0], &BCNeighborID[0]);
 
+      teton_addboundary(&numBCTotal, &BCTypeInt[0], &BCCornerFaces[0], &BCNeighborID[0]);
    }
 }
 
@@ -1171,13 +1173,13 @@ void Teton::setMeshSizeAndPositions()
    {
       int nvertices = blueprint["coordsets/coords/values/x"].dtype().number_of_elements();
       double *vertex_coords = blueprint["coordsets/coords/values/x"].value();
-      int nzones = nvertices-1;
+      int nzones = nvertices - 1;
       std::vector<double> zoneCoordinates(2);
       for (int zone = 0; zone < nzones; ++zone)
       {
          int zoneID = zone + 1;
          zoneCoordinates[0] = vertex_coords[zone];
-         zoneCoordinates[1] = vertex_coords[zone+1];
+         zoneCoordinates[1] = vertex_coords[zone + 1];
          // TODO: add asset that zoneCoordinates[0] < zoneCoordinates[1]
          teton_setnodeposition(&zoneID, &zoneCoordinates[0]);
       }
@@ -1290,7 +1292,7 @@ void Teton::setMeshConnectivity()
       int *BCZoneID = options.fetch_existing("boundary_conditions/zone_ids").value();
       for (int zone = 0; zone < nzones; ++zone)
       {
-         int zoneID = zone+1;
+         int zoneID = zone + 1;
          teton_setzone1d(&zoneID, &numBCTotal, &BCZoneID[0]);
       }
    }
@@ -1781,7 +1783,7 @@ void Teton::getRadiationForceDensity1D(double *RadiationForceDensityX)
       CornerVolumeSumsAtVertex[v2] += CornerVolumes[1];
    }
 
-   for (int v = 0; v < nzones+1; ++v)
+   for (int v = 0; v < nzones + 1; ++v)
    {
       RadiationForceDensityX[v] /= CornerVolumeSumsAtVertex[v];
    }
@@ -1795,7 +1797,7 @@ void Teton::getRadiationForceDensity(double *RadiationForceDensityX,
 {
    conduit::Node &options = getOptions();
    int ndim = options.fetch_existing("size/ndim").value();
-   if (ndim == 1) 
+   if (ndim == 1)
    {
       getRadiationForceDensity1D(RadiationForceDensityX);
       return;
@@ -1837,7 +1839,7 @@ void Teton::getRadiationForceDensity(double *RadiationForceDensityX,
          int vertexID = mCornerToVertex[cornerID];
          corner_counter += 1;
          RadiationForceDensityX[vertexID] += RadiationForce[c * ndim + 0];
-         if (ndim > 1) 
+         if (ndim > 1)
             RadiationForceDensityY[vertexID] += RadiationForce[c * ndim + 1];
          if (ndim == 3)
             RadiationForceDensityZ[vertexID] += RadiationForce[c * ndim + 2];
@@ -1848,7 +1850,7 @@ void Teton::getRadiationForceDensity(double *RadiationForceDensityX,
    for (int v = 0; v < nverts; ++v)
    {
       RadiationForceDensityX[v] /= CornerVolumeSumsAtVertex[v];
-      if (ndim > 1) 
+      if (ndim > 1)
          RadiationForceDensityY[v] /= CornerVolumeSumsAtVertex[v];
       if (ndim == 3)
          RadiationForceDensityZ[v] /= CornerVolumeSumsAtVertex[v];

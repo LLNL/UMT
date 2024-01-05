@@ -1,5 +1,6 @@
 #include "mpi.h"
 #include <cmath>
+#include <cstring>
 #include <exception>
 #include <getopt.h>
 #include <malloc.h>
@@ -34,13 +35,19 @@ extern "C" void xl__trce(int, siginfo_t *, void *);
 #include "cuda_runtime_api.h"
 #endif
 
+#if defined(TETON_ENABLE_HIP)
+#include "hip/hip_runtime_api.h"
+#endif
+
 #include "TetonConduitInterface.hh"
 #include "TetonInterface.hh"
 
 #include "conduit/conduit.hpp"
 #include "conduit/conduit_blueprint.hpp"
 #include "conduit/conduit_blueprint_mesh_utils.hpp"
+#include "conduit/conduit_blueprint_mpi_mesh_utils.hpp"
 #include "conduit/conduit_relay.hpp"
+#include "conduit/conduit_relay_mpi_io_blueprint.hpp"
 
 #if defined(TETON_ENABLE_MFEM)
 #include "mfem.hpp"
@@ -241,7 +248,7 @@ class TetonDriver
 #if defined(TETON_ENABLE_CALIPER)
    cali::ConfigManager mgr{};
 #endif
-   bool blueprintMesh{false};
+   int blueprintMesh{0};
    int dims[3]{10, 10, 10}; //!< Number of cells in blueprint mesh.
 };
 
@@ -342,7 +349,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
       static struct option long_options[] = {
          {"apply_label", no_argument, 0, 'l'},
          {"benchmark_problem", required_argument, 0, 'b'},
-         {"blueprint", no_argument, 0, 'B'},
+         {"blueprint", required_argument, 0, 'B'},
          {"dims", required_argument, 0, 'd'},
          {"caliper", required_argument, 0, 'p'},
          {"input_sanitizer_level", required_argument, 0, 'y'},
@@ -381,10 +388,10 @@ int TetonDriver::processArguments(int argc, char *argv[])
       int option_index = 0;
 
 #if defined(TETON_ENABLE_MFEM)
-      auto optString = "A:Bb:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:y:" // Base options
-                       "C:R:r:z:Z:";                                     // MFEM-only options
+      auto optString = "A:B:b:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:y:" // Base options
+                       "C:R:r:z:Z:";                                      // MFEM-only options
 #else
-      auto optString = "A:Bb:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:y:"; // Base options
+      auto optString = "A:B:b:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:y:"; // Base options
 #endif
 
       int opt = getopt_long(argc, argv, optString, long_options, &option_index);
@@ -398,7 +405,12 @@ int TetonDriver::processArguments(int argc, char *argv[])
       switch (opt)
       {
          case 'B':
-            blueprintMesh = true;
+            if (strcmp(optarg, "local") == 0)
+               blueprintMesh = 1;
+            else if (strcmp(optarg, "global") == 0)
+               blueprintMesh = 2;
+            else
+               blueprintMesh = 0;
             break;
          case 'b':
             benchmarkProblem = atoi(optarg);
@@ -477,7 +489,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
             break;
          case 'M':
             meshOrdering = std::string(optarg);
-            if (meshOrdering != "normal" && meshOrdering != "kdtree")
+            if (meshOrdering != "normal" && meshOrdering != "kdtree" && meshOrdering != "hilbert")
             {
                throw std::runtime_error("Unsupported mesh ordering " + meshOrdering);
             }
@@ -710,7 +722,10 @@ void TetonDriver::printUsage(const std::string &argv0) const
    std::cout << " -G, --num_Groups <int>         Number energy groups" << std::endl;
 #endif
 #if defined(TETON_CONDUIT_HAS_TILED_FUNCTION)
-   std::cout << " -B, --blueprint                Generate Blueprint tiled mesh in memory." << std::endl;
+   std::cout << " -B, --blueprint local|global   Generate Blueprint tiled mesh in memory using the specified scheme."
+             << " The \"local\" scheme creates the same sized mesh on each MPI rank, allowing for weak scaling. The "
+             << "\"global\" scheme creates the specified mesh size globally and decomposes that size over the available"
+             << "MPI ranks, allowing for strong scaling." << std::endl;
    std::cout
       << " -d, --dims i,j,k               The size of the Blueprint mesh in tiles in i,j,k. k=0 builds a 2D mesh."
       << std::endl;
@@ -724,6 +739,7 @@ int TetonDriver::execute()
    {
       conduit::Node &options = myTetonObject.getOptions();
       conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
+
       //==========================================================
       // If benchmark problem specified, set the parameters.
       // UMT SP #1
@@ -733,37 +749,36 @@ int TetonDriver::execute()
       // UMT SP #2
       // 2 x 2 product quadrature
       // 16 groups
+      //
+      // ! Iteration control defaults.
       //==========================================================
       if (benchmarkProblem > 0)
       {
+         options["iteration/relativeTolerance"] = energy_check_tolerance / 10.0;
+
+// If running UMT, only the sweep kernel is active.  Increase the number of
+// allowed inner flux iterations to enable it to converge on its own.
+#if defined(TETON_ENABLE_MINIAPP_BUILD)
+         options["iteration/incidentFluxMaxIt"] = 99;
+#endif
+         fixedDT = 1e-3;
+         if (cycles == 0)
+         {
+            cycles = 5;
+         }
+
          if (benchmarkProblem == 1)
          {
-            double relTol = 1.0e-10;
-            options["iteration/relativeTolerance"] = relTol;
-            fixedDT = 1e-3;
-            if (cycles == 0)
-            {
-               cycles = 2;
-            }
             numPolarUser = 3;
             numAzimuthalUser = 3;
             numGroupsUser = 128;
-            energy_check_tolerance = 10 * relTol;
             label = "UMTSPP1";
          }
          else if (benchmarkProblem == 2)
          {
-            double relTol = 1.0e-10;
-            options["iteration/relativeTolerance"] = relTol;
-            fixedDT = 1e-3;
-            if (cycles == 0)
-            {
-               cycles = 2;
-            }
             numPolarUser = 2;
             numAzimuthalUser = 2;
             numGroupsUser = 16;
-            energy_check_tolerance = 10 * relTol;
             label = "UMTSPP2";
          }
          else
@@ -799,7 +814,7 @@ int TetonDriver::execute()
       //==========================================================
       //==========================================================
 
-      if (blueprintMesh)
+      if (blueprintMesh > 0)
       {
          buildBlueprintTiledMesh();
       }
@@ -1747,34 +1762,13 @@ void TetonDriver::buildBlueprintTiledMesh()
    conduit::Node &options = myTetonObject.getOptions();
    conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
 
-   // Figure out a suitable domain decomposition for the number of ranks and
-   // where the current rank exists within it.
-   int ndims = (dims[2] > 0) ? 3 : 2;
-   int domain[] = {0, 0, 0};
-   int domains[] = {1, 1, myRank};
-   decompose(myRank, mySize, ndims, domain, domains);
-
    // Entire problem domain is 1x1x1
    const double extents[] = {0., 1., 0., 1., 0., 1.};
-   // Figure out this domain's extents.
-   double sideX = (extents[1] - extents[0]) / static_cast<double>(domains[0]);
-   double sideY = (extents[3] - extents[2]) / static_cast<double>(domains[1]);
-   double sideZ = (extents[5] - extents[4]) / static_cast<double>(domains[2]);
-   double domainExt[] = {extents[0] + domain[0] * sideX,
-                         extents[0] + (domain[0] + 1) * sideX,
-                         extents[2] + domain[1] * sideY,
-                         extents[2] + (domain[1] + 1) * sideY,
-                         extents[4] + domain[2] * sideZ,
-                         extents[4] + (domain[2] + 1) * sideZ};
 
-   // Make options.
+   // Common options.
    conduit::Node bopts;
    bopts["meshname"] = "main";
-   bopts["domain"].set(domain, 3);
-   bopts["domains"].set(domains, 3);
-   bopts["extents"].set(domainExt, 6);
    bopts["datatype"] = "int32";
-   bopts["reorder"] = meshOrdering;
    // If the inputPath was set to a file path and the file exists, try reading it
    // as a new tile definition.
    if ((endsWith(inputPath, ".yaml") || endsWith(inputPath, ".json")) && access(inputPath.c_str(), F_OK) == 0)
@@ -1782,8 +1776,46 @@ void TetonDriver::buildBlueprintTiledMesh()
       conduit::relay::io::load(inputPath, bopts["tile"]);
    }
 
-   // Build the mesh
-   conduit::blueprint::mesh::examples::tiled(dims[0], dims[1], dims[2], meshBlueprint, bopts);
+   if (mySize > 1 && blueprintMesh == 2) // global - strong scaling mesh
+   {
+      // Make options
+      bopts["numDomains"] = mySize;
+      bopts["extents"].set(extents, 6);
+      bopts["selectedDomains"].set(std::vector<int>{myRank}); // Just build the local domain
+      bopts["curveSplitting"] = 0;                            // Disabled for now.
+
+      // Build mesh
+      conduit::blueprint::mesh::examples::tiled(dims[0], dims[1], dims[2], meshBlueprint, bopts);
+   }
+   else // local - weak scaling mesh
+   {
+      // Figure out a suitable domain decomposition for the number of ranks and
+      // where the current rank exists within it.
+      int ndims = (dims[2] > 0) ? 3 : 2;
+      int domain[] = {0, 0, 0};
+      int domains[] = {1, 1, myRank};
+      decompose(myRank, mySize, ndims, domain, domains);
+
+      // Figure out this domain's extents.
+      double sideX = (extents[1] - extents[0]) / static_cast<double>(domains[0]);
+      double sideY = (extents[3] - extents[2]) / static_cast<double>(domains[1]);
+      double sideZ = (extents[5] - extents[4]) / static_cast<double>(domains[2]);
+      double domainExt[] = {extents[0] + domain[0] * sideX,
+                            extents[0] + (domain[0] + 1) * sideX,
+                            extents[2] + domain[1] * sideY,
+                            extents[2] + (domain[1] + 1) * sideY,
+                            extents[4] + domain[2] * sideZ,
+                            extents[4] + (domain[2] + 1) * sideZ};
+
+      // Make options.
+      bopts["domain"].set(domain, 3);
+      bopts["domains"].set(domains, 3);
+      bopts["extents"].set(domainExt, 6);
+      bopts["reorder"] = meshOrdering;
+
+      // Build the mesh
+      conduit::blueprint::mesh::examples::tiled(dims[0], dims[1], dims[2], meshBlueprint, bopts);
+   }
 
    const conduit::Node &main_topo = meshBlueprint.fetch_existing("topologies/main");
    auto nelem = conduit::blueprint::mesh::topology::length(main_topo);
@@ -1950,19 +1982,21 @@ void TetonDriver::writeEndSummary(double end_time,
 
          outfile.close();
 
-         double relative_energy_check = std::abs(energy_check / (energy_radiation + 1.0e-50));
-         std::cerr << "VERIFICATION STEP:  Unaccounted for residual energy, relative to total radiation energy, is " << relative_energy_check << "." << std::endl;
-         if (relative_energy_check <= energy_check_tolerance)
+         double rel_energy_check_result = std::abs(energy_check / (energy_radiation + 1.0e-50));
+         if (rel_energy_check_result <= energy_check_tolerance)
          {
-            std::cerr << "VERIFICATION PASSED: Residual energy is within tolerance of +/-" << energy_check_tolerance << "." << std::endl;
+            std::cout << "RESULT CHECK PASSED: Energy check (this is relative to total energy) "
+                      << rel_energy_check_result << " within tolerance of +/- " << energy_check_tolerance << "; check '"
+                      << filePath << "' for tally details\n"
+                      << std::endl;
          }
          else
          {
-            std::cerr << "VERIFICATION FAILED: Residual energy exceeds tolerance of +/-" << energy_check_tolerance << "." << std::endl;
+            std::cerr << "RESULT CHECK FAILED: Energy check (this is relative to total energy) "
+                      << rel_energy_check_result << " exceeded tolerance of +/- " << energy_check_tolerance
+                      << "; check '" << filePath << "' for tally details\n"
+                      << std::endl;
 
-            std::cerr << "Residual energy ( absolute ): " << energy_check << std::endl;
-            std::cerr << "Residual energy ( relative ): " << relative_energy_check << std::endl;
-            std::cerr << "Residual energy tolerance ( relative ): " << energy_check_tolerance << std::endl;
             std::cerr << "Energy radiation: " << energy_radiation << std::endl;
             std::cerr << "Power incident: " << power_incident << std::endl;
             std::cerr << "Power escaped: " << power_escape << std::endl;
@@ -2101,6 +2135,7 @@ int main(int argc, char *argv[])
       std::string w(e.what());
       if (!w.empty())
          std::cerr << "Teton driver: " << w << std::endl;
+      retval = 1;
    }
 
    // NOTE: The teton object must be destroyed first, before MPI is finalized.  Teton uses MPI during its destructor.

@@ -67,8 +67,7 @@ class TetonBlueprint
                        std::vector<int> &face_to_bcid,
                        int rank);
 
-
-/* ------------------------------------------------------------------------------------------------------------------ 
+   /* ------------------------------------------------------------------------------------------------------------------ 
    This builds several arrays containing the boundary condition information for each boundary element in 1D.
    The 'shared' boundary info is pulled from the blueprint face topology adjacency sets.
    TODO: need to fix for MPI-decomposed meshes
@@ -78,7 +77,6 @@ class TetonBlueprint
                          std::vector<int> &boundaries_types,
                          int rank);
 
-/* ------------------------------------------------------------------------------------------------------------------ 
    /* ------------------------------------------------------------------------------------------------------------------ 
    Set of methods used to create the teton mesh connectivity array.  This array consists of, for each zone,:
      zoneID, - id of zone
@@ -180,8 +178,14 @@ class TetonBlueprint
    std::vector<int> m_face_to_bcid;
 
    // For handling Teton's boundary conditions
-   enum BC_Type { bc_reflecting = 32, bc_vaccuum = 35, 
-                  bc_source_temp = 34, bc_source_fd = 36, bc_shared = 33  };
+   enum BC_Type
+   {
+      bc_reflecting = 32,
+      bc_vaccuum = 35,
+      bc_source_temp = 34,
+      bc_source_fd = 36,
+      bc_shared = 33
+   };
 
   public:
    TetonBlueprint(conduit::Node &blueprintNode, conduit::Node &parametersNode)
