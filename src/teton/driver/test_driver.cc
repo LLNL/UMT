@@ -1757,7 +1757,6 @@ void decompose(int rank, int size, int ndims, int domainid[3], int domains[3])
 //---------------------------------------------------------------------------
 void TetonDriver::buildBlueprintTiledMesh()
 {
-#if defined(TETON_CONDUIT_HAS_TILED_FUNCTION)
    CALI_CXX_MARK_SCOPE("Teton_Build_Tiled_Mesh");
    conduit::Node &options = myTetonObject.getOptions();
    conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
@@ -1840,9 +1839,6 @@ void TetonDriver::buildBlueprintTiledMesh()
 
    // Disable updating the mesh vertices each cycle.
    options["mesh_motion"] = 0;
-#else
-   throw std::runtime_error("Rebuild with Conduit 0.8.9 or later to use tiled meshes.");
-#endif
 }
 
 //---------------------------------------------------------------------------
