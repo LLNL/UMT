@@ -20,7 +20,7 @@ FC=gfortran
 # Set to 1 to optionally build UMT with UMPIRE support.
 # For more information on UMPIRE CMake options, please see:
 # https://umpire.readthedocs.io/en/develop/sphinx/advanced_configuration.html 
-USE_UMPIRE=1
+USE_UMPIRE=0
 
 FFLAGS=-fallow-argument-mismatch
 # Intel example
