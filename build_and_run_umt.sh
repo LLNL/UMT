@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/bash -xe
 # This script will compile a basic Release build of UMT.  Additional CMake options can be added to the command line args of this
 # script, and they will be picked up and added to the UMT CMake command at the bottom of this script.
 # For a list of supported CMake options, run 'ccmake /path/to/umt/src'.
