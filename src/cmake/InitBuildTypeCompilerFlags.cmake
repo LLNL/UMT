@@ -20,6 +20,9 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
       set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 
 	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+      set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+      set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 
  	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "XL" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "XLClang")
       set(CMAKE_CXX_FLAGS_RELEASE "-O3 -qstrict -qarch=auto -qtune=auto -qmaxmem=-1 -qsuppress=1500-036")
@@ -54,6 +57,10 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
       set(CMAKE_Fortran_FLAGS_DEBUG "-fcheck=all -O0 -g -ffree-line-length-none")
 
 	elseif("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Clang") # For Clang or AppleClang
+	elseif("${CMAKE_Fortran_COMPILER_ID}" MATCHES "LLVMFlang")
+      set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -DNDEBUG")
+      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+      set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g")
 
  	elseif("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "XL")
       # Enable F2003 support via the below -qxlf2003 flag list.  This behavior is the default if xlf2003 compiler is used, but not if xlf is used.
