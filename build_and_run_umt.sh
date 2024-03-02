@@ -28,6 +28,16 @@ FFLAGS=-fallow-argument-mismatch
 #CXX=icpx
 #FC=ifx
 
+# LLVM Clang/Flang build
+#
+# See DEPENDENCIES.md for a compatible MPI.
+#
+# So far this works only for single-threaded CPU execution.
+#CC=clang
+#CXX=clang++
+#FC=flang-new
+#FFLAGS=-flang-experimental-polymorphism
+
 # Get directory this script is located in.  This is assumed to be the UMT repo location.
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -47,7 +57,7 @@ cd umt_workspace
 git clone --recurse-submodules  https://github.com/LLNL/conduit.git conduit -b v0.9.0
 mkdir build_conduit
 cd build_conduit
-cmake ${PWD}/../conduit/src -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DMPI_CXX_COMPILER=mpicxx -DMPI_Fortran_COMPILER=mpifort -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTS=OFF -DENABLE_EXAMPLES=OFF -DENABLE_DOCS=OFF -DENABLE_FORTRAN=ON -DENABLE_MPI=ON -DENABLE_PYTHON=OFF
+cmake ${PWD}/../conduit/src -DCMAKE_Fortran_FLAGS="${FFLAGS}" -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_Fortran_COMPILER=${FC} -DMPI_CXX_COMPILER=mpicxx -DMPI_Fortran_COMPILER=mpifort -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTS=OFF -DENABLE_EXAMPLES=OFF -DENABLE_DOCS=OFF -DENABLE_FORTRAN=ON -DENABLE_MPI=ON -DENABLE_PYTHON=OFF
 gmake -j install
 cd ..
 

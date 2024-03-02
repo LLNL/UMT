@@ -124,6 +124,11 @@ if(ENABLE_TESTS)
   add_executable( test_driver
                   driver/test_driver.cc )
 
+  if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "LLVMFlang")
+    set_target_properties( test_driver PROPERTIES LINK_FLAGS -fno-fortran-main)
+    set(OpenMP_Fortran_FLAGS "${OpenMP_Fortran_FLAGS} -fno-fortran-main")
+  endif()
+
   if (ENABLE_FIND_MPI)
     target_link_libraries( test_driver PUBLIC MPI::MPI_Fortran MPI::MPI_CXX )
   endif()
