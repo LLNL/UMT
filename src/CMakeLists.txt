@@ -1,17 +1,17 @@
 #<<<<<=====----------------------------------------------------------=====>>>>>
 #                      CMake script for Teton library
 #<<<<<=====----------------------------------------------------------=====>>>>>
-cmake_minimum_required( VERSION 3.14 )
+cmake_minimum_required(VERSION 3.21)
 
 set(PROJECT_NAME teton)
 # Update version information in this file.
 
 set(TETON_VERSION_MAJOR 5)
-set(TETON_VERSION_MINOR 3)
+set(TETON_VERSION_MINOR 5)
 set(TETON_VERSION_PATCH 0)
 include (cmake/Version.cmake)
 
-# The CUDA Boltzmann Compton solver source file requires C++11.
+# The CUDA Boltzmann Compton solver source file requires C++11.  Conduit requires C++14.
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 14)
@@ -20,11 +20,22 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 # ----- Set up Teton project source files and build targets -----
 project( ${PROJECT_NAME} LANGUAGES CXX Fortran VERSION ${TETON_VERSION_MAJOR}.${TETON_VERSION_MINOR}.${TETON_VERSION_PATCH})
 
+# ----- Gather gpu hardware details, will be set in Teton build_info module.
+include (cmake/GetGPUInfo.cmake)
+
 # Tell CMake to not clear out the RPATH when installing an executable.
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # Add third party FindXXX.cmake modules.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/thirdparty/")
+
+option(ENABLE_FIND_PACKAGE_CONFIG_MODE "Set CMake find_package mode to CONFIG.  Enables imported CMake targets from TPL installations." NO )
+
+option(ENABLE_ASSERTS "Enable teton assertion code checks." NO)
+if(ENABLE_ASSERTS)
+   message( STATUS "Enabling Teton code asserts.")
+   add_compile_definitions( "TETON_COMPILE_ASSERTS")
+endif()
 
 # Set up our default flags for each CMake build type.
 include(cmake/InitBuildTypeCompilerFlags.cmake)
@@ -43,7 +54,7 @@ endif()
 
 # -----
 # Enable mini-app code version that focuses on the transport sweep algorithm.
-# This will enable the test driver, and MFEM mesh support by default.
+# This will enable the test driver.
 # -----
 option( ENABLE_MINIAPP_BUILD "Enable transport sweep mini-app." TRUE )
 if(ENABLE_MINIAPP_BUILD)
@@ -85,30 +96,36 @@ option( OPENMP_HAS_FORTRAN_INTERFACE "Compiler OpenMP implementation includes Fo
 
 # TODO - add check that OpenMP_Fortran_HAVE_OMPLIB_MODULE is TRUE, since we use the omp_lib module.
 if(ENABLE_OPENMP)
-   message( STATUS "Enable OpenMP pragmas" )
+   message( STATUS "OPENMP - Enable OpenMP pragmas" )
 
    if(ENABLE_OPENMP_OFFLOAD)
-      message( STATUS "Enable OpenMP target offload pragmas" )
+      message( STATUS "OPENMP - Enable OpenMP target offload pragmas" )
 
       if ( ${CMAKE_Fortran_COMPILER_ID} STREQUAL "XL" )
-         message(STATUS "Detected XLF compiler, manually adding -qoffload to OpenMP flags...")
+         message(STATUS "OPENMP - Detected XLF compiler, manually adding -qoffload to OpenMP flags...")
          set(OpenMP_Fortran_FLAG "-qsmp=omp -qoffload")
       endif()
 
       if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "XL" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "XLClang")
-         message(STATUS "Detected XLC compiler, manually adding -qoffload to OpenMP flags...")
+         message(STATUS "OPENMP - Detected XLC compiler, manually adding -qoffload to OpenMP flags...")
          set(OpenMP_CXX_FLAG "-qsmp=omp -qoffload")
       endif()
 
       add_compile_definitions( "TETON_ENABLE_OPENMP_OFFLOAD" )
 
       if(OPENMP_HAS_USE_DEVICE_ADDR)
-         message( STATUS "Enable use of OpenMP use_device_addr pragmas" )
+         message( STATUS "OPENMP - Enable use of OpenMP use_device_addr pragmas" )
          add_compile_definitions( "TETON_OPENMP_HAS_USE_DEVICE_ADDR" )
-       endif()
+      endif()
+
+      if(OPENMP_UNIFIED_MEMORY)
+         message( STATUS "OPENMP - Platform has unified memory, skip OpenMP host<->device maps and updates" )
+         add_compile_definitions( "TETON_OPENMP_HAS_UNIFIED_MEMORY" )
+      endif()
+
    endif()
 
-   find_package(OpenMP REQUIRED COMPONENTS Fortran CXX)
+   find_package(OpenMP REQUIRED COMPONENTS Fortran)
 
    if(ENABLE_OPENMP_OFFLOAD)
       # Add custom logic here to add in the HIP backend libraries needed by Cray for openmp offload kernels.
@@ -116,21 +133,30 @@ if(ENABLE_OPENMP)
       # If we need C++ support, then Cray needs to provide a way to distinguish amdclang vs craycc, as they both identify as 'Clang' to CMake. -- Aaron
       if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
 
-         message( STATUS "Detected Cray Fortran OpenMP offload support requested.  Adding additional flags to pull in HIP backend needed by Cray Fortran compiler.")
+         message( STATUS "OPENMP - Detected Cray Fortran OpenMP offload support requested.")
+         message( STATUS "OPENMP - Adding additional flags to pull in HIP backend needed by Cray Fortran compiler.")
+
+         message( STATUS "OPENMP - Adding additional flag to allocate variable size local arrays and temporaries in heap memory to avoid stack overflow issues with large GPU problems.")
+         set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -h heap_allocate")
 
          if (DEFINED HIP_ROOT_DIR)
-            message( STATUS "Using HIP installation at ${HIP_ROOT_DIR}")
+            message( STATUS "OPENMP - Using HIP installation at ${HIP_ROOT_DIR}")
          else()
             message( FATAL_ERROR " Must set HIP_ROOT_DIR when using Cray compiler openmp offload functionality.")
          endif()
 
          if (DEFINED CMAKE_HIP_ARCHITECTURES)
-            message( STATUS "Setting target gpu architecture to ${CMAKE_HIP_ARCHITECTURES}")
+            message( STATUS "OPENMP - Setting target gpu architecture to ${CMAKE_HIP_ARCHITECTURES}")
          else()
             message( FATAL_ERROR " Must set CMAKE_HIP_ARCHITECTURES when using Cray compiler openmp offload functionality.")
          endif()
 
          find_package(hip REQUIRED)
+
+         if(ENABLE_CALIPER)
+            find_package(ROCTracer REQUIRED)
+         endif()
+
          add_compile_definitions( "TETON_ENABLE_HIP" )
 
          target_link_options( OpenMP::OpenMP_Fortran INTERFACE $<$<COMPILE_LANGUAGE:Fortran>:--rocm-path=${HIP_ROOT_DIR} -target-accel=amd_${CMAKE_HIP_ARCHITECTURES}>)
@@ -141,15 +167,15 @@ if(ENABLE_OPENMP)
       endif()
    endif()
 
-   message( STATUS "Compiler supports OpenMP ${OpenMP_Fortran_VERSION}" )
-   message( STATUS "Compiler supports OpenMP spec date ${OpenMP_Fortran_SPEC_DATE}")
-   message( STATUS "Compiler OpenMP C++ flags: ${OpenMP_CXX_FLAGS}")
-   message( STATUS "Compiler OpenMP Fortran flags: ${OpenMP_Fortran_FLAGS}")
+   message( STATUS "OPENMP - Compiler supports OpenMP ${OpenMP_Fortran_VERSION}" )
+   message( STATUS "OPENMP - Compiler supports OpenMP spec date ${OpenMP_Fortran_SPEC_DATE}")
+   message( STATUS "OPENMP - Compiler OpenMP C++ flags: ${OpenMP_CXX_FLAGS}")
+   message( STATUS "OPENMP - Compiler OpenMP Fortran flags: ${OpenMP_Fortran_FLAGS}")
 
    add_compile_definitions( "TETON_ENABLE_OPENMP" )
 
    if(OPENMP_HAS_FORTRAN_INTERFACE)
-      message( STATUS "OpenMP includes Fortran interface, disable creation of iso_c_bindings." )
+      message( STATUS "OPENMP - OpenMP includes Fortran interface, disable creation of iso_c_bindings." )
       add_compile_definitions( "TETON_OPENMP_HAS_FORTRAN_INTERFACE" )
    endif()
 endif()
@@ -164,7 +190,7 @@ if( ENABLE_CUDA )
    if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0") 
       find_package(CUDAToolkit REQUIRED)
    else()
-      message( STATUS "Older CMake version detected (pre-3.18.0).  CUDA compiler flags will need to be manually added by cmake config file or on command line.")
+      message( STATUS "OPENMP - Older CMake version detected (pre-3.18.0).  CUDA compiler flags will need to be manually added by cmake config file or on command line.")
    endif()
 
 endif()
@@ -195,13 +221,13 @@ else()
 endif()
 
 
-# ----- Gather gpu hardware details, will be set in Teton build_info module.
-include (cmake/GetGPUInfo.cmake)
-
 option( ENABLE_UMPIRE "Link and enable the use of the UMPIRE memory library." NO )
 if(ENABLE_UMPIRE)
    find_package(Umpire)
-   if(ENABLE_CAMP)
+   if(FMT_ROOT)
+      find_package(Fmt)
+   endif()
+   if(CAMP_ROOT)
       find_package(Camp)
    endif()
    add_compile_definitions( "TETON_ENABLE_UMPIRE" )
@@ -209,8 +235,32 @@ endif()
 
 option( ENABLE_CALIPER "Link and enable the use of the CALIPER performance measurement library." NO )
 if(ENABLE_CALIPER)
-   find_package(Caliper)
-   find_package(Adiak)
+
+   if(ENABLE_FIND_PACKAGE_CONFIG_MODE)
+     # Use package config files for ADIAK and CALIPER. (experimental)
+
+     # Must be lowercase
+     message(STATUS "Looking for adiak in ${ADIAK_ROOT}")
+     find_package(adiak
+                  REQUIRED
+                  CONFIG
+                  PATHS ${ADIAK_ROOT}/lib/cmake/adiak
+                  )
+
+     message(STATUS "Looking for caliper in ${CALIPER_ROOT}")
+     find_package(Caliper
+                  REQUIRED
+                  CONFIG
+                  PATHS ${CALIPER_ROOT}/share/cmake/caliper
+                  )
+
+     # The caliper module does not set some things we expect.
+     target_include_directories( caliper INTERFACE ${CALIPER_ROOT}/include/caliper/fortran)
+   else()
+     find_package(Caliper)
+     find_package(Adiak)
+   endif()
+
    add_compile_definitions( "TETON_ENABLE_CALIPER" )
 endif()
 
@@ -223,32 +273,33 @@ find_package(ConduitRelayMPIIO)
 find_package(ConduitBlueprint)
 find_package(ConduitBlueprintMPI)
 
-
 if(NOT ENABLE_MINIAPP_BUILD)
    # Need the source headers for these, regardless of whether we compile the test driver executable.
    find_package(PhysicsUtils)
 
    # Needed for restart SILO file support.
+   # The FindConduit.cmake file will set CONDUIT_REQUIRES_SILO
    option( ENABLE_SILO "Link and enable the use of the SILO file i/o library." YES)
-   if (ENABLE_SILO)
+   if (ENABLE_SILO OR CONDUIT_REQUIRES_SILO)
       find_package(Silo)
    endif()
 endif()
 
-option( ENABLE_MFEM "Enable support for reading in mfem test meshes." NO)
-if (ENABLE_MFEM)
-   message( STATUS "Enable mfem mesh support.")
-   add_compile_definitions( "TETON_ENABLE_MFEM" )
-   find_package(MFEM)
-   find_package(Hypre)
+
+
+# The FindConduit.cmake file will set CONDUIT_REQUIRES_PARMETIS 
+if (CONDUIT_REQUIRES_PARMETIS)
+   find_package(Parmetis)
    find_package(Metis)
 endif()
 
-# Needed if conduit was built against HDF5.
-option( ENABLE_HDF5 "Link in the HDF5 library." NO)
-if (ENABLE_HDF5)
+# It is assumed that SILO was built against HDF5.
+# The FindConduitRelay.cmake file will set CONDUIT_REQUIRES_HDF5.
+if (ENABLE_SILO OR CONDUIT_REQUIRES_HDF5)
    find_package(HDF5)
-   find_package(Z)
+   if (Z_ROOT)
+      find_package(Z)
+   endif()
 endif()
 
 add_subdirectory(teton)

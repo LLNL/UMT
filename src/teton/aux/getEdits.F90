@@ -73,7 +73,7 @@
    real(C_DOUBLE) :: timerad
    real(C_DOUBLE) :: outerTempRelTol, outerEDRelTol, greyRelTol, incidentFluxRelTol, innerNLRelTol
 
-   character(len=34), parameter :: Cformat = "(1X,A6,i8,A12,F18.10,A10,1pe18.10)"
+   character(len=38), parameter :: Cformat = "(1X,A10,i8,A12,F18.10,A10,1pe18.10)"
    character(len=25), parameter :: Iformat = "(1X,A13,i6,A15,i6,A15,i6)"
    character(len=18), parameter :: Jformat = "(1X,A20,i6,A21,i6)"
    character(len=30), parameter :: Tformat = "(1X,A7,1X,F18.10,A9,i7,A12,i5)"
@@ -134,7 +134,7 @@
    if ( Options%isRankVerbose() > 0 ) then
       print *, ""
       print *, ">>>>>>>>>>>>>>>     End Radiation Step     <<<<<<<<<<<<<<<"
-      print Cformat, "CYCLE ", ncycle,"  timerad = ", timerad,"  dtrad = ", dtused
+      print Cformat, "TIME STEP ", ncycle,"  timerad = ", timerad,"  dtrad = ", dtused
       print *, ""
       print Iformat,"TempIters = ", noutrt, "  FluxIters = ", ninrt, "  GTASweeps = ",ngdart
       print Jformat,"AveNonLinearIters = ", nNLIters, "  MaxNonLinearIters = ",maxNLIters

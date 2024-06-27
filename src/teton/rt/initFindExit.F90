@@ -97,8 +97,6 @@
 
    enddo AngleSetLoop2
 
-
-
    return
    end subroutine initFindExit
 

@@ -57,8 +57,8 @@
 
 !  Some temporary variables used for beam boundary conditions:
    type(AngleSet), pointer :: ASet
-   integer                 :: polarAngleValue
-   real                    :: refPolarValue
+   real(adqt)              :: polarAngleValue
+   real(adqt)              :: refPolarValue
 
 !  Constants
 

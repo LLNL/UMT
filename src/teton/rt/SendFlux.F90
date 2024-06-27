@@ -29,7 +29,7 @@
    logical (kind=1),     intent(in) :: SnSweep
    integer,              intent(in) :: cSetID
    integer,              intent(in) :: sendIndex
-   real(adqt), optional, intent(in) :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt), optional, intent(in) :: PsiB(Size%nSurfElem,Size%nangGTA)
 
 !  Local
 
@@ -46,6 +46,8 @@
    integer                          :: b
    integer                          :: sharedID
    integer                          :: nShared
+
+!  Constants
 
    nShared =  getNumberOfShared(RadBoundary)
    CSet    => getCommSetData(Quad, cSetID)
@@ -77,6 +79,7 @@
          enddo
 
 !  Start send for this communicator (odd numbered handle)
+
          call MPIStart(CommT% irequest(1))
 
        endif
@@ -94,6 +97,7 @@
          enddo
 
 !  Start send for this communicator (odd numbered handle)
+
          call MPIStart(CommT% irequest(1))
 
        endif

@@ -106,9 +106,8 @@
 
         TETON_VERIFY( c_associated(d_ptr), "Failed to retrieve device pointer for " // label )
 
-      ! Disassociate the pointer
-!  Workaround for El Capitan EA platform.  Otherwise, the runtime complains about an invalid reference count in the pointer table.
-!  (Kostas has put in a bug ticket to compiler team already)
+      ! Disassociate the pointer: adding this back so I can use CCE15  PFN 02/07/2024
+
         TOMP(target exit data map(release:h_ptr))
 
         err_code = omp_target_disassociate_ptr( C_LOC(h_ptr), omp_get_default_device() )

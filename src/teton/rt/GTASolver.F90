@@ -34,6 +34,29 @@
 !                                                                      *
 !       PHI(l+1) = PHI(l+1/2) + F(l+1)                                 *
 !                                                                      *
+!   20240305 - Comments from BCY:                                      *
+!     I've added annotations marking where                             *
+!     each term of the BiCGSTAB algorithm on Wikipedia is computed.    *
+!     The matrix system being solved looks something like              *
+!         (I-Linv*S)*PHI = Linv*(GTA%GreySource)                       *
+!     where S is the grey scattering and Linv is the grey sweep        *
+!     The action of the preconditioner is given by                     *
+!          K^{-1} = I+Linv_{eps}S_{eps}                                *
+!     where Linv_{eps} and S_{eps} are the stretched sweep and         *
+!     scattering operators.                                            *
+!     See the unpreconditioned BICGSTAB algorithm,
+!        https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method#Unpreconditioned_BiCGSTAB
+!     with A --> K^{-1}(I-Linv*S) and b --> K^{-1}b
+!                                                                      *
+!     Absent an extenral source, GreySweep applies the operator        *
+!        I - (I+Linv_{eps}S_{eps})(I-Linv*S)                           *
+!     which is equivalent to                                           *
+!        Linv S + Linv_{eps}S_{eps} Linv S - Linv_{eps} S_{eps}        *
+!     See rt/GreySweep.F90 for more details.                           *
+!                                                                      *
+!     The variables ending in "B" seem to                              *
+!     be boundary information, though I'm not exactly sure.            *
+!                                                                      *
 !                                                                      *
 !   Units:   E/e/T/m/L/A/V/t -                                         *
 !        energy/photon energy/temperature/mass/length/area/volume/time *
@@ -107,6 +130,10 @@
    real(adqt), allocatable :: CGDirection(:)
    real(adqt), allocatable :: CGAction(:)
    real(adqt), allocatable :: CGActionS(:)
+   real(adqt), allocatable :: CGDirectionB(:,:)
+   real(adqt), allocatable :: CGResidualB(:,:)
+   real(adqt), allocatable :: CGActionB(:,:)
+   real(adqt), allocatable :: CGActionSB(:,:)
 
 !  Constants
 
@@ -123,6 +150,10 @@
    allocate( CGDirection(Size% ncornr) )
    allocate( CGAction(Size% ncornr) )
    allocate( CGActionS(Size% ncornr) )
+   allocate( CGDirectionB(Size% nbelem,Size% nangGTA) )
+   allocate( CGResidualB(Size% nbelem,Size% nangGTA) )
+   allocate( CGActionB(Size% nbelem,Size% nangGTA) )
+   allocate( CGActionSB(Size% nbelem,Size% nangGTA) )
 
 !  Initialize index of zone with maximum error:
    izRelErrPoint  = -1
@@ -183,34 +214,39 @@
 !  residual
 
    GTA%GreyCorrection(:) = zero
+   ! x_0 = b
    pzOld(:)              = zero
    CGResidual(:)         = zero
-   GTA%CGResidualB(:,:)  = zero
+   CGResidualB(:,:)      = zero
+   ! \vec{\hat{r}}_0 = 1
 
 !  Initialize the CG residual using an extraneous source
 
-   nGreyIter             =  1
-   withSource            = .TRUE.
-   GTA% nGreySweepIters  =  2
+   nGreyIter  =  1
+   withSource = .TRUE.
 
    if (Size% useNewGTASolver) then
-     call GreySweepNEW(GTA%CGResidualB, CGResidual, withSource)
+     call GreySweepNEW(CGResidualB, CGResidual, withSource)
    else
-     call GreySweep(GTA%CGResidualB, CGResidual)
+     ! This computes CGResidual = \vec{r}_0 = \vec{\tilde{b}} = K_1^{-1} \vec{b}
+     !   i.e., the action of the preconditioner on the initial right hand side
+     ! We're starting with an initial guess of \vec{x}_0 = 0
+     ! This is the only time that the GreySweep is called with a source.
+     call GreySweep(CGResidualB, CGResidual)
    endif
 
 !  Initialize the CG iteration.  Remove entries with zero scattering --
 !  they live in the null space of M, where A := [I-M].
 
-   CGDirection(:)        = CGResidual(:)
-   GTA%CGDirectionB(:,:) = GTA%CGResidualB(:,:)
+   CGDirection(:)    = CGResidual(:) ! \vec{p}_0 = \vec{r}_0
+   CGDirectionB(:,:) = CGResidualB(:,:)
 
-   rrProductOld   = scat_prod1(CGResidual)
+   rrProductOld   = scat_prod1(CGResidual) ! \rho_0 = \vec{r}_0 \cdot \vec{\hat{r}}_0
 
 !  All CG sweeps are performed with zero extraneous source
 
-   GTA%GreySource(:)    = zero
-   withSource           = .FALSE.
+   GTA%GreySource(:) = zero
+   withSource        = .FALSE.
 
 !  Begin CG loop, iterating on grey corrections
 
@@ -239,20 +275,21 @@
 !    Perform a transport sweep to compute the action of M on the
 !    conjugate direction (stored in CGAction)
 
-     CGAction(:)        = CGDirection(:)
-     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:)
+     CGAction(:)    = CGDirection(:)
+     CGActionB(:,:) = CGDirectionB(:,:)
 
      if (Size% useNewGTASolver) then
-       call GreySweepNEW(GTA%CGActionB, CGAction, withSource)
+       call GreySweepNEW(CGActionB, CGAction, withSource)
      else
-       call GreySweep(GTA%CGActionB, CGAction)
+       call GreySweep(CGActionB, CGAction)
      endif
 
 !  Compute the action of the transport matrix, A, on the conjugate
 !  direction.  Recall:  A := [I-M]
 
-     CGAction(:)        = CGDirection(:)        - CGAction(:)
-     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:) - GTA%CGActionB(:,:)
+     ! CGAction = \vec{\nu} =  K_1^{-1} A \vec{p}_{i-1}
+     CGAction(:)    = CGDirection(:)        - CGAction(:)
+     CGActionB(:,:) = CGDirectionB(:,:) - CGActionB(:,:)
 
 !    Compute the inner product, <d,Ad>
 
@@ -265,26 +302,29 @@
        exit GreyIteration
      endif
 
+     ! \alpha
      alphaCG = rrProductOld/dAdProduct
 
 !    Update the residual
-     CGResidual(:)        = CGResidual(:)        - alphaCG*CGAction(:)
-     GTA%CGResidualB(:,:) = GTA%CGResidualB(:,:) - alphaCG*GTA%CGActionB(:,:)
+     ! \vec{s} = \vec{r}_{i-1} - \alpha \vec{\nu}
+     CGResidual(:)    = CGResidual(:)    - alphaCG*CGAction(:)
+     CGResidualB(:,:) = CGResidualB(:,:) - alphaCG*CGActionB(:,:)
 
-     CGActionS(:)        = CGResidual(:)
-     GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:)
+     CGActionS(:)    = CGResidual(:)
+     CGActionSB(:,:) = CGResidualB(:,:)
 
      if (Size% useNewGTASolver) then
-       call GreySweepNEW(GTA%CGActionSB, CGActionS, withSource)
+       call GreySweepNEW(CGActionSB, CGActionS, withSource)
      else
-       call GreySweep(GTA%CGActionSB, CGActionS)
+       call GreySweep(CGActionSB, CGActionS)
      endif
 
 !    Compute the action of the transport matrix, A, on the conjugate
 !    direction.  Recall:  A := [I-M]
 
-     CGActionS(:)        = CGResidual(:)        - CGActionS(:)
-     GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:) - GTA%CGActionSB(:,:)
+     ! \vec{t}
+     CGActionS(:)    = CGResidual(:)    - CGActionS(:)
+     CGActionSB(:,:) = CGResidualB(:,:) - CGActionSB(:,:)
 
      omegaNum = scat_prod(CGActionS,CGResidual)
      omegaDen = scat_prod(CGActionS,CGActionS)
@@ -295,26 +335,32 @@
        exit GreyIteration
      endif
 
+     ! \omega
      omegaCG = omegaNum/omegaDen
 
 !    Update the Grey additive correction
+     ! \vec{x}_i
      GTA%GreyCorrection(:) = GTA%GreyCorrection(:) +   &
                              alphaCG*CGDirection(:) + omegaCG*CGResidual(:)
 
-     CGResidual(:)        = CGResidual(:)        - omegaCG*CGActionS(:)
-     GTA%CGResidualB(:,:) = GTA%CGResidualB(:,:) - omegaCG*GTA%CGActionSB(:,:)
+     ! \vec{r}_i
+     CGResidual(:)    = CGResidual(:)    - omegaCG*CGActionS(:)
+     CGResidualB(:,:) = CGResidualB(:,:) - omegaCG*CGActionSB(:,:)
 
 !    Compute the inner product, <r,r0>
+     ! \rho_i
      rrProduct = scat_prod1(CGResidual)
 
+     ! \beta
      betaCG = (rrProduct*alphaCG)/(rrProductOld*omegaCG)
 
 !    update the conjugate direction
-     CGDirection(:)        = CGResidual(:)  + betaCG*  &
-                            (CGDirection(:) - omegaCG*CGAction(:))
+     ! \vec{p}_i
+     CGDirection(:)    = CGResidual(:)  + betaCG*  &
+                        (CGDirection(:) - omegaCG*CGAction(:))
 
-     GTA%CGDirectionB(:,:) = GTA%CGResidualB(:,:)  + betaCG*  &
-                            (GTA%CGDirectionB(:,:) - omegaCG*GTA%CGActionB(:,:))
+     CGDirectionB(:,:) = CGResidualB(:,:)  + betaCG*  &
+                        (CGDirectionB(:,:) - omegaCG*CGActionB(:,:))
 
 !    Compute the additive grey corrections on zones for convergence tests
 
@@ -346,7 +392,7 @@
          print *, "Teton's GTASolver encountered a NaN on iteration", nGreyIter, " on rank ", Size% myRankInGroup, " in zone ", izRelErrPoint
          call sleep(15)
          TETON_FATAL("Grey solver encountered a NaN!")
-       else if (phiNew /= zero) then
+       else if (abs(phiNew) > zero) then
          relErrPoint = abs(errZone/phiNew)
          if (relErrPoint > maxRelErrPoint) then
            maxRelErrPoint = relErrPoint
@@ -357,7 +403,7 @@
        pzOld(zone) = pz
      enddo CorrectionZoneLoop
 
-     if (phiL2 /= zero) then
+     if (abs(phiL2) > zero) then
        relErrL2 = sqrt( abs(errL2/phiL2) )
      else
        relErrL2 = zero
@@ -413,12 +459,16 @@
 
 !  Free memory
 
-   deallocate(pzOld,         stat=alloc_stat)
+   deallocate(pzOld,        stat=alloc_stat)
 
-   deallocate(CGResidual,    stat=alloc_stat)
-   deallocate(CGDirection,   stat=alloc_stat)
-   deallocate(CGAction,      stat=alloc_stat)
-   deallocate(CGActionS,     stat=alloc_stat)
+   deallocate(CGResidual,   stat=alloc_stat)
+   deallocate(CGDirection,  stat=alloc_stat)
+   deallocate(CGAction,     stat=alloc_stat)
+   deallocate(CGActionS,    stat=alloc_stat)
+   deallocate(CGDirectionB, stat=alloc_stat)
+   deallocate(CGResidualB,  stat=alloc_stat)
+   deallocate(CGActionB,    stat=alloc_stat)
+   deallocate(CGActionSB,   stat=alloc_stat)
 
 
    return

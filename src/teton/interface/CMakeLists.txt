@@ -4,5 +4,7 @@ if (ENABLE_BLUEPRINT_INTERFACE)
     TetonBlueprint.cc
     TetonConduitInterface.cc
     TetonSurfaceTallies.cc
+    TetonTesting.cc
+    TetonUtilities.cc
   )
 endif()

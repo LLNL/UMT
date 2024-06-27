@@ -10,7 +10,7 @@
 !                                                                      *
 !                                                                      *
 !***********************************************************************
-   subroutine ScalarIntensityDecompose_GPU(P)
+   subroutine ScalarIntensityDecompose_GPU
 
    use cmake_defines_mod, only : omp_device_team_thread_limit
    use kind_mod
@@ -24,8 +24,6 @@
    implicit none
 
 !  Arguments
-
-   real(adqt), intent(inout) :: P(Size% ncornr)
 
 !  Local
 
@@ -49,16 +47,27 @@
    wtiso     = Size% wtiso
 
 
-   TOMP(target enter data map(to: wtiso))
+   TOMP_MAP(target enter data map(to: wtiso))
+
+#ifdef TETON_ENABLE_OPENACC
+   !$acc  parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
+   !$acc& private(cc,c0,nCorner,diagInv,t,v)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
-   TOMPC(shared(nZoneSets, P, Geom, GTA, wtiso)&)
+   TOMPC(shared(nZoneSets, Geom, GTA, wtiso)&)
    TOMPC(private(cc,c0,nCorner,diagInv,t,v))
+#endif
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
-!$omp  parallel do default(none)  &
-!$omp& shared(P, Geom, GTA, wtiso, zSetID)  &
-!$omp& private(cc,c0,nCorner,diagInv,t,v)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc loop vector  &
+     !$acc& private(cc,c0,nCorner,diagInv,t,v)
+#else
+     !$omp  parallel do default(none)  &
+     !$omp& shared(Geom, GTA, wtiso, zSetID)  &
+     !$omp& private(cc,c0,nCorner,diagInv,t,v)
+#endif
 
      ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -68,9 +77,9 @@
        c0      = Geom% cOffSet(zone)
 
        do c=1,nCorner
-         P(c0+c) = GTA% PhiInc(c0+c)
+         GTA% Sscat(c0+c) = zero 
          do cc=1,nCorner
-           P(c0+c)          =  P(c0+c) + GTA% TT(cc,c0+c)*  &
+           GTA% Sscat(c0+c)  =  GTA% Sscat(c0+c) + GTA% TT(cc,c0+c)*  &
                                wtiso*GTA%GreySource(c0+cc)
            GTA% TT(cc,c0+c) = -wtiso*GTA%GreySigScat(c0+cc)* &
                                GTA% TT(cc,c0+c)
@@ -108,38 +117,20 @@
 
        enddo
 
-!      Solve Ly = S
-
-       do k=2,nCorner
-         t = zero
-         do i=1,k-1
-           t = t - GTA% TT(i,c0+k)*P(c0+i)
-         enddo
-         P(c0+k) = P(c0+k) + t
-       enddo
-
-!      Solve Ux = y
-
-       P(c0+nCorner) = P(c0+nCorner)/GTA% TT(nCorner,c0+nCorner)
-
-       do k=nCorner-1,1,-1
-         t = zero
-
-         do i=k+1,nCorner
-           t = t + P(c0+i)*GTA% TT(i,c0+k)
-         enddo
-
-         P(c0+k) = (P(c0+k) - t)/GTA% TT(k,c0+k)
-       enddo
-
      enddo ZoneLoop
-
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
    enddo ZoneSetLoop
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
-   TOMP(target exit data map(release: wtiso))
+#endif
+
+   TOMP_MAP(target exit data map(release: wtiso))
 
    return
    end subroutine ScalarIntensityDecompose_GPU
@@ -179,15 +170,25 @@
    nZoneSets = getNumberOfZoneSets(Quad)
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
+   !$acc& private(c0,nCorner,t)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, P, Geom, GTA)&)
    TOMPC(private(c0,nCorner,t))
+#endif
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
-!$omp  parallel do default(none)  &
-!$omp& shared(P, Geom, GTA, zSetID)  &
-!$omp& private(c0,nCorner,t)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector  &
+     !$acc& private(c0,nCorner,t)
+#else
+     !$omp  parallel do default(none)  &
+     !$omp& shared(P, Geom, GTA, zSetID)  &
+     !$omp& private(c0,nCorner,t)
+#endif
 
      ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -226,11 +227,17 @@
 
      enddo ZoneLoop
 
+#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
+#endif
 
    enddo ZoneSetLoop
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
    return

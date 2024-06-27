@@ -48,61 +48,102 @@
 !  If the CUDA solver is used we need to map Eta/Chi
 
    if ( Size%useCUDASolver ) then
-     TOMP(target update to(GTA% Chi))
-     TOMP(target update to(Mat% Eta))
+     TOMP_UPDATE(target update to(GTA% Chi))
+     TOMP_UPDATE(target update to(Mat% Eta))
    endif
 
-   TOMP(target enter data map(to: tau, ngr))
+   TOMP_MAP(target enter data map(to: tau, ngr))
 
+
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, ZSet, Geom, Mat, tau, ngr))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do collapse(2) default(none) schedule(dynamic)  &
-!$omp& shared(ZSet, Geom, Mat, tau, ngr, zSetID)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc loop vector collapse(2)
+#else
+     !$omp parallel do collapse(2) default(none) schedule(dynamic)  &
+     !$omp& shared(ZSet, Geom, Mat, tau, ngr, zSetID)
+#endif
 
      do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
        do g=1,ngr
          ZSet% B(g,zone) = one/(Mat% Siga(g,zone) + Mat% Sigs(g,zone) + tau)
        enddo
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, ZSet, Geom))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(zSetID, ZSet, Geom) private(c) 
+#ifdef TETON_ENABLE_OPENACC
+     !$acc loop vector
+#else
+     !$omp parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(zSetID, ZSet, Geom) 
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        ZSet% sumT(c)    = zero 
        ZSet% delta(c)   = zero 
        ZSet% netRate(c) = zero 
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
+   !$acc& private(zone, SigtInv, ChiSigt)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, ZSet, Geom, Mat, GTA, ngr) &)
-   TOMPC(private(zSetID, zone, SigtInv, ChiSigt) )
+   TOMPC(private(zone, SigtInv, ChiSigt) )
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(ZSet, Geom, Mat, GTA, ngr, zSetID)  &
-!$omp& private(zone, SigtInv, ChiSigt) 
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector &
+     !$acc& private(zone, SigtInv, ChiSigt)
+#else
+     !$omp parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(ZSet, Geom, Mat, GTA, ngr, zSetID)  &
+     !$omp& private(zone, SigtInv, ChiSigt) 
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        do g=1,ngr
@@ -116,20 +157,35 @@
          GTA% Chi(g,c)    = ChiSigt 
        enddo
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, ZSet, GTA, Geom, ngr))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(zSetID, ZSet, GTA, Geom, ngr)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector
+#else
+     !$omp parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(zSetID, ZSet, GTA, Geom, ngr)
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        if ( ZSet% sumT(c) > zero ) then
@@ -138,20 +194,35 @@
          enddo
        endif
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, ZSet, Geom, Mat, tau))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(zSetID, ZSet, Geom, Mat, tau)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector
+#else
+     !$omp  parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(zSetID, ZSet, Geom, Mat, tau)
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        if ( ZSet% sumT(c) > zero ) then
@@ -162,20 +233,38 @@
          ZSet% comptonSe(c) = tau
        endif
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
+
+#ifdef TETON_ENABLE_OPENACC
+   !$acc  parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
+   !$acc& private(greysigs, scatRatio)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, ZSet, GTA, Geom)&)
    TOMPC(private(greysigs, scatRatio))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(zSetID, ZSet, GTA, Geom) private(greysigs, scatRatio)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector &
+     !$acc& private(greysigs, scatRatio)
+#else
+     !$omp  parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(zSetID, ZSet, GTA, Geom) private(greysigs, scatRatio)
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        greysigs  = ZSet% dTCompton(c) - ZSet% comptonSe(c)
@@ -189,35 +278,57 @@
          GTA%GreySigTotal(c) = ZSet% dTCompton(c)
        endif
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, GTA, Geom))
+#endif
 
    do zSetID=1,nZoneSets
 
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector
+#else
 !$omp parallel do default(none) schedule(dynamic)  &
 !$omp& shared(zSetID, GTA, Geom)
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        GTA%GreySigScatVol(c) = GTA%GreySigScat(c)*Geom% Volume(c)
        GTA%GreySigtInv(c)    = one/GTA%GreySigTotal(c)
      enddo
-!$omp end parallel do
+
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
-   TOMP(target exit data map(release: tau, ngr))
+   TOMP_MAP(target exit data map(release: tau, ngr))
 
-   TOMP(target update from(GTA% GreySigScatVol))
-   TOMP(target update from(GTA% Chi))
+   TOMP_UPDATE(target update from(GTA% GreySigScatVol))
+   TOMP_UPDATE(target update from(GTA% Chi))
 
  
    return

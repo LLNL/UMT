@@ -15,22 +15,20 @@
 !-----------------------------------------------------------------------------
 ! Code contract checks.
 !-----------------------------------------------------------------------------
-! - TETONASSERT - enabled in debug builds or non-performance critical builds when extra checking desired.
+! - TETON_ASSERT - enabled in debug builds or non-performance critical builds when extra checking desired.
 !                 Will conditionally emit a message and shut down code if provided logical check fails.
 !                 Define TETON_COMPILE_ASSERTS to enable.
 !
-! - TETONVERIFY - always enabled, should used to ensure correct problem input or critical areas of code.
+! - TETON_VERIFY - always enabled, should used to ensure correct problem input or critical areas of code.
 !                 Will conditionally emit a message and shut down code if provided logical check fails.
 !
-! - TETONFATAL  - always enabled, use when code state is in an unrecoverable state.
+! - TETON_FATAL  - always enabled, use when code state is in an unrecoverable state.
 !                 Will unconditionally emit an error messaged and shut down code.
-
-! TODO - make tetonAssert all caps!  Difficult to distinguish that this is a macro call in code.
 ! - AB
 #ifdef TETON_COMPILE_ASSERTS
-#   define tetonAssert(bool,s) call f90assert(bool,__FILE__,__LINE__,s)
+#   define TETON_ASSERT(bool,s) call f90assert(bool,__FILE__,__LINE__,s)
 #else
-#   define tetonAssert(bool,s)
+#   define TETON_ASSERT(bool,s)
 #endif
 
 #define TETON_VERIFY(bool,s) call f90verify(bool,__FILE__,__LINE__,s)

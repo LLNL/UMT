@@ -1,15 +1,16 @@
 !***********************************************************************
-!                        Last Update:  11/2017, PFN                    *
+!                        Last Update:  04/2024, PFN                    *
 !                                                                      *
-!   SCCSEARCH    - This recursive routine search the dependency graph  *
+!   sccSearchZone- This recursive routine search the dependency graph  *
 !                  for strongly-connected components (SCC).            *
 !                                                                      *
 !***********************************************************************
-   recursive subroutine sccsearch(zone, ngraph, ncount, stackindex,     &
-                                  nBreaks, meshCycles, dfnum, lowlink,  &
-                                  needZ, stack, new, onstack, exitFace, &
-                                  tempList, cycleList, zoneBreakList,   &
-                                  onCycleList)
+   recursive subroutine sccSearchZone(zone, ngraph, ncount, stackindex, &
+                                      nBreaks, meshCycles, dfnum,  &
+                                      lowlink, needZ, stack, new,  &
+                                      onstack, exitFace, tempList, &
+                                      cycleList, zoneBreakList,   &
+                                      onCycleList)
 
    use kind_mod
    use Size_mod
@@ -78,11 +79,11 @@
 
          if ( new(zone2) ) then
 
-           call sccsearch(zone2, ngraph, ncount, stackindex,    &
-                          nBreaks, meshCycles, dfnum, lowlink,  &
-                          needZ, stack, new, onstack, exitFace, &
-                          tempList, cycleList, zoneBreakList,   &
-                          onCycleList)
+           call sccSearchZone(zone2, ngraph, ncount, stackindex,    &
+                              nBreaks, meshCycles, dfnum, lowlink,  &
+                              needZ, stack, new, onstack, exitFace, &
+                              tempList, cycleList, zoneBreakList,   &
+                              onCycleList)
 
            if (lowlink(zone2) < lowlink(zone)) then
              lowlink(zone) = lowlink(zone2)
@@ -184,5 +185,5 @@
 
 
    return
-   end subroutine sccsearch 
+   end subroutine sccSearchZone 
  

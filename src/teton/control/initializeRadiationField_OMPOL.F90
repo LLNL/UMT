@@ -29,6 +29,7 @@
    type(SetData),  pointer  :: Set
    type(AngleSet), pointer  :: ASet
    type(BdyExit),  pointer  :: BdyExitPtr
+   type(HypPlane), pointer  :: HypPlanePtr
 
    integer    :: setID
    integer    :: nSets
@@ -62,11 +63,17 @@
 
 !  Update Boundary data
 
+#ifdef TETON_ENABLE_OPENACC
+     !$acc parallel loop gang num_gangs(nSets) &
+     !$acc& vector_length(omp_device_team_thread_limit) &
+     !$acc& private(Set, ASet, BdyExitPtr, HypPlanePtr, offSet, Groups, NumAngles, c, b, angle)
+#else
      TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nSets, Quad)&)
-     TOMPC(private(Set, ASet, BdyExitPtr, offSet, Groups, NumAngles, c, b))
+     TOMPC(private(Set, ASet, BdyExitPtr, HypPlanePtr, offSet, Groups, NumAngles, c, b, angle))
+#endif
 
-     do setID=1,nSets
+     SetLoop: do setID=1,nSets
 
        Set        => Quad% SetDataPtr(setID)
        ASet       => Quad% AngSetPtr(Set% angleSetID)
@@ -76,9 +83,14 @@
        do angle=1,NumAngles
          BdyExitPtr => ASet% BdyExitPtr(angle)
 
+#ifdef TETON_ENABLE_OPENACC
+         !$acc  loop vector collapse(2) &
+         !$acc& private(b,c)
+#else
          !$omp  parallel do collapse(2) default(none) &
          !$omp& shared(Set, BdyExitPtr, angle, Groups) &
          !$omp& private(b,c)
+#endif
          do i=1,BdyExitPtr% nxBdy
            do g=1,Groups
              b = BdyExitPtr% bdyList(1,i)
@@ -87,7 +99,9 @@
              Set% PsiB(g,b,angle) = Set% Psi(g,c,angle)
            enddo
          enddo
+#ifndef TETON_ENABLE_OPENACC
         !$omp end parallel do
+#endif
 
        enddo
 
@@ -96,20 +110,56 @@
        do angle=1,NumAngles
          offSet = ASet% cycleOffSet(angle)
 
+#ifdef TETON_ENABLE_OPENACC
+         !$acc  loop vector collapse(2) &
+         !$acc& private(c)
+#else
          !$omp  parallel do collapse(2) default(none) &
          !$omp& shared(Set, ASet, angle, offSet, Groups) &
          !$omp& private(c)
+#endif
          do mCycle=1,ASet% numCycles(angle)
            do g=1,Groups
              c                              = ASet% cycleList(offSet+mCycle)
              Set% cyclePsi(g,offSet+mCycle) = Set% Psi(g,c,angle)
            enddo
          enddo
+#ifndef TETON_ENABLE_OPENACC
          !$omp end parallel do
+#endif
        enddo
-     enddo
 
+!      Update the Psi saved at hyper-domain interfaces
+
+       do angle=1,NumAngles
+         HypPlanePtr => ASet% HypPlanePtr(angle)
+
+#ifdef TETON_ENABLE_OPENACC
+         !$acc  loop vector collapse(2) &
+         !$acc& private(c)
+#else
+         !$omp  parallel do collapse(2) default(none) &
+         !$omp& shared(Set, HypPlanePtr, angle, Groups) &
+         !$omp& private(c)
+#endif
+         do i=1,HypPlanePtr% interfaceLen
+           do g=1,Groups
+             c = HypPlanePtr% interfaceList(i)
+             Set% PsiInt(g,i,angle) = Set% Psi(g,c,angle)
+           enddo
+         enddo
+#ifndef TETON_ENABLE_OPENACC
+         !$omp end parallel do
+#endif
+       enddo
+
+     enddo SetLoop
+
+#ifdef TETON_ENABLE_OPENACC
+     !$acc end parallel loop
+#else
      TOMP(end target teams distribute)
+#endif
 
    else
 

@@ -1,5 +1,5 @@
 target_sources( teton PRIVATE
-  ArrayChecks_mod.F90
+  CodeChecks_mod.F90
   f90errors.F90
   mpi_param_mod.F90
   mpif90_mod.F90

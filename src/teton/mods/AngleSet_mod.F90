@@ -40,6 +40,7 @@ module AngleSet_mod
      integer                              :: NumBin0
      integer                              :: angle0       ! angle offset
      integer                              :: totalCycles
+     integer                              :: maxInterface
      logical (kind=1)                     :: GTASet   
 
 !    Quadrature related
@@ -94,8 +95,12 @@ module AngleSet_mod
 
   type, public :: HypPlane
      integer                              :: maxZones
+     integer                              :: maxCorners
+     integer                              :: interfaceLen
      integer,         pointer, contiguous :: zonesInPlane(:) => null()
+     integer,         pointer, contiguous :: cornersInPlane(:) => null()
      integer,         pointer, contiguous :: badCornerList(:) => null()
+     integer,         pointer, contiguous :: interfaceList(:) => null()
      integer,         pointer, contiguous :: hplane1(:) => null()
      integer,         pointer, contiguous :: hplane2(:) => null()
      integer,         pointer, contiguous :: ndone(:) => null()
@@ -233,6 +238,7 @@ contains
     self% nPolarAngles = QuadPtr% nPolarAngles
     self% angle0       = angle0
     self% Order        = QuadPtr% Order
+    self% maxInterface = 1
     self% GTASet       = GTASet
 
 !   Allocate Memory
@@ -369,6 +375,10 @@ contains
       self% numCycles(:)    = 0
       self% cycleOffSet(:)  = 0
       self% nHyperPlanes(:) = 0
+
+      do n=1,NumAngles
+        self% HypPlanePtr(n)% interfaceLen = 0
+      enddo
     endif
 
 
@@ -453,10 +463,13 @@ contains
 ! construct HyperPlane
 !=======================================================================
   subroutine AngleSet_ctorHypPlane(self, angle, nHyperPlanes, meshCycles, &
-                                   nDomains, zonesInPlane, cycleList)
+                                   nHyperDomains, elementsInPlane,        &
+                                   CToHypPlane, cycleList)
 
     use Size_mod
+    use Geometry_mod
     use MemoryAllocator_mod
+    use Options_mod
 
     implicit none
 
@@ -465,95 +478,267 @@ contains
     integer,         intent(in)    :: angle
     integer,         intent(in)    :: nHyperPlanes
     integer,         intent(in)    :: meshCycles
-    integer,         intent(in)    :: nDomains
-    integer,         intent(in)    :: zonesInPlane(nHyperPlanes)
+    integer,         intent(in)    :: nHyperDomains
+
+    integer,         intent(in)    :: elementsInPlane(nHyperPlanes)
+    integer,         intent(in)    :: CToHypPlane(Size% ncornr) 
     integer,         intent(in)    :: cycleList(meshCycles)
 
 !   Local
     type(HypPlane),  pointer       :: HypPlanePtr
 
+    integer                        :: sweepVersion
     integer                        :: hPlane
+    integer                        :: hPlane1
+    integer                        :: hPlane2
     integer                        :: mCycle
-    integer                        :: zoneSum
-    integer                        :: zonesPerDomain
-    integer                        :: zoneTarget
-    integer                        :: planesPerDomain
-    integer                        :: planeTarget
+    integer                        :: elementSum
+    integer                        :: elementsPerDomain
+    integer                        :: elementTarget
     integer                        :: domID
+    integer                        :: numC
+    integer                        :: c
+    integer                        :: c0
+    integer                        :: cfp
+    integer                        :: cez
+    integer                        :: cface
+    integer                        :: nCorner
+    integer                        :: nCFaces
+    integer                        :: nCFacesEZ
+    integer                        :: i
+    integer                        :: ii
+    integer                        :: ifp
+    integer                        :: zone
+    integer                        :: nzones
+    integer                        :: ndone
+    integer                        :: hp
+    real(adqt)                     :: afp
+    real(adqt)                     :: aez
+
+    integer,          allocatable  :: cornerList(:)
+    logical (kind=1), allocatable  :: done(:)
 
     logical(kind=1)                :: notDone
 
 !   Allocate Memory 
 
-    planesPerDomain = nHyperPlanes/nDomains
-    zonesPerDomain  = Size% nzones/nDomains
+    if ( self% GTASet ) then
+      sweepVersion = 0
+    else
+      sweepVersion =  Options% getSweepVersion()
+    endif
 
-    HypPlanePtr => self% HypPlanePtr(angle)
+    HypPlanePtr  => self% HypPlanePtr(angle)
 
-    call Allocator%allocate(Size%usePinnedMemory,self%label, "zonesInPlane", HypPlanePtr% zonesInPlane, nHyperPlanes)
+    if ( sweepVersion == 0 ) then
+      call Allocator%allocate(Size%usePinnedMemory, self%label, "zonesInPlane", HypPlanePtr% zonesInPlane, nHyperPlanes)
+
+      elementsPerDomain            = Size% nzones/nHyperDomains
+      HypPlanePtr% zonesInPlane(:) = elementsInPlane(:)
+      HypPlanePtr% maxZones        = maxval( elementsInPlane(1:nHyperPlanes) )
+    else
+      call Allocator%allocate(Size%usePinnedMemory, self%label, "cornersInPlane", HypPlanePtr% cornersInPlane, nHyperPlanes)
+
+      elementsPerDomain              = Size% ncornr/nHyperDomains
+      HypPlanePtr% cornersInPlane(:) = elementsInPlane(:)
+      HypPlanePtr% maxCorners        = maxval( elementsInPlane(1:nHyperPlanes) )
+    endif
+
+    call Allocator%allocate(Size%usePinnedMemory, self%label, "hplane1", HypPlanePtr% hplane1, nHyperDomains+1)
+    call Allocator%allocate(Size%usePinnedMemory, self%label, "hplane2", HypPlanePtr% hplane2, nHyperDomains)
+    call Allocator%allocate(Size%usePinnedMemory, self%label, "ndone",   HypPlanePtr% ndone,   nHyperDomains+1)
 
     allocate( HypPlanePtr% badCornerList(meshCycles+1) )
-    allocate( HypPlanePtr% hplane1(nDomains+1) )
-    allocate( HypPlanePtr% hplane2(nDomains) )
-    allocate( HypPlanePtr% ndone(nDomains+1) )
+    allocate( cornerList(Size% ncornr) )
+    allocate( done(Size% ncornr) )
 
     domID                 = 1
-    zoneSum               = 0
-    planeTarget           = planesPerDomain
-    zoneTarget            = zonesPerDomain
+    elementSum            = 0
+    elementTarget         = elementsPerDomain
     notDone               = .TRUE.
     HypPlanePtr% ndone(1) = 0
 
-    if (Size% useGPU) then
+!   If nHyperDomains=1 there is no interface list, but it is given a length of 1
+!   because it is mapped. In this case, it uses cornerList(1) which may be
+!   unset. We set it here.
 
-      do hPlane=1,nHyperPlanes
-        HypPlanePtr% zonesInPlane(hPlane) = zonesInPlane(hPlane)
-        zoneSum = zoneSum + zonesInPlane(hPlane)
+    cornerList(1) = 1
 
-        if (hPlane >= planeTarget .and. notDone) then
-          HypPlanePtr% ndone(domID+1)   = zoneSum
-          HypPlanePtr% hplane1(domID+1) = hPlane + 1
-          HypPlanePtr% hplane2(domID)   = hPlane
-          planeTarget                   = planeTarget + planesPerDomain
-          domID                         = domID + 1
+    do hPlane=1,nHyperPlanes
+      elementSum = elementSum + elementsInPlane(hPlane)
 
-          if (domID == nDomains) then
-            notDone = .False.
-          endif
+      if (elementSum > elementTarget .and. notDone) then
+
+        HypPlanePtr% ndone(domID+1)   = elementSum
+        HypPlanePtr% hplane1(domID+1) = hPlane + 1
+        HypPlanePtr% hplane2(domID)   = hPlane
+        elementTarget                 = elementTarget + elementsPerDomain
+        domID                         = domID + 1
+
+        if (domID == nHyperDomains) then
+          notDone = .False.
         endif
-      enddo
+      endif
+    enddo
 
-    else
+    HypPlanePtr% hplane1(1)             = 1
+    HypPlanePtr% hplane2(nHyperDomains) = nHyperPlanes
 
-      do hPlane=1,nHyperPlanes
-        HypPlanePtr% zonesInPlane(hPlane) = zonesInPlane(hPlane)
-        zoneSum = zoneSum + zonesInPlane(hPlane)
+!   We need to store the upstream corner fluxes at the hyperdomain
+!   boundaries so compute that size and corner list here, Note
+!   that we do not count the first domain as there are no
+!   upstream hyperdomains 
 
-        if (zoneSum > zoneTarget .and. notDone) then
-          HypPlanePtr% ndone(domID+1)   = zoneSum
-          HypPlanePtr% hplane1(domID+1) = hPlane + 1
-          HypPlanePtr% hplane2(domID)   = hPlane
-          zoneTarget                    = zoneTarget + zonesPerDomain
-          domID                         = domID + 1
+    numC    =  0
+    done(:) = .FALSE.
 
-          if (domID == nDomains) then
-            notDone = .False.
-          endif
+    do domID=2,nHyperDomains
+      hPlane1 = HypPlanePtr% hplane1(domID)
+      hPlane2 = HypPlanePtr% hplane2(domID)
+      ndone   = HypPlanePtr% ndone(domID)
+
+      HyperPlaneLoop: do hPlane=hPlane1,hPlane2
+
+        if ( sweepVersion == 0 ) then
+
+          nzones = elementsInPlane(hPlane)
+
+          ZoneLoop: do ii=1,nzones
+            zone    = iabs( self% nextZ(ndone+ii,angle) )
+            c0      = Geom% cOffSet(zone)
+            nCorner = Geom% numCorner(zone)
+
+            CornerLoop: do c=1,nCorner
+              nCFaces = Geom% nCFacesArray(c0+c)
+
+              CornerFaceLoop: do cface=1,nCFaces
+                cfp = Geom% cFP(cface,c0+c)
+
+!               Eliminate entries outside the mesh (cfp > ncornr)
+                if ( cfp <= Size% ncornr ) then
+
+                  hp  = CToHypPlane(cfp)
+
+!                 Consider all corners in hyperplanes upstream from hplane1 
+                  if (hp < hplane1) then
+
+                    afp = DOT_PRODUCT( self% omega(:,angle),Geom% A_fp(:,cface,c0+c) )
+
+                    if ( afp < zero ) then
+                      if ( .not. done(cfp) ) then
+                        numC             =  numC + 1
+                        cornerList(numC) =  cfp
+                        done(cfp)        = .TRUE.
+                      endif
+                    endif
+                  endif
+                endif
+              enddo CornerFaceLoop
+            enddo CornerLoop
+          enddo ZoneLoop
+
+          ndone = ndone + nzones
+
+        else
+
+          nCorner = elementsInPlane(hPlane)
+
+          CornerLoop1: do ii=1,nCorner
+            c       = self% nextC(ndone+ii,angle)
+            zone    = Geom% CToZone(c)
+            c0      = Geom% cOffSet(zone)
+            nCFaces = Geom% nCFacesArray(c)
+
+            CornerFaceLoop1: do cface=1,nCFaces
+              cfp = Geom% cFP(cface,c)
+
+!             Eliminate entries outside the mesh (cfp > ncornr)
+              if ( cfp <= Size% ncornr ) then
+
+                hp  = CToHypPlane(cfp)
+
+!               Consider all corners in hyperplanes upstream from hplane1 
+                if (hp < hplane1) then
+
+                  afp = DOT_PRODUCT( self% omega(:,angle),Geom% A_fp(:,cface,c) )
+
+                  if ( afp < zero ) then
+                    if ( .not. done(cfp) ) then
+                      numC             =  numC + 1
+                      cornerList(numC) =  cfp
+                      done(cfp)        = .TRUE.
+                    endif
+                  endif
+                endif
+              endif
+
+!             For the corner sweep we also add corners in the same zone
+              cez = c0 + Geom% cEZ(cface,c)
+              hp  = CToHypPlane(cez)
+
+!             Consider all corners in hyperplanes upstream from hplane1 
+              if (hp < hplane1) then 
+                aez = DOT_PRODUCT( self% omega(:,angle),Geom% A_ez(:,cface,c) )
+
+                if ( aez < zero ) then
+                  if ( .not. done(cez) ) then
+                    numC             =  numC + 1
+                    cornerList(numC) =  cez
+                    done(cez)        = .TRUE.
+                  endif
+
+                  nCFacesEZ = Geom% nCFacesArray(cez)
+
+                  do i=1,nCFacesEZ
+                    cfp = Geom% cFP(i,cez)
+
+                    if ( cfp <= Size% ncornr ) then
+
+                      if (CToHypPlane(cfp) < hplane1) then
+
+                        afp = DOT_PRODUCT( self% omega(:,angle),Geom% A_fp(:,i,cez) )
+
+                        if ( afp < zero ) then
+                          if ( .not. done(cfp) ) then
+                            numC             =  numC + 1
+                            cornerList(numC) =  cfp
+                            done(cfp)        = .TRUE.
+                          endif
+                        endif
+                      endif
+
+                    endif
+                  enddo
+
+                endif
+              endif
+            enddo CornerFaceLoop1
+          enddo CornerLoop1
+
+          ndone = ndone + nCorner
+
         endif
-      enddo
 
-    endif
+      enddo HyperPlaneLoop
+    enddo
 
-    HypPlanePtr% hplane1(1)        = 1
-    HypPlanePtr% hplane2(nDomains) = nHyperPlanes
+!   Use the maximum to avoid mapping a zero-length array when nHyperDomains=1
+    HypPlanePtr% interfaceLen = numC
+    numC                      = max( numC,1 )
 
+    call Allocator%allocate(Size%usePinnedMemory, self%label, "interfaceList", HypPlanePtr% interfaceList, numC)
+
+    do ii=1,numC
+      HypPlanePtr% interfaceList(ii) = cornerList(ii)
+    enddo
 
     do mCycle=1,meshCycles
       HypPlanePtr% badCornerList(mCycle) = cycleList(mCycle)
     enddo
 
 
-    HypPlanePtr% maxZones = maxval( zonesInPlane(1:nHyperPlanes) )
+    deallocate( cornerList )
+    deallocate( done )
 
 
     return
@@ -608,13 +793,14 @@ contains
 !=======================================================================
 ! destruct HyperPlane    
 !=======================================================================
-  subroutine AngleSet_dtorHypPlane(self)
+  subroutine AngleSet_dtorHypPlane(self, sweepVersion)
 
     use MemoryAllocator_mod
     implicit none
 
 !   Passed variables
     type(AngleSet),   intent(inout) :: self
+    integer,          intent(in)    :: sweepVersion
 
 !   Local
     type(HypPlane),   pointer       :: HypPlanePtr
@@ -628,12 +814,18 @@ contains
 
         HypPlanePtr => self% HypPlanePtr(angle)
 
-        call Allocator%deallocate(Size%usePinnedMemory,self%label,"zonesInPlane",HypPlanePtr% zonesInPlane)
+        if ( sweepVersion == 0 ) then
+          call Allocator%deallocate(Size%usePinnedMemory, self%label, "zonesInPlane",   HypPlanePtr% zonesInPlane)
+        else
+          call Allocator%deallocate(Size%usePinnedMemory, self%label, "cornersInPlane", HypPlanePtr% cornersInPlane)
+        endif
+
+        call Allocator%deallocate(Size%usePinnedMemory, self%label, "hplane1",       HypPlanePtr% hplane1)
+        call Allocator%deallocate(Size%usePinnedMemory, self%label, "hplane2",       HypPlanePtr% hplane2)
+        call Allocator%deallocate(Size%usePinnedMemory, self%label, "ndone",         HypPlanePtr% ndone)
+        call Allocator%deallocate(Size%usePinnedMemory, self%label, "interfaceList", HypPlanePtr% interfaceList)
 
         deallocate( HypPlanePtr% badCornerList )
-        deallocate( HypPlanePtr% hplane1 )
-        deallocate( HypPlanePtr% hplane2 )
-        deallocate( HypPlanePtr% ndone )
       endif
     enddo
 

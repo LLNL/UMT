@@ -30,7 +30,6 @@ class Umt(CachedCMakePackage, CudaPackage):
     variant("openmp", default=False, description="Enable OpenMP support")
     variant("openmp_offload", default=False, description="Enable OpenMP target offload support")
     variant("caliper", default=False, description="Enable Caliper performance timers")
-    variant("mfem", default=False, description="Enable support for reading MFEM meshes")
     variant("umpire", default=False, description="Enable use of Umpire memory library")
     variant("shared", default=False, description="Enable shared libraries")
     variant("silo", default=False, description="Enable silo I/O support")
@@ -196,19 +195,6 @@ class Umt(CachedCMakePackage, CudaPackage):
 
         entries.append(cmake_cache_path("CONDUIT_ROOT", spec["conduit"].prefix))
 
-        if "+mfem" in spec:
-            entries.append(cmake_cache_option("ENABLE_MFEM", True))
-            entries.append(cmake_cache_path("MFEM_ROOT", spec["mfem"].prefix))
-            if "hypre" in spec:
-                entries.append(cmake_cache_path("HYPRE_ROOT", spec["hypre"].prefix))
-            if "metis" in spec:
-                entries.append(cmake_cache_path("METIS_ROOT", spec["metis"].prefix))
-            if ("+zlib" in spec["mfem"]):
-                found_zlib_dependency = True
-
-        else:
-            entries.append(cmake_cache_option("ENABLE_MFEM", False))
-            
         if "+caliper" in spec:
             entries.append(cmake_cache_option("ENABLE_CALIPER", True))
             entries.append(cmake_cache_path("CALIPER_ROOT", spec["caliper"].prefix))

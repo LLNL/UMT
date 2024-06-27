@@ -16,11 +16,17 @@ target_sources( teton PRIVATE
   SweepUCBxyz.F90
   UpdateScalarIntensity.F90
   assoc_legendre.F90
-  cyclebreaker.F90
+  cycleBreakerCorner.F90
+  cycleBreakerZone.F90
   factorial.F90
-  findseeds.F90
   fixZone.F90
+  getCornerDependency.F90
+  getCornerGraph.F90
   getDownStreamData.F90
+  getNewCorners.F90
+  getNewZones.F90
+  getZoneDependency.F90
+  getZoneGraph.F90
   harmonics.F90
   harmonics_1d.F90
   harmonics_2d.F90
@@ -28,10 +34,9 @@ target_sources( teton PRIVATE
   kronecker.F90
   reflectArbitrary.F90
   reflectAxis.F90
-  sccsearch.F90
+  sccSearchCorner.F90
+  sccSearchZone.F90
   snmoments.F90
-  snneed.F90
-  snnext.F90
   snpnmset.F90
   snreflect.F90
   snynmset.F90

@@ -96,6 +96,8 @@
 
       theShape = [ FTM_DIMS ]
 
+      TETON_VERIFY( SUM(theShape) > 0, "Attempt to allocate array "//parentName//"/"//varName//" with size 0.  This is problematic with some OpenMP runtimes.")
+
 !$omp critical
       TETON_VERIFY(.NOT. associated(varPtr), "MemoryAllocator: Unable to allocate memory for "//parentName//"/"//varName//", pointer is already associated!")
       nullify(varPtr)

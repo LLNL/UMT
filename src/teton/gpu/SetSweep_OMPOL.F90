@@ -82,7 +82,8 @@
    nCommSets           =  getNumberOfCommSets(Quad)
    ndim                =  Size% ndim
    SnSweep             = .TRUE.
-   sweepVersion        = Options%getSweepVersion()
+   sweepVersion        =  Options%getSweepVersion()
+
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    useBoltzmannCompton = getUseBoltzmann(Compton)
 #endif
@@ -95,7 +96,7 @@
    if ( useBoltzmannCompton .and. Size% useCUDASolver .and. Size% ngr >= 16) then
      do setID=1,nGroupSets
        GSet   => getGroupSetData(Quad, setID)
-       TOMP(target update to (GSet% STotal))
+       TOMP_UPDATE(target update to (GSet% STotal))
      enddo
    endif
 #endif
@@ -108,6 +109,7 @@
 !  If this is the first flux iteration, initialize the communication
 !  order and incident flux on shared boundaries
 
+   START_RANGE("Teton_Init_Comm_Order")
    do cSetID=1,nCommSets
 
      CSet => getCommSetData(Quad, cSetID)
@@ -115,6 +117,7 @@
      call restoreCommOrder(CSet)
      call setIncidentFlux(cSetID)
    enddo
+   END_RANGE("Teton_Init_Comm_Order")
 
 !  Begin Flux Iteration 
 
@@ -127,17 +130,21 @@
 
 !    Post receives for all data
 
+     START_RANGE("Teton_Comm_Boundary_Fluxes")
      do cSetID=1,nCommSets
        call InitExchange(cSetID)
      enddo
+     END_RANGE("Teton_Comm_Boundary_Fluxes")
 
 !    Loop over angles, solving for each in turn:
 
      AngleLoop: do sendIndex=1,NumAnglesDyn
 
-!$omp parallel do default(none) schedule(dynamic) &
-!$omp& shared(nCommSets,Quad,SnSweep, sendIndex) &
-!$omp& private(CSet,Angle)
+       START_RANGE("Teton_Comm_Boundary_Fluxes")
+
+!!$omp parallel do default(none) schedule(dynamic) &
+!!$omp& shared(nCommSets,Quad,SnSweep, sendIndex) &
+!!$omp& private(CSet,Angle)
        do cSetID=1,nCommSets
 
          CSet  => getCommSetData(Quad, cSetID)
@@ -153,7 +160,8 @@
          call RecvFlux(SnSweep, cSetID, Angle)
 
        enddo
-!$omp end parallel do
+!!$omp end parallel do
+       END_RANGE("Teton_Comm_Boundary_Fluxes")
 
        do setID=1,nSets
 
@@ -162,11 +170,15 @@
 
 !        Update incident fluxes on reflecting boundaries
 
+         START_RANGE("Teton_Update_Reflecting_Fluxes")
          call snreflect(SnSweep, setID, Angle)
+         END_RANGE("Teton_Update_Reflecting_Fluxes")
 
 !  Map the latest boundary values
 
-         TOMP(target update to( Set%PsiB(:,:,Angle) ) )
+         START_RANGE("Teton_OpenMP_Updates")
+         TOMP_UPDATE(target update to( Set%PsiB(:,:,Angle) ) )
+         END_RANGE("Teton_OpenMP_Updates")
 
        enddo
 
@@ -178,25 +190,35 @@
        AngleType: if ( .not. ASet% FinishingDirection(Angle) ) then
 
          time1 = MPIWtime()
-         START_RANGE("Teton_Sweep_GPU")
+         START_RANGE("Teton_Calc_Rad_Energy_Density")
 
-         if (ndim == 3) then
-           if (sweepVersion == 0) then
+         if (sweepVersion == 0) then
+
+           if (ndim == 3) then
              call SweepUCBxyz_GPU(nSets, sendIndex, savePsi)
-           elseif (sweepVersion == 1) then
-             call CornerSweepUCBxyz_GPU(nSets, sendIndex, savePsi)
-           else
-             TETON_FATAL("Invalid value set for Sweep kernel version to use.")
+           elseif (ndim == 2) then
+             call SweepUCBrz_GPU(nSets, sendIndex, savePsi)
            endif
-         elseif (ndim == 2) then
-           call SweepUCBrz_GPU(nSets, sendIndex, savePsi)
+
+         elseif (sweepVersion == 1) then
+
+           if (ndim == 3) then
+             call CornerSweepUCBxyz_GPU(nSets, sendIndex, savePsi)
+           elseif (ndim == 2) then
+             call CornerSweepUCBrz_GPU(nSets, sendIndex, savePsi)
+           endif
+
+         else
+           TETON_FATAL("Invalid value set for Sweep kernel version to use.")
          endif
+         END_RANGE("Teton_Calc_Rad_Energy_Density")
 
 !    Update the total scalar intensity on the GPU
 
+         START_RANGE("Teton_Update_Total_Scalar_Intensity")
          call getPhiTotal(sendIndex)
+         END_RANGE("Teton_Update_Total_Scalar_Intensity")
 
-         END_RANGE("Teton_Sweep_GPU")
          time2 = MPIWtime()
          dtime = (time2 - time1)/sixty
          Size%GPUSweepTimeCycle = Size%GPUSweepTimeCycle + dtime
@@ -208,7 +230,9 @@
          Set   => getSetData(Quad, setID)
          Angle =  Set% AngleOrder(sendIndex)
 
-         TOMP(target update from( Set%PsiB(:,:,Angle) ))
+         START_RANGE("Teton_OpenMP_Updates")
+         TOMP_UPDATE(target update from( Set%PsiB(:,:,Angle) ))
+         END_RANGE("Teton_OpenMP_Updates")
 
        enddo
 
@@ -216,6 +240,7 @@
 
 !    Test convergence of incident fluxes
 
+     START_RANGE("Teton_Sweep_Test_Conv")
 !$omp parallel do default(none) schedule(static) &
 !$omp& shared(nCommSets, FluxConverged)
      do cSetID=1,nCommSets
@@ -230,6 +255,7 @@
 
      enddo
 !$omp end parallel do
+     END_RANGE("Teton_Sweep_Test_Conv")
 
 !    If this is the end of the radiation step and we are saving Psi do
 !    not perform additional sweeps

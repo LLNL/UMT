@@ -1,15 +1,15 @@
 # Once done, this will define
 #
-# HYPRE_FOUND         - system has hypre
-# HYPRE_INCLUDE_DIR   - hypre include directory
-# HYPRE_LIBRARIES     - hypre library
+# PARMETIS_FOUND         - system has parmetis
+# PARMETIS_INCLUDE_DIR   - parmetis include directory
+# PARMETIS_LIBRARIES     - parmetis library
 
 include(FindPackageHandleStandardArgs)
 
 find_path(
-  HYPRE_INCLUDE_DIR
-  NAMES HYPRE.h
-  PATHS ${HYPRE_ROOT}
+  PARMETIS_INCLUDE_DIR
+  NAMES parmetis.h
+  PATHS ${PARMETIS_ROOT}
   PATH_SUFFIXES include
   NO_DEFAULT_PATH
   NO_CMAKE_ENVIRONMENT_PATH
@@ -19,9 +19,9 @@ find_path(
 ) 
 
 find_library(
-  HYPRE_LIBRARIES
-  NAMES HYPRE
-  PATHS ${HYPRE_ROOT}
+  PARMETIS_LIBRARIES
+  NAMES parmetis
+  PATHS ${PARMETIS_ROOT}
   PATH_SUFFIXES lib
   NO_DEFAULT_PATH
   NO_CMAKE_ENVIRONMENT_PATH
@@ -31,8 +31,9 @@ find_library(
 )
 
 find_package_handle_standard_args(
-    Hypre
+    Parmetis
     DEFAULT_MSG
-    HYPRE_LIBRARIES HYPRE_INCLUDE_DIR)
+    PARMETIS_LIBRARIES PARMETIS_INCLUDE_DIR)
 
-mark_as_advanced(HYPRE_LIBRARIES HYPRE_INCLUDE_DIR)
+mark_as_advanced(PARMETIS_LIBRARIES PARMETIS_INCLUDE_DIR)
+mark_as_advanced(PARMETIS_LIBRARIES)

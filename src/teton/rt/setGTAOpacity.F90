@@ -42,7 +42,7 @@
 
    real(adqt), parameter :: minRatio = 1.0e-10_adqt
 
-   tetonAssert(Size%ndim > 1, "setGTAOpacityNEW not implemented for 1D at this time.")
+   TETON_ASSERT(Size%ndim > 1, "setGTAOpacityNEW not implemented for 1D at this time.")
 
 !  Constants
 

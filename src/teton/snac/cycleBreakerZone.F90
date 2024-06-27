@@ -1,18 +1,14 @@
 !***********************************************************************
-!                        Version 1:  07/01, PFN                        *
+!                        Last Update:  04/2024, PFN                    *
 !                                                                      *
-!   CYCLEBREAKER - This routine breaks cycles in the mesh by selecting *
-!                  a corner that will use some old (i.e. previous      *
-!                  iterate) incident fluxes.                           *
-!                                                                      *
-!   Input:                                                             *
-!                                                                      *
-!   Output:                                                            *
+!   CycleBreakerZone - This routine breaks cycles in the mesh by       *
+!                      selecting a zone that will use some old         *
+!                      (i.e. previous iterate) incident fluxes.        *
 !                                                                      *
 !***********************************************************************
-   subroutine cyclebreaker(ndoneZ, MESHCYCLES, nextZone, addedZones,  &
-                           needZ, listZone, cycleList,  &
-                           exitFace, onCycleList) 
+   subroutine cycleBreakerZone(ndoneZ, MESHCYCLES, nextZone,  &
+                               addedZones,needZ, listZone, cycleList, &
+                               exitFace, onCycleList) 
 
    use kind_mod
    use constant_mod
@@ -96,7 +92,7 @@
    enddo
 
    if (nleft /= ngraph) then
-     call f90fatal("Miscount of remaining zones in CYCLEBREAKER")
+     call f90fatal("Miscount of remaining zones in CycleBreakerZone")
    endif
 
 !  Loop over the number of zones in the graph
@@ -107,11 +103,11 @@
 
      if ( new(zone) ) then
 
-       call sccsearch(zone, ngraph, ncount, stackindex,     &
-                      nBreaks, meshCycles, dfnum, lowlink,  &
-                      needZ, stack, new, onstack, exitFace, &
-                      tempList, cycleList, zoneBreakList,   &
-                      onCycleList)
+       call sccSearchZone(zone, ngraph, ncount, stackindex,     &
+                          nBreaks, meshCycles, dfnum, lowlink,  &
+                          needZ, stack, new, onstack, exitFace, &
+                          tempList, cycleList, zoneBreakList,   &
+                          onCycleList)
 
      endif
 
@@ -120,7 +116,7 @@
 
    if (nBreaks == 0) then 
 
-     call f90fatal("CYCLEBREAKER: detection failed, no dependencies broken")
+     call f90fatal("CycleBreakerZone: detection failed, no dependencies broken")
 
    else
 
@@ -134,12 +130,12 @@
          addedZones         = addedZones + 1
          listZone(nextZone) = zone
        elseif (needZ(zone) < 0) then
-         call f90fatal("CycleBreaker, needZ < 0")
+         call f90fatal("CycleBreakerZone, needZ < 0")
        endif
      enddo
 
      if (addedZones == 0) then
-       call f90fatal("Cycles found, but not broken")
+       call f90fatal("CycleBreakerZone found, but not broken")
      endif
 
    endif
@@ -157,5 +153,5 @@
 
 
    return
-   end subroutine cyclebreaker
+   end subroutine cycleBreakerZone
  

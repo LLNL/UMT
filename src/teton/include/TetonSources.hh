@@ -134,6 +134,8 @@ class PointSource : public TetonSource
   public:
    // timevals is of size ntimes
    // source_profile is of size ntimes x ngroups x nangles
+   //
+   // @note The zone_index value should be -1 if the zone is not owned by the current MPI rank.
    PointSource(int nangles,
                int ngroups,
                int zone_index, // Which zone is the point source in? TODO, convert from coordinate to zone index

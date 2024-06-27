@@ -1,40 +1,4 @@
-UMT requires CMake to build.  It is recommended that your are familiar with CMake, in order to enable/disable the supported build options for UMT.  An example shell script 'build_and_run_umt.sh' is included in the UMT that will compile UMT, and its required libraries, on a typical Linux distribution.  The Linux distribution must have an MPI installation available.
-
-A list of common CMake options for UMT, and their default values, are:
-
-Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel
-**CMAKE_BUILD_TYPE:STRING=**
-
-Link and enable the use of the optional CALIPER performance measurement library.
-**ENABLE_CALIPER:BOOL=OFF**
-
-Enable compiling CUDA code
-**ENABLE_CUDA:BOOL=OFF**
-
-Enables CMake's Find MPI support (Turn off when compiling with the mpi wrapper directly)
-**ENABLE_FIND_MPI:BOOL=ON**
-
-Enable OpenMP pragmas
-**ENABLE_OPENMP:BOOL=OFF**
-
-Enable OpenMP target offload pragmas
-**ENABLE_OPENMP_OFFLOAD:BOOL=OFF**
-
-Link and enable the use of the optional UMPIRE memory library.  Umpire provides memory pools on both CPU and GPU devices, and CPU memory pools in page-locked memory.
-**ENABLE_UMPIRE:BOOL=OFF**
-
-Compiler OpenMP runtime implementation includes Fortran interface
-**OPENMP_HAS_FORTRAN_INTERFACE:BOOL=OFF**
-
-Compiler OpenMP implementation includes use_device_addr pragma.  This is usually true for OpenMP 5.x implementations, but not for OpenMP 4.x.
-**OPENMP_HAS_USE_DEVICE_ADDR:BOOL=OFF**
-
-Use preprocessor macros that strictly conform to FPP.
-**STRICT_FPP_MODE:BOOL=OFF**
-
-
-
-
+UMT requires CMake to build.  It is recommended that your are familiar with CMake, in order to enable/disable the supported build options for UMT.  An example shell script is included in the UMT that will compile UMT, and its required libraries, on a typical Linux distribution.  The Linux distribution must have an MPI installation available.
 
 UMT also provides a Spack package and can be optionally built using that package manager.  For more information on Spack see https://github.com/spack/spack.
 

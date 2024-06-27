@@ -7,7 +7,7 @@ target_sources( teton PRIVATE
   GDASolver.F90
   GTASolver.F90
   GTASolver_OMPOL.F90
-  GreySweep_OMPOL.F90
+  GreySweep.F90
   InitExchange.F90
   LinearSolver.F90
   RecvFlux.F90
@@ -25,6 +25,7 @@ target_sources( teton PRIVATE
   geometryUCBxyz.F90
   getCollisionRate.F90
   getCollisionRate_OMPOL.F90
+  getDirectedGraph.F90
   initFindExit.F90
   initcomm.F90
   pentalud.F90
@@ -38,7 +39,6 @@ target_sources( teton PRIVATE
   quadxyz.F90
   rtmainsn.F90
   rtgdac.F90
-  rtorder.F90
   rtquad.F90
   scat_prod.F90
   scat_prod1.F90

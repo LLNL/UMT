@@ -61,8 +61,11 @@ subroutine printGPUMemInfo(rank)
       "MB, currently used: ",  (gpu_total_bytes-gpu_free_bytes)/(2**20), "MB"
 
 #if defined(TETON_ENABLE_UMPIRE)
+   if (Allocator%umpire_host_allocator_id > -1) then
+      print *, "TETON UMPIRE allocator size: ", Allocator%umpire_host_allocator%get_current_size() / (2**20), "MB"
+   endif
    if (Allocator%umpire_device_allocator_id > -1) then
-      print *, "TETON UMPIRE device pool size: ", Allocator%umpire_device_allocator%get_current_size() / (2**20), "MB"
+      print *, "TETON UMPIRE device allocator size: ", Allocator%umpire_device_allocator%get_current_size() / (2**20), "MB"
    endif
 #endif
 

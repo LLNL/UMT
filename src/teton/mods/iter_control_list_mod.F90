@@ -118,9 +118,9 @@ contains
      self % nIterCon = nIterCon
 
 !    assertions
-     tetonAssert(self%nIterCon > 0,"Invalid iter control list")
-     tetonAssert(self%nIterCon<=self%maxIterCon,"Invalid iter control list")
-     tetonAssert(associated(self%iControls),"Invalid iter control list")
+     TETON_ASSERT(self%nIterCon > 0,"Invalid iter control list")
+     TETON_ASSERT(self%nIterCon<=self%maxIterCon,"Invalid iter control list")
+     TETON_ASSERT(associated(self%iControls),"Invalid iter control list")
 
      return
   end subroutine iter_control_list_ctor
@@ -182,9 +182,9 @@ contains
      self % nIterCon = 0
 
 !    assertions
-     tetonAssert(.not.allocated(self%names),"Invalid destruct")
-     tetonAssert(.not.associated(self%iControls),"Invalid destruct")
-     tetonAssert(self%nIterCon==0,"Invalid destruct")
+     TETON_ASSERT(.not.allocated(self%names),"Invalid destruct")
+     TETON_ASSERT(.not.associated(self%iControls),"Invalid destruct")
+     TETON_ASSERT(self%nIterCon==0,"Invalid destruct")
 
      return
   end subroutine iter_control_list_dtor
@@ -208,8 +208,8 @@ contains
      nIterCon = self % nIterCon
 
 !    assertions
-     tetonAssert(nIterCon==self%nIterCon,"Improper data access")
-     tetonAssert(nIterCon>=0,"Improper data access")
+     TETON_ASSERT(nIterCon==self%nIterCon,"Improper data access")
+     TETON_ASSERT(nIterCon>=0,"Improper data access")
 
      return
   end function iter_control_list_get_nIterCon
@@ -233,9 +233,9 @@ contains
      integer :: iIterCon
 
 !    assertions
-     tetonAssert(allocated(self%names),"Invalid iter control list")
-     tetonAssert(associated(self%iControls),"Invalid iter control list")
-     tetonAssert(any(iteration==self%names(:)),"Invalid iteration name")
+     TETON_ASSERT(allocated(self%names),"Invalid iter control list")
+     TETON_ASSERT(associated(self%iControls),"Invalid iter control list")
+     TETON_ASSERT(any(iteration==self%names(:)),"Invalid iteration name")
 
      iControl => self% iControls(self% maxIterCon)
 
@@ -248,7 +248,7 @@ contains
      enddo ListLoop
 
 !    assertions
-     tetonAssert(associated(iControl),"Invalid iter control")
+     TETON_ASSERT(associated(iControl),"Invalid iter control")
 
      return
   end function iter_control_list_get_iCon

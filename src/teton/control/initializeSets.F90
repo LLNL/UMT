@@ -11,7 +11,6 @@
  
    subroutine initializeSets 
 
-
    use kind_mod
    use constant_mod
    use radconstant_mod
@@ -55,25 +54,27 @@
    integer                  :: aSetID
    integer                  :: gSetID
    integer                  :: cSetID
-   integer                  :: commID
    integer                  :: nSets
    integer                  :: nAngleSets
    integer                  :: nGroupSets
    integer                  :: nGTASets
    integer                  :: nCommSets
    integer                  :: angle
+   integer                  :: sweepVersion
    logical(kind=1)          :: useBoltzmannCompton
 
    real(adqt)               :: dtrad
 
 !  Constants
 
-   dtrad      = getRadTimeStep(DtControls)
-   nSets      = getNumberOfSets(Quad)
-   nAngleSets = getNumberOfAngleSets(Quad)
-   nGroupSets = getNumberOfGroupSets(Quad)
-   nGTASets   = getNumberOfGTASets(Quad)
-   nCommSets  = getNumberOfCommSets(Quad)
+   dtrad        = getRadTimeStep(DtControls)
+   nSets        = getNumberOfSets(Quad)
+   nAngleSets   = getNumberOfAngleSets(Quad)
+   nGroupSets   = getNumberOfGroupSets(Quad)
+   nGTASets     = getNumberOfGTASets(Quad)
+   nCommSets    = getNumberOfCommSets(Quad)
+   sweepVersion = Options% getSweepVersion()
+
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    useBoltzmannCompton = getUseBoltzmann(Compton)
 #endif
@@ -96,10 +97,10 @@
      ! Find reflected angles on all symmetry boundaries
      call findReflectedAngles(aSetID)
 
-     ! Establish angle order for transport sweeps (rtorder) and create
-     ! a list of exiting boundary elements by angle (findexit)
+     ! Obtain a directed graph of zones or corners depending on the transport sweep selected;
+     ! create a list of exiting boundary elements by angle (findexit)
      if (Size% ndim >= 2) then
-       call rtorder(aSetID)
+       call getDirectedGraph(aSetID)
        call findexit(aSetID)
      endif
    enddo AngleSetLoop
@@ -112,6 +113,16 @@
        call findexit1D(cSetID)
      enddo
    endif
+
+!  Find the maximum number of hyper-elements (high-order and GTA)
+
+   do aSetID=1,nAngleSets
+     Quad% nHyperElements(1) = max( Quad% nHyperElements(1), Quad% AngSetPtr(aSetID)% maxInterface )
+   enddo
+
+   do aSetID=nAngleSets+1,nAngleSets+nGTASets
+     Quad% nHyperElements(2) = max( Quad% nHyperElements(2), Quad% AngSetPtr(aSetID)% maxInterface )
+   enddo
 
 !  If we are using the GPU, we need to map some data before the set loop
    if ( Size% useGPU ) then
@@ -126,118 +137,118 @@
 #endif
 
 !    Map Quadrature List
-     TOMP(target enter data map(to:Quad))
+     TOMP_MAP(target enter data map(to:Quad))
 
      UMPIRE_DEVICE_POOL_ALLOC(Quad%SetDataPtr)
-     TOMP(target enter data map(always,to:Quad%SetDataPtr))
+     TOMP_MAP(target enter data map(always,to:Quad%SetDataPtr))
 
      UMPIRE_DEVICE_POOL_ALLOC(Quad%GrpSetPtr)
-     TOMP(target enter data map(always,to:Quad%GrpSetPtr))
+     TOMP_MAP(target enter data map(always,to:Quad%GrpSetPtr))
 
      UMPIRE_DEVICE_POOL_ALLOC(Quad%AngSetPtr)
-     TOMP(target enter data map(always,to:Quad%AngSetPtr))
+     TOMP_MAP(target enter data map(always,to:Quad%AngSetPtr))
 
 
 !    Map Group Sets
      do gSetID=1,nGroupSets
        UMPIRE_DEVICE_POOL_ALLOC(Quad% GrpSetPtr(gSetID)% STotal)
-       TOMP(target enter data map(always,to:Quad% GrpSetPtr(gSetID)% STotal))
+       TOMP_MAP(target enter data map(always,to:Quad% GrpSetPtr(gSetID)% STotal))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% GrpSetPtr(gSetID)% Sigt)
-       TOMP(target enter data map(always,to:Quad% GrpSetPtr(gSetID)% Sigt))
+       TOMP_MAP(target enter data map(always,to:Quad% GrpSetPtr(gSetID)% Sigt))
 
      enddo
 
 !    Map ZoneSets
 
-     TOMP(target enter data map(to:ZSet))
+     TOMP_MAP(target enter data map(to:ZSet))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% AL)
-     TOMP(target enter data map(always,to:ZSet% AL))
+     TOMP_MAP(target enter data map(always,to:ZSet% AL))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% AU)
-     TOMP(target enter data map(always,to:ZSet% AU))
+     TOMP_MAP(target enter data map(always,to:ZSet% AU))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% nCornerSet)
-     TOMP(target enter data map(always,to:ZSet% nCornerSet))
+     TOMP_MAP(target enter data map(always,to:ZSet% nCornerSet))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% nCornerBatch)
-     TOMP(target enter data map(always,to:ZSet% nCornerBatch))
+     TOMP_MAP(target enter data map(always,to:ZSet% nCornerBatch))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% offset)
-     TOMP(target enter data map(always,to:ZSet% offset))
+     TOMP_MAP(target enter data map(always,to:ZSet% offset))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% cornerList)
-     TOMP(target enter data map(always,to:ZSet% cornerList))
+     TOMP_MAP(target enter data map(always,to:ZSet% cornerList))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% cornerMap)
-     TOMP(target enter data map(always,to:ZSet% cornerMap))
+     TOMP_MAP(target enter data map(always,to:ZSet% cornerMap))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% zoneList)
-     TOMP(target enter data map(always,to:ZSet% zoneList))
+     TOMP_MAP(target enter data map(always,to:ZSet% zoneList))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% cornerConverged)
-     TOMP(target enter data map(always,to:ZSet% cornerConverged))
+     TOMP_MAP(target enter data map(always,to:ZSet% cornerConverged))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% Te)
-     TOMP(target enter data map(always,to:ZSet% Te))
+     TOMP_MAP(target enter data map(always,to:ZSet% Te))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% TeOld)
-     TOMP(target enter data map(always,to:ZSet% TeOld))
+     TOMP_MAP(target enter data map(always,to:ZSet% TeOld))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% delta)
-     TOMP(target enter data map(always,to:ZSet% delta))
+     TOMP_MAP(target enter data map(always,to:ZSet% delta))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% sumT)
-     TOMP(target enter data map(always,to:ZSet% sumT))
+     TOMP_MAP(target enter data map(always,to:ZSet% sumT))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% netRate)
-     TOMP(target enter data map(always,to:ZSet% netRate))
+     TOMP_MAP(target enter data map(always,to:ZSet% netRate))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% dTCompton)
-     TOMP(target enter data map(always,to:ZSet% dTCompton))
+     TOMP_MAP(target enter data map(always,to:ZSet% dTCompton))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% B)
-     TOMP(target enter data map(always,to:ZSet% B))
+     TOMP_MAP(target enter data map(always,to:ZSet% B))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% dBdT)
-     TOMP(target enter data map(always,to:ZSet% dBdT))
+     TOMP_MAP(target enter data map(always,to:ZSet% dBdT))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% Snu0)
-     TOMP(target enter data map(always,to:ZSet% Snu0))
+     TOMP_MAP(target enter data map(always,to:ZSet% Snu0))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% dSnu0dT)
-     TOMP(target enter data map(always,to:ZSet% dSnu0dT))
+     TOMP_MAP(target enter data map(always,to:ZSet% dSnu0dT))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% AD)
-     TOMP(target enter data map(always,to:ZSet% AD))
+     TOMP_MAP(target enter data map(always,to:ZSet% AD))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% z)
-     TOMP(target enter data map(always,to:ZSet% z))
+     TOMP_MAP(target enter data map(always,to:ZSet% z))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% fk2)
-     TOMP(target enter data map(always,to:ZSet% fk2))
+     TOMP_MAP(target enter data map(always,to:ZSet% fk2))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% nI)
-     TOMP(target enter data map(always,to:ZSet% nI))
+     TOMP_MAP(target enter data map(always,to:ZSet% nI))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% nS)
-     TOMP(target enter data map(always,to:ZSet% nS))
+     TOMP_MAP(target enter data map(always,to:ZSet% nS))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% ex)
-     TOMP(target enter data map(always,to:ZSet% ex))
+     TOMP_MAP(target enter data map(always,to:ZSet% ex))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% expPH)
-     TOMP(target enter data map(always,to:ZSet% expPH))
+     TOMP_MAP(target enter data map(always,to:ZSet% expPH))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% comptonDeltaEr)
-     TOMP(target enter data map(always,to:ZSet% comptonDeltaEr))
+     TOMP_MAP(target enter data map(always,to:ZSet% comptonDeltaEr))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% dComptonDT)
-     TOMP(target enter data map(always,to:ZSet% dComptonDT))
+     TOMP_MAP(target enter data map(always,to:ZSet% dComptonDT))
 
      UMPIRE_DEVICE_POOL_ALLOC(ZSet% comptonSe)
-     TOMP(target enter data map(always,to:ZSet% comptonSe))
+     TOMP_MAP(target enter data map(always,to:ZSet% comptonSe))
 
 
 !    Map Angle Sets
@@ -245,80 +256,90 @@
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% nextZ)
 
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% nextZ))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% nextZ))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% nextC)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% nextC))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% nextC))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% StartingDirection)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% StartingDirection))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% StartingDirection))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% FinishingDirection)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% FinishingDirection))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% FinishingDirection))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% Omega)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% Omega))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% Omega))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% Weight)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% Weight))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% Weight))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% numCycles)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% numCycles))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% numCycles))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% cycleOffSet)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% cycleOffSet))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% cycleOffSet))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% cycleList)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% cycleList))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% cycleList))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% nHyperPlanes)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% nHyperPlanes))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% nHyperPlanes))
 
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% HypPlanePtr)
-
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% HypPlanePtr))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% HypPlanePtr))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% BdyExitPtr)
-       TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% BdyExitPtr))
+       TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% BdyExitPtr))
 
 
        if ( aSetID <= nAngleSets ) then
          UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% AfpNorm)
-         TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% AfpNorm))
+         TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% AfpNorm))
 
          UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% AezNorm)
-         TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% AezNorm))
+         TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% AezNorm))
 
          UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% ANormSum)
-         TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% ANormSum))
+         TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% ANormSum))
 
        endif
 
        do angle=1,Quad% AngSetPtr(aSetID)% numAngles
 
          ! Unable to map this to UMPIRE device pool, causes a segfault.
-         TOMP(target enter data map(to: Quad% AngSetPtr(aSetID)% BdyExitPtr(angle)% bdyList))
+         TOMP_MAP(target enter data map(to: Quad% AngSetPtr(aSetID)% BdyExitPtr(angle)% bdyList))
 
          if ( .not. Quad% AngSetPtr(aSetID)% FinishingDirection(angle) ) then
            ! Unable to map these to UMPIRE device pool, causes a segfault or wrong answers.
-           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+
+           if (aSetID > nAngleSets) then
+             TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+           else
+             if ( sweepVersion == 0 ) then
+               TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+             else
+               TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% cornersInPlane))
+             endif
+           endif
+
            TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1))
            TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2))
            TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone))
+           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% interfaceList))
          endif
 
        enddo
 
        if (Size% ndim == 2) then
          UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% angDerivFac)
-         TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% angDerivFac))
+         TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% angDerivFac))
 
          UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% quadTauW1)
-         TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% quadTauW1))
+         TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% quadTauW1))
 
          UMPIRE_DEVICE_POOL_ALLOC(Quad% AngSetPtr(aSetID)% quadTauW2)
-         TOMP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% quadTauW2))
+         TOMP_MAP(target enter data map(always,to:Quad% AngSetPtr(aSetID)% quadTauW2))
 
        endif
 
@@ -326,149 +347,152 @@
 
 !    Geometry
 
-     TOMP(target enter data map(to:Geom))
+     TOMP_MAP(target enter data map(to:Geom))
      UMPIRE_DEVICE_POOL_ALLOC(Geom% Volume)
-     TOMP(target enter data map(always,to:Geom% Volume))
+     TOMP_MAP(target enter data map(always,to:Geom% Volume))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% VolumeOld)
-     TOMP(target enter data map(always,to:Geom% VolumeOld))
+     TOMP_MAP(target enter data map(always,to:Geom% VolumeOld))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% VolumeZone)
-     TOMP(target enter data map(always,to:Geom% VolumeZone))
+     TOMP_MAP(target enter data map(always,to:Geom% VolumeZone))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% cOffSet)
-     TOMP(target enter data map(always,to:Geom% cOffSet))
+     TOMP_MAP(target enter data map(always,to:Geom% cOffSet))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% numCorner)
-     TOMP(target enter data map(always,to:Geom% numCorner))
+     TOMP_MAP(target enter data map(always,to:Geom% numCorner))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% CToZone)
-     TOMP(target enter data map(always,to:Geom% CToZone))
+     TOMP_MAP(target enter data map(always,to:Geom% CToZone))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% corner1)
-     TOMP(target enter data map(always,to:Geom% corner1))
+     TOMP_MAP(target enter data map(always,to:Geom% corner1))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% corner2)
-     TOMP(target enter data map(always,to:Geom% corner2))
+     TOMP_MAP(target enter data map(always,to:Geom% corner2))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% zone1)
-     TOMP(target enter data map(always,to:Geom% zone1))
+     TOMP_MAP(target enter data map(always,to:Geom% zone1))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% zone2)
-     TOMP(target enter data map(always,to:Geom% zone2))
+     TOMP_MAP(target enter data map(always,to:Geom% zone2))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% cEZ)
-     TOMP(target enter data map(always,to:Geom% cEZ))
+     TOMP_MAP(target enter data map(always,to:Geom% cEZ))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% cFP)
-     TOMP(target enter data map(always,to:Geom% cFP))
+     TOMP_MAP(target enter data map(always,to:Geom% cFP))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% A_ez)
-     TOMP(target enter data map(always,to:Geom% A_ez))
+     TOMP_MAP(target enter data map(always,to:Geom% A_ez))
 
      UMPIRE_DEVICE_POOL_ALLOC(Geom% A_fp)
-     TOMP(target enter data map(always,to:Geom% A_fp))
+     TOMP_MAP(target enter data map(always,to:Geom% A_fp))
 
 
      if (Size% ndim == 2) then
        UMPIRE_DEVICE_POOL_ALLOC(Geom% Area)
-       TOMP(target enter data map(always,to:Geom% Area))
+       TOMP_MAP(target enter data map(always,to:Geom% Area))
 
        UMPIRE_DEVICE_POOL_ALLOC(Geom% RadiusEZ)
-       TOMP(target enter data map(always,to:Geom% RadiusEZ))
+       TOMP_MAP(target enter data map(always,to:Geom% RadiusEZ))
 
        UMPIRE_DEVICE_POOL_ALLOC(Geom% RadiusFP)
-       TOMP(target enter data map(always,to:Geom% RadiusFP))
+       TOMP_MAP(target enter data map(always,to:Geom% RadiusFP))
 
      elseif (Size% ndim == 3) then
        UMPIRE_DEVICE_POOL_ALLOC(Geom% nCFacesArray)
-       TOMP(target enter data map(always,to:Geom% nCFacesArray))
+       TOMP_MAP(target enter data map(always,to:Geom% nCFacesArray))
 
      endif
 
 !    Radiation Intensity
 
-     TOMP(target enter data map(to:Rad))
+     TOMP_MAP(target enter data map(to:Rad))
      UMPIRE_DEVICE_POOL_ALLOC(Rad% PhiTotal)
-     TOMP(target enter data map(always,to:Rad% PhiTotal))
+     TOMP_MAP(target enter data map(always,to:Rad% PhiTotal))
 
      UMPIRE_DEVICE_POOL_ALLOC(Rad% radEnergy)
-     TOMP(target enter data map(always,to:Rad% radEnergy))
+     TOMP_MAP(target enter data map(always,to:Rad% radEnergy))
 
 
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
-     TOMP(target enter data map(to:Compton))
+     TOMP_MAP(target enter data map(to:Compton))
 
      if (getComptonFlag(Compton) /= comptonType_None) then
        UMPIRE_DEVICE_POOL_ALLOC(Compton% gamMean)
-       TOMP(target enter data map(always,to:Compton% gamMean))
+       TOMP_MAP(target enter data map(always,to:Compton% gamMean))
 
        UMPIRE_DEVICE_POOL_ALLOC(Compton% gamSqdDGam)
-       TOMP(target enter data map(always,to:Compton% gamSqdDGam))
+       TOMP_MAP(target enter data map(always,to:Compton% gamSqdDGam))
 
        UMPIRE_DEVICE_POOL_ALLOC(Compton% gamCubedDGam)
-       TOMP(target enter data map(always,to:Compton% gamCubedDGam))
+       TOMP_MAP(target enter data map(always,to:Compton% gamCubedDGam))
 
        UMPIRE_DEVICE_POOL_ALLOC(Compton% gamD)
-       TOMP(target enter data map(always,to:Compton% gamD))
+       TOMP_MAP(target enter data map(always,to:Compton% gamD))
 
      endif
 #endif
 
 !    GTA
 
-     TOMP(target enter data map(to:GTA))
+     TOMP_MAP(target enter data map(to:GTA))
      UMPIRE_DEVICE_POOL_ALLOC(GTA% GreySource)
-     TOMP(target enter data map(always,to:GTA% GreySource))
+     TOMP_MAP(target enter data map(always,to:GTA% GreySource))
 
      UMPIRE_DEVICE_POOL_ALLOC(GTA% GreyCorrection)
-     TOMP(target enter data map(always,to:GTA% GreyCorrection))
+     TOMP_MAP(target enter data map(always,to:GTA% GreyCorrection))
 
      UMPIRE_DEVICE_POOL_ALLOC(GTA% Chi)
-     TOMP(target enter data map(always,to:GTA% Chi))
+     TOMP_MAP(target enter data map(always,to:GTA% Chi))
 
 
      if (Size%useNewGTASolver) then
         UMPIRE_DEVICE_POOL_ALLOC(GTA% TT)
-        TOMP(target enter data map(always,to:GTA% TT))
+        TOMP_MAP(target enter data map(always,to:GTA% TT))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% Pvv)
-        TOMP(target enter data map(always,to:GTA% Pvv))
+        TOMP_MAP(target enter data map(always,to:GTA% Pvv))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% GreySigTotal)
-        TOMP(target enter data map(always,to:GTA% GreySigTotal))
+        TOMP_MAP(target enter data map(always,to:GTA% GreySigTotal))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% GreySigScat)
-        TOMP(target enter data map(always,to:GTA% GreySigScat))
+        TOMP_MAP(target enter data map(always,to:GTA% GreySigScat))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% GreySigScatVol)
-        TOMP(target enter data map(always,to:GTA% GreySigScatVol))
+        TOMP_MAP(target enter data map(always,to:GTA% GreySigScatVol))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% GreySigtInv)
-        TOMP(target enter data map(always,to:GTA% GreySigtInv))
+        TOMP_MAP(target enter data map(always,to:GTA% GreySigtInv))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% PhiInc)
-        TOMP(target enter data map(always,to:GTA% PhiInc))
+        TOMP_MAP(target enter data map(always,to:GTA% PhiInc))
+
+        UMPIRE_DEVICE_POOL_ALLOC(GTA% Sscat)
+        TOMP_MAP(target enter data map(always,to:GTA% Sscat))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% Q)
-        TOMP(target enter data map(always,to:GTA% Q))
+        TOMP_MAP(target enter data map(always,to:GTA% Q))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% TsaSource)
-        TOMP(target enter data map(always,to:GTA% TsaSource))
+        TOMP_MAP(target enter data map(always,to:GTA% TsaSource))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% AfpNorm)
-        TOMP(target enter data map(always,to:GTA% AfpNorm))
+        TOMP_MAP(target enter data map(always,to:GTA% AfpNorm))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% AezNorm)
-        TOMP(target enter data map(always,to:GTA% AezNorm))
+        TOMP_MAP(target enter data map(always,to:GTA% AezNorm))
 
         UMPIRE_DEVICE_POOL_ALLOC(GTA% ANormSum)
-        TOMP(target enter data map(always,to:GTA% ANormSum))
+        TOMP_MAP(target enter data map(always,to:GTA% ANormSum))
 
 
         if (Size% ndim == 2) then
           UMPIRE_DEVICE_POOL_ALLOC(GTA% Tvv)
-          TOMP(target enter data map(always,to:GTA% Tvv))
+          TOMP_MAP(target enter data map(always,to:GTA% Tvv))
 
         endif
      endif
@@ -476,10 +500,8 @@
 
 !  Initialize communication handles for persistent communicators
 
-!  QUESTION - We're passing in angle set IDs, but inside the initcomm the
-!  parameter is 'cSetID'.  Should this be a loop over comm sets or angle sets?? -black27
-   do aSetID=1,nAngleSets+nGTASets
-     call initcomm(aSetID)
+   do cSetID=1,nCommSets+nGTASets
+     call initcomm(cSetID)
    enddo
 
 !  Begin Initialize Phase
@@ -503,11 +525,8 @@
 
 !  Map PsiB back to the CPU
    if (Size%useGPU) then
-     do cSetID=1,nCommSets
-       CSet => getCommSetData(Quad, cSetID)
-       do setID=CSet% set1,CSet% set2
-         TOMP(target update from(Quad% SetDataPtr(setID)% PsiB))
-       enddo
+     do setID=1,nSets
+       TOMP_UPDATE(target update from(Quad% SetDataPtr(setID)% PsiB))
      enddo
    endif
 
@@ -526,7 +545,7 @@
    if (Size%useGPU) then
      do setID=1,nSets
        UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% AngleOrder)
-       TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% AngleOrder))
+       TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% AngleOrder))
 
      enddo
    endif
@@ -547,51 +566,51 @@
 !    Material
 
    if ( Size% useGPU ) then
-     TOMP(target enter data map(to:Mat))
+     TOMP_MAP(target enter data map(to:Mat))
      UMPIRE_DEVICE_POOL_ALLOC(Mat% Tec)
-     TOMP(target enter data map(always,to:Mat% Tec))
+     TOMP_MAP(target enter data map(always,to:Mat% Tec))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% Tecn)
-     TOMP(target enter data map(always,to:Mat% Tecn))
+     TOMP_MAP(target enter data map(always,to:Mat% Tecn))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% denec)
-     TOMP(target enter data map(always,to:Mat% denec))
+     TOMP_MAP(target enter data map(always,to:Mat% denec))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% cve)
-     TOMP(target enter data map(always,to:Mat% cve))
+     TOMP_MAP(target enter data map(always,to:Mat% cve))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% rho)
-     TOMP(target enter data map(always,to:Mat% rho))
+     TOMP_MAP(target enter data map(always,to:Mat% rho))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% nez)
-     TOMP(target enter data map(always,to:Mat% nez))
+     TOMP_MAP(target enter data map(always,to:Mat% nez))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% stimComptonMult)
-     TOMP(target enter data map(always,to:Mat% stimComptonMult))
+     TOMP_MAP(target enter data map(always,to:Mat% stimComptonMult))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% Siga)
-     TOMP(target enter data map(always,to:Mat% Siga))
+     TOMP_MAP(target enter data map(always,to:Mat% Siga))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% Sigs)
-     TOMP(target enter data map(always,to:Mat% Sigs))
+     TOMP_MAP(target enter data map(always,to:Mat% Sigs))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% Eta)
-     TOMP(target enter data map(always,to:Mat% Eta))
+     TOMP_MAP(target enter data map(always,to:Mat% Eta))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% EmissionRate)
-     TOMP(target enter data map(always,to:Mat% EmissionRate))
+     TOMP_MAP(target enter data map(always,to:Mat% EmissionRate))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% SMatEff)
-     TOMP(target enter data map(always,to:Mat% SMatEff))
+     TOMP_MAP(target enter data map(always,to:Mat% SMatEff))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% PowerEmitted)
-     TOMP(target enter data map(always,to:Mat% PowerEmitted))
+     TOMP_MAP(target enter data map(always,to:Mat% PowerEmitted))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% PowerCompton)
-     TOMP(target enter data map(always,to:Mat% PowerCompton))
+     TOMP_MAP(target enter data map(always,to:Mat% PowerCompton))
 
      UMPIRE_DEVICE_POOL_ALLOC(Mat% nonLinearIterations)
-     TOMP(target enter data map(always,to:Mat% nonLinearIterations))
+     TOMP_MAP(target enter data map(always,to:Mat% nonLinearIterations))
 
    endif
 
@@ -601,24 +620,24 @@
 
      do setID=nSets+1,nSets+nGTASets
        UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% AngleOrder)
-       TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% AngleOrder))
+       TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% AngleOrder))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% tPsi)
-       TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% tPsi))
+       TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% tPsi))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% pInc)
-       TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% pInc))
+       TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% pInc))
 
        UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% src)
-       TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% src))
+       TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% src))
 
 
        if (Size% ndim == 2) then
          UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% tPsiM)
-         TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% tPsiM))
+         TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% tPsiM))
 
          UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% tInc)
-         TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% tInc))
+         TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% tInc))
 
        endif
      enddo

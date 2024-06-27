@@ -13,4 +13,4 @@ set(CMAKE_Fortran_FLAGS "-ffree-line-length-none" CACHE PATH "")
 set(ENABLE_OPENMP ON CACHE BOOL "")
 set(ENABLE_OPENMP_OFFLOAD OFF CACHE BOOL "")
 
-set(CONDUIT_ROOT ${TPL_ROOT}/conduit/develop CACHE PATH "")
+set(CONDUIT_ROOT ${TPL_ROOT}/conduit/0.8.2 CACHE PATH "")

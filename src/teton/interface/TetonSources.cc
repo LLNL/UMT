@@ -76,10 +76,10 @@ PointSource::PointSource(int nangles,
                          int ntimebins,
                          const double *timebinbounds,
                          const double *source_profile)
-   : m_num_time_bins(ntimebins),
+   : TetonSource(nangles, zone_index > 0 ? 1 : 0, ngroups),
      m_profile(),
      m_time_bin_bounds(),
-     TetonSource(nangles, zone_index > 0 ? 1 : 0, ngroups)
+     m_num_time_bins(ntimebins)
 {
    if (zone_index <= 0)
       return;

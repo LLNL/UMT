@@ -28,7 +28,6 @@ if( ENABLE_CUDA )
 endif()
 
 if( ENABLE_OPENMP )
-  target_link_libraries( teton PUBLIC OpenMP::OpenMP_CXX)
   target_link_libraries( teton PUBLIC OpenMP::OpenMP_Fortran)
 endif()
 
@@ -51,10 +50,14 @@ endif()
 # Caliper installs its Fortran modules down in include/caliper/fortran,
 # so we must add that additional include path
 if (ENABLE_CALIPER)
-   target_include_directories( teton PRIVATE include
-                               ${CALIPER_INCLUDE_DIR}
-                               ${CALIPER_INCLUDE_DIR}/caliper/fortran
-                             )
+   if (ENABLE_FIND_PACKAGE_CONFIG_MODE)
+     target_link_libraries( teton PUBLIC caliper )
+   else()
+     target_include_directories( teton PRIVATE include
+                                 ${CALIPER_INCLUDE_DIR}
+                                 ${CALIPER_INCLUDE_DIR}/caliper/fortran
+                               )
+   endif()
 endif()
 
 if (ENABLE_BLUEPRINT_INTERFACE)
@@ -62,15 +65,13 @@ if (ENABLE_BLUEPRINT_INTERFACE)
   target_sources( teton INTERFACE include/TetonBlueprint.hh )
   target_sources( teton INTERFACE include/TetonSurfaceTallies.hh )
   target_sources( teton INTERFACE include/TetonConduitInterface.hh )
+  target_sources( teton INTERFACE include/TetonNDAccessor.hh )
+  target_sources( teton INTERFACE include/TetonTesting.hh )
+  target_sources( teton INTERFACE include/TetonUtilities.hh )
 endif()
 
-# Note:
-# The MFEM conduit data collection class expects to have an include
-# path to the internal 'include/conduit' directory, so add that
-# additional include path until MFEM can fix that behavior.
 target_include_directories( teton PRIVATE include
                             ${CONDUIT_INCLUDE_DIR}
-                            ${CONDUIT_INCLUDE_DIR}/conduit
                             ${CONDUIT_FORTRAN_MODULES_DIR})
 
 # Note:
@@ -80,9 +81,16 @@ if (NOT ENABLE_MINIAPP_BUILD)
    target_include_directories( teton PRIVATE include
                                ${PHYSICSUTILS_INCLUDE_DIR}
                                ${PHYSICSUTILS_INCLUDE_DIR}/PhysicsUtils
-                               ${PHYSICSUTILS_INCLUDE_DIR}/fortran
                                ${SILO_INCLUDE_DIR}
                              )
+
+   # There was short lived bug in physicsutils when it was putting the fortran modules into 'fortran'.
+   IF(EXISTS ${PHYSICSUTILS_INCLUDE_DIR}/fortran)
+      target_include_directories( teton PRIVATE include
+                               ${PHYSICSUTILS_INCLUDE_DIR}/fortran
+                                )
+   endif()
+
 endif()
 
 configure_file (include/TetonVersion.hh.in include/TetonVersion.hh )
@@ -123,11 +131,6 @@ if(ENABLE_TESTS)
 
   add_executable( test_driver
                   driver/test_driver.cc )
-
-  if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "LLVMFlang")
-    set_target_properties( test_driver PROPERTIES LINK_FLAGS -fno-fortran-main)
-    set(OpenMP_Fortran_FLAGS "${OpenMP_Fortran_FLAGS} -fno-fortran-main")
-  endif()
 
   if (ENABLE_FIND_MPI)
     target_link_libraries( test_driver PUBLIC MPI::MPI_Fortran MPI::MPI_CXX )
@@ -172,7 +175,7 @@ if(ENABLE_TESTS)
   endif()
 
   if( ENABLE_OPENMP )
-    target_link_libraries( test_driver PUBLIC OpenMP::OpenMP_Fortran OpenMP::OpenMP_CXX)
+    target_link_libraries( test_driver PUBLIC OpenMP::OpenMP_Fortran)
 
     # The target_link_options command has trouble with adding flags if there is
     # a space, it keeps putting quotes around the whole line.  Use the older
@@ -190,10 +193,9 @@ if(ENABLE_TESTS)
 
   # This is only enabled if one of the TPLs require HDF5, so it can be added to the link line.
   # Our code does not have any direct dependencies on HDF5.
-  if (ENABLE_HDF5)
+  if (ENABLE_HDF5 OR CONDUIT_REQUIRES_HDF5)
      target_link_libraries( test_driver PUBLIC
                             ${HDF5_LIBRARIES}
-                            ${Z_LIBRARIES}
                             dl
                           )
   endif()
@@ -204,57 +206,56 @@ if(ENABLE_TESTS)
 
   if (ENABLE_UMPIRE)
     target_include_directories( test_driver PUBLIC ${UMPIRE_INCLUDE_DIR} 
-                                                    ${UMPIRE_FORTRAN_MODULES_DIR})
-    target_link_libraries( test_driver PUBLIC ${UMPIRE_LIBRARIES} )
-    if (ENABLE_CAMP)
+                                                   ${UMPIRE_FORTRAN_MODULES_DIR})
+    target_link_libraries( test_driver PUBLIC ${UMPIRE_LIBRARIES})
+
+    if (FMT_ROOT)
+      target_include_directories( test_driver PUBLIC ${FMT_INCLUDE_DIR})
+      target_link_libraries( test_driver PUBLIC ${FMT_LIBRARIES} )
+    endif()
+
+    if (CAMP_ROOT)
       target_include_directories( test_driver PUBLIC ${CAMP_INCLUDE_DIR})
       target_link_libraries( test_driver PUBLIC ${CAMP_LIBRARIES} )
     endif()
   endif()
 
   if (ENABLE_CALIPER)
-    target_include_directories( test_driver PUBLIC ${CALIPER_INCLUDE_DIR} ${ADIAK_INCLUDE_DIR})
-    target_link_libraries( test_driver PUBLIC ${CALIPER_LIBRARIES} ${ADIAK_LIBRARIES} rt)
+    if (ENABLE_FIND_PACKAGE_CONFIG_MODE)
+      target_link_libraries( test_driver PUBLIC caliper )
+      target_link_libraries( test_driver PUBLIC adiak::adiak )
+    else()
+      target_include_directories( test_driver PUBLIC ${CALIPER_INCLUDE_DIR} ${ADIAK_INCLUDE_DIR})
+      target_link_libraries( test_driver PUBLIC ${CALIPER_LIBRARIES} ${ADIAK_LIBRARIES} rt)
+    endif()
+
+    if (ENABLE_HIP)
+      target_link_libraries( test_driver PUBLIC ${ROCTRACER_LIBRARIES})
+    endif()
+
   endif()
 
-  if (ENABLE_MFEM)
-    target_include_directories( test_driver PUBLIC ${MFEM_INCLUDE_DIR} ${HYPRE_INCLUDE_DIR})
-    target_link_libraries( test_driver PUBLIC ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
+  if (CONDUIT_REQUIRES_PARMETIS)
+    target_link_libraries( test_driver PUBLIC ${PARMETIS_LIBRARIES} ${METIS_LIBRARIES})
+  endif()
+
+  if (Z_ROOT)
+     target_link_libraries( test_driver PUBLIC
+                            ${Z_LIBRARIES}
+                          )
+  endif()
+
+  if (TETON_TEST_DRIVER_LIBRARIES)
+    target_link_libraries( test_driver PUBLIC ${TETON_TEST_DRIVER_LIBRARIES})
+  endif()
+
+  if (TETON_TEST_DRIVER_LIBRARIES)
+    target_link_libraries( test_driver PUBLIC ${TETON_TEST_DRIVER_LIBRARIES})
   endif()
 
   target_link_options(test_driver PUBLIC "LINKER:${TETON_LINK_OPTIONS}")
 
   install( TARGETS test_driver
            RUNTIME DESTINATION bin )
-
-# Executable for creating unstructured box mesh.
-  if (ENABLE_MFEM)
-    add_executable( makeUnstructuredBox
-                    driver/makeUnstructuredBox.cc )
-    if (ENABLE_FIND_MPI)
-      target_link_libraries( makeUnstructuredBox PUBLIC MPI::MPI_CXX )
-    endif()
-    if (ENABLE_HDF5)
-        target_link_libraries( makeUnstructuredBox PUBLIC
-                               ${HDF5_LIBRARIES}
-                               ${Z_LIBRARIES}
-                               dl
-                             )
-    endif()
-
-# Note:
-# The MFEM conduit data collection class expects to have an include
-# path to the internal 'include/conduit' directory, so add that
-# additional include path until MFEM can fix that behavior.
-    target_include_directories( makeUnstructuredBox PUBLIC ${CONDUIT_INCLUDE_DIR}
-                                                           ${CONDUIT_INCLUDE_DIR}/conduit
-                                                           ${MFEM_INCLUDE_DIR}
-                                                           ${HYPRE_INCLUDE_DIR}
-                              )
-    target_link_options( makeUnstructuredBox PUBLIC "LINKER:${TETON_LINK_OPTIONS}")
-    target_link_libraries( makeUnstructuredBox PUBLIC ${MFEM_LIBRARIES} ${HYPRE_LIBRARIES} ${METIS_LIBRARIES})
-    install( TARGETS makeUnstructuredBox
-             RUNTIME DESTINATION bin )
-  endif()
 
 endif()

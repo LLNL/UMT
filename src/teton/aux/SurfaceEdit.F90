@@ -129,10 +129,10 @@
 
    ! Check some inputs:
    if (numGroups /= 1) then
-     tetonAssert(Size% ngr == numGroups, "numGroups in teton_surfaceedit must be either 1 or the # of Teton groups")
+     TETON_ASSERT(Size% ngr == numGroups, "numGroups in teton_surfaceedit must be either 1 or the # of Teton groups")
    endif
-   tetonAssert(numTimeBins > 0, "Number of time bins must be positive.")
-   tetonAssert(minval(cornerList) > 0, "corner indices must be greater than 0")
+   TETON_ASSERT(numTimeBins > 0, "Number of time bins must be positive.")
+   TETON_ASSERT(minval(cornerList) > 0, "corner indices must be greater than 0")
 
 !  Constants
 
@@ -141,8 +141,10 @@
    dtrad = getRadTimeStep(DtControls)
    geometryFactorTimesDt = getGeometryFactor(Size)*dtrad
 
-   allocate( cFaceList(nCornerFaces) )
-   cFaceList(:) = -1
+   if (nCornerFaces > 0) then
+     allocate( cFaceList(nCornerFaces) )
+     cFaceList(:) = -1
+   endif
 
 !  Get the starting time
 
@@ -152,7 +154,7 @@
 !  For the input corner list and opposite corners, find the correct
 !  corner-face index
 
-   if (timeShift) then
+   if (timeShift .and. nCornerFaces > 0) then
      allocate(deltasFromCenter(Size% nDim, nCornerFaces))
      allocate(sqDistsFromCenter(nCornerFaces))
    endif
@@ -181,7 +183,7 @@
        endif
      enddo CFaceLoop
 
-     tetonAssert(cFaceList(iCornerFace) > 0, "Could not find corner face from corner "//char(c)//" and zface"//char(zface))
+     TETON_ASSERT(cFaceList(iCornerFace) > 0, "Could not find corner face from corner "//char(c)//" and zface"//char(zface))
    enddo
 
 !  Initialize temporary arrays:
@@ -220,7 +222,7 @@
      endif
 
      if (numAngleBins /= 1) then
-       tetonAssert(ASet% nPolarAngles == numAngleBins, "numAngleBins must either be 1 or # of Teton polar angles")
+       TETON_ASSERT(ASet% nPolarAngles == numAngleBins, "numAngleBins must either be 1 or # of Teton polar angles")
      else
        polarAngle = 1
      endif
@@ -306,7 +308,7 @@
              enddo
              timeBinDistribution(timeBinFinal) = (shiftedRadTimes(2)-timeBinBoundaries(timeBinFinal))/dtrad
            endif
-           tetonAssert(abs(sum(timeBinDistribution) - one) < 1.e-14_adqt, "timeBinDistribution must sum to one.")
+           TETON_ASSERT(abs(sum(timeBinDistribution) - one) < 1.e-12_adqt, "timeBinDistribution must sum to one.")
 
            ! offsets for timeBin and timeBinFinal:
            timeBin0 = (timeBin-1)*numGroupAngleBins+polarAngle0
@@ -331,7 +333,7 @@
            elseif (Size% igeom == geometry_sphere) then
              factor = weight*geometryFactorTimesDt*lambdaD3*Geom% Radius(c)*Geom% Radius(c)
            else
-             tetonAssert(.false., "Unknown geometry type in Teton's SurfaceEdit.F90")
+             TETON_ASSERT(.false., "Unknown geometry type in Teton's SurfaceEdit.F90")
            endif
 
            if (angdota > zero) then
@@ -362,8 +364,8 @@
 
              ! Note that we only ever reach this part of the code if
              !  computeIncident = true
-             tetonAssert(computeIncident, "Should not try to compute incident power in SurfaceEdit if computeIncident is .false.")
-             tetonAssert(cOpp > 0, "cOpp must be a positive index")
+             TETON_ASSERT(computeIncident, "Should not try to compute incident power in SurfaceEdit if computeIncident is .false.")
+             TETON_ASSERT(cOpp > 0, "cOpp must be a positive index")
 
              timeBinPlusNBins = timeBin + numTimeBins
              timeBinFinalPlusNBins = timeBinFinal + numTimeBins
@@ -421,7 +423,9 @@
 
    endif
 
-   deallocate(cFaceList)
+   if (nCornerFaces > 0) then
+     deallocate(cFaceList)
+   endif
 
    if (calcErrorMetricsConfirmed) then
 
@@ -447,7 +451,7 @@
      deallocate( tempErrEstSrcSize )
    endif
 
-   if (timeShift) then
+   if (timeShift .and. nCornerFaces > 0) then
      deallocate( deltasFromCenter  )
      deallocate( sqDistsFromCenter )
    endif

@@ -56,7 +56,7 @@ module CommSet_mod
 
      type(AngleSet),           pointer    :: AngleSetPtr    => null()
      type(Communicator),       pointer    :: CommPtr(:,:)   => null()
-     type(CommunicateFlux),    pointer    :: CommFluxPtr(:) => null() 
+     type(CommunicateFlux),    pointer    :: CommFluxPtr(:) => null()
 
   end type CommSet 
 
@@ -209,6 +209,8 @@ contains
 
     type(CommSet), intent(inout)    :: self
 
+   integer                   :: ierr
+
     if (Size% ncomm > 0) then
 
       deallocate( self% CommPtr )
@@ -216,6 +218,9 @@ contains
 
       deallocate( self% RecvOrder )
       deallocate( self% RecvOrder0 )
+! ERROR: Actually calling request free here causes MPI errors, but only durring shutdown
+!      call MPI_Request_free(self% request(1), ierr)
+!      call MPI_Request_free(self% request(2), ierr)
       deallocate( self% request )
 
       deallocate( self% NetFlux )
@@ -225,14 +230,14 @@ contains
     deallocate( self% IncFlux )
     deallocate( self% IncFluxOld )
     deallocate( self% relError )
+    deallocate( self% Converged )
 
     deallocate( self% NangBinList )
     deallocate( self% AngleToBin )
     deallocate( self% AngleOrder )
     deallocate( self% AngleOrder0 )
-    deallocate( self% Converged )
 
-
+    call MPI_COMM_FREE(self% COMM_GROUP, ierr)
 
     return
 

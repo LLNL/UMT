@@ -25,7 +25,6 @@ void dumpTallyToJson(const conduit::Node &blueprint, const conduit::Node &option
       tally_node["runInfo/code/name"] = "teton"; // TODO read in host code name?
       std::string conduit_base_path = "xray/surfaceTallies/";
 
-      const int ngroups_teton = options["quadrature/num_groups"].as_int();
       const double *group_bounds = options.fetch_existing("quadrature/gnu").as_double_ptr();
 
       int nanglebin_teton = -1;
@@ -70,7 +69,6 @@ void dumpTallyToJson(const conduit::Node &blueprint, const conduit::Node &option
          const double *tbinbnds = surface_edit_option["time_bin_boundaries"].as_double_ptr();
          const int ntimebin = surface_edit_option["time_bin_boundaries"].dtype().number_of_elements() - 1;
          const int size3d = nanglebin * ngrp * ntimebin;
-         const double *center = surface_edit_option.fetch_existing("center_point").as_double_ptr();
 
          const double *tally_values_esc = blueprint["fields/" + tally_name + "_tallies/values"].as_double_ptr();
          const double *tally_values_inc = nullptr;
@@ -124,7 +122,6 @@ void dumpTallyToJson(const conduit::Node &blueprint, const conduit::Node &option
             angle_dim_info["units"] = "cos(theta)";
             angle_dim_info["type"] = "angle bin";
 
-            // Check that Teton and Ares have the same idea of how many bins there are:
             TETON_VERIFY_C(mpi_rank,
                            nanglebin == nanglebin_teton,
                            "nanglebin must match nanglebin_teton for surface tallies");

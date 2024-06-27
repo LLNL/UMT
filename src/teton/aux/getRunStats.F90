@@ -77,6 +77,7 @@
    integer        :: numOmpCPUThreads
    integer        :: nZoneSets
    integer        :: nSets
+   integer        :: nHyperDomains
 
    character(len=26), parameter :: Tformat = "(1X,A16,1X,F14.8,5X,F14.8)" 
    character(len=14), parameter :: Sformat = "(A21,1pe18.11)" 
@@ -114,9 +115,10 @@
    type(IterControl) , pointer :: intensityControl   => NULL()
    
 !  Threading information
-   numOmpCPUThreads =        Options%getNumOmpMaxThreads()
-   nZoneSets =               getNumberOfZoneSets(Quad)
-   nSets =                   getNumberOfSets(Quad)
+   numOmpCPUThreads = Options%getNumOmpMaxThreads()
+   nZoneSets        = getNumberOfZoneSets(Quad)
+   nSets            = getNumberOfSets(Quad)
+   nHyperDomains    = getNumberOfHyperDomains(Quad,1) 
 
 !  Iteration Controls
 
@@ -246,18 +248,17 @@
 
      ncycle = getRadCycle(DtControls) 
 
-     print '(A24,i5,A24)', " >>>>>>>>>  TETON Cycle ",ncycle,"  Statistics   <<<<<<<<<"
 #if defined(TETON_ENABLE_OPENMP)
      print *,"*****************     Threading     ****************"
-     print '(A,i5)', " # threads per rank, cpu              = ", numOmpCPUThreads
+     print '(A,i5)', " # threads per rank, cpu        = ", numOmpCPUThreads
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
      if (Size%useGPU) then
 ! Number of thread teams used for kernels iterating over zone sets.
-       print '(A,i5)', " # thread teams over zone sets        = ", nZoneSets
+       print '(A,i5)', " # thread teams over zone sets  = ", nZoneSets
 ! Number of thread teams used for kernels iterating over phase-angle
 ! sets.  May comment this line out later, as Paul intends to migrate all
 ! kernels to be over zone sets.
-       print '(A,i5)', " # thread teams over phase-angle sets = ", nSets
+       print '(A,i5)', " # thread teams over sweep sets = ", nSets*nHyperDomains
      endif
      print *," "
 #endif

@@ -23,7 +23,7 @@
 
 !  Arguments
 
-   real(adqt), intent(inout)    :: P(Size%ncornr)
+   real(adqt), intent(in)       :: P(Size%ncornr)
    real(adqt), intent(inout)    :: PsiB(Size%nbelem,Size%nangGTA)
 
 !  Local

@@ -26,7 +26,7 @@
    logical (kind=1),     intent(in)    :: SnSweep
    integer,              intent(in)    :: setID
    integer,              intent(in)    :: Minc
-   real(adqt), optional, intent(inout) :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt), optional, intent(inout) :: PsiB(Size% nSurfElem,Size% nangGTA)
 
 !  Local Variables
 

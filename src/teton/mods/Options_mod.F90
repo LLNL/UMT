@@ -21,6 +21,8 @@ module Options_mod
     procedure :: isRankZeroVerbose
     procedure :: setVerbose
     procedure :: getSweepVersion
+    procedure :: getSweepNumHyperDomains
+    procedure :: getGTANumHyperDomains
   end type options_type
 
   public :: setVerboseOldCVersion
@@ -226,6 +228,8 @@ contains
 !***********************************************************************
 !    getSweepVersion - Return the sweep implementation version to use
 !    from the input.
+!
+!    The default sweep version is the zone sweep.
 !***********************************************************************
   integer(kind=c_int) function getSweepVersion(self) result(sweepVersion)
     class(options_type) :: self
@@ -236,6 +240,86 @@ contains
       sweepVersion = 0
     else
       sweepVersion = theDataStore%root%fetch_path_as_int32("options/sweep/kernel/version")
+    endif
+
+    return
+  end function
+
+!***********************************************************************
+!    setSweepNumHyperDomains - Set the sweep number of hyper-domains 
+!    from the input.
+!***********************************************************************
+  subroutine setSweepNumHyperDomains(hyperdomains) BIND(C,NAME="teton_setsweepnumhyperdomains")
+    integer(kind=C_INT), intent(in) :: hyperdomains
+
+    ! 0 - Let Teton automatically set this value. (default)
+    ! >= 1 - Set to this number of hyper-domains.
+
+    TETON_VERIFY(hyperdomains >= 0, "Setting sweep hyper-domains: the number of hyper-domains must be >= 0.")
+
+    call theDatastore%initialize()
+
+    call theDatastore%root%set_path("options/sweep/sn/numhyperdomains", hyperdomains)
+
+    return
+  end subroutine setSweepNumHyperDomains
+
+!***********************************************************************
+!    getSweepHyperDomains - Return the number of sweep hyper-domains to
+!    use.
+!***********************************************************************
+  integer(kind=c_int) function getSweepNumHyperDomains(self) result(hyperdomains)
+    class(options_type) :: self
+    logical*4 :: temp
+
+    temp = theDatastore%root%has_path("options/sweep/sn/numhyperdomains")
+    if (.NOT. temp) then
+!     Default to 0, which indicates user did not provide a setting. Teton
+!     will set this to a non-zero value in ConstructPhaseSpaceSets.F90 
+      hyperdomains = 0
+    else
+      hyperdomains = theDataStore%root%fetch_path_as_int32("options/sweep/sn/numhyperdomains")
+      TETON_VERIFY(hyperdomains >= 0, "Getting sweep hyper-domains: the number of hyper-domains must be >= 0.")
+    endif
+
+    return
+  end function
+
+!***********************************************************************
+!    setGTANumHyperDomains - Set the new GTA number of hyper-domains 
+!    from the input.
+!***********************************************************************
+  subroutine setGTANumHyperDomains(hyperdomains) BIND(C,NAME="teton_setgtanumhyperdomains")
+    integer(kind=C_INT), intent(in) :: hyperdomains
+
+    ! 0 - Let Teton automatically set this value. (default)
+    ! >= 1 - Set to this number of hyper-domains.
+
+    TETON_VERIFY(hyperdomains >= 0, "Setting new GTA hyper-domains: the number of hyper-domains must be >= 0.")
+
+    call theDatastore%initialize()
+
+    call theDatastore%root%set_path("options/sweep/gta/numhyperdomains", hyperdomains)
+
+    return
+  end subroutine setGTANumHyperDomains
+
+!***********************************************************************
+!    getGTANumHyperDomains - Return the number of new GTA hyper-domains to
+!    use.
+!***********************************************************************
+  integer(kind=c_int) function getGTANumHyperDomains(self) result(hyperdomains)
+    class(options_type) :: self
+    logical*4 :: temp
+
+    temp = theDatastore%root%has_path("options/sweep/gta/numhyperdomains")
+    if (.NOT. temp) then
+!     Default to 0, which indicates user did not provide a setting. Teton
+!     will set this to a non-zero value in ConstructPhaseSpaceSets.F90 
+      hyperdomains = 0
+    else
+      hyperdomains = theDataStore%root%fetch_path_as_int32("options/sweep/gta/numhyperdomains")
+      TETON_VERIFY(hyperdomains >= 0, "Getting new GTA hyper-domains: the number of hyper-domains must be >= 0.")
     endif
 
     return

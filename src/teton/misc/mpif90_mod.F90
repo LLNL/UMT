@@ -44,19 +44,19 @@ contains
      implicit none
 
 !    passed variables
-     real(long),   intent(inout) :: recvBuf
+     real(double),   intent(inout) :: recvBuf
      character(*), intent(in)    :: mpiOp
      integer,      intent(in)    :: comm
 
 !    local variables
      integer    :: length, ierror
-     real(long) :: sendBuf
+     real(double) :: sendBuf
 
 !     character(4), dimension(4) :: mpiOps = &
 !                                   (/"min ","max ","prod","sum "/)
 
 !    assertions
-!     tetonAssert(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
+!     TETON_ASSERT(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
 
 !      copy the send buffer into temporary storage
        sendBuf = recvBuf
@@ -102,19 +102,19 @@ contains
      implicit none
 
 !    passed variables
-     real(long),   contiguous, intent(inout) :: recvBuf(:)
+     real(double),   contiguous, intent(inout) :: recvBuf(:)
      character(*),             intent(in)    :: mpiOp
      integer,                  intent(in)    :: comm
 
 !    local variables
      integer                 :: length, ierror, alloc_stat
-     real(long), allocatable :: sendBuf(:)
+     real(double), allocatable :: sendBuf(:)
 
 !     character(4), dimension(4) :: mpiOps = &
 !                                   (/"min ","max ","prod","sum "/)
 
 !    assertions
-!     tetonAssert(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
+!     TETON_ASSERT(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
 
 !      allocate memory for the send buffer
        allocate(sendBuf(size(recvBuf)))
@@ -178,7 +178,7 @@ contains
 !                                   (/"min ","max ","prod","sum "/)
 
 !    assertions
-!     tetonAssert(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
+!     TETON_ASSERT(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
 
 !      copy the send buffer into temporary storage
        sendBuf = recvBuf
@@ -236,7 +236,7 @@ contains
 !                                   (/"min ","max ","prod","sum "/)
 
 !    assertions
-!     tetonAssert(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
+!     TETON_ASSERT(any(mpiOp==mpiOps(:)),"Invalid MPI Reduction Operation")
 
 !      allocate memory for the send buffer
        allocate(sendBuf(size(recvBuf)))
@@ -407,8 +407,8 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(in)    :: sendBuf(:)
-     real(long), contiguous, intent(inout) :: recvBuf(:,:)
+     real(double), contiguous, intent(in)    :: sendBuf(:)
+     real(double), contiguous, intent(inout) :: recvBuf(:,:)
      integer,    intent(in)    :: gatherNode
      integer,    intent(in)    :: comm
 
@@ -416,7 +416,7 @@ contains
      logical :: tf
 
      integer    :: commSize, myNode, sendCount, recvCount, ierror
-     real(long) :: recvBufDum(1,1)
+     real(double) :: recvBufDum(1,1)
 
 !    determine size and rank
      commSize = getMPISize(comm)
@@ -425,9 +425,9 @@ contains
 !    assertions
      if (myNode == gatherNode) then
         tf = size(recvBuf,1)==size(sendBuf,1)
-        tetonAssert(tf,"Invalid MPI Gather")
+        TETON_ASSERT(tf,"Invalid MPI Gather")
         tf = (size(recvBuf,2)==commSize)
-        tetonAssert(tf,"Invalid MPI Gather")
+        TETON_ASSERT(tf,"Invalid MPI Gather")
      endif
 
 !    MPI Barrier before performing the gather
@@ -478,8 +478,8 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(in)    :: sendBuf(:,:)
-     real(long), contiguous, intent(inout) :: recvBuf(:,:,:)
+     real(double), contiguous, intent(in)    :: sendBuf(:,:)
+     real(double), contiguous, intent(inout) :: recvBuf(:,:,:)
      integer,    intent(in)    :: gatherNode
      integer,    intent(in)    :: comm
 
@@ -487,7 +487,7 @@ contains
      logical(kind=1) :: tf
 
      integer    :: commSize, myNode, sendCount, recvCount, ierror
-     real(long) :: recvBufDum(1,1,1)
+     real(double) :: recvBufDum(1,1,1)
 
 !    determine size and rank
      commSize = getMPISize(comm)
@@ -496,11 +496,11 @@ contains
 !    assertions
      if (myNode == gatherNode) then
         tf = size(recvBuf,1)==size(sendBuf,1)
-        tetonAssert(tf,"Invalid MPI Gather")
+        TETON_ASSERT(tf,"Invalid MPI Gather")
         tf = size(recvBuf,2)==size(sendBuf,2)
-        tetonAssert(tf,"Invalid MPI Gather")
+        TETON_ASSERT(tf,"Invalid MPI Gather")
         tf = size(recvBuf,3)==commSize
-        tetonAssert(tf,"Invalid MPI Gather")
+        TETON_ASSERT(tf,"Invalid MPI Gather")
      endif
 
 !    MPI Barrier before performing the gather
@@ -551,7 +551,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(inout) :: sendBuf(:)
+     real(double), contiguous, intent(inout) :: sendBuf(:)
      integer,                intent(in)    :: nsend
      integer,                intent(in)    :: root
      integer,                intent(in)    :: comm
@@ -620,7 +620,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(in) :: sendBuf(:,:)
+     real(double), contiguous, intent(in) :: sendBuf(:,:)
      integer,                intent(in) :: nsend
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
@@ -657,7 +657,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(in) :: sendBuf(:)
+     real(double), contiguous, intent(in) :: sendBuf(:)
      integer,                intent(in) :: nsend
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
@@ -731,7 +731,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(inout) :: recvBuf(:,:)
+     real(double), contiguous, intent(inout) :: recvBuf(:,:)
      integer,                intent(inout) :: nrecv
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
@@ -768,7 +768,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(inout) :: recvBuf(:)
+     real(double), contiguous, intent(inout) :: recvBuf(:)
      integer,                intent(inout) :: nrecv
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
@@ -843,7 +843,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(in) :: sendBuf(:)
+     real(double), contiguous, intent(in) :: sendBuf(:)
      integer,                intent(in) :: nsend
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
@@ -881,7 +881,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(in) :: sendBuf(:,:)
+     real(double), contiguous, intent(in) :: sendBuf(:,:)
      integer,                intent(in) :: nsend
      integer,                intent(in) :: isend
      integer,                intent(in) :: tag
@@ -997,7 +997,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(inout) :: recvBuf(:)
+     real(double), contiguous, intent(inout) :: recvBuf(:)
      integer,                intent(inout) :: nrecv
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag
@@ -1035,7 +1035,7 @@ contains
      implicit none
 
 !    passed variables
-     real(long), contiguous, intent(inout) :: recvBuf(:,:)
+     real(double), contiguous, intent(inout) :: recvBuf(:,:)
      integer,                intent(inout) :: nrecv
      integer,                intent(in)    :: irecv
      integer,                intent(in)    :: tag

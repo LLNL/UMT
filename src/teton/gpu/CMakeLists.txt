@@ -1,4 +1,5 @@
 target_sources( teton PRIVATE
+  CornerSweepUCBrz_OMPOL.F90
   CornerSweepUCBxyz_OMPOL.F90
   InitSweepGreyUCBrz_OMPOL.F90
   InitSweepGreyUCBxyz_OMPOL.F90

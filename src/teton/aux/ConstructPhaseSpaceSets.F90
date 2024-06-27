@@ -1,3 +1,4 @@
+#include "macros.h"
 !***********************************************************************
 !                        Last Update:  07/2017, TSH                   *
 !                                                                      *
@@ -15,7 +16,8 @@
 
    use, intrinsic :: ISO_C_BINDING
    use, intrinsic:: iso_fortran_env, only: stdout=>output_unit
-   use cmake_defines_mod,            only: omp_device_num_processors
+   use cmake_defines_mod,            only: omp_device_num_processors, &
+                                           min_groupset_size, max_num_hyperdomains
 
    use kind_mod
    use constant_mod
@@ -49,13 +51,15 @@
    type(CommSet),    pointer :: CSet
 
    integer :: nSets
-   integer :: nBalancedSets
    integer :: nSetsMax
+   integer :: nSetsMaxUser
    integer :: nGTASets
    integer :: nAngleSets
    integer :: nGroupSets
+   integer :: nGroupSetsMax
    integer :: nCommSets
    integer :: nZoneSets
+   integer :: nHyperDomains
    integer :: setID
    integer :: QuadID
    integer :: groupSetID
@@ -82,9 +86,7 @@
    integer :: nAngles
    integer :: nReflecting
 
-   integer :: NEW_COMM_GROUP
-   integer :: new_group
-   integer :: new_comm 
+   integer :: new_comm
    integer :: ierror
 
    integer :: reflID
@@ -112,21 +114,32 @@
 
 !  Construct Set Data
 
-   nReflecting = getNumberOfReflecting(RadBoundary)
-   nSets       = getNumberOfSets(Quad)
-   nGroupSets  = 1
-   nZoneSets   = getNumberOfZoneSets(Quad)
+   nReflecting  = getNumberOfReflecting(RadBoundary)
+   nSetsMaxUser = getNumberOfSets(Quad)
+   nGroupSets   = 1
+   nZoneSets    = getNumberOfZoneSets(Quad)
 
-   verbose = nSets > 1 .AND. Options%isRankVerbose() > 0
+   verbose = nSetsMaxUser > 1 .AND. Options%isRankVerbose() > 0
 
 !  Decompose angle sets (this finds the maximum number of angle sets
 !  allowed respecting angular dependencies). Decomposition in angle
 !  minimizes run time and gives the best thread scaling so we do this first.
+
    call decomposeAngleSets
 
+!  Determine the number of "hyper-domains" to increase parallelism
+!  in the high-order sweeps and "new" GTA. We need to be
+!  careful for very small zone counts so we estimate a
+!  maximum number based on the number of zones. We also limit
+!  the maximum # based on performance observations. This value is set
+!  in cmake/GetGPUInfo to 12 currently.  This number 
+!  could change in the future.   PFN 03/29/2024
+
+   nHypDomMax = int( sqrt( real(Size%nzones) )/2 )
+   nHypDomMax = min( nHypDomMax, max_num_hyperdomains )
+   nHypDomMax = max( nHypDomMax, 1 )
+
 !  Determine maximum number of phase-space sets problem will support.
-!  Until we add "zone sets", the maximum number of sets we can use for the
-!  sweep is the number of angle sets multiplied by the number of groups
 
    QuadSet    => getQuadrature(Quad, 1)
    nAngleSets =  QuadSet% maxAngleSets
@@ -137,20 +150,26 @@
       print "(A, I0, A, I0, A, I0, A)", "Teton: Quadrature set ", QuadID, " supports sweeping up to ", QuadSet%maxAngleSets, " sweep directions concurrently and has ", QuadSet%Groups, " energy group bins."
    endif
 
+   ! Reduce nSets if it exceeds what problem will support.
+   if (nSetsMaxUser > nSetsMax) then
+     if (verbose) then
+        print "(A, I0, A, I0, A)", "Teton: This problem lacks enough parallelism to create ", nSetsMaxUser, " phase-space sets.  The maximum available (up to ", nSetsMax, ") will be created."
+     endif
+
+     nSets = nSetsMax
+   else
+     if (verbose) then
+        print "(A, I0, A)", "Teton: Will create up to ", nSetsMaxUser, " phase-space sets (limit requested by user)."
+     endif
+
+     nSets = nSetsMaxUser
+   endif
+
    allocate( setGroups(nSets) )
    allocate( setAngles(nSets) )
    allocate( setGroup0(nSets) )
    allocate( setGroupID(nSets) )
    allocate( setAngle0(nSets) )
-
-   ! Reduce nSets if it exceeds what problem will support.
-   if (nSets > nSetsMax) then
-     if (verbose) then
-        print "(A, I0, A, I0, A)", "Teton: This problem lacks enough parallelism to create ", nSets, " phase-space sets.  The maximum available (", nSetsMax, ") will be created."
-     endif
-
-     nSets = nSetsMax
-   endif
 
    totalSets = 0
 
@@ -191,23 +210,21 @@
 
 !      If the number of sets desired is greater than the number of angle sets,
 !      decompose further in energy and distribute the work as balanced as possible
-!
 
-       ! Keep doubling the sets until we get the closest we can to nSets
-       ! without exceeding it. The assumption here is that each group set
-       ! contains the same number of groups. This should be relaxed in the
-       ! future.
+!      Now that we have spatial parallelism for the transport sweeps it is
+!      advantageous to have at least 'min_groupset_size' groups per groups set. This
+!      number is set in cmake/GetGPUInfo.cmake and is currently '16' for our
+!      supported GPU platforms.
 
-       nBalancedSets = nAngleSets
-       nGroupSets    = 1
+       if ( QuadSet% Groups <= min_groupset_size ) then
+         nGroupSets = 1
+       else
+         nGroupSets    = int( QuadSet% Groups/ min_groupset_size )
+         nGroupSetsMax = int ( nSets/nAngleSets )
+         nGroupSets    = min( nGroupSets, nGroupSetsMax )
+       endif
 
-       do while ( (nBalancedSets * 2 <= nSets) .AND. (nGroupSets *2 <= QuadSet%maxGroupSets))
-         nGroupSets    = nGroupSets * 2
-         nBalancedSets = nBalancedSets * 2
-       enddo
-
-!      Here nSets = nAngleSets*nGroupSets
-       nSets = nBalancedSets
+       nSets = nAngleSets*nGroupSets 
 
 !      The following code block handles the case where the groups sets are
 !      unbalanced (i.e. not all group sets contain the same number of groups).
@@ -316,11 +333,11 @@
      ! Remove after support is added for phase-space sets with different numbers of
      ! angles and groups and we have tests exercising this in the suite.
      if ( setID > 1) then
-       if ( setGroups(setID) /= setGroups(setID-1) ) then
-         call f90fatal("Teton: Unable to evenly distribute energy groups across phase-space sets.  This is currently a requirement. Contact the Teton team for tips on adjusting your energy groups to allow even distribution over the phase-space sets.")
-       endif
        if ( setAngles(setID) /= setAngles(setID-1) ) then
          call f90fatal("Teton: Unable to evenly distribute angles across phase-space sets. This is currently a requirement.  Contact the Teton team for tips on adjusting your angle setup to allow even distribution over the phase-space sets.")
+       endif
+       if ( setGroups(setID) /= setGroups(setID-1) ) then
+         call f90fatal("Teton: Unable to evenly distribute groups across phase-space sets. This is currently a requirement.  Contact the Teton team for tips on adjusting your angle setup to allow even distribution over the phase-space sets.")
        endif
      endif
    enddo
@@ -340,9 +357,44 @@
    call constructSetPointers(Quad, nSets, nAngleSets, nGroupSets,  &
                              nCommSets, nGTASets)
 
+!  Note that the use of "hyper-domains" will be deprecated once
+!  we support sub-meshes per MPI rank.  Also, hyper-domains are
+!  not used on the CPU.   PFN 02/14/2023
+
+   if (Size% useGPU) then
+!       High-order sweep
+!    Set number of hyper-domains automatically. (default)
+     if (Options% getSweepNumHyperDomains() == 0) then
+        nHypDomMin = int( min(omp_device_num_processors,nSetsMaxUser)/max(nSets,1) )
+        nHypDomMin = max( nHypDomMin, 1 )
+
+        Quad% nHyperDomains(1) = min(nHypDomMax, nHypDomMin)
+     else if (Options% getSweepNumHyperDomains() >= 1) then
+!       Specified from user
+        Quad% nHyperDomains(1) = Options% getSweepNumHyperDomains()
+     endif
+
+!    GTA Sweep
+!    Set number of hyper-domains automatically. (default)
+     if (Options% getGTANumHyperDomains() == 0) then
+        nHypDomMin = int( min(omp_device_num_processors,nSetsMaxUser)/max(nGTASets,1) )
+        nHypDomMin = max( nHypDomMin, 1 )
+
+        Quad% nHyperDomains(2) = min(nHypDomMax, nHypDomMin)
+     else if (Options% getGTANumHyperDomains() >= 1) then
+!       Specified from user
+        Quad% nHyperDomains(2) = Options% getGTANumHyperDomains()
+     endif
+
+   else
+     Quad% nHyperDomains(1) = 1
+     Quad% nHyperDomains(2) = 1
+   endif
+
 !  Construct the phase-space sets
 
-   GTASet = .FALSE.
+   GTASet        = .FALSE.
+   nHyperDomains = Quad% nHyperDomains(1)
 
    SetLoop: do setID=1,nSets
 
@@ -376,9 +428,9 @@
      Quad% commID(setID)  = commSetID
 
 !    Construct the set
-     call Set%construct(setID, groupSetID, angleSetID, QuadID,      &
+     call Set%construct(setID, groupSetID, angleSetID, QuadID,        &
                         Groups, NumAngles, g0, angle0, nZones, nCorner,  &
-                        QuadSet, GTASet, fromRestart)
+                        nHyperDomains, QuadSet, GTASet, fromRestart)
 
 !    Construct group sets, but only for the first angle set
      if (angle0 == 0) then
@@ -397,13 +449,7 @@
      if (groupSetID == 1 .or. Size% ndim == 1) then
 
 !      duplicate the existing communicator
-       call MPI_COMM_DUP(MY_COMM_GROUP, NEW_COMM_GROUP, ierror)
-
-!      extract the original group handle
-       call MPI_COMM_GROUP(NEW_COMM_GROUP, new_group, ierror)
-
-!      create new communicator
-       call MPI_COMM_CREATE(NEW_COMM_GROUP, new_group, new_comm, ierror)
+       call MPI_COMM_DUP(MY_COMM_GROUP, new_comm, ierror)
 
        if (ierror /= MPI_SUCCESS) then
           call f90fatal("MPI COMM Create Failed")
@@ -468,10 +514,11 @@
 
    if (Size% ndim > 1) then
 
-     GTASet       = .TRUE.
-     angle0       =  0
-     angleSetID   =  nAngleSets
-     groupSetID   =  1
+     GTASet        = .TRUE.
+     nHyperDomains = Quad% nHyperDomains(2)
+     angle0        =  0
+     angleSetID    =  nAngleSets
+     groupSetID    =  1
 
      if (verbose) then
         print "(A)", "Teton: Angle and energy group distribution breakdown (grey acceleration sweep):"
@@ -490,21 +537,21 @@
        Quad% angleID(nSets+setID) = angleSetID
        Quad% commID(nSets+setID)  = commSetID
 
-       QuadID     =  2 
-       Groups     =  1 
-       NumAngles  =  QuadSet% angleSetSize(setID) 
-       g0         =  0
-       nZones     =  Size% nZones
-       nCorner    =  Size% ncornr
+       QuadID        = 2 
+       Groups        = 1 
+       NumAngles     = QuadSet% angleSetSize(setID) 
+       g0            = 0
+       nZones        = Size% nZones
+       nCorner       = Size% ncornr
 
        if (verbose) then
          write(stdout,100) setID,QuadID,NumAngles,angle0+1,angle0+NumAngles,Groups,g0+1,g0+Groups
        endif
 
 !      construct the GTA set
-       call Set%construct(setID, groupSetID, angleSetID, QuadID, &
-                          Groups, NumAngles, g0, angle0, nZones,      &
-                          nCorner, QuadSet, GTASet, fromRestart)
+       call Set%construct(setID, groupSetID, angleSetID, QuadID,        &
+                          Groups, NumAngles, g0, angle0, nZones, nCorner,  &
+                          nHyperDomains, QuadSet, GTASet, fromRestart)
 
 !      construct an angle set for every GTA set
        call construct(ASet, NumAngles, angle0, nZones,  &
@@ -513,13 +560,7 @@
 !      construct a communication set for every GTA set
 
 !      duplicate the existing communicator
-       call MPI_COMM_DUP(MY_COMM_GROUP, NEW_COMM_GROUP, ierror)
-
-!      extract the original group handle
-       call MPI_COMM_GROUP(NEW_COMM_GROUP, new_group, ierror)
-
-!      create new communicator
-       call MPI_COMM_CREATE(NEW_COMM_GROUP, new_group, new_comm, ierror)
+       call MPI_COMM_DUP(MY_COMM_GROUP, new_comm, ierror)
 
        cSet1 = nSets + setID 
        cSet2 = nSets + setID 
@@ -530,6 +571,12 @@
 
      enddo
 
+     if (verbose) then
+       write(stdout, 300)
+       write(stdout, 200) Size% myRankInGroup,Quad% nHyperDomains(1),Quad% nHyperDomains(2)
+       write(stdout, 300)
+     endif
+
 !    Construct and incident test on shared boundaries
 
      call initFindExit(nAngleSets, nGTASets)
@@ -537,6 +584,9 @@
    endif
 
  100 format("       Phase-Angle Set ID =",i3,2x," | Quadrature Set ID =",i2,2x, " | # Angles = ",i3," | Angle IDs =",i3," -",i3, " | # Groups =",i3," | Group IDs = ",i3," -",i3)
+
+ 200 format( "hyper-domains for rank = ",i4,": high-order = ",i4,", GTA = ",i4)
+ 300 format(" ")
 
 !  Grey Acceleration Module
 !  Moving this constructor here because (in the near future)
@@ -560,23 +610,6 @@
 
    call construct(ZSet, nZoneSets)
 
-!   Determine the number of "hyper-domains" to increase parallelism
-!   for GTA. We need to be careful for very small zone counts so we
-!   estimate a minimum number based on the number of zones.
-
-!   Note that the use of "hyper-domains" will be deprecated once
-!   we support sub-meshes per MPI rank.  PFN 09/22/2022
-
-    nHypDomMin = int( 2*sqrt( real(Size%nzones) ) - 1 )
-    nHypDomMin = max( nHypDomMin, 1 )
-    nHypDomMax = int( omp_device_num_processors/max(nGTASets,1) )
-    nHypDomMax = min( nHypDomMax, 20 )
-
-    if (Size% useGPU) then
-      Quad% nHyperDomains = min(nHypDomMax, nHypDomMin)
-    else
-      Quad% nHyperDomains = min(nSets, nHypDomMin)
-    endif
 
 !  Release memory
 

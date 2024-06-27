@@ -1,15 +1,11 @@
 !***********************************************************************
-!                        Version 1:  09/96, PFN                        *
+!                        Last Update:  04/2024, PFN                    *
 !                                                                      *
-!   SNNEXT - This routine builds the sweep ordering array NEXT for a   *
-!            single direction.                                         *
-!                                                                      *
-!   Input:                                                             *
-!                                                                      *
-!   Output:                                                            *
+!   getZoneGraph - This routine builds the sweep ordering array        *
+!                  (a directed graph) of ZONES for a single direction. *
 !                                                                      *
 !***********************************************************************
-   subroutine snnext(aSetID, angle, nDomains) 
+   subroutine getZoneGraph(aSetID, angle, nHyperDomains) 
 
    use kind_mod
    use Size_mod
@@ -23,12 +19,14 @@
 
    integer,    intent(in)    :: aSetID
    integer,    intent(in)    :: angle 
-   integer,    intent(in)    :: nDomains
+   integer,    intent(in)    :: nHyperDomains
 
 !  Local Variables
 
    type(AngleSet), pointer   :: ASet
 
+   integer    :: c
+   integer    :: c0
    integer    :: Zexit
    integer    :: newZones
    integer    :: addedZones
@@ -43,7 +41,6 @@
    integer    :: zone
    integer    :: zID
    integer    :: ndoneZ
-   integer    :: nCorner
    integer    :: nHyperPlanes
 
    real(adqt) :: omega(Size%ndim)
@@ -54,6 +51,7 @@
    integer,          allocatable :: listZone(:)
    integer,          allocatable :: zonesInPlane(:)
    integer,          allocatable :: cycleList(:)
+   integer,          allocatable :: CToHypPlane(:)
 
    logical (kind=1), allocatable :: badZone(:)
    logical (kind=1), allocatable :: onCycleList(:)
@@ -74,6 +72,7 @@
    allocate( listZone(nzones) )
    allocate( zonesInPlane(nzones) )
    allocate( cycleList(ncornr) )
+   allocate( CToHypPlane(ncornr) )
    allocate( badZone(nzones) )
    allocate( onCycleList(nzones) )
    allocate( doneZ(nzones) )
@@ -86,12 +85,12 @@
 
 !  Build NEED array by computing Outward_Normal dot Omega(m)
 
-   call snneed(meshCycles, omega, NEEDZ, cycleList, exitFace, onCycleList)
+   call getZoneDependency(meshCycles, omega, NEEDZ, cycleList, exitFace, onCycleList)
 
-!  Create a list of zones to start the sweep ("seeds")
+!  Create a list of zones to start the sweep
 
-   call findseeds(newZones, meshCycles, needZ, listZone,  &
-                  cycleList, exitFace, onCycleList) 
+   call getNewZones(newZones, meshCycles, needZ, listZone,  &
+                    cycleList, exitFace, onCycleList) 
 
 !  Check for zones the have circular dependencies
 
@@ -120,7 +119,6 @@
      ZoneLoop: do zID=1,newZones
 
        zone    =  listZone(lastZone+zID)
-       nCorner =  Geom% numCorner(zone) 
        nFaces  =  Geom% zoneFaces(zone)
 
        ndoneZ      =  ndoneZ + 1
@@ -163,6 +161,14 @@
          ASet% nextZ(ndoneZ,angle) =  zone
        endif
 
+!    For the zone just added, create a map from corner to hyperplane
+
+     c0 = Geom% cOffSet(zone)
+
+     do c=1,Geom% numCorner(zone)
+       CToHypPlane(c0+c) = nHyperPlanes
+     enddo
+
      enddo ZoneLoop
 
      lastZone = lastZone + newZones
@@ -181,8 +187,9 @@
 
 !        Break a cycle to add a zone to the list
 
-         call cyclebreaker(ndoneZ, meshCycles, nextZone, addedZones,  &
-                           needZ, listZone, cycleList, exitFace, onCycleList) 
+         call cycleBreakerZone(ndoneZ, meshCycles, nextZone, addedZones,  &
+                               needZ, listZone, cycleList, exitFace,      &
+                               onCycleList) 
 
          newZones = addedZones 
 
@@ -203,8 +210,8 @@
    ASet% numCycles(angle) = meshCycles
 
    call constructHyperPlane( ASet, angle, nHyperPlanes, meshCycles,   &
-                             nDomains, zonesInPlane(1:nHyperPlanes),  &
-                             cycleList(1:meshCycles) )
+                             nHyperDomains, zonesInPlane(1:nHyperPlanes),  &
+                             CToHypPlane, cycleList(1:meshCycles) )
 
 !  Set the number of hyperplanes in the set module for this angle
 
@@ -224,6 +231,7 @@
    deallocate( listZone )
    deallocate( zonesInPlane )
    deallocate( cycleList )
+   deallocate( CToHypPlane )
    deallocate( badZone )
    deallocate( onCycleList )
    deallocate( doneZ )
@@ -231,5 +239,5 @@
 
  
    return
-   end subroutine snnext
+   end subroutine getZoneGraph 
 

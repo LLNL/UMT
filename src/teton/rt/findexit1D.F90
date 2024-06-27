@@ -152,14 +152,7 @@
 
      enddo CommunicatorLoop
 
-
-!  Initialize communication handles for persistent communicators
-
-     call initcomm(cSetID)
-
-
    endif DecompTest
-
 
    return
    end subroutine findexit1D

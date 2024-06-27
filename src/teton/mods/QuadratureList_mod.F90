@@ -12,6 +12,7 @@ module QuadratureList_mod
   use GroupSet_mod
   use CommSet_mod
   use Size_mod
+  use CodeChecks_mod
 
   private
 
@@ -27,6 +28,8 @@ module QuadratureList_mod
   public getNumberOfGroupSets
   public getNumberOfCommSets
   public getNumberOfZoneSets
+  public getNumberOfHyperDomains
+  public getNumberOfHyperElements
   public constructSetPointers
   public getGTAQuadrature 
   public getSNQuadrature 
@@ -59,7 +62,8 @@ module QuadratureList_mod
      !   At the point that the value of nSets is determined, we have not yet
      !   begun decomposing the SN problem into sets.
 
-     integer                         :: nHyperDomains
+     integer                         :: nHyperDomains(2)
+     integer                         :: nHyperElements(2)
      integer                         :: nAngleSets
      integer                         :: nGroupSets
      integer                         :: nCommSets
@@ -117,6 +121,14 @@ module QuadratureList_mod
 
   interface getNumberOfZoneSets
     module procedure QuadratureList_getNumberOfZoneSets
+  end interface
+
+  interface getNumberOfHyperDomains
+    module procedure QuadratureList_getNumberOfHyperDomains
+  end interface
+
+  interface getNumberOfHyperElements
+    module procedure QuadratureList_getNumberOfHyperElements
   end interface
 
   interface getGTAQuadrature
@@ -222,10 +234,10 @@ contains
     integer :: nOmpMaxTeams
 
 
-    self% nSets         = 1
-    self% nGroupSets    = 1
-    self% nZoneSets     = 1
-    self% nHyperDomains = 1
+    self% nSets             = 1
+    self% nGroupSets        = 1
+    self% nZoneSets         = 1
+    self% nHyperElements(:) = 0 
 
 #if defined(TETON_ENABLE_OPENMP)
     if (Size%useGPU) then
@@ -380,6 +392,7 @@ contains
 
     integer                              :: setID
 
+    TETON_CHECK_BOUNDS2(self%SetIDList, group, angle)
     setID = self% SetIDList(group,angle)
 
     return
@@ -530,6 +543,53 @@ contains
   end function QuadratureList_getNumberOfZoneSets
 
 !-----------------------------------------------------------------------
+  function QuadratureList_getNumberOfHyperDomains(self, ID) result(nHyperDomains)
+
+!    Returns the number of hyper domains used for sweeps 
+!      nHyperDomains   number of hyper domains 
+!      ID = 1   High-order angle set
+!      ID = 2   GTA angle set
+
+!    variable declarations
+     implicit none
+
+!    passed variables
+     type(QuadratureList), intent(in) :: self
+     integer                          :: ID
+     integer                          :: nHyperDomains 
+
+     TETON_ASSERT(ID <= 2, "Invalid ID for getNumberOfHyperDomains, must be 1 or 2")
+     nHyperDomains = self% nHyperDomains(ID) 
+
+     return
+
+  end function QuadratureList_getNumberOfHyperDomains
+
+!-----------------------------------------------------------------------
+  function QuadratureList_getNumberOfHyperElements(self, ID) result(nHyperElements)
+
+!    Returns the number of interface elements at hyper-domain
+!    boundaries  used for sweeps 
+!      nHyperElements   number of interface elements 
+!      ID = 1   High-order angle set
+!      ID = 2   GTA angle set
+
+!    variable declarations
+     implicit none
+
+!    passed variables
+     type(QuadratureList), intent(in) :: self
+     integer                          :: ID
+     integer                          :: nHyperElements 
+
+     TETON_ASSERT(ID <= 2, "Invalid ID for getNumberOfHyperElements, must be 1 or 2")
+     nHyperElements = self% nHyperElements(ID)
+
+     return
+
+  end function QuadratureList_getNumberOfHyperElements
+
+!-----------------------------------------------------------------------
   function QuadratureList_getQuad(self,QuadID) result(QuadPtr)
 
 !    Return a pointer to a quadrature set 
@@ -545,6 +605,7 @@ contains
      type(Quadrature),     pointer    :: QuadPtr
 
             
+     TETON_CHECK_BOUNDS1(self%QuadPtr, QuadID)
      QuadPtr => self% QuadPtr(QuadID)
             
      return
@@ -606,6 +667,7 @@ contains
      type(SetData),        pointer    :: SetDataPtr 
 
 
+     TETON_CHECK_BOUNDS1(self%SetDataPtr, setID)
      SetDataPtr => self% SetDataPtr(setID)
 
      return
@@ -628,6 +690,7 @@ contains
      type(AngleSet),       pointer    :: AngSetPtr
 
 
+     TETON_CHECK_BOUNDS1(self%AngSetPtr, angleSetID)
      AngSetPtr => self% AngSetPtr(angleSetID)
 
      return
@@ -650,6 +713,7 @@ contains
      type(GroupSet),       pointer    :: GrpSetPtr
 
 
+     TETON_CHECK_BOUNDS1(self%GrpSetPtr, groupSetID)
      GrpSetPtr => self% GrpSetPtr(groupSetID)
 
      return
@@ -672,6 +736,7 @@ contains
      type(CommSet),        pointer    :: CommSetPtr
 
 
+     TETON_CHECK_BOUNDS1(self%CommSetPtr, commSetID)
      CommSetPtr => self% CommSetPtr(commSetID)
 
      return
@@ -695,9 +760,11 @@ contains
 
      integer                          :: localID
 
+     TETON_CHECK_BOUNDS1(self%angleID, setID)
      localID = self% angleID(setID)
 
 
+     TETON_CHECK_BOUNDS1(self%AngSetPtr, localID)
      AngSetPtr => self% AngSetPtr(localID)
 
      return
@@ -721,9 +788,11 @@ contains
 
      integer                          :: localID
 
+     TETON_CHECK_BOUNDS1(self%groupID, setID)
      localID = self% groupID(setID)
 
 
+     TETON_CHECK_BOUNDS1(self%GrpSetPtr, localID)
      GrpSetPtr => self% GrpSetPtr(localID)
 
      return
@@ -747,9 +816,11 @@ contains
 
      integer                          :: localID
 
+     TETON_CHECK_BOUNDS1(self%commID, setID)
      localID = self% commID(setID)
 
 
+     TETON_CHECK_BOUNDS1(self%CommSetPtr, localID)
      CommSetPtr => self% CommSetPtr(localID)
 
      return
@@ -772,6 +843,7 @@ contains
      type(SetData),        pointer    :: SetDataPtr
 
 
+     TETON_CHECK_BOUNDS1(self%SetDataPtr, self% nSets + setID)
      SetDataPtr => self% SetDataPtr(self% nSets + setID)
 
      return
@@ -795,6 +867,7 @@ contains
      type(SetData),        pointer    :: SetDataPtr
 
 
+     TETON_CHECK_BOUNDS1(self%SetDataPtr, setID)
      SetDataPtr => self% SetDataPtr(setID)
      Groups     =  SetDataPtr% Groups
 
@@ -819,6 +892,7 @@ contains
      type(SetData),        pointer    :: SetDataPtr
 
 
+     TETON_CHECK_BOUNDS1(self%SetDataPtr, setID)
      SetDataPtr => self% SetDataPtr(setID)
      NumAngles  =  SetDataPtr% NumAngles 
 
@@ -845,6 +919,7 @@ contains
      real(adqt)                   :: GrpBnds(numGroups+1)
                                                                                             
      QuadPtr => self% QuadPtr(1)
+     TETON_CHECK_BOUNDS1(QuadPtr%Gnu, numGroups+1)
      do g=1,numGroups+1
        GrpBnds(g) = QuadPtr% Gnu(g)
      enddo
@@ -874,6 +949,7 @@ contains
      real(adqt)                   :: gnuBar(0:numGroups+1)
 
      QuadPtr => self% QuadPtr(1)
+     TETON_CHECK_BOUNDS1(QuadPtr%gnuBar, numGroups)
      do g=1,numGroups
        gnuBar(g) = QuadPtr% gnuBar(g)
      enddo
@@ -901,6 +977,7 @@ contains
     type(CommSet),        pointer       :: CommSetPtr
     integer                             :: setID
 
+    TETON_CHECK_BOUNDS1(self%CommSetPtr, self%nCommSets)
     do setID=1,self% nCommSets 
       CommSetPtr => self% CommSetPtr(setID)
       CommSetPtr% fluxSweeps = 0
@@ -935,6 +1012,7 @@ contains
      nSweeps     = 0     
      totalAngles = 0
 
+     TETON_CHECK_BOUNDS1(self%CommSetPtr, self%nCommSets)
      do setID=1,self% nCommSets 
        CommSetPtr     => self% CommSetPtr(setID)
        Groups         =  CommSetPtr% Groups

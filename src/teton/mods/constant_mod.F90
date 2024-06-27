@@ -46,8 +46,6 @@ private
   real(adqt), parameter, public ::                     &
                       adqtTiny    = tiny(0.0_adqt),    &
                       adqtEpsilon = epsilon(0.0_adqt), &
-                      longTiny    = tiny(0.0_long),    &
-                      longEpsilon = epsilon(0.0_long), &
                       adqtSmall   = 1.e-150_adqt
 
 end module constant_mod

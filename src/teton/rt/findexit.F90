@@ -286,11 +286,6 @@
 
      enddo ConstructBufferLoop 
 
-
-!  Initialize communication handles for persistent communicators
-!  Move this to after comm set buffers are mapped in initializeSets
-!     call initcomm(aSetID)
-
    endif DecompTest
 
 !  Loop over all boundaries and create a list of exiting boundary elements
@@ -347,7 +342,6 @@
    enddo AngleLoop0
 
    deallocate( bdyList )
-
 
    return
    end subroutine findexit

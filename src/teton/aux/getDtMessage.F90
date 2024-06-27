@@ -29,8 +29,6 @@
    dtString  = trim(DtControls% dtMessage)//C_NULL_CHAR
    dtMessage = C_LOC( dtString )
 
-
    return
    end subroutine getDtMessage
-
 

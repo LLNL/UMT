@@ -13,7 +13,7 @@ module GreyAcceleration_mod
   type, public :: GreyAcceleration 
 
      integer                 :: ID
-     integer                 :: nGreySweepIters
+     integer                 :: nGreySISweeps
      real(adqt)              :: epsGrey
 
 !    Both GTA solvers
@@ -24,15 +24,11 @@ module GreyAcceleration_mod
      real(adqt), pointer, contiguous :: Chi(:,:)          => null()  ! Chi(ngr,ncornr) 
      real(adqt), pointer, contiguous :: TsaSource(:)      => null()  ! TsaSource(ncornr)
 
-     real(adqt), pointer, contiguous :: CGDirectionB(:,:) => null()  ! CGDirectionB(nbelem,nangGTA)
-     real(adqt), pointer, contiguous :: CGResidualB(:,:)  => null()  ! CGResidualB(nbelem,nangGTA)
-     real(adqt), pointer, contiguous :: CGActionB(:,:)    => null()  ! CGActionB(nbelem,nangGTA)
-     real(adqt), pointer, contiguous :: CGActionSB(:,:)   => null()  ! CGActionSB(nbelem,nangGTA)
-
 !    New GTA Solver only
      real(adqt), pointer, contiguous :: GreySigTotal(:)   => null()
      real(adqt), pointer, contiguous :: GreySigtInv(:)    => null()
      real(adqt), pointer, contiguous :: PhiInc(:)         => null()
+     real(adqt), pointer, contiguous :: Sscat(:)          => null()
      real(adqt), pointer, contiguous :: Q(:)              => null()
      real(adqt), pointer, contiguous :: TT(:,:)           => null()
      real(adqt), pointer, contiguous :: Pvv(:,:)          => null()
@@ -102,7 +98,8 @@ contains
 !  Initialize a minimum convergence tolerance for the grey iteration
                                                                                              
     self% ID              = 1
-    self% nGreySweepIters = 2
+!   Number of Grey source iteration sweeps made before starting BiCG
+    self% nGreySISweeps   = 5 
     self% epsGrey         = 0.1_adqt
 
     if (Size% ndim == 2) then
@@ -142,11 +139,6 @@ contains
       call Allocator%allocate(Size%usePinnedMemory,self%label,"TsaSource",       self% TsaSource,      Size%ncornr)
       call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigScatVol",  self% GreySigScatVol, Size%ncornr )
 
-      allocate( self% CGDirectionB(Size%nbelem,Size%nangGTA) )
-      allocate( self% CGResidualB(Size%nbelem,Size%nangGTA) )
-      allocate( self% CGActionB(Size%nbelem,Size%nangGTA) )
-      allocate( self% CGActionSB(Size%nbelem,Size%nangGTA) )
-
       if (Size% useNewGTASolver) then
 
 !       New GTA Solver only
@@ -154,6 +146,7 @@ contains
         call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigTotal", self% GreySigTotal, Size%ncornr)
         call Allocator%allocate(Size%usePinnedMemory,self%label,"GreySigtInv",  self% GreySigtInv,  Size%ncornr)
         call Allocator%allocate(Size%usePinnedMemory,self%label,"PhiInc",       self% PhiInc,       Size%ncornr)
+        call Allocator%allocate(Size%usePinnedMemory,self%label,"Sscat",        self% Sscat,        Size%ncornr)
         call Allocator%allocate(Size%usePinnedMemory,self%label,"Q",            self% Q,            Size%ncornr)
         call Allocator%allocate(Size%usePinnedMemory,self%label,"TT",           self% TT,           Size%maxCorner,Size%ncornr)
         call Allocator%allocate(Size%usePinnedMemory,self%label,"Pvv",          self% Pvv,          Size%maxCorner,Size%ncornr)
@@ -221,11 +214,6 @@ contains
       call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigScatVol", self% GreySigScatVol)
       call Allocator%deallocate(Size%usePinnedMemory,self%label,"TsaSource",   self% TsaSource)
 
-      deallocate( self% CGDirectionB )
-      deallocate( self% CGResidualB )
-      deallocate( self% CGActionB )
-      deallocate( self% CGActionSB )
-
       if (Size% useNewGTASolver) then
 
 !       New GTA Solver only
@@ -233,6 +221,7 @@ contains
         call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigTotal", self% GreySigTotal)
         call Allocator%deallocate(Size%usePinnedMemory,self%label,"GreySigtInv",  self% GreySigtInv)
         call Allocator%deallocate(Size%usePinnedMemory,self%label,"PhiInc",       self% PhiInc)
+        call Allocator%deallocate(Size%usePinnedMemory,self%label,"Sscat",        self% Sscat)
         call Allocator%deallocate(Size%usePinnedMemory,self%label,"Q",            self% Q)
         call Allocator%deallocate(Size%usePinnedMemory,self%label,"TT",           self% TT)
         call Allocator%deallocate(Size%usePinnedMemory,self%label,"Pvv",          self% Pvv)

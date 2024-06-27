@@ -80,9 +80,11 @@ contains
     ! Multi-value fields are not support for visualization, however.
     num_elements_size_t = Size% nzones * Size% ngr
 
-    call theDatastore%root%set_path_external_float64_ptr("blueprint/fields/radiation_energy_density/values", self% RadEnergyDensity,num_elements_size_t )
-    call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/association", "element")
-    call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/topology", "main")
+    if (.NOT. theDatastore%partitioning()) then
+      call theDatastore%root%set_path_external_float64_ptr("blueprint/fields/radiation_energy_density/values", self% RadEnergyDensity,num_elements_size_t )
+      call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/association", "element")
+      call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/topology", "main")
+    endif
 
 !   Initialize
 
@@ -120,7 +122,9 @@ contains
     call Allocator%deallocate(.FALSE.,             self%label, "RadiationFlux", self% RadiationFlux)
     call Allocator%deallocate(.FALSE.,             self%label, "EddingtonTensorDiag", self% EddingtonTensorDiag)
 
-    call theDatastore%root%remove_path("blueprint/fields/radiation_energy_density")
+    if (.NOT. theDatastore%partitioning()) then
+      call theDatastore%root%remove_path("blueprint/fields/radiation_energy_density")
+    endif
     call Allocator%deallocate(.FALSE.,self%label,"RadEnergyDensity", self%RadEnergyDensity)
 
 

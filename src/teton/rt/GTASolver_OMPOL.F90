@@ -53,26 +53,37 @@
    use RadIntensity_mod
    use GreyAcceleration_mod
    use QuadratureList_mod
+   use AngleSet_mod
    use ZoneSet_mod
    use ieee_arithmetic
+   use, intrinsic :: iso_fortran_env, only : stdin=>input_unit, &
+                                             stdout=>output_unit, &
+                                             stderr=>error_unit
 
    implicit none
 
 !  Local
 
    type(IterControl), pointer  :: greyControl => NULL()
+   type(AngleSet),    pointer  :: ASet        => NULL()
+   type(HypPlane),    pointer  :: HypPlanePtr => NULL()
 
    integer    :: c
    integer    :: c0
    integer    :: zone
    integer    :: nCorner
+   integer    :: angle
    integer    :: alloc_stat
    integer    :: nGreyIter
    integer    :: izRelErrPoint
    integer    :: ngdart
    integer    :: nzones
+   integer    :: setID
    integer    :: zSetID
    integer    :: nZoneSets
+   integer    :: nAngleSets
+   integer    :: nGTASets
+   integer    :: nHyperElements
 
    real(adqt) :: errL2
    real(adqt) :: errZone
@@ -111,24 +122,38 @@
    real(adqt), allocatable :: CGDirection(:)
    real(adqt), allocatable :: CGAction(:)
    real(adqt), allocatable :: CGActionS(:)
+   real(adqt), allocatable :: CGDirectionB(:,:)
+   real(adqt), allocatable :: CGResidualB(:,:)
+   real(adqt), allocatable :: CGActionB(:,:)
+   real(adqt), allocatable :: CGActionSB(:,:)
 
 !  Constants
 
    greyControl => getIterationControl(IterControls, "grey")
 
-   nzones    = Size%nzones
-   nZoneSets = getNumberOfZoneSets(Quad)
+   nzones     = Size%nzones
+   nZoneSets  = getNumberOfZoneSets(Quad)
+   nAngleSets = getNumberOfAngleSets(Quad)
+   nGTASets   = getNumberOfGTASets(Quad)
+
+!  We augment the number of boundary elements with the number of elements
+!  on hyper-domain boundaries
+
+   nHyperElements  = getNumberOfHyperElements(Quad, 2)
+   Size% nSurfElem = Size% nbelem + nHyperElements
 
 !  Allocate memory for BiConjugate Gradient
 
    allocate( pzOld(nzones) )
 
-
-
    allocate( CGResidual(Size% ncornr) )
    allocate( CGDirection(Size% ncornr) )
    allocate( CGAction(Size% ncornr) )
    allocate( CGActionS(Size% ncornr) )
+   allocate( CGDirectionB(Size% nSurfElem,Size% nangGTA) )
+   allocate( CGResidualB(Size% nSurfElem,Size% nangGTA) )
+   allocate( CGActionB(Size% nSurfElem,Size% nangGTA) )
+   allocate( CGActionSB(Size% nSurfElem,Size% nangGTA) )
 
 !  Initialize index of zone with maximum error:
    izRelErrPoint  = -1
@@ -136,33 +161,57 @@
 !  Sum current solution over groups for convergence test
 !  Compute grey source
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, ZSet, Geom, Rad))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(zSetID, ZSet, Geom, Rad)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector
+#else
+     !$omp parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(zSetID, ZSet, Geom, Rad)
+#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        ZSet% sumT(c) = Geom% Volume(c)*sum( Rad% PhiTotal(:,c) )
      enddo
-!$omp end parallel do
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
+   !$acc& private(c0, nCorner)
+#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, Geom, Rad, ZSet)&)
    TOMPC(private(c0, nCorner))
+#endif
 
    do zSetID=1,nZoneSets
 
-!$omp parallel do default(none) schedule(dynamic)  &
-!$omp& shared(zSetID, Geom, Rad, ZSet) &
-!$omp& private(c0, nCorner)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc  loop vector &
+     !$acc& private(c0, nCorner)
+#else
+     !$omp parallel do default(none) schedule(dynamic)  &
+     !$omp& shared(zSetID, Geom, Rad, ZSet) &
+     !$omp& private(c0, nCorner)
+#endif
 
      do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
        nCorner              = Geom% numCorner(zone)
@@ -175,11 +224,17 @@
 
        Rad% radEnergy(zone) = Rad% radEnergy(zone)/Geom% VolumeZone(zone)
      enddo
-!$omp end parallel do
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
 
    enddo
 
+#ifdef TETON_ENABLE_OPENACC
+   !$acc end parallel loop
+#else
    TOMP(end target teams distribute)
+#endif
 
    TOMP(target update from(Rad% radEnergy))
 
@@ -191,71 +246,109 @@
      call InitGreySweepUCBxyz_GPU
    endif
 
-!  Initialize the additive grey corrections, P, and CG
-!  residual
+!  Generate the LU decomposition of the preconditioner
+!    This decomposition is independent of the BiCGSTAB iteration
+!    and can be reused
+   call ScalarIntensityDecompose_GPU
 
-   GTA%GreyCorrection(:) = zero
-   pzOld(:)              = zero
+!  Initialize the CG residual using an extraneous source with
+!  some number of source iterations
+
    CGResidual(:)         = zero
-   GTA%CGResidualB(:,:)  = zero
-
-!  Initialize the CG residual using an extraneous source
-
-   nGreyIter             =  1
+   CGResidualB(:,:)      = zero
    withSource            = .TRUE.
-   GTA% nGreySweepIters  =  2
 
-   call GreySweepNEW(GTA%CGResidualB, CGResidual, withSource)
+!  Here we allow for some number of source iterations before
+!  we start the BCG iteration
 
-!  Initialize the CG iteration.  Remove entries with zero scattering --
+   SourceIterationLoop: do c=1,GTA% nGreySISweeps
+
+     if (c == GTA% nGreySISweeps) then
+       CGDirection(:)    = CGResidual(:)
+       CGDirectionB(:,:) = CGResidualB(:,:)
+     endif
+
+!  This does a bunch of sweeps to get you a better initial guess
+     call GreySweepNEW(CGResidualB, CGResidual, withSource)
+
+   enddo SourceIterationLoop
+
+!  Store the improved initial guess \vec{x}_0
+   GTA%GreyCorrection(:) = CGDirection(:)
+!  This final step yields the initial preconditioned residual
+!    CGResidual = \vec{r}_0 = K^{-1}*(\vec{b} - A*\vec{x}_0)
+!  See the comment in GreySweep.F90 to see the action of GreySweepNEW
+!    and why subtracting \vec{x}_0 yields \vec{r}_0
+   CGResidual(:)         = CGResidual(:)    - CGDirection(:)
+   CGResidualB(:,:)      = CGResidualB(:,:) - CGDirectionB(:,:)
+
+!  Initialize zonal correction for convergence test
+
+   pzOld(:) = zero
+
+   do zone=1,nzones
+     nCorner = Geom% numCorner(zone)
+     c0      = Geom% cOffSet(zone)
+
+     do c=1,nCorner
+       pzOld(zone) = pzOld(zone) + Geom% Volume(c0+c)*GTA%GreyCorrection(c0+c)
+     enddo
+     pzOld(zone) = pzOld(zone)/Geom% VolumeZone(zone)
+   enddo
+
+   nGreyIter = GTA% nGreySISweeps
+
+!  Initialize the BCG iteration.  Remove entries with zero scattering --
 !  they live in the null space of M, where A := [I-M].
 
-   CGDirection(:)        = CGResidual(:)
-   GTA%CGDirectionB(:,:) = GTA%CGResidualB(:,:)
+   CGDirection(:)    = CGResidual(:)
+   CGDirectionB(:,:) = CGResidualB(:,:)
 
    rrProductOld   = scat_prod1(CGResidual)
 
-!  All CG sweeps are performed with zero extraneous source
+!  All BCG sweeps are performed with zero extraneous source
 
    withSource = .FALSE.
 
-!  Begin CG loop, iterating on grey corrections
+!  Begin BCG loop, iterating on grey corrections
+!  BCY: This bicgstab iteration is the same as GTASolver.F90, see annotations
+!       there for more information.
 
-   ngdart = getNumberOfIterations(greyControl)
-
-   GreyIteration: do
+   BCGIteration: do
 
      ! This only does something if mod(verbose_level,10) > 2
      write(descriptor,'(A15,I5)') "GTASolver, GreyIteration number ", nGreyIter
      call PrintEnergies(trim(descriptor))
 
-!    Exit CG if the residual is below the minimum. This used to test against zero,
+!    Exit BCG if the residual is below the minimum. This used to test against zero,
 !    but due to differences in rounding errors some platforms would return
 !    very small numbers and not zero.
 
      if (abs(rrProductOld) < adqtSmall) then
-       if (nGreyIter <= 2) then
-         GTA%GreyCorrection(:) = CGResidual(:)
+!      If source iteration has converged the corrections just exit
+       if (nGreyIter <= GTA% nGreySISweeps) then
+         GTA%GreyCorrection(:) = GTA%GreyCorrection(:) + CGResidual(:)
        endif
-       exit GreyIteration
+       exit BCGIteration
      endif
 
-!    increment the grey iteration counter
+!    increment the grey iteration counter; each BCG iteration requires
+!    two grey solves
      nGreyIter = nGreyIter + 2
 
 !    Perform a transport sweep to compute the action of M on the
 !    conjugate direction (stored in CGAction)
 
-     CGAction(:)        = CGDirection(:)
-     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:)
+     CGAction(:)    = CGDirection(:)
+     CGActionB(:,:) = CGDirectionB(:,:)
 
-     call GreySweepNEW(GTA%CGActionB, CGAction, withSource)
+     call GreySweepNEW(CGActionB, CGAction, withSource)
 
 !    Compute the action of the transport matrix, A, on the conjugate
 !    direction.  Recall:  A := [I-M]
 
-     CGAction(:)        = CGDirection(:)        - CGAction(:)
-     GTA%CGActionB(:,:) = GTA%CGDirectionB(:,:) - GTA%CGActionB(:,:)
+     CGAction(:)    = CGDirection(:)    - CGAction(:)
+     CGActionB(:,:) = CGDirectionB(:,:) - CGActionB(:,:)
 
 !    Compute the inner product, <d,Ad>
 
@@ -265,25 +358,25 @@
 !    conjugate direction is zero
 
      if (abs(dAdProduct) < adqtSmall) then
-       exit GreyIteration
+       exit BCGIteration
      endif
 
      alphaCG = rrProductOld/dAdProduct
 
 !    Update the residual
-     CGResidual(:)        = CGResidual(:)        - alphaCG*CGAction(:)
-     GTA%CGResidualB(:,:) = GTA%CGResidualB(:,:) - alphaCG*GTA%CGActionB(:,:)
+     CGResidual(:)    = CGResidual(:)    - alphaCG*CGAction(:)
+     CGResidualB(:,:) = CGResidualB(:,:) - alphaCG*CGActionB(:,:)
 
-     CGActionS(:)        = CGResidual(:)
-     GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:)
+     CGActionS(:)    = CGResidual(:)
+     CGActionSB(:,:) = CGResidualB(:,:)
 
-     call GreySweepNEW(GTA%CGActionSB, CGActionS, withSource)
+     call GreySweepNEW(CGActionSB, CGActionS, withSource)
 
 !    Compute the action of the transport matrix, A, on the conjugate
 !    direction.  Recall:  A := [I-M]
 
-     CGActionS(:)        = CGResidual(:)        - CGActionS(:)
-     GTA%CGActionSB(:,:) = GTA%CGResidualB(:,:) - GTA%CGActionSB(:,:)
+     CGActionS(:)    = CGResidual(:)    - CGActionS(:)
+     CGActionSB(:,:) = CGResidualB(:,:) - CGActionSB(:,:)
 
      omegaNum = scat_prod(CGActionS,CGResidual)
      omegaDen = scat_prod(CGActionS,CGActionS)
@@ -291,7 +384,7 @@
      if (abs(omegaDen) < adqtSmall .or. abs(omegaNum) < adqtSmall) then
        GTA%GreyCorrection(:) = GTA%GreyCorrection(:) + alphaCG*CGDirection(:)
 
-       exit GreyIteration
+       exit BCGIteration
      endif
 
      omegaCG = omegaNum/omegaDen
@@ -300,8 +393,8 @@
      GTA%GreyCorrection(:) = GTA%GreyCorrection(:) +   &
                              alphaCG*CGDirection(:) + omegaCG*CGResidual(:)
 
-     CGResidual(:)        = CGResidual(:)        - omegaCG*CGActionS(:)
-     GTA%CGResidualB(:,:) = GTA%CGResidualB(:,:) - omegaCG*GTA%CGActionSB(:,:)
+     CGResidual(:)    = CGResidual(:)    - omegaCG*CGActionS(:)
+     CGResidualB(:,:) = CGResidualB(:,:) - omegaCG*CGActionSB(:,:)
 
 !    Compute the inner product, <r,r0>
      rrProduct = scat_prod1(CGResidual)
@@ -309,11 +402,11 @@
      betaCG = (rrProduct*alphaCG)/(rrProductOld*omegaCG)
 
 !    update the conjugate direction
-     CGDirection(:)        = CGResidual(:)  + betaCG*  &
-                            (CGDirection(:) - omegaCG*CGAction(:))
+     CGDirection(:)    = CGResidual(:)  + betaCG*  &
+                        (CGDirection(:) - omegaCG*CGAction(:))
 
-     GTA%CGDirectionB(:,:) = GTA%CGResidualB(:,:)  + betaCG*  &
-                            (GTA%CGDirectionB(:,:) - omegaCG*GTA%CGActionB(:,:))
+     CGDirectionB(:,:) = CGResidualB(:,:)  + betaCG*  &
+                        (CGDirectionB(:,:) - omegaCG*CGActionB(:,:))
 
 !    Compute the additive grey corrections on zones for convergence tests
 
@@ -343,9 +436,9 @@
        if (ieee_is_nan(phiNew) .or. ieee_is_nan(errZone)) then
          izRelErrPoint  = zone  ! The zone where we first see a nan
          print *, "Teton's GTASolver encountered a NaN on iteration", nGreyIter, " on rank ", Size% myRankInGroup, " in zone ", izRelErrPoint
-         call sleep(15)
+         flush(stdout)
          TETON_FATAL("Grey solver encountered a NaN!")
-       else if (phiNew /= zero) then
+       else if (abs(phiNew) > zero) then
          relErrPoint = abs(errZone/phiNew)
          if (relErrPoint > maxRelErrPoint) then
            maxRelErrPoint = relErrPoint
@@ -356,7 +449,7 @@
        pzOld(zone) = pz
      enddo CorrectionZoneLoop
 
-     if (phiL2 /= zero) then
+     if (abs(phiL2) > zero) then
        relErrL2 = sqrt( abs(errL2/phiL2) )
      else
        relErrL2 = zero
@@ -371,13 +464,13 @@
 
      if ( GTA% enforceHardGTAIterMax .and. nGreyIter >= getMaxNumberOfIterations(greyControl) ) then
 
-       exit GreyIteration
+       exit BCGIteration
 
      else if ( (maxRelErrGrey < getEpsilonPoint(greyControl) .or. &
            nGreyIter >= getMaxNumberOfIterations(greyControl)) .and. &
            maxRelErrGrey < GTA%epsGrey ) then
 
-       exit GreyIteration
+       exit BCGIteration
 
      else if ( nGreyIter >= 100*getMaxNumberOfIterations(greyControl)) then
 
@@ -394,26 +487,31 @@
      else
 
        rrProductOld = rrProduct
-       cycle GreyIteration
+       cycle BCGIteration
 
      endif
 
-   enddo GreyIteration
+   enddo BCGIteration
 
-   call PrintEnergies("GTASolver, after end of GreyIteration")
+   call PrintEnergies("GTASolver, after end of GreyIterations")
 
+   ngdart = getNumberOfIterations(greyControl)
    ngdart = ngdart + nGreyIter
 
    call setNumberOfIterations(greyControl,ngdart)
 
 !  Free memory
 
-   deallocate(pzOld,         stat=alloc_stat)
+   deallocate(pzOld,        stat=alloc_stat)
 
-   deallocate(CGResidual,    stat=alloc_stat)
-   deallocate(CGDirection,   stat=alloc_stat)
-   deallocate(CGAction,      stat=alloc_stat)
-   deallocate(CGActionS,     stat=alloc_stat)
+   deallocate(CGResidual,   stat=alloc_stat)
+   deallocate(CGDirection,  stat=alloc_stat)
+   deallocate(CGAction,     stat=alloc_stat)
+   deallocate(CGActionS,    stat=alloc_stat)
+   deallocate(CGDirectionB, stat=alloc_stat)
+   deallocate(CGResidualB,  stat=alloc_stat)
+   deallocate(CGActionB,    stat=alloc_stat)
+   deallocate(CGActionSB,   stat=alloc_stat)
 
 
    return

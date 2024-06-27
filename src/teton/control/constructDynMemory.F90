@@ -1,7 +1,7 @@
 !=======================================================================
 ! construct dynamic memory 
 !=======================================================================
-   subroutine constructDynMemory(setID, maxZonesPerPlane)
+   subroutine constructDynMemory(setID, maxPerPlane)
 
    use kind_mod
    use Size_mod
@@ -9,6 +9,7 @@
    use QuadratureList_mod
    use SetData_mod
    use AngleSet_mod
+   use Options_mod
    use MemoryAllocator_mod
 
    implicit none
@@ -16,14 +17,18 @@
 !  Arguments 
 
    integer, intent(in)      :: setID
-   integer, intent(in)      :: maxZonesPerPlane
+   integer, intent(in)      :: maxPerPlane
 
 !  Local
 
    type(SetData),  pointer  :: Set
    type(AngleSet), pointer  :: ASet
+   type(SweepSet), pointer  :: Swp
 
    integer                  :: totalCycles
+   integer                  :: dom
+   integer                  :: nHyperDomains
+   integer                  :: sweepVersion
 
 !  Allocate Memory 
 
@@ -34,17 +39,34 @@
    Set  => getSetData(Quad, setID)
    ASet => getAngleSetFromSetID(Quad, setID)
 
-   totalCycles = max(ASet% totalCycles, 1) 
+   totalCycles   = max(ASet% totalCycles, 1) 
+   nHyperDomains = getNumberOfHyperDomains(Quad,1)
+   sweepVersion  = Options% getSweepVersion()
 
    call Allocator%allocate(Size%usePinnedMemory, Set%label, "cyclePsi", Set% cyclePsi, Set% Groups, totalCycles)
 
 !  These are onlu used in the GPU sweep
    if (Size% useGPU) then
-     call Allocator%allocate(Size%usePinnedMemory, Set%label, "Q",        Set% Q,Set% Groups, Size% maxCorner, maxZonesPerPlane)
-     call Allocator%allocate(Size%usePinnedMemory, Set%label, "S",        Set% S,Set% Groups, Size% maxCorner, maxZonesPerPlane)
 
-     Set% Q(:,:,:) = zero
-     Set% S(:,:,:) = zero
+     if ( sweepVersion == 0 ) then
+
+       do dom=1,nHyperDomains
+         Swp => Set% SweepPtr(dom)
+         call Allocator%allocate(Size%usePinnedMemory, Set%label, "Q", Swp% Q, Set% Groups, Size% maxCorner, maxPerPlane)
+         call Allocator%allocate(Size%usePinnedMemory, Set%label, "S", Swp% S, Set% Groups, Size% maxCorner, maxPerPlane)
+       enddo
+
+     do dom=1,nHyperDomains
+       Swp => Set% SweepPtr(dom)
+       Swp% Q(:,:,:) = zero
+       Swp% S(:,:,:) = zero
+     enddo
+
+     endif
+
+     call Allocator%allocate(Size%usePinnedMemory, Set%label, "PsiInt", Set% PsiInt, Set% Groups, ASet% maxInterface, Set% numAngles)
+
+     Set% PsiInt(:,:,:) = zero
    endif
 
 

@@ -44,8 +44,7 @@ module SetData_mod
      real(C_DOUBLE),  pointer, contiguous :: PsiB(:,:,:) => null()   ! boundary intensities
      real(adqt),      pointer, contiguous :: Phi(:,:) => null()
      real(adqt),      pointer, contiguous :: cyclePsi(:,:) => null()
-     real(adqt),      pointer, contiguous :: Q(:,:,:) => null()
-     real(adqt),      pointer, contiguous :: S(:,:,:) => null()
+     real(adqt),      pointer, contiguous :: PsiInt(:,:,:) => null()
 
 !    For GTA Sweeps
 
@@ -55,6 +54,10 @@ module SetData_mod
      real(adqt),      pointer, contiguous :: pInc(:) => null()
      real(adqt),      pointer, contiguous :: tInc(:) => null()
      real(adqt),      pointer, contiguous :: src(:)  => null()
+
+!    Pointers
+
+     type(SweepSet),  pointer             :: SweepPtr(:) => null()
 
 !    For Spectral Tallies
 
@@ -72,26 +75,33 @@ module SetData_mod
 
   end type SetData 
 
+
+  type, public :: SweepSet
+     real(adqt), pointer, contiguous :: Q(:,:,:) => null()
+     real(adqt), pointer, contiguous :: S(:,:,:) => null()
+  end type SweepSet
+
 contains
 
 !=======================================================================
 ! construct interface
 !=======================================================================
                                                                                    
-  subroutine SetData_ctor(self,        &
-                           SetID,       &
-                           groupSetID,  &
-                           angleSetID,  &
-                           QuadID,      &
-                           Groups,      &
-                           NumAngles,   &
-                           g0,          &
-                           angle0,      &
-                           nZones,      &
-                           nCorner,     &
-                           QuadPtr,     &
-                           GTASet,      &
-                           fromRestart )
+  subroutine SetData_ctor(self,          &
+                          SetID,         &
+                          groupSetID,    &
+                          angleSetID,    &
+                          QuadID,        &
+                          Groups,        &
+                          NumAngles,     &
+                          g0,            &
+                          angle0,        &
+                          nZones,        &
+                          nCorner,       &
+                          nHyperDomains, &
+                          QuadPtr,       &
+                          GTASet,        &
+                          fromRestart )
 
     use Size_mod
     use constant_mod
@@ -114,6 +124,7 @@ contains
     integer, intent(in)                  :: angle0
     integer, intent(in)                  :: nZones
     integer, intent(in)                  :: nCorner
+    integer, intent(in)                  :: nHyperDomains
 
     type(Quadrature), target, intent(in) :: QuadPtr
 
@@ -178,6 +189,8 @@ contains
           allocate( self% Phi(Groups,nCorner) )
         endif
       endif
+
+      allocate( self% SweepPtr(nHyperDomains) )
 
     else
 
@@ -277,6 +290,8 @@ contains
         endif
       endif
 
+      deallocate( self% SweepPtr )
+
     else
 
       call Allocator%deallocate(Size%usePinnedMemory,self%label,"tPsi", self% tPsi )
@@ -310,15 +325,23 @@ contains
 !=======================================================================
 ! destruct Set dynamic memory at the end of the time step    
 !=======================================================================
-  subroutine SetData_dtorDynMem(self)
+  subroutine SetData_dtorDynMem(self, nHyperDomains)
 
     use MemoryAllocator_mod
+    use Options_mod
     use Size_mod
 
     implicit none
 
 !   Passed variables
     class(SetData),    intent(inout) :: self
+    integer,           intent(in)    :: nHyperDomains
+
+    type(SweepSet),    pointer       :: Swp
+    integer                          :: dom
+    integer                          :: sweepVersion
+
+    sweepVersion = Options% getSweepVersion()
 
 !   Release Memory 
 
@@ -327,8 +350,18 @@ contains
 !   These are only used by the GPU sweep
 
     if (Size% useGPU) then
-      call Allocator%deallocate(Size%usePinnedMemory, self%label, "Q", self% Q)
-      call Allocator%deallocate(Size%usePinnedMemory, self%label, "S", self% S)
+
+      if ( sweepVersion == 0 ) then
+
+        do dom=1,nHyperDomains
+          Swp => self% SweepPtr(dom)
+          call Allocator%deallocate(Size%usePinnedMemory, self%label, "Q", Swp% Q)
+          call Allocator%deallocate(Size%usePinnedMemory, self%label, "S", Swp% S)
+        enddo
+
+      endif
+
+      call Allocator%deallocate(Size%usePinnedMemory, self%label, "PsiInt", self% PsiInt)
     endif
 
     return

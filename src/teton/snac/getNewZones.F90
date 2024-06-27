@@ -1,22 +1,17 @@
 !***********************************************************************
-!                        Version 1:  04/02, PFN                        *
+!                        Last Update:  05/2023, PFN                    *
 !                                                                      *
-!   FINDSEEDS    - This routine creates a list of starting points or   *
-!                  "seeds" for the grid sweep.  The seeds are on the   *
-!                  boundary of the grid and require no incident        *
-!                  fluxes except from boundary conditions.  There may  *
-!                  be situations where no seeds can be found; this     *
-!                  will occur if there is a mesh cycle right at the    *
-!                  boundary.  In this situation, we are forced to use  *
-!                  some old information to get started.                * 
-!                                                                      *
-!   Input:                                                             *
-!                                                                      *
-!   Output:                                                            *
+!   getNewZones   - This routine creates a list of starting zones.     *
+!                   These zones are on the boundary of the grid        *
+!                   and require no incident fluxes except from         *
+!                   boundary conditions.  There may be situations      *
+!                   where no starting zones can be found; in this      *
+!                   situation, we are forced to use some old           *
+!                   information to get started.                        * 
 !                                                                      *
 !***********************************************************************
-   subroutine findseeds(NSEED, MESHCYCLES, needZ, listZone,  &
-                        cycleList, exitFace, onCycleList)
+   subroutine getNewZones(newZones, meshCycles, needZ, listZone,  &
+                          cycleList, exitFace, onCycleList)
 
    use kind_mod
    use constant_mod
@@ -27,7 +22,7 @@
 
 !  Arguments
 
-   integer,    intent(inout)       :: nseed
+   integer,    intent(inout)       :: newZones 
    integer,    intent(inout)       :: meshcycles 
 
    integer,    intent(inout)       :: needZ(Size%nzones)
@@ -53,19 +48,19 @@
 
    nzones = Size% nzones
 
-!  Create a list of zone "seeds"
+!  Create a list of zones to begin the sweep 
 
-   nseed = 0
+   newZones = 0
 
    ZoneLoop: do zone=1,nzones
      if (needZ(zone) == 0) then
-       nseed           = nseed + 1
-       listZone(nseed) = zone 
+       newZones           = newZones + 1
+       listZone(newZones) = zone 
      endif
    enddo ZoneLoop
 
 
-   if (nseed == 0) then
+   if (newZones == 0) then
 
 !  If no seeds were found, find a zone on the boundary that requires
 !  the fewest incident fluxes 
@@ -82,7 +77,7 @@
        endif
      enddo BoundaryZoneLoop
 
-     nseed         = 1
+     newZones      = 1
      listZone(1)   = zoneID
      needZ(zoneID) = 0
      nFaces        = Geom% zoneFaces(zoneID)
@@ -109,12 +104,12 @@
 
 !  Error Check
 
-   if (nseed == 0) then 
-     call f90fatal("No seeds found in FINDSEEDS!")
+   if (newZones == 0) then 
+     call f90fatal("No starting zones found in getNewZones!")
    endif
 
 
 
    return
-   end subroutine findseeds 
+   end subroutine getNewZones 
 

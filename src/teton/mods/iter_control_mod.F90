@@ -236,15 +236,15 @@ contains
      endif
 
 !    assertions
-     tetonAssert(self%epsilonPoint>zero,"Invalid iter control ctor")
-     tetonAssert(self%localError>=zero,"Invalid iter control ctor")
-     tetonAssert(self%globalError>=zero,"Invalid iter control ctor")
-     tetonAssert(self%maxIter>zero,"Invalid iter control ctor")
-     tetonAssert(self%globalMaxIterTaken>=zero,"Invalid iter control ctor")
-     tetonAssert(self%nIter>=zero,"Invalid iter control ctor")
-     tetonAssert(self%nTotIter>=zero,"Invalid iter control ctor")
-     tetonAssert(self%zoneOfMax>=zero,"Invalid iter control ctor")
-     tetonAssert(self%processOfMax>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%epsilonPoint>zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%localError>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%globalError>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%maxIter>zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%globalMaxIterTaken>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%nIter>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%nTotIter>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%zoneOfMax>=zero,"Invalid iter control ctor")
+     TETON_ASSERT(self%processOfMax>=zero,"Invalid iter control ctor")
 
      return
   end subroutine iter_control_ctor
@@ -304,8 +304,8 @@ contains
      self % nTotIter = 0
 
 !    assertions
-     tetonAssert(self%nIter==0,"Invalid iter control reset")
-     tetonAssert(self%nTotIter==0,"Invalid iter control reset")
+     TETON_ASSERT(self%nIter==0,"Invalid iter control reset")
+     TETON_ASSERT(self%nTotIter==0,"Invalid iter control reset")
 
      return
   end subroutine iter_control_reset_nIter
@@ -327,15 +327,15 @@ contains
      integer,           intent(in)    :: nIter
 
 !    assertions
-     tetonAssert(nIter>=0,"Invalid number of iterations")
+     TETON_ASSERT(nIter>=0,"Invalid number of iterations")
 
 !    reset the number of iterations
      self % nIter = nIter
      self % nTotIter = self % nTotIter + nIter
 
 !    assertions
-     tetonAssert(self%nIter>=0,"Invalid number of iterations")
-     tetonAssert(self%nTotIter>=0,"Invalid number of iterations")
+     TETON_ASSERT(self%nIter>=0,"Invalid number of iterations")
+     TETON_ASSERT(self%nTotIter>=0,"Invalid number of iterations")
 
      return
   end subroutine iter_control_set_nIter
@@ -356,13 +356,13 @@ contains
      integer,           intent(in)    :: maxIter
 
 !    assertions
-     tetonAssert(maxIter>=0, "Invalid maximum number of iterations")
+     TETON_ASSERT(maxIter>=0, "Invalid maximum number of iterations")
 
 !    reset the number of iterations
      self % maxIter = maxIter
 
 !    assertions
-     tetonAssert(self%maxIter>=0, "Invalid number of iterations")
+     TETON_ASSERT(self%maxIter>=0, "Invalid number of iterations")
 
      return
    end subroutine iter_control_set_maxIter
@@ -383,13 +383,13 @@ contains
      integer,           intent(in)    :: maxTaken
 
 !    assertions
-     tetonAssert(maxTaken>=0, "Invalid maximum number of iterations taken")
+     TETON_ASSERT(maxTaken>=0, "Invalid maximum number of iterations taken")
 
 !    reset the number of iterations
      self % globalMaxIterTaken = maxTaken
 
 !    assertions
-     tetonAssert(self%globalMaxIterTaken>=0, "Invalid maximum number of iterations taken")
+     TETON_ASSERT(self%globalMaxIterTaken>=0, "Invalid maximum number of iterations taken")
 
      return
    end subroutine iter_control_set_globalMaxIterTaken
@@ -411,7 +411,7 @@ contains
      integer,           intent(in)    :: zoneOfMax 
                                                                                       
 !    assertions
-     tetonAssert(zoneOfMax>=0,"Invalid zone number")
+     TETON_ASSERT(zoneOfMax>=0,"Invalid zone number")
                                                                                       
 !    reset the zone with maximum relative error 
      self % zoneOfMax = zoneOfMax 
@@ -436,13 +436,13 @@ contains
      integer,           intent(in)    :: processOfMax
  
 !    assertions
-     tetonAssert(processOfMax>=0,"Invalid process number")
+     TETON_ASSERT(processOfMax>=0,"Invalid process number")
  
 !    reset the process with maximum relative error
      self % processOfMax = processOfMax
  
 !    assertions
-     tetonAssert(self%processOfMax>=0,"Invalid process number")
+     TETON_ASSERT(self%processOfMax>=0,"Invalid process number")
  
      return
   end subroutine iter_control_set_processOfMax
@@ -464,13 +464,13 @@ contains
      real(adqt),        intent(in)    :: localError
    
 !    assertions
-     tetonAssert(localError>=0,"Invalid local error")
+     TETON_ASSERT(localError>=0,"Invalid local error")
    
 !    reset local maximum relative error
      self % localError = localError 
    
 !    assertions
-     tetonAssert(self%localError>=0,"Invalid local error")
+     TETON_ASSERT(self%localError>=0,"Invalid local error")
    
      return
   end subroutine iter_control_set_localError
@@ -492,13 +492,13 @@ contains
      real(adqt),        intent(in)    :: globalError
    
 !    assertions
-     tetonAssert(globalError>=0,"Invalid global error")
+     TETON_ASSERT(globalError>=0,"Invalid global error")
    
 !    reset global maximum relative error
      self % globalError = globalError
    
 !    assertions
-     tetonAssert(self%globalError>=0,"Invalid global error")
+     TETON_ASSERT(self%globalError>=0,"Invalid global error")
    
      return
   end subroutine iter_control_set_globalError
@@ -550,7 +550,7 @@ contains
     epsilonPoint = self % epsilonPoint
 
 !   assertions
-    tetonAssert(epsilonPoint==self%epsilonPoint,"Invalid data access")
+    TETON_ASSERT(epsilonPoint==self%epsilonPoint,"Invalid data access")
 
     return
   end function iter_control_get_epsilonPoint
@@ -571,7 +571,7 @@ contains
     maxIter = self%maxIter
 
 !   assertions
-    tetonAssert(maxIter==self%maxIter,"Invalid data access")
+    TETON_ASSERT(maxIter==self%maxIter,"Invalid data access")
 
     return
   end function iter_control_get_maxIter
@@ -591,7 +591,7 @@ contains
     maxIter = self%globalMaxIterTaken
 
 !   assertions
-    tetonAssert(maxIter==self%globalMaxIterTaken,"Invalid data access")
+    TETON_ASSERT(maxIter==self%globalMaxIterTaken,"Invalid data access")
 
     return
   end function iter_control_get_globalMaxIterTaken
@@ -612,7 +612,7 @@ contains
     nIter = self%nIter
 
 !   assertions
-    tetonAssert(nIter==self%nIter,"Invalid data access")
+    TETON_ASSERT(nIter==self%nIter,"Invalid data access")
 
     return
   end function iter_control_get_nIter
@@ -633,7 +633,7 @@ contains
     nTotIter = self%nTotIter
 
 !   assertions
-    tetonAssert(nTotIter==self%nTotIter,"Invalid data access")
+    TETON_ASSERT(nTotIter==self%nTotIter,"Invalid data access")
 
     return
   end function iter_control_get_nTotIter
@@ -654,7 +654,7 @@ contains
     zoneOfMax = self%zoneOfMax
 
 !   assertions
-    tetonAssert(zoneOfMax==self%zoneOfMax,"Invalid data access")
+    TETON_ASSERT(zoneOfMax==self%zoneOfMax,"Invalid data access")
 
     return
   end function iter_control_get_zoneOfMax
@@ -675,7 +675,7 @@ contains
     processOfMax = self%processOfMax
                                                                                        
 !   assertions
-    tetonAssert(processOfMax==self%processOfMax,"Invalid data access")
+    TETON_ASSERT(processOfMax==self%processOfMax,"Invalid data access")
                                                                                        
     return
   end function iter_control_get_processOfMax
@@ -696,7 +696,7 @@ contains
     localError = self%localError
                                                                                        
 !   assertions
-    tetonAssert(localError==self%localError,"Invalid data access")
+    TETON_ASSERT(localError==self%localError,"Invalid data access")
                                                                                        
     return
   end function iter_control_get_localError
@@ -717,7 +717,7 @@ contains
     globalError = self%globalError
                            
 !   assertions
-    tetonAssert(globalError==self%globalError,"Invalid data access")
+    TETON_ASSERT(globalError==self%globalError,"Invalid data access")
                                  
     return
   end function iter_control_get_globalError

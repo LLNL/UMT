@@ -1,21 +1,15 @@
 !***********************************************************************
-!                        Version 1:  09/96, PFN                        *
+!                        Last Update:  05/2023, PFN                    *
 !                                                                      *
-!   SNNEED - This routine builds the NEED array which indicates the    *
-!            number of incoming fluxes required to compute the         *
-!            outgoing flux for a particular direction (this is the     *
-!            number of incoming sides or faces the corner has for      *
-!            this direction).  This routine is a decendant of SNRZANEE *
-!            by MLA.                                                   *
-!                                                                      *
-!   Input:                                                             *
-!                                                                      *
-!   Output:                                                            *
+!   getZoneDependency - This routine builds the NEED array which       *
+!                       indicates the number of incoming fluxes        *
+!                       required to compute the outgoing flux for      *
+!                       a particular direction.                        *
 !                                                                      *
 !***********************************************************************
 
-   subroutine snneed(MESHCYCLES, omega, NEEDZ, cycleList, &
-                     exitFace, onCycleList) 
+   subroutine getZoneDependency(MESHCYCLES, omega, NEEDZ, cycleList, &
+                                exitFace, onCycleList) 
 
    use kind_mod
    use constant_mod
@@ -194,5 +188,5 @@
 
 
    return
-   end subroutine snneed
+   end subroutine getZoneDependency 
 

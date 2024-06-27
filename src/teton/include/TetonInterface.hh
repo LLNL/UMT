@@ -388,6 +388,12 @@ void teton_setverbose(const int *verbose);
 // 1 - corner sweep (improved parallelism)
 void teton_setsweepversion(const int *sweepversion);
 
+// Set number of hyper-domains, for sweep and/or new GTA.
+// 0 - Let Teton automatically decide. (default)
+// >= 1 - User sets numer of hyper-domains to this number.
+void teton_setsweepnumhyperdomains(const int *hyperdomains);
+void teton_setgtanumhyperdomains(const int *hyperdomains);
+
 // construct Teton memory allocator.
 void teton_constructmemoryallocator(
    int *
@@ -395,6 +401,9 @@ void teton_constructmemoryallocator(
                                             // value < 0 = have teton create its own allocator, if needed.
    int *umpire_device_pool_allocator_id); // scalar, umpire allocator to use for memory allocations on the accelerator
 // device (gpu).  value < 0 = use native OpenMP or CUDA for memory allocation.
+
+// destruct the Teton memory allocator
+void teton_destructmemoryallocator();
 
 // destroy mesh data in case it has changed during the simulation
 void teton_destructmeshdata(const bool *nonLTE);

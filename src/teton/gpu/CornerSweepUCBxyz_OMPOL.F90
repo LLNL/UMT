@@ -30,7 +30,7 @@
    use SetData_mod
    use AngleSet_mod
    use GroupSet_mod
-   use ArrayChecks_mod
+   use CodeChecks_mod
 
    implicit none
 
@@ -48,24 +48,27 @@
    type(HypPlane),   pointer       :: HypPlanePtr
    type(BdyExit),    pointer       :: BdyExitPtr
 
-   integer            :: setID
-   integer            :: zSetID
-   integer            :: Angle
-   integer            :: g
-   integer            :: Groups
+   integer    :: setID
+   integer    :: zSetID
+   integer    :: Angle
+   integer    :: g
+   integer    :: Groups
 
-   integer            :: mCycle
-   integer            :: offSet
-   integer            :: nAngleSets
-   integer            :: nZoneSets
+   integer    :: mCycle
+   integer    :: offSet
+   integer    :: nAngleSets
+   integer    :: nZoneSets
+   integer    :: nHyperDomains
 
-   integer            :: nzones
-   integer            :: ii
-   integer            :: ndoneZ
-   integer            :: hyperPlane
-   integer            :: nHyperplanes
+   integer    :: nzones
+   integer    :: ii
+   integer    :: ndone
+   integer    :: hyperPlane
+   integer    :: domID
+   integer    :: hplane1
+   integer    :: hplane2
 
-   real(adqt)         :: tau
+   real(adqt) :: tau
 
 !  Local
 
@@ -80,8 +83,9 @@
    integer    :: nCFaces
 
    integer    :: zone
-   integer    :: zone0
    integer    :: nCorner
+   integer    :: c1
+   integer    :: c2
 
    real(adqt), parameter :: fouralpha=1.82d0
 
@@ -98,6 +102,10 @@
    real(adqt) :: sez
    real(adqt) :: psi_opp
    real(adqt) :: afp
+   real(adqt) :: Qez
+   real(adqt) :: QQ
+   real(adqt) :: SS
+   real(adqt) :: mult
 
 !  Dynamic
 
@@ -105,9 +113,10 @@
 
 !  Constants
 
-   tau        = Size% tau
-   nAngleSets = getNumberOfAngleSets(Quad)
-   nZoneSets  = getNumberOfZoneSets(Quad)
+   tau           = Size% tau
+   nAngleSets    = getNumberOfAngleSets(Quad)
+   nZoneSets     = getNumberOfZoneSets(Quad)
+   nHyperDomains = getNumberOfHyperDomains(Quad,1)
 
    allocate( angleList(nAngleSets) )
 
@@ -130,11 +139,8 @@
    TETON_CHECK_BOUNDS1(Geom%corner1, nZoneSets)
    TETON_CHECK_BOUNDS1(Geom%corner2, nZoneSets)
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc data copyin(tau, sendIndex, angleList)
-#else
-   TOMP(target enter data map(to: tau, sendIndex, angleList))
-#endif
+
+   TOMP_MAP(target enter data map(to: tau, sendIndex, angleList))
 
 #ifdef TETON_ENABLE_OPENACC
    !$acc parallel loop gang num_gangs(nZoneSets) &
@@ -142,7 +148,7 @@
    !$acc& private(ASet, setID, Angle)
 #else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
-   TOMPC(private(ASet, setID, Angle) &)
+   TOMPC(private(ASet, setID, Angle, zSetID) &)
    TOMPC(shared(nZoneSets, angleList, Quad, Geom, nAngleSets) )
 #endif
 
@@ -160,10 +166,10 @@
 ! faster to split into two loops as below
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc loop vector collapse(2)
+       !$acc loop vector collapse(2)
 #else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Geom, ASet, Angle, zSetID)
+       !$omp  parallel do collapse(2) default(none) &
+       !$omp& shared(Geom, ASet, Angle, zSetID)
 #endif
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          do cface=1,3
@@ -172,14 +178,14 @@
          enddo
        enddo
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+       !$omp end parallel do
 #endif
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc loop vector
+       !$acc loop vector
 #else
-!$omp  parallel do default(none)  &
-!$omp& shared(Geom, ASet, Angle, zSetID)
+       !$omp  parallel do default(none)  &
+       !$omp& shared(Geom, ASet, Angle, zSetID)
 #endif
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          do cface=4,Geom% nCFacesArray(c)
@@ -188,7 +194,7 @@
          enddo
        enddo
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+       !$omp end parallel do
 #endif
 
      enddo
@@ -196,20 +202,20 @@
    enddo ZoneSetLoop
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc end parallel loop
+   !$acc end parallel loop
 #else
-TOMP(end target teams distribute)
+   TOMP(end target teams distribute)
 #endif
 
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc parallel loop gang num_gangs(nZoneSets) &
-!$acc& vector_length(omp_device_team_thread_limit) &
-!$acc& private(ASet)
+   !$acc parallel loop gang num_gangs(nZoneSets) &
+   !$acc& vector_length(omp_device_team_thread_limit) &
+   !$acc& private(ASet)
 #else
-TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
-TOMPC(private(ASet) &)
-TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
+   TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(private(ASet, setID) &)
+   TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
 #endif
 
    ZoneSetLoop2: do zSetID=1,nZoneSets
@@ -221,10 +227,10 @@ TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
        ASet  => Quad% AngSetPtr(setID)
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc loop vector
+       !$acc loop vector
 #else
-!$omp  parallel do default(none)  &
-!$omp& shared(Geom, ASet, zSetID)
+       !$omp  parallel do default(none)  &
+       !$omp& shared(Geom, ASet, zSetID)
 #endif
 
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
@@ -237,7 +243,7 @@ TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
        enddo
 
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+       !$omp end parallel do
 #endif
 
      enddo
@@ -245,20 +251,20 @@ TOMPC(shared(nZoneSets, nAngleSets, Quad, Geom))
    enddo ZoneSetLoop2
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc end parallel loop
+   !$acc end parallel loop
 #else
-TOMP(end target teams distribute)
+   TOMP(end target teams distribute)
 #endif
 
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc parallel loop gang num_gangs(nSets) &
-!$acc& vector_length(omp_device_team_thread_limit) &
-!$acc& private(Set, ASet, Angle, Groups, offSet)
+   !$acc parallel loop gang num_gangs(nSets) &
+   !$acc& vector_length(omp_device_team_thread_limit) &
+   !$acc& private(Set, ASet, HypPlanePtr, angle, Groups, offSet, c)
 #else
-TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
-TOMPC(shared(sendIndex, Quad, nSets) &)
-TOMPC(private(Set, ASet, Angle, Groups, offSet))
+   TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+   TOMPC(shared(sendIndex, Quad, nSets) &)
+   TOMPC(private(Set, ASet, HypPlanePtr, angle, Groups, offSet, c))
 #endif
 
 
@@ -268,53 +274,73 @@ TOMPC(private(Set, ASet, Angle, Groups, offSet))
      ASet         => Quad% AngSetPtr(Set% angleSetID)
 
      Groups       =  Set% Groups
-     Angle        =  Set% AngleOrder(sendIndex)
+     angle        =  Set% AngleOrder(sendIndex)
      offSet       =  ASet% cycleOffSet(angle)
+     HypPlanePtr  => ASet% HypPlanePtr(angle)
 
 !  Initialize boundary values in Psi1 and interior values on the cycle
 !  list
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc loop vector collapse(2) &
-!$acc& private(c)
+     !$acc loop vector collapse(2) &
+     !$acc& private(c)
 #else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Angle, Set, ASet, offSet, Groups) private(c)
+     !$omp  parallel do collapse(2) default(none) &
+     !$omp& shared(angle, Set, ASet, offSet, Groups) private(c)
 #endif
-     do mCycle=1,ASet% numCycles(Angle)
+     do mCycle=1,ASet% numCycles(angle)
        do g=1,Groups
          c              = ASet% cycleList(offSet+mCycle)
          Set% Psi1(g,c) = Set% cyclePsi(g,offSet+mCycle)
        enddo
      enddo
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+     !$omp end parallel do
 #endif
 
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc loop vector collapse(2)
+     !$acc loop vector collapse(2)
 #else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, Groups, Angle)
+     !$omp  parallel do collapse(2) default(none) &
+     !$omp& shared(Set, Groups, angle)
 #endif
-     do c=1,Set%nbelem
+     do b=1,Set%nbelem
        do g=1,Groups
-         Set% Psi1(g,Set%nCorner+c) = Set% PsiB(g,c,Angle)
+         Set% Psi1(g,Set%nCorner+b) = Set% PsiB(g,b,angle)
        enddo
      enddo
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+     !$omp end parallel do
 #endif
+
+!    Initialize values at hyper-domain interfaces
+
+#ifdef TETON_ENABLE_OPENACC
+     !$acc loop vector collapse(2) &
+     !$acc& private(c)
+#else
+     !$omp  parallel do collapse(2) default(none) &
+     !$omp& shared(Set, HypPlanePtr, Groups, angle) private(c)
+#endif
+     do b=1,HypPlanePtr% interfaceLen
+       do g=1,Groups
+         c              = HypPlanePtr% interfaceList(b)
+         Set% Psi1(g,c) = Set% PsiInt(g,b,angle)
+       enddo
+     enddo
+#ifndef TETON_ENABLE_OPENACC
+     !$omp end parallel do
+#endif
+
 
    enddo SetLoop0
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc end parallel loop
+   !$acc end parallel loop
 #else
-TOMP(end target teams distribute)
+   TOMP(end target teams distribute)
 #endif
-
 
 ! TODO:
 ! IBM XLF segfaults if 'hyperPlane' is not scoped to private below.
@@ -332,17 +358,20 @@ TOMP(end target teams distribute)
 ! Look into reporting this bug to IBM, using UMT as a reproducer.
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc parallel loop gang num_gangs(nSets) &
-!$acc& vector_length(omp_device_team_thread_limit) &
-!$acc& private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &
-!$acc& private(nHyperPlanes, ndoneZ, nzones, hyperPlane)
+   !$acc parallel loop gang collapse(2) num_gangs(nSets*nHyperDomains) &
+   !$acc& vector_length(omp_device_team_thread_limit) &
+   !$acc& private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &
+   !$acc& private(hplane1, hplane2, ndone, nCorner, hyperPlane)
 #else
-TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) &)
-TOMPC(private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &)
-TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane)) 
+   TOMP(target teams distribute collapse(2) num_teams(nSets*nHyperDomains) &)
+   TOMPC(thread_limit(omp_device_team_thread_limit) &)
+   TOMPC(shared(Quad, sendIndex, nSets, nHyperDomains) &)
+   TOMPC(private(Set, ASet, GSet, HypPlanePtr, Angle, Groups) &)
+   TOMPC(private(hplane1, hplane2, ndone, nCorner, hyperPlane)) 
 #endif
 
    SetLoop: do setID=1,nSets
+     DomainLoop: do domID=1,nHyperDomains
 
      Set          => Quad% SetDataPtr(setID)
      ASet         => Quad% AngSetPtr(Set% angleSetID) 
@@ -350,410 +379,162 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
 
      Groups       =  Set% Groups
      Angle        =  Set% AngleOrder(sendIndex)
-     nHyperPlanes =  ASet% nHyperPlanes(Angle)
-     ndoneZ       =  0
      HypPlanePtr  => ASet% HypPlanePtr(Angle)
+     hplane1      =  HypPlanePtr% hplane1(domID)
+     hplane2      =  HypPlanePtr% hplane2(domID)
+     ndone        =  HypPlanePtr% ndone(domID) 
 
-     HyperPlaneLoop: do hyperPlane=1,nHyperPlanes
+     HyperPlaneLoop: do hyperPlane=hplane1,hplane2
 
-       nzones = HypPlanePtr% zonesInPlane(hyperPlane)
-
-! NOTE: Two loop sections that follow do not support a collapse(3), 
-! as its not in canonical form (all loop bounds are not predetermined); 
-! it's significantly faster to split into two loops as below
-
-#ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(3) &
-!$acc& private(c0,zone,zone0,nCorner,source,nCFaces,afp,cfp) 
-#else
-!$omp  parallel do collapse(3) default(none) &
-!$omp& shared(Set, Geom, ASet, GSet, Angle, nzones, Groups) &
-!$omp& shared(ndoneZ, tau) &
-!$omp& private(c0,zone,zone0,source,nCFaces,afp,cfp)
-#endif
-
-       ZoneLoop0: do ii=1,nzones
-         CornerLoop0: do c=1,8
-           GroupLoop0: do g=1,Groups
-
-!          Loop through the zones using the NEXTZ list
-
-             zone0   = ASet% nextZ(ndoneZ+ii,Angle)
-             zone    = iabs( zone0 )
-             c0      = Geom% cOffSet(zone)
-
-!            Contributions from volume terms 
-
-             source         = GSet% STotal(g,c0+c) + tau*Set% Psi(g,c0+c,Angle)
-             Set% Q(g,c,ii) = source
-             Set% S(g,c,ii) = Geom% Volume(c0+c)*source
-
-             nCFaces = Geom% nCFacesArray(c0+c)
-
-             do cface=1,nCFaces
-
-               afp = ASet% AfpNorm(cface,c0+c)
-               cfp = Geom% cFP(cface,c0+c)
-
-               if ( afp < zero ) then
-                 Set% S(g,c,ii) = Set% S(g,c,ii) - afp*Set% Psi1(g,cfp)
-               endif
-             enddo
-
-           enddo GroupLoop0
-         enddo CornerLoop0
-       enddo ZoneLoop0                                                                                                         
-
-#ifndef TETON_ENABLE_OPENACC                                                                                 
-!$omp end parallel do                                                                                                  
-#endif
+       nCorner = HypPlanePtr% cornersInPlane(hyperPlane)
 
 #ifdef TETON_ENABLE_OPENACC
 !$acc  loop vector collapse(2) &
-!$acc& private(c0,zone,zone0,nCorner,source,nCFaces,afp,cfp) 
+!$acc& private(c, c0, cfp, ifp, cez, zone, cface, i, nCFaces) &
+!$acc& private(aez, area_opp, sig, vol, Qez, QQ, SS, source) &
+!$acc& private(sigv, sigv2, sez, gnum, gden, psi_opp, afp, c1, c2, mult)
 #else
 !$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, Geom, ASet, GSet, Angle, nzones, Groups) &
-!$omp& shared(ndoneZ, tau) &
-!$omp& private(c0,zone,zone0,source,nCFaces,afp,cfp)
+!$omp& shared(Set, Geom, ASet, GSet, Angle, nCorner, Groups, ndone, tau) &
+!$omp& private(c, c0, cfp, ifp, cez, zone, cface, i, nCFaces) &
+!$omp& private(aez, area_opp, sig, vol, Qez, QQ, SS, source) &
+!$omp& private(sigv, sigv2, sez, gnum, gden, psi_opp, afp, c1, c2, mult)
 #endif
 
-       ZoneLoop00: do ii=1,nzones
-         GroupLoop00: do g=1,Groups
+       CornerLoop1: do ii=1,nCorner
+         GroupLoop1: do g=1,Groups
 
-!        Loop through the zones using the NEXTZ list
+!          Loop through the corners using the NEXT list
 
-           zone0   = ASet% nextZ(ndoneZ+ii,Angle)
-           zone    = iabs( zone0 )
+           c    = ASet% nextC(ndone+ii,Angle)
+           zone = Geom% CToZone(c)
+           c0   = Geom% cOffSet(zone)
+           sig  = GSet% Sigt(g,zone)
 
-           CornerLoop00: do c=9,Geom% numCorner(zone)
+!          Calculate Area_CornerFace dot Omega to determine the
+!          contributions from incident fluxes across external
+!          corner faces (FP faces)
 
-             c0 = Geom% cOffSet(zone)
+           nCFaces = Geom% nCFacesArray(c)
 
-!            Contributions from volume terms 
+!          Contributions from volume terms 
 
-             source         = GSet% STotal(g,c0+c) + tau*Set% Psi(g,c0+c,Angle)
-             Set% Q(g,c,ii) = source
-             Set% S(g,c,ii) = Geom% Volume(c0+c)*source
+           source = GSet% STotal(g,c) + tau*Set% Psi(g,c,Angle)
+           SS     = Geom% Volume(c)*source
 
-             nCFaces = Geom% nCFacesArray(c0+c)
+           do cface=1,nCFaces
 
-             do cface=1,nCFaces
+             afp = ASet% AfpNorm(cface,c)
+             cfp = Geom% cFP(cface,c)
 
-               afp = ASet% AfpNorm(cface,c0+c)
-               cfp = Geom% cFP(cface,c0+c)
+             if ( afp < zero ) then
+               SS = SS - afp*Set% Psi1(g,cfp)
+             endif
+           enddo
 
-               if ( afp < zero ) then
-                 Set% S(g,c,ii) = Set% S(g,c,ii) - afp*Set% Psi1(g,cfp)
-               endif
-             enddo
+!          Contributions from interior corner faces (EZ faces)
 
-           enddo CornerLoop00
-         enddo GroupLoop00
-       enddo ZoneLoop00                                                                                                   
+           do cface=1,nCFaces
 
-#ifndef TETON_ENABLE_OPENACC                                                                                 
-!$omp end parallel do                                                                                                  
-#endif
+             aez  = ASet% AezNorm(cface,c)
+             mult = zero 
 
+             if (aez > zero ) then
 
-#ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(3) &
-!$acc& private(c0,cfp,ifp,cez,zone,zone0,nCorner,nCFaces) &
-!$acc& private(aez,area_opp,sig,vol) &
-!$acc& private(sigv,sigv2,sez,gnum,gden,psi_opp,afp)
-#else
-!$omp  parallel do collapse(3) default(none) &
-!$omp& shared(Set, Geom, ASet, GSet, Angle, nzones, Groups, ndoneZ) &
-!$omp& private(c0,cfp,ifp,cez,zone,zone0,nCFaces) &
-!$omp& private(aez,area_opp,sig,vol) &
-!$omp& private(sigv,sigv2,sez,gnum,gden,psi_opp,afp)
-#endif
+               c1   = c
+               c2   = c0 + Geom% cEZ(cface,c)
+               ifp  = mod(cface,nCFaces) + 1
+               QQ   = source
+               Qez  = GSet% STotal(g,c2) + tau*Set% Psi(g,c2,Angle)
+               mult = one
 
-       ZoneLoop1: do ii=1,nzones
-         CornerLoop1: do c=1,8
-           GroupLoop1: do g=1,Groups
+             elseif (aez < zero ) then
 
-!            Loop through the zones using the NEXTZ list
+               c2   = c
+               c1   = c0 + Geom% cEZ(cface,c)
 
-             zone0   = ASet% nextZ(ndoneZ+ii,Angle)
-             zone    = iabs( zone0 )
-             c0      = Geom% cOffSet(zone)
+!              Contributions from upsteam fluxes in the same zone
+               SS = SS - aez*Set% Psi1(g,c1)
 
-             sig     = GSet% Sigt(g,zone)
-
-!            Calculate Area_CornerFace dot Omega to determine the
-!            contributions from incident fluxes across external
-!            corner faces (FP faces)
-
-             nCFaces = Geom% nCFacesArray(c0+c)
-
-!            Contributions from interior corner faces (EZ faces)
-
-             do cface=1,nCFaces
-
-               aez = ASet% AezNorm(cface,c0+c) 
-               cez = Geom% cEZ(cface,c0+c)
-
-               if (aez > zero ) then
-
-                 area_opp = zero
-                 psi_opp  = zero
-
-                 ifp = mod(cface,nCFaces) + 1
-                 afp = ASet% AfpNorm(ifp,c0+c)
-
-                 if ( afp < zero ) then
-                   cfp      =  Geom% cFP(ifp,c0+c)
-                   area_opp = -afp
-                   psi_opp  = -afp*Set% Psi1(g,cfp)
-                 endif
-
-                 do i=2,nCFaces-2
-                   ifp = mod(ifp,nCFaces) + 1
-                   afp = ASet% AfpNorm(ifp,c0+c)
-                   if ( afp < zero ) then
-                     cfp      = Geom% cFP(ifp,c0+c)
-                     area_opp = area_opp - afp
-                     psi_opp  = psi_opp  - afp*Set% Psi1(g,cfp)
-                   endif
-                 enddo
-
-                 TestOppositeFace: if ( area_opp > zero ) then
-
-                   psi_opp  = psi_opp/area_opp
- 
-                   vol      = Geom% Volume(c0+c)
- 
-                   sigv     = sig*vol
-                   sigv2    = sigv*sigv
-
-                   gnum     = aez*aez*( fouralpha*sigv2 +              &
-                              aez*(four*sigv + three*aez) )
-
-                   gden     = vol*( four*sigv*sigv2 + aez*(six*sigv2 + &
-                              two*aez*(two*sigv + aez)) )
-
-                   sez      = ( vol*gnum*( sig*psi_opp - Set% Q(g,c,ii) ) +   &
-                                half*aez*gden*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) ) )/ &
-                              ( gnum + gden*sig)
-
-                 else
-
-                   sez = half*aez*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) )/sig
-
-                 endif TestOppositeFace
-
-                 ATOMIC_UPDATE
-                 Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
-                 ATOMIC_END
-
-                 ATOMIC_UPDATE
-                 Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
-                 ATOMIC_END
-
-               endif
-
-             enddo
-
-           enddo GroupLoop1
-         enddo CornerLoop1
-       enddo ZoneLoop1
-
-#ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
-#endif
-
-#ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(2) &
-!$acc& private(c0,cfp,ifp,cez,zone,zone0,nCorner,nCFaces) &
-!$acc& private(aez,area_opp,sig,vol) &
-!$acc& private(sigv,sigv2,sez,gnum,gden,psi_opp,afp)
-#else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, Geom, ASet, GSet, Angle, nzones, Groups, ndoneZ) &
-!$omp& private(c0,cfp,ifp,cez,zone,zone0,nCFaces) &
-!$omp& private(aez,area_opp,sig,vol) &
-!$omp& private(sigv,sigv2,sez,gnum,gden,psi_opp,afp)
-#endif
-
-       ZoneLoop11: do ii=1,nzones
-         GroupLoop11: do g=1,Groups
-
-!          Loop through the zones using the NEXTZ list
-
-           zone0   = ASet% nextZ(ndoneZ+ii,Angle)
-           zone    = iabs( zone0 )
-
-           CornerLoop11: do c=9,Geom% numCorner(zone)
-
-             c0      = Geom% cOffSet(zone)
-             sig     = GSet% Sigt(g,zone)
-
-!            Calculate Area_CornerFace dot Omega to determine the
-!            contributions from incident fluxes across external
-!            corner faces (FP faces)
-
-             nCFaces = Geom% nCFacesArray(c0+c)
-
-!            Contributions from interior corner faces (EZ faces)
-
-             do cface=1,nCFaces
-
-               aez = ASet% AezNorm(cface,c0+c)
-               cez = Geom% cEZ(cface,c0+c)
-
-               if (aez > zero ) then
-
-                 area_opp = zero
-                 psi_opp  = zero
-
-                 ifp = mod(cface,nCFaces) + 1
-                 afp = ASet% AfpNorm(ifp,c0+c)
-
-                 if ( afp < zero ) then
-                   cfp      =  Geom% cFP(ifp,c0+c)
-                   area_opp = -afp
-                   psi_opp  = -afp*Set% Psi1(g,cfp)
-                 endif
-
-                 do i=2,nCFaces-2
-                   ifp = mod(ifp,nCFaces) + 1
-                   afp = ASet% AfpNorm(ifp,c0+c)
-                   if ( afp < zero ) then
-                     cfp      = Geom% cFP(ifp,c0+c)
-                     area_opp = area_opp - afp
-                     psi_opp  = psi_opp  - afp*Set% Psi1(g,cfp)
-                   endif
-                 enddo
-
-                 TestOppositeFace1: if ( area_opp > zero ) then
-
-                   psi_opp  = psi_opp/area_opp
-
-                   vol      = Geom% Volume(c0+c)
-
-                   sigv     = sig*vol
-                   sigv2    = sigv*sigv
-
-                   gnum     = aez*aez*( fouralpha*sigv2 +              &
-                              aez*(four*sigv + three*aez) )
-
-                   gden     = vol*( four*sigv*sigv2 + aez*(six*sigv2 + &
-                              two*aez*(two*sigv + aez)) )
-
-                   sez      = ( vol*gnum*( sig*psi_opp - Set% Q(g,c,ii) ) +   &
-                                half*aez*gden*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) ) )/ &
-                              ( gnum + gden*sig)
-
-                 else
-
-                   sez = half*aez*( Set% Q(g,c,ii) - Set% Q(g,cez,ii) )/sig
-
-                 endif TestOppositeFace1
-
-                 ATOMIC_UPDATE
-                 Set% S(g,c,ii)   = Set% S(g,c,ii)   + sez
-                 ATOMIC_END
-
-                 ATOMIC_UPDATE
-                 Set% S(g,cez,ii) = Set% S(g,cez,ii) - sez
-                 ATOMIC_END
-
-               endif
-
-             enddo
-
-           enddo CornerLoop11
-         enddo GroupLoop11
-       enddo ZoneLoop11
-
-#ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
-#endif
-
-
-#ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(2) &
-!$acc& private(c,c0,cez,zone,zone0,nCorner,nCFaces) &
-!$acc& private(aez,sig)
-#else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, GSet, Geom, ASet, Angle, nzones, Groups, ndoneZ) &
-!$omp& private(c,c0,cez,zone,zone0,nCorner,nCFaces) &
-!$omp& private(aez,sig)
-#endif
-
-       ZoneLoop: do ii=1,nzones
-         GroupLoop: do g=1,Groups
-
-!          Loop through the zones using the NEXTZ list
-
-           zone0   = ASet% nextZ(ndoneZ+ii,Angle)
-           zone    = iabs( zone0 )
-           nCorner = Geom% numCorner(zone)
-           c0      = Geom% cOffSet(zone)
-
-           sig     = GSet% Sigt(g,zone)
-
-
-           if ( zone0 > 0 ) then
-
-             do i=1,nCorner
-
-               c = ASet% nextC(c0+i,angle) 
-
-!              Corner angular flux
-               Set% Psi1(g,c0+c) = Set% S(g,c,ii)/(ASet% ANormSum(c0+c) + sig*Geom% Volume(c0+c))
-
-!              Calculate the contribution of this flux to the sources of
-!              downstream corners in this zone. The downstream corner index is
-!              "ez_exit."
-
-               nCFaces = Geom% nCFacesArray(c0+c)
-
-               do cface=1,nCFaces
-                 aez = ASet% AezNorm(cface,c0+c)
-
-                 if (aez > zero) then
-                   cez              = Geom% cEZ(cface,c0+c) 
-                   Set% S(g,cez,ii) = Set% S(g,cez,ii) + aez*Set% Psi1(g,c0+c)
+               do i=1,nCFaces
+                 if (Geom% cEZ(i,c1) + c0 == c2) then
+                   ifp  = mod(i,nCFaces) + 1
                  endif
                enddo
 
+               Qez  = source
+               QQ   = GSet% STotal(g,c1) + tau*Set% Psi(g,c1,Angle)
+               mult = -one
+               aez  = -aez
+
+             endif
+
+             psi_opp  = zero
+             area_opp = zero
+
+             afp = ASet% AfpNorm(ifp,c1)
+
+             if ( afp < zero ) then
+               cfp      =  Geom% cFP(ifp,c1)
+               area_opp = -afp
+               psi_opp  = -afp*Set% Psi1(g,cfp)
+             endif
+
+             do i=2,nCFaces-2
+               ifp = mod(ifp,nCFaces) + 1
+               afp = ASet% AfpNorm(ifp,c1)
+               if ( afp < zero ) then
+                 cfp      = Geom% cFP(ifp,c1)
+                 area_opp = area_opp - afp
+                 psi_opp  = psi_opp  - afp*Set% Psi1(g,cfp)
+               endif
              enddo
 
-           else
+             TestOppositeFace: if ( area_opp > zero ) then
 
-!          Direct Solve (non-lower triangular, use old values of Psi1)
-             do c=1,nCorner
-               do cface=1,Geom% nCFacesArray(c0+c)
-                 aez = ASet% AezNorm(cface,c0+c)
+               psi_opp  = psi_opp/area_opp
 
-                 if (aez > zero) then
-                   cez              = Geom% cEZ(cface,c0+c)
-                   Set% S(g,cez,ii) = Set% S(g,cez,ii) + aez*Set% Psi1(g,c0+c)
-                 endif
-               enddo
-             enddo
+               vol      = Geom% Volume(c1)
 
-             do c=1,nCorner
-               Set% Psi1(g,c0+c) = Set% S(g,c,ii)/(ASet% ANormSum(c0+c) + sig*Geom% Volume(c0+c))
-             enddo
+               sigv     = sig*vol
+               sigv2    = sigv*sigv
 
-           endif
+               gnum     = aez*aez*( fouralpha*sigv2 +              &
+                          aez*(four*sigv + three*aez) )
 
-         enddo GroupLoop
-       enddo ZoneLoop
+               gden     = vol*( four*sigv*sigv2 + aez*(six*sigv2 + &
+                          two*aez*(two*sigv + aez)) )
+
+               sez      = ( vol*gnum*( sig*psi_opp - QQ ) +   &
+                            half*aez*gden*( QQ - Qez ) )/ &
+                          ( gnum + gden*sig)
+
+               SS       = SS   + mult*sez
+
+             else
+
+               sez  = half*aez*( QQ - Qez )/sig
+               SS   = SS   + mult*sez
+
+             endif TestOppositeFace
+
+           enddo
+
+!          Corner angular flux
+           Set% Psi1(g,c) = SS/(ASet% ANormSum(c) + sig*Geom% Volume(c))
+
+         enddo GroupLoop1
+       enddo CornerLoop1
 
 #ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
 #endif
 
-       ndoneZ = ndoneZ + nzones
+       ndone = ndone + nCorner
 
      enddo HyperPlaneLoop
 
+     enddo DomainLoop
    enddo SetLoop
 
 #ifdef TETON_ENABLE_OPENACC
@@ -762,34 +543,34 @@ TOMPC(private(nHyperPlanes, ndoneZ, nzones, hyperPlane))
 TOMP(end target teams distribute)
 #endif
 
-
 !  Update Boundary data
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc parallel loop gang num_gangs(nSets) &
-!$acc& vector_length(omp_device_team_thread_limit) &
-!$acc& private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c)
+     !$acc parallel loop gang num_gangs(nSets) &
+     !$acc& vector_length(omp_device_team_thread_limit) &
+     !$acc& private(Set, ASet, BdyExitPtr, HypPlanePtr, offSet, angle, Groups, b, c)
 #else
-TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
-TOMPC(shared(nSets, Quad, sendIndex)&)
-TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
+     TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nSets, Quad, sendIndex)&)
+     TOMPC(private(Set, ASet, BdyExitPtr, HypPlanePtr, offSet, angle, Groups, b, c))
 #endif
 
      SetLoop3: do setID=1,nSets
 
-       Set        => Quad% SetDataPtr(setID)
-       ASet       => Quad% AngSetPtr(Set% angleSetID)
-       Groups     =  Set% Groups
-       Angle      =  Set% AngleOrder(sendIndex)
-       offSet     =  ASet% cycleOffSet(angle)
-       BdyExitPtr => ASet% BdyExitPtr(Angle)
+       Set         => Quad% SetDataPtr(setID)
+       ASet        => Quad% AngSetPtr(Set% angleSetID)
+       Groups      =  Set% Groups
+       angle       =  Set% AngleOrder(sendIndex)
+       offSet      =  ASet% cycleOffSet(angle)
+       BdyExitPtr  => ASet% BdyExitPtr(angle)
+       HypPlanePtr => ASet% HypPlanePtr(angle)
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(2) &
-!$acc& private(b,c)
+       !$acc  loop vector collapse(2) &
+       !$acc& private(b,c)
 #else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, BdyExitPtr, Groups, Angle) private(b,c)
+       !$omp  parallel do collapse(2) default(none) &
+       !$omp& shared(Set, BdyExitPtr, Groups, Angle) private(b,c)
 #endif
 
        do i=1,BdyExitPtr% nxBdy
@@ -802,17 +583,39 @@ TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
        enddo
 
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+       !$omp end parallel do
+#endif
+
+!      Update Interface Elements
+
+#ifdef TETON_ENABLE_OPENACC
+       !$acc  loop vector collapse(2) &
+       !$acc& private(c)
+#else
+       !$omp  parallel do collapse(2) default(none) &
+       !$omp& shared(Set, HypPlanePtr, Groups, angle) private(c)
+#endif
+
+       do i=1,HypPlanePtr% interfaceLen
+         do g=1,Groups
+           c = HypPlanePtr% interfaceList(i)
+           Set% PsiInt(g,i,angle) = Set% Psi1(g,c) 
+         enddo
+       enddo
+
+
+#ifndef TETON_ENABLE_OPENACC
+       !$omp end parallel do
 #endif
 
 !      Update Psi in the cycle list
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(2) &
-!$acc& private(c)
+       !$acc  loop vector collapse(2) &
+       !$acc& private(c)
 #else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Angle, Set, ASet, offSet, Groups) private(c)
+       !$omp  parallel do collapse(2) default(none) &
+       !$omp& shared(angle, Set, ASet, offSet, Groups) private(c)
 #endif
        do mCycle=1,ASet% numCycles(angle)
          do g=1,Groups
@@ -821,15 +624,15 @@ TOMPC(private(Set, ASet, BdyExitPtr, offSet, Angle, Groups, b, c))
          enddo
        enddo
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+       !$omp end parallel do
 #endif
 
      enddo SetLoop3
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc end parallel loop
+     !$acc end parallel loop
 #else
-TOMP(end target teams distribute)
+     TOMP(end target teams distribute)
 #endif
 
 !  We only store Psi if this is the last transport sweep in the time step
@@ -837,58 +640,58 @@ TOMP(end target teams distribute)
    if ( savePsi ) then
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc parallel loop gang num_gangs(nSets) &
-!$acc& vector_length(omp_device_team_thread_limit) &
-!$acc& private(Set, Angle, Groups)
+     !$acc parallel loop gang num_gangs(nZoneSets) &
+     !$acc& vector_length(omp_device_team_thread_limit) &
+     !$acc& private(Set, Angle, Groups)
 #else
-TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none)&)
-TOMPC(shared(nSets, Quad, sendIndex)&)
-TOMPC(private(Set, Angle, Groups))
+     TOMP(target teams distribute num_teams(nZoneSets) &)
+     TOMPC(thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nZoneSets, nSets, Quad, Geom, sendIndex) &)
+     TOMPC(private(Set, setID, Angle, Groups))
 #endif
 
-     SetLoop2: do setID=1,nSets
+     ZoneSetLoop4: do zSetID=1,nZoneSets
+       SetLoop4: do setID=1,nSets
 
-       Set    => Quad% SetDataPtr(setID)
-       Groups =  Set% Groups
-       Angle  =  Set% AngleOrder(sendIndex)
+         Set    => Quad% SetDataPtr(setID)
+         Groups =  Set% Groups
+         Angle  =  Set% AngleOrder(sendIndex)
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc  loop vector collapse(2)
+         !$acc  loop vector collapse(2)
 #else
-!$omp  parallel do collapse(2) default(none) &
-!$omp& shared(Set, Angle, Groups)
+         !$omp  parallel do collapse(2) default(none) &
+         !$omp& shared(Set, Angle, Groups, zSetID, Geom)
 #endif
 
-       CornerLoop2: do c=1,Set% nCorner
-         GroupLoop2: do g=1,Groups
+         CornerLoop4: do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
+           GroupLoop4: do g=1,Groups
 
-           Set% Psi(g,c,Angle) = Set% Psi1(g,c)
+             Set% Psi(g,c,Angle) = Set% Psi1(g,c)
 
-         enddo GroupLoop2
-       enddo CornerLoop2
+           enddo GroupLoop4
+         enddo CornerLoop4
 
 #ifndef TETON_ENABLE_OPENACC
-!$omp end parallel do
+         !$omp end parallel do
 #endif
 
-     enddo SetLoop2
+       enddo SetLoop4
+     enddo ZoneSetLoop4
 
 #ifdef TETON_ENABLE_OPENACC
-!$acc end parallel loop
+     !$acc end parallel loop
 #else
-TOMP(end target teams distribute)
+     TOMP(end target teams distribute)
 #endif
 
    endif
 
-#ifdef TETON_ENABLE_OPENACC
-!$acc end data
-#else
-TOMP(target exit data map(release: tau, sendIndex, angleList))
-#endif
+   TOMP_MAP(target exit data map(release: tau, sendIndex, angleList))
 
 
    deallocate( angleList )
+
 
    return
    end subroutine CornerSweepUCBxyz_GPU

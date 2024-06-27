@@ -25,7 +25,7 @@
 !  Arguments
 
    real(adqt), intent(in)       :: P(Size%ncornr)
-   real(adqt), intent(inout)    :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt), intent(inout)    :: PsiB(Size% nSurfElem,Size%nangGTA)
 
    logical (kind=1), intent(in) :: withSource
 
@@ -57,7 +57,7 @@
    nGTASets  = getNumberOfGTASets(Quad)
    nZoneSets = getNumberOfZoneSets(Quad)
    nCommSets = getNumberOfCommSets(Quad)
-   ndim      =  Size% ndim
+   ndim      = Size% ndim
    SnSweep   = .FALSE.
    wtiso     = Size% wtiso
 
@@ -65,7 +65,7 @@
 
 !  Initialize Communication 
 
-   TOMP(target enter data map(to: wtiso))
+   TOMP_MAP(target enter data map(to: wtiso))
 
    do cSetID=nCommSets+1,nCommSets+nGTASets
 
@@ -83,47 +83,79 @@
 
    if ( withSource ) then
 
-TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
-TOMPC(shared(nZoneSets, Geom, GTA, wtiso))
+#ifdef TETON_ENABLE_OPENACC
+     !$acc parallel loop gang num_gangs(nZoneSets) &
+     !$acc& vector_length(omp_device_team_thread_limit)
+#else
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+     TOMPC(shared(nZoneSets, Geom, GTA, wtiso, P))
+#endif
 
      ZoneSetLoop: do zSetID=1,nZoneSets
 
-!$omp  parallel do default(none)  &
-!$omp& shared(Geom, GTA, zSetID, wtiso)
+#ifdef TETON_ENABLE_OPENACC
+       !$acc loop vector
+#else
+       !$omp  parallel do default(none)  &
+       !$omp& shared(Geom, GTA, zSetID, wtiso, P)
+#endif
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
-         GTA% PhiInc(c)    = zero
-         GTA% Q(c)         = wtiso*GTA%GreySigtInv(c)*GTA% GreySource(c)
-         GTA% TsaSource(c) = wtiso*Geom% Volume(c)*GTA% GreySource(c)
+         GTA% PhiInc(c)    = GTA% Sscat(c) 
+         GTA% Q(c)         = wtiso*GTA%GreySigtInv(c)*( GTA% GreySource(c) +  &
+                                   GTA% GreySigScat(c)*P(c) )
+         GTA% TsaSource(c) = wtiso*Geom% Volume(c)*( GTA% GreySource(c) +  &
+                                   GTA% GreySigScat(c)*P(c) )
        enddo
-!$omp end parallel do
+#ifndef TETON_ENABLE_OPENACC
+       !$omp end parallel do
+#endif
 
      enddo ZoneSetLoop
 
-TOMP(end target teams distribute)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc end parallel loop
+#else
+     TOMP(end target teams distribute)
+#endif
 
    else
 
-TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
-TOMPC(shared(nZoneSets, Geom, GTA, wtiso, P))
+#ifdef TETON_ENABLE_OPENACC
+     !$acc parallel loop gang num_gangs(nZoneSets) &
+     !$acc& vector_length(omp_device_team_thread_limit)
+#else
+     TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
+     TOMPC(shared(nZoneSets, Geom, GTA, wtiso, P))
+#endif
 
      ZoneSetLoop2: do zSetID=1,nZoneSets
 
-!$omp  parallel do default(none)  &
-!$omp& shared(Geom, GTA, zSetID, wtiso, P)
+#ifdef TETON_ENABLE_OPENACC
+       !$acc loop vector
+#else
+       !$omp  parallel do default(none)  &
+       !$omp& shared(Geom, GTA, zSetID, wtiso, P)
+#endif
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          GTA% PhiInc(c)    = zero
          GTA% Q(c)         = wtiso*GTA%GreySigtInv(c)*GTA% GreySigScat(c)*P(c)
          GTA% TsaSource(c) = wtiso*Geom% Volume(c)*GTA% GreySigScat(c)*P(c)
        enddo
-!$omp end parallel do
+#ifndef TETON_ENABLE_OPENACC
+       !$omp end parallel do
+#endif
 
      enddo ZoneSetLoop2
 
-TOMP(end target teams distribute)
+#ifdef TETON_ENABLE_OPENACC
+     !$acc end parallel loop
+#else
+     TOMP(end target teams distribute)
+#endif
 
    endif
 
-TOMP(target exit data map(release: wtiso))
+TOMP_MAP(target exit data map(release: wtiso))
 
 !  Loop over angles, solving for each in turn:
 

@@ -27,15 +27,15 @@ module Communicator_mod
                                                                                  
   type, public :: Communicator 
 
-     integer                         :: nSend            ! number of boundary elements to send
-     integer                         :: nRecv            ! number of boundary elements to receive
+     integer                         :: nSend                    ! number of boundary elements to send
+     integer                         :: nRecv                    ! number of boundary elements to receive
 
-     integer,    pointer, contiguous :: ListRecv(:)      ! ListRecv(nRecv)
-     integer,    pointer, contiguous :: ListSend(:,:)    ! ListSend(2,nSend)
-     integer                         :: irequest(2)      ! irequest(2)
+     integer,    pointer, contiguous :: ListRecv(:)   => null()  ! ListRecv(nRecv)
+     integer,    pointer, contiguous :: ListSend(:,:) => null()  ! ListSend(2,nSend)
+     integer                         :: irequest(2)              ! irequest(2)
 
-     real(adqt), pointer, contiguous :: psibsend(:,:)    ! psibsend(Groups,nSend) - send buffer
-     real(adqt), pointer, contiguous :: psibrecv(:,:)    ! psibrecv(Groups,nRecv) - receive buffer
+     real(adqt), pointer, contiguous :: psibsend(:,:) => null()  ! psibsend(Groups,nSend) - send buffer
+     real(adqt), pointer, contiguous :: psibrecv(:,:) => null()  ! psibrecv(Groups,nRecv) - receive buffer
 
   end type Communicator 
 
@@ -66,28 +66,28 @@ contains
   subroutine Communicator_ctor_buffer(self, nSend, nRecv, Groups, &
                                       nGroupSets) 
 
+    use MemoryAllocator_mod, only : Allocator
+    use Size_mod, only : Size
     implicit none
 
 !   Passed variables
-                                                                                     
     type(Communicator),    intent(inout) :: self
     integer,               intent(in)    :: nSend
     integer,               intent(in)    :: nRecv
     integer,               intent(in)    :: Groups
     integer,               intent(in)    :: nGroupSets
 
-
     self% nSend = nSend
     self% nRecv = nRecv
 
     if (self% nSend > 0) then
       allocate( self% ListSend(2,nSend) )
-      allocate( self% psibsend(Groups,nSend*nGroupSets) )
+      call Allocator%allocate(Allocator%use_for_comm_data,"Communicator","psibsend", self% psibsend, Groups, nSend*nGroupSets)
     endif
 
     if (self% nRecv > 0) then
       allocate( self% ListRecv(nRecv) )
-      allocate( self% psibrecv(Groups,nRecv*nGroupSets) )
+      call Allocator%allocate(Allocator%use_for_comm_data,"Communicator","psibrecv", self% psibrecv, Groups, nRecv*nGroupSets)
     endif
 
     return
@@ -102,6 +102,8 @@ contains
 
     use mpi_param_mod
     use mpif90_mod
+    use MemoryAllocator_mod, only : Allocator
+    use Size_mod, only : Size
 
     implicit none
 
@@ -119,16 +121,17 @@ contains
       call MPI_Request_Free(self%irequest(1), ierr)
 
       deallocate( self% ListSend  )
-      deallocate( self% psibsend  )
+      call Allocator%deallocate(Allocator%use_for_comm_data,"Communicator","psibsend",  self% psibsend)
+
     endif
                                                                                     
     if (self% nRecv > 0) then
       call MPI_Request_Free(self%irequest(2), ierr)
 
       deallocate( self% ListRecv  )
-      deallocate( self% psibrecv  )
+      call Allocator%deallocate(Allocator%use_for_comm_data,"Communicator","psibrecv",  self% psibrecv)
+
     endif
-                                                                                    
 
     return
 

@@ -39,8 +39,7 @@ UMT can run different test problems, depending on how it was configured and buil
 Blueprint test problem
 ------------------------
 UMT can dynamically generate an unstructured 2D or 3D mesh when built against Conduit
-version 0.8.9 or later, or their develop branch as of 1/1/2024 or later.  This mode is
-selected using the -B command line argument.
+version 0.8.9 or later. This mode is selected using the -B command line argument.
 Each MPI rank in UMT will construct a mesh domain by repeating a Blueprint tile topology
 into a larger, repeated pattern arranged as a square tiling of the tile topology.
 By default, UMT will use the tile pattern that is built into Conduit, although other
@@ -71,7 +70,7 @@ high aspect ratio domains, then adjust the number of tiles in x,y,z using the `-
 command line argument.
 
 To run this problem:
-1. Build UMT (MFEM is not needed)
+1. Build UMT 
 2. Run the test driver in 3D. In the below example, the problem will run for 10 cycles. The `-d 10,10,10` argument will create a mesh domain with 10x10x10 = 1000 tiles, resulting in ~24000 zones/domain. Overall, there would be 8 times that number of zones due to running on 8 MPI ranks. The domains will be arranged in 2x2x2 layout. Run 'test_driver -h' for more info on the arguments.
 ```
 srun -n 8 /path/to/install/bin/test_driver -c 10 -B -d 10,10,10
@@ -79,23 +78,6 @@ srun -n 8 /path/to/install/bin/test_driver -c 10 -B -d 10,10,10
 3. Run the test driver in 2D. In the below example, the problem will run for 10 cycles. The `-d 10,10,0` argument will create a 2D mesh domain with 10x10 = 100 tiles, resulting in ~2400 zones/domain. The domains will be arranged in a 2x2 layout.
 ```
 srun -n 4 /path/to/install/bin/test_driver -c 10 -B -d 10,10,0
-```
-
-MFEM test problem
--------------------
-UMT includes an unstructured mesh 3d test problem using a [MFEM](https://mfem.org/) mesh
-This mesh can be refined using MFEM at run time to provide larger problems. This problem
-requires UMT to have been built with MFEM support.
-
-To run this problem:
-1. Build UMT.  This will produce a test_driver and makeUnstructuredBox executable.
-2. Run the makeUnstructuredBox to produce the 3d test mesh.
-```
-srun -n1 /path/to/install/bin/makeUnstructuredBox
-```
-3. Run the test driver.  In the below example the problem will run for 10 cycles and the mesh will be refined.  Run 'test_driver -h' for more info on the arguments.
-```
-srun -n2 /path/to/install/bin/test_driver -i ./unstructBox3D.mesh -c 10 -r 1 -R 6
 ```
 
 References

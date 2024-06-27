@@ -81,12 +81,6 @@
    incidentFluxControl => getIterationControl(IterControls, "incidentFlux")
    nonlinearControl    => getIterationControl(IterControls, "nonLinear")
 
-!  Check whether mesh is 3D for the corner sweep
-
-   if ( sweepVersion == 1 .and. ndim /= 3 ) then
-     print *, "TETON WARNING: Corner sweep can only work with 3D meshes. Please set sweep version to 0, this run will use the zone sweep."
-   endif
-
 !  Check that tolerances have been set identically on all ranks.
    epsilonCheck = getEpsilonPoint(temperatureControl)
    call MPIAllReduce(epsilonCheck, "max", MY_COMM_GROUP)

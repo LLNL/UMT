@@ -29,7 +29,7 @@
    logical (kind=1),     intent(in)    :: SnSweep
    integer,              intent(in)    :: cSetID
    integer,              intent(in)    :: Angle
-   real(adqt), optional, intent(inout) :: PsiB(Size%nbelem,Size%nangGTA)
+   real(adqt), optional, intent(inout) :: PsiB(Size%nSurfElem,Size%nangGTA)
 
 !  Local
 
@@ -45,6 +45,8 @@
    integer                             :: angle0
    integer                             :: sharedID
    integer                             :: nShared
+
+!  Constants
 
    nShared =  getNumberOfShared(RadBoundary)
    CSet    => getCommSetData(Quad, cSetID)

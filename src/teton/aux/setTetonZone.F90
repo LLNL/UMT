@@ -50,10 +50,6 @@
    integer :: c, c1, c2, cCWLast
    integer :: bcID, b0, bdyelem
 
-   integer, parameter :: fp=1
-   integer, parameter :: ez=2
-   integer, parameter :: cc=3
-
    integer :: cFaceID(Size%maxCorner)
    integer :: cCW(Size%maxcf,Size%maxCorner)
    integer :: cCCW(Size%maxcf,Size%maxCorner)

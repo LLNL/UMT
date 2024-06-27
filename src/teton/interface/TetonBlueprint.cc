@@ -10,7 +10,7 @@
 #include "conduit/conduit_relay_mpi_io_blueprint.hpp"
 #include "dbc_macros.h"
 
-#if defined(TETON_ENABLE_CALIPER)
+#if defined(TETON_ENABLE_CALIPER) && defined(TETON_ENABLE_BLUEPRINT_GENERATION_CALIPER_TIMERS)
 #include "caliper/cali.h"
 #else
 #define CALI_MARK_BEGIN(label)
@@ -583,27 +583,23 @@ int TetonBlueprint::GetOppositeCorner(int zone, int face, int corner, int rank)
    int corner1 = -1;
    size_t ncorners = face_to_corners2[face].size();
 
+   const int dim = mParametersNode.fetch_existing("size/ndim").as_int32();
    double node_x = corner_to_node_x[corner];
    double node_y = corner_to_node_y[corner];
-   double node_z;
-   int dim = mParametersNode.fetch_existing("size/ndim").as_int32();
-   if (dim > 2)
-      node_z = corner_to_node_z[corner];
+   double node_z = (dim > 2) ? corner_to_node_z[corner] : 0.;
 
    for (size_t c = 0; c < ncorners; ++c)
    {
       corner1 = face_to_corners2[face][c];
       double node1_x = corner_to_node_x[corner1];
       double node1_y = corner_to_node_y[corner1];
-      double node1_z;
-      if (dim > 2)
-         node1_z = corner_to_node_z[corner1];
       int zone1 = corner_to_zone[corner1];
 
       // Compilers frequently throw warnings about floating point comparisons being unreliable.
       // In this case, we should have identical binary comparisons because we are just comparing positions.
       if (dim > 2)
       {
+         const double node1_z = corner_to_node_z[corner1];
          if (node1_x == node_x && node1_y == node_y && node1_z == node_z && zone1 != zone)
          {
             return corner1;
@@ -627,9 +623,7 @@ int TetonBlueprint::GetOppositeCorner(int zone, int face, int corner, int rank)
    }
    else
    {
-      std::pair<int, int> zoneface;
-      zoneface.first = zone;
-      zoneface.second = face;
+      std::pair<int, int> zoneface(zone, face);
       try
       {
          const int nbelem = mParametersNode.fetch_existing("size/nbelem").to_int32();
@@ -717,7 +711,7 @@ void TetonBlueprint::ComputeSharedFaces(int rank)
    }
 
    int sface_offset = 0;
-   conduit::int32 *shared_faces_array_ptr;
+   conduit::int32 *shared_faces_array_ptr = nullptr;
    int nsfaces = 0;
    int sfaces_array_len = mMeshNode.fetch_existing("shared_boundaries/shared_faces").dtype().number_of_elements();
    if (ndim == 2)
@@ -746,10 +740,8 @@ void TetonBlueprint::ComputeSharedFaces(int rank)
    {
       int zone = shared_faces_array_ptr[sface_offset + 1];
       int face = shared_faces_array_ptr[sface_offset + 2];
-      std::pair<int, int> zoneface;
-      zoneface.first = zone;
-      zoneface.second = face;
-      int halfface;
+      std::pair<int, int> zoneface(zone, face);
+      int halfface = 0;
       try
       {
          halfface = zoneface_to_halfface.at(zoneface);
@@ -857,10 +849,14 @@ void TetonBlueprint::CreateTetonMeshCornerCoords()
 {
    CALI_CXX_MARK_FUNCTION;
 
-   int nzones = mParametersNode.fetch_existing("size/nzones").as_int32();
-   int ndim = mParametersNode.fetch_existing("size/ndim").as_int32();
+   const int nzones = mParametersNode.fetch_existing("size/nzones").as_int32();
+   const int ndim = mParametersNode.fetch_existing("size/ndim").as_int32();
+
+   // Make an estimate for the vector size.
+   const size_t corners_per_zone[] = {1, 2, 4, 8};
+   size_t nnodes_est = static_cast<size_t>(nzones) * corners_per_zone[ndim];
    std::vector<double> zone_verts;
-   //   std::vector<int> zone_ncorners;
+   zone_verts.reserve(nnodes_est * ndim);
 
    // loop over mesh elements
    for (int zone = 0; zone < nzones; ++zone)
@@ -1309,6 +1305,112 @@ void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int ra
    c(bndry_values, face_values, src_dest, 0);
 }
 
+void TetonBlueprint::GetSurfaceEditZoneFacesAndCorners(int rank,
+                                                       const conduit::Node &surf_face_topo,
+                                                       const std::map<std::set<int>, int> &verts_face_map,
+                                                       std::vector<int> &surf_edits_loczonefaces,
+                                                       std::vector<int> &surf_edits_corners) const
+{
+   const int *corner_to_vertex = mMeshNode.fetch_existing("arrays/corner_to_vertex").value();
+
+   const int surf_face_topo_length = conduit::blueprint::mesh::utils::topology::length(surf_face_topo);
+   for (int f = 0; f < surf_face_topo_length; ++f)
+   {
+      std::vector<conduit::index_t> face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(
+         surf_face_topo,
+         f);
+      std::set<int> face_vertices(face_points.begin(), face_points.end());
+      int face = -1;
+      if (verts_face_map.find(face_vertices) != verts_face_map.end())
+      {
+         face = verts_face_map.at(face_vertices);
+      }
+      else
+      {
+         TETON_FATAL_C(
+            rank,
+            "TetonBlueprint::ProcessSurfaceEdits: surface edit face doesn't have vertices that correspond to a mesh face");
+      }
+
+      // This mesh face shares (generically) two zones---need to determine the
+      // correct zone based on the vertex orientation of the vertices on the face
+      // NOTE: this logic will not work for AMR meshes
+      // TODO: fix for AMR meshes
+      // The code below uses that face_to_corners2[face] has a list of corners
+      // associated with the mesh face, face. Generically this list will involves two
+      // zones, and the orientation will be according to the left-hand rule. Using the association between each corner and vertex (for non-AMR meshes), we want to find the zone with the same orientation
+      int vert1 = face_points[0];
+      int vert2 = face_points[1];
+      int zone1 = face_to_zones2[face][0];
+      int zone_for_surf_face = zone1;
+      if (face_to_zones2[face].size() > 1)
+      {
+         int zone2 = face_to_zones2[face][1];
+         zone_for_surf_face = zone2;
+         // Loop over corners associated with first zone that
+         // shares this face. For non-AMR meshes, each vertex
+         // in the zone corresponds to a corner
+         int nverts_for_face = face_to_corners2[face].size() / 2;
+         for (int c = 0; c < nverts_for_face - 1; ++c)
+         {
+            int corner1 = face_to_corners2[face][c];
+            int corner2 = face_to_corners2[face][c + 1];
+            int vert_tail = corner_to_vertex[corner1];
+            int vert_head = corner_to_vertex[corner2];
+            if ((vert1 == vert_tail) && (vert2 == vert_head))
+            {
+               zone_for_surf_face = zone1;
+               continue;
+            }
+         }
+         if (nverts_for_face > 2) // true if dim == 3
+         {
+            int corner1 = face_to_corners2[face][nverts_for_face - 1];
+            int corner2 = face_to_corners2[face][0];
+            int vert_tail = corner_to_vertex[corner1];
+            int vert_head = corner_to_vertex[corner2];
+            if ((vert1 == vert_tail) && (vert2 == vert_head))
+            {
+               zone_for_surf_face = zone1;
+            }
+         }
+      }
+
+      // Determine the local zone face ID associated with
+      // the pair (zoneID, faceID)
+      int nfaces_in_zone = zone_to_faces2[zone_for_surf_face].size();
+      int local_face = -1;
+      for (int f1 = 0; f1 < nfaces_in_zone; ++f1)
+      {
+         int face_in_zone = zone_to_faces2[zone_for_surf_face][f1];
+         if (face_in_zone == face)
+            local_face = f1;
+      }
+      if (local_face == -1)
+      {
+         TETON_FATAL_C(
+            rank,
+            "TetonBlueprint::ProcessSurfaceEdits: surface edit face doesn't have vertices that correspond to a mesh face");
+      }
+
+      // Finally, push the global corner IDs and local zone face IDs
+      // associated with the pair (zoneID, faceID)
+      int ncorner_faces = face_to_corners2[face].size();
+      for (int c = 0; c < ncorner_faces; ++c)
+      {
+         int corner = face_to_corners2[face][c];
+         int zone = corner_to_zone[corner];
+         if (zone != zone_for_surf_face)
+         {
+            continue;
+         }
+         // Note: increment because Teton uses 1-based indexing
+         surf_edits_loczonefaces.push_back(local_face + 1);
+         surf_edits_corners.push_back(corner + 1);
+      }
+   }
+}
+
 // WORKING ON //
 // TODO: fix for AMR meshes
 // NOTE: Compare to template <typename Mesh> void Teton<Mesh>::makeCornerLists
@@ -1318,9 +1420,6 @@ void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int ra
 
 void TetonBlueprint::ProcessSurfaceEdits(int rank)
 {
-   std::vector<std::vector<int>> surf_edits_loczonefaces;
-   std::vector<std::vector<int>> surf_edits_corners;
-
    // Create the map {face vertices => face}. Here the face IDs are those
    // generated by the call to generate_faces. We need to match these face IDs
    // with the vertices associated with the surface edit faces
@@ -1345,126 +1444,36 @@ void TetonBlueprint::ProcessSurfaceEdits(int rank)
          rank,
          "TetonBlueprint::ProcessSurfaceEdits: field arrays/corner_to_vertex has not yet been created; need to call CreateConnectivityArrays first");
    }
-   int *corner_to_vertex = mMeshNode.fetch_existing("arrays/corner_to_vertex").value();
 
    // Loop over surface_edit topologies
-   conduit::Node &topos = mMeshNode["topologies"];
-   conduit::Node &surface_edits = mParametersNode["surface_edits"];
+   const conduit::Node &topos = mMeshNode["topologies"];
+   const conduit::Node &surface_edits = mParametersNode["surface_edits"];
    conduit::NodeConstIterator surface_edits_it = surface_edits.children();
-   int num_surfaces = surface_edits.number_of_children();
-   surf_edits_loczonefaces.resize(num_surfaces);
-   surf_edits_corners.resize(num_surfaces);
-   int surface_id = 0;
    while (surface_edits_it.has_next())
    {
       const conduit::Node &param_surface_edit = surface_edits_it.next();
-      // get the surface topology
+      std::vector<int> surf_edits_loczonefaces, surf_edits_corners;
+      // Check whether the surface topology exists on this rank.
+      // Only fill in the vectors if the topology exists on this rank. We still add
+      // the surface edit since the consumer of it will pass data into teton_surfaceedit,
+      // which contains collective communication and all ranks need to participate.
       std::string surface_edit_name_str = param_surface_edit["zone_face_topology_name"].as_string();
-      conduit::Node &surf_face_topo = topos[surface_edit_name_str];
-      const int surf_face_topo_length = conduit::blueprint::mesh::utils::topology::length(surf_face_topo);
-      for (int f = 0; f < surf_face_topo_length; ++f)
+      if (topos.has_child(surface_edit_name_str))
       {
-         std::vector<conduit::index_t> face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(
-            surf_face_topo,
-            f);
-         std::set<int> face_vertices(face_points.begin(), face_points.end());
-         int face;
-         if (verts_face_map.find(face_vertices) != verts_face_map.end())
-         {
-            face = verts_face_map.at(face_vertices);
-         }
-         else
-         {
-            TETON_FATAL_C(
-               rank,
-               "TetonBlueprint::ProcessSurfaceEdits: surface edit face doesn't have vertices that correspond to a mesh face");
-         }
+         // get the surface topology
+         const conduit::Node &surf_face_topo = topos.fetch_existing(surface_edit_name_str);
 
-         // This mesh face shares (generically) two zones---need to determine the
-         // correct zone based on the vertex orientation of the vertices on the face
-         // NOTE: this logic will not work for AMR meshes
-         // TODO: fix for AMR meshes
-         // The code below uses that face_to_corners2[face] has a list of corners
-         // associated with the mesh face, face. Generically this list will involves two
-         // zones, and the orientation will be according to the left-hand rule. Using the association between each corner and vertex (for non-AMR meshes), we want to find the zone with the same orientation
-         int vert1 = face_points[0];
-         int vert2 = face_points[1];
-         int zone1 = face_to_zones2[face][0];
-         int zone_for_surf_face = zone1;
-         if (face_to_zones2[face].size() > 1)
-         {
-            int zone2 = face_to_zones2[face][1];
-            zone_for_surf_face = zone2;
-            // Loop over corners associated with first zone that
-            // shares this face. For non-AMR meshes, each vertex
-            // in the zone corresponds to a corner
-            int nverts_for_face = face_to_corners2[face].size() / 2;
-            for (int c = 0; c < nverts_for_face - 1; ++c)
-            {
-               int corner1 = face_to_corners2[face][c];
-               int corner2 = face_to_corners2[face][c + 1];
-               int vert_tail = corner_to_vertex[corner1];
-               int vert_head = corner_to_vertex[corner2];
-               if ((vert1 == vert_tail) && (vert2 == vert_head))
-               {
-                  zone_for_surf_face = zone1;
-                  continue;
-               }
-            }
-            if (nverts_for_face > 2) // true if dim == 3
-            {
-               int corner1 = face_to_corners2[face][nverts_for_face - 1];
-               int corner2 = face_to_corners2[face][0];
-               int vert_tail = corner_to_vertex[corner1];
-               int vert_head = corner_to_vertex[corner2];
-               if ((vert1 == vert_tail) && (vert2 == vert_head))
-               {
-                  zone_for_surf_face = zone1;
-               }
-            }
-         }
-
-         // Determine the local zone face ID associated with
-         // the pair (zoneID, faceID)
-         int nfaces_in_zone = zone_to_faces2[zone_for_surf_face].size();
-         int local_face = -1;
-         for (int f1 = 0; f1 < nfaces_in_zone; ++f1)
-         {
-            int face_in_zone = zone_to_faces2[zone_for_surf_face][f1];
-            if (face_in_zone == face)
-               local_face = f1;
-         }
-         if (local_face == -1)
-         {
-            TETON_FATAL_C(
-               rank,
-               "TetonBlueprint::ProcessSurfaceEdits: surface edit face doesn't have vertices that correspond to a mesh face");
-         }
-
-         // Finally, push the global corner IDs and local zone face IDs
-         // associated with the pair (zoneID, faceID)
-         int ncorner_faces = face_to_corners2[face].size();
-         for (int c = 0; c < ncorner_faces; ++c)
-         {
-            int corner = face_to_corners2[face][c];
-            int zone = corner_to_zone[corner];
-            if (zone != zone_for_surf_face)
-            {
-               continue;
-            }
-            // Note: incremenet because Teton uses 1-based indexing
-            surf_edits_loczonefaces[surface_id].push_back(local_face + 1);
-            surf_edits_corners[surface_id].push_back(corner + 1);
-         }
+         // Get the local zone faces and corners.
+         GetSurfaceEditZoneFacesAndCorners(rank,
+                                           surf_face_topo,
+                                           verts_face_map,
+                                           surf_edits_loczonefaces,
+                                           surf_edits_corners);
       }
-
       // Append to blueprint mesh node
-      mMeshNode["teton/surface_edits/" + surface_edit_name_str + "/corners"].set(surf_edits_corners[surface_id].data(),
-                                                                                 surf_edits_corners[surface_id].size());
-      mMeshNode["teton/surface_edits/" + surface_edit_name_str + "/local_zone_faces"].set(
-         surf_edits_loczonefaces[surface_id].data(),
-         surf_edits_corners[surface_id].size());
-      surface_id += 1;
+      conduit::Node &surface_edit = mMeshNode["teton/surface_edits/" + surface_edit_name_str];
+      surface_edit["corners"].set(surf_edits_corners);
+      surface_edit["local_zone_faces"].set(surf_edits_loczonefaces);
    }
 }
 
@@ -1609,7 +1618,6 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
    // First we get the max of the non-shared bc_ids so that we
    // can assign a unique bc_id
    int bc_id_max = 0;
-   int n_shared_corner_faces = 0;
    for (auto itr = boundaries.begin(); itr != boundaries.end(); ++itr)
    {
       bc_id_max = std::max(itr->first, bc_id_max);
@@ -1654,19 +1662,6 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
             size_t ncorners = face_to_corners2[face].size();
             boundary_id_to_ncornerfaces[bc_id] += ncorners;
             face_to_bcid[face] = bc_id;
-
-            if (ndim == 2)
-            {
-               n_shared_corner_faces += 1;
-            }
-            else if (ndim == 3)
-            {
-               n_shared_corner_faces += ncorners;
-            }
-            else
-            {
-               std::cout << "1D is not yet implemented! " << std::endl;
-            }
          }
       }
    }
@@ -1914,7 +1909,6 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity,         // bou
       while (groups_it.has_next())
       {
          const conduit::Node &group = groups_it.next();
-         int num_sfaces = group["values"].dtype().number_of_elements();
          int nbr_rank = group["neighbors"].to_int();
          int index = fn_counter_teton + num_nonshared_bndrs;
          // We want to increment this only when num_sfaces > 0
@@ -1938,9 +1932,6 @@ void TetonBlueprint::ComputeFaceIDs1D(int *boundary_connectivity,         // bou
    mParametersNode["boundary_conditions/num_source"] = boundaries_types[2];
    mParametersNode["boundary_conditions/num_comm"] = boundaries_types[3];
    mParametersNode["boundary_conditions/num_total"] = num_bndrs;
-
-   std::vector<int> elem_ids(2);
-   int nelem = mMeshNode["topologies/mesh/elements/dims/i"].value();
    mParametersNode["boundary_conditions/type"].set(bc_type_int.data(), 2);
    mParametersNode["boundary_conditions/zone_ids"].set(bc_zone_id.data(), 2);
    mParametersNode["boundary_conditions/neighbor_ids"].set(bc_nghbr_id.data(), 2);
@@ -1955,7 +1946,6 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
       int nelem = mMeshNode["topologies/mesh/elements/dims/i"].value();
       // TODO Move to mesh conduit Node
       //  TODO: fix rank
-      int rank = 0;
       mParametersNode["size/ndim"] = 1;
       mParametersNode["size/rank"] = rank;
       mParametersNode["size/nzones"] = nelem;
@@ -2046,7 +2036,7 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
    std::vector<int> boundaries_types = {0, 0, 0, 0};
    std::vector<int> boundary_conditions;
    int nbelem_corner_faces = 0;
-   m_face_to_bcid.resize(nfaces);
+   m_face_to_bcid.resize(nfaces, 0);
 
    ComputeFaceIDs(boundaries, nbelem_corner_faces, boundaries_types, boundary_conditions, m_face_to_bcid, rank);
 
@@ -2063,27 +2053,22 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
       {
          const conduit::Node &fn_face_group = groups_it.next();
          const conduit::Node fn_corner_group = mMeshNode["adjsets/main_corner/groups"][fn_face_group.name()];
-         const conduit::Node &fn_faces = fn_face_group["values"];
-         const conduit::Node &fn_corners = fn_corner_group["values"];
 
          // Store the index of each corner in the corner adjacency list.
          // Precondition: The order of the corners in the corner mesh adjacency set from
          // conduit must match with the order in the neighboring domain's list.
          std::map<int, int> cpoint_to_gindex;
-         for (int cp = 0; cp < fn_corners.dtype().number_of_elements(); cp++)
+         const auto corner_data = fn_corner_group["values"].as_int_accessor();
+         for (int cp = 0; cp < corner_data.number_of_elements(); cp++)
          {
-            conduit::Node corner_data(conduit::DataType(fn_corners.dtype().id(), 1),
-                                      (void *) fn_corners.element_ptr(cp),
-                                      true);
-            cpoint_to_gindex[corner_data.to_int()] = cp;
+            int cpoint = corner_data[cp];
+            cpoint_to_gindex[cpoint] = cp;
          }
 
-         for (int f = 0; f < fn_faces.dtype().number_of_elements(); f++)
+         const auto face_data = fn_face_group["values"].as_int_accessor();
+         for (int f = 0; f < face_data.number_of_elements(); f++)
          {
-            conduit::Node face_data(conduit::DataType(fn_faces.dtype().id(), 1),
-                                    (void *) fn_faces.element_ptr(f),
-                                    true);
-            const int face = face_data.to_int();
+            const int face = face_data[f];
 
             // Makes sure a shared face is really a shared face
             if (face_to_zones2[face].size() > 1)
@@ -2091,15 +2076,10 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
 
             const int bcid = m_face_to_bcid[face];
             const int zone = face_to_zones2[face].front(); // only 1 b/c on boundary
-            const std::vector<int> corners = face_to_corners2[face];
-
-            const std::vector<conduit::index_t>
-               face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(face_topology, face);
 
             std::map<int, int> fpoint_to_corner;
-            for (size_t c = 0; c < corners.size(); c++)
+            for (const auto corner : face_to_corners2[face])
             {
-               const int corner = corners[c];
                const std::vector<conduit::index_t>
                   corner_points = conduit::blueprint::mesh::utils::topology::unstructured::points(corner_topology,
                                                                                                   corner);
@@ -2108,10 +2088,11 @@ void TetonBlueprint::OutputTetonMesh(int rank, MPI_Comm comm)
                fpoint_to_corner[corner_points.front()] = corner;
             }
 
+            const std::vector<conduit::index_t>
+               face_points = conduit::blueprint::mesh::utils::topology::unstructured::points(face_topology, face);
             std::vector<std::pair<int, int>> fpoint_list;
-            for (size_t fp = 0; fp < face_points.size(); fp++)
+            for (const auto face_point : face_points)
             {
-               const int face_point = face_points[fp];
                fpoint_list.emplace_back(cpoint_to_gindex[face_point], face_point);
             }
             std::sort(fpoint_list.begin(), fpoint_list.end());

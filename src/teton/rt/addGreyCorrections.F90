@@ -39,6 +39,7 @@
    integer    :: c0
    integer    :: nCorner
    integer    :: angle
+   integer    :: exit_angle
    integer    :: NumAngles
    integer    :: g
    integer    :: g0
@@ -98,7 +99,8 @@
 !  Update Set dependent boundary fluxes
 
 !$omp parallel do default(none) schedule(static) &
-!$omp& private(NumAngles, g0, Groups, c, nBdyElem, b, b0, Set, ASet, CSet, CommT, BdyT) &
+!$omp& private(NumAngles, g0, Groups, c, nBdyElem, b, b0, exit_angle) &
+!$omp& private(Set, ASet, CSet, CommT, BdyT) &
 !$omp& shared(nSets, Quad, GTA, RadBoundary, wtiso, nReflecting, nShared)
 
    SetLoop: do setID=1,nSets
@@ -139,13 +141,13 @@
        b0        =  getFirstBdyElement(BdyT) - 1
 
        do i=1,ASet% nExit(reflID)
-         angle = ASet% ExitAngleList(i,reflID)
+         exit_angle = ASet% ExitAngleList(i,reflID)
          do b=1,nBdyElem
            c = BdyT% BdyToC(b)
 
            do g=1,Groups
-             Set% PsiB(g,b0+b,angle) = Set% PsiB(g,b0+b,angle) + wtiso*  &
-                                       GTA%GreyCorrection(c)*GTA% Chi(g0+g,c) 
+             Set% PsiB(g,b0+b,exit_angle) = Set% PsiB(g,b0+b,exit_angle) + wtiso*  &
+                                            GTA%GreyCorrection(c)*GTA% Chi(g0+g,c) 
            enddo
          enddo
        enddo

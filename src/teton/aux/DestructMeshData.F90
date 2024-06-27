@@ -35,6 +35,7 @@
    use CommSet_mod
    use SetData_mod
    use ZoneSet_mod
+   use DataStore_mod
 
 
    implicit none
@@ -74,6 +75,7 @@
 
    call destruct(Geom)
    call destruct(Rad)
+   deallocate(Rad)
    call Mat%destruct(nonLTE)
 
 !  Deallocate Phase-Spaces Set data
@@ -126,6 +128,7 @@
 !  Zone Sets
 
    call destruct(ZSet)
+   deallocate(ZSet)
 
 !  Communication Sets
 
@@ -169,6 +172,8 @@
    deallocate( GTA )
    deallocate( Size )
 
+
+   call theDatastore%root%reset()
 
    return
    end subroutine DestructMeshData 

@@ -24,6 +24,7 @@ module Size_mod
      integer          :: ncornr          ! number of corners
      integer          :: nSides
      integer          :: nbelem          ! number of boundary elements
+     integer          :: nSurfElem       ! boundary + interface elements
      integer          :: maxcf           ! maximum number of zone faces a corner touches
      integer          :: maxCorner       ! maximum number of corners in a zone
      integer          :: maxFaces        ! maximum number of zone-faces
@@ -168,6 +169,7 @@ contains
     self% ncornr             = ncornr
     self% nSides             = nSides
     self% nbelem             = nbelem
+    self% nSurfElem          = nbelem
     self% maxcf              = maxcf
     self% maxCorner          = maxCorner 
 ! In 1D, 2D maxFaces = maxCorner; In 3D it's an overestimate

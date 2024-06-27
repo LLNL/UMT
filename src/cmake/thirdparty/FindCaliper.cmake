@@ -37,4 +37,6 @@ find_package_handle_standard_args(
     DEFAULT_MSG
     CALIPER_LIBRARIES CALIPER_INCLUDE_DIR)
 
+file(STRINGS ${CALIPER_INCLUDE_DIR}/caliper/caliper-config.h CALIPER_REQUIRES_ADIAK REGEX "^#define CALIPER_HAVE_ADIAK")
+
 mark_as_advanced(CALIPER_LIBRARIES CALIPER_INCLUDE_DIR)

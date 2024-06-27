@@ -24,11 +24,14 @@ module MemoryAllocator_mod
       integer, public :: umpire_device_allocator_id = -1
       logical, public :: host_allocator_present = .FALSE.
       logical, public :: device_allocator_present = .FALSE.
+      logical, public :: use_for_comm_data = .FALSE.
 
    contains
 
-      procedure, public :: construct => AllocatorType_construct
-      procedure, public :: destruct => AllocatorType_destruct
+      procedure, private :: isGPUAwareMPIEnabled
+
+      procedure, public :: construct
+      procedure, public :: destruct
 
       procedure :: ar1 => allocate_host_real_c_double_1
       procedure :: ar2 => allocate_host_real_c_double_2
@@ -55,12 +58,14 @@ module MemoryAllocator_mod
    type(AllocatorType), pointer, public :: Allocator => null()
 
 !-----------------------------------------------------------------------------------------
-! AllocatorType_construct
+! construct
 !-----------------------------------------------------------------------------------------
 
 contains
 
-   subroutine AllocatorType_construct(self, umpire_host_allocator_id, umpire_device_allocator_id)
+   subroutine construct(self, umpire_host_allocator_id, umpire_device_allocator_id)
+      use Options_mod, only : Options
+
       class(AllocatorType), intent(inout) :: self
       integer :: umpire_host_allocator_id
       integer :: umpire_device_allocator_id
@@ -72,6 +77,9 @@ contains
 
       if (umpire_host_allocator_id >= 0) then
          self%umpire_host_allocator = umpire_resource_manager%get_allocator_by_id(umpire_host_allocator_id)
+!#if defined(TETON_ENABLE_OPENMP)
+! Need a way to verify this is a thread safe umpire allocator...
+!#endif
          self%umpire_host_allocator_id = umpire_host_allocator_id
          self%host_allocator_present = .TRUE.
       endif
@@ -81,18 +89,26 @@ contains
          self%umpire_device_allocator_id = umpire_device_allocator_id
          self%device_allocator_present = .TRUE.
       endif
+
+      self%use_for_comm_data = self%isGPUAwareMPIEnabled()
+
+      if (self%use_for_comm_data) then
+         if ( Options%isRankVerbose() > 0 ) then
+            print *, "Teton memory allocator: Detected env variable MPICH_GPU_SUPPORT_ENABLED=1, allocating comm data using umpire."
+         endif
+      endif
 #endif
 
-   end subroutine AllocatorType_construct
+   end subroutine construct
    
 !-----------------------------------------------------------------------------------------
 ! AllocatorType_destruct
 !-----------------------------------------------------------------------------------------
-   subroutine AllocatorType_destruct(self)
+   subroutine destruct(self)
 
       class(AllocatorType), intent(inout) :: self
 
-   end subroutine AllocatorType_destruct
+   end subroutine destruct
 
 !-----------------------------------------------------------------------------
 ! Some notes on useful Umpire allocator functions.  These all return
@@ -127,6 +143,40 @@ contains
 #define FTM_RANK 4 
 #include "MemoryAllocator_mod.F90.templates"
 
+!***********************************************************************
+!    isGPUAwareMPIEnabled - Return true if gpu aware mpi support is enabled.
+!
+!    This functionality is for internal developer use only, for the El Cap EAS
+!    nodes and should not be exposed to users.
+!
+!    The El Cap EAS nodes have an early MPI GPU-AWARE functionality
+!    available for testing.  It currently requires setting the
+!    MPICH_GPU_SUPPORT_ENABLED env var to enable it.
+!
+!    If Teton detects this env var, it needs to allocate its comm data
+!    using umpire.  Otherwise, it should not allocate it via umpire.
+!
+!    NOTE: Teton can not default to allocating the comm data using umpire.
+!    CPU based MPI functionality will crash if pointers allocated via hipMalloc
+!    are passed to it, despite the unified memory.  If this is supported in
+!    the future, this function should be removed and Teton should always use
+!    the umpire allocator for comm data.
+!***********************************************************************
+  logical function isGPUAwareMPIEnabled(self) result(useUmpire)
+    class(AllocatorType), intent(inout) :: self
+    character(len=255) :: env_var_value
+    integer :: env_status
+
+    call get_environment_variable("MPICH_GPU_SUPPORT_ENABLED", env_var_value, status=env_status)
+    if (env_status == 0 .AND. trim(env_var_value) == "1") then
+       useUmpire = .TRUE.
+    else
+       useUmpire = .FALSE.
+    endif
+
+    return
+  end function
+
 end module MemoryAllocator_mod
 
 !-----------------------------------------------------------------------------
@@ -150,4 +200,18 @@ end module MemoryAllocator_mod
 
    return
    end subroutine ConstructMemoryAllocator
+
+
+   subroutine DestructMemoryAllocator( ) BIND(C,NAME="teton_destructmemoryallocator")
+
+   use iso_c_binding
+   use MemoryAllocator_mod
+   implicit none
+
+!  Destruct the Memory Allocator Module
+   call Allocator%destruct()
+   deallocate (Allocator)
+
+   return
+   end subroutine DestructMemoryAllocator
 

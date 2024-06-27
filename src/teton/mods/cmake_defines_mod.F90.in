@@ -13,5 +13,7 @@ implicit none
    character (len = *), parameter :: fortran_compiler="@CMAKE_Fortran_COMPILER@"
    integer, parameter :: omp_device_num_processors = @OMP_DEVICE_NUM_PROCESSORS@
    integer, parameter :: omp_device_team_thread_limit = @OMP_DEVICE_TEAM_THREAD_LIMIT@
+   integer, parameter :: min_groupset_size = @GSET_MIN_SIZE@
+   integer, parameter :: max_num_hyperdomains = @MAX_NUM_HYPER_DOMAINS@
 
 end module cmake_defines_mod

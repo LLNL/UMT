@@ -33,6 +33,7 @@ module Datastore_mod
     contains
       procedure :: save_hdf5
       procedure :: initialize
+      procedure :: partitioning
 
   end type datastore_type
 
@@ -79,6 +80,33 @@ contains
 
   end subroutine
 
+!=======================================================================
+! Get whether partitioning is enabled.
+!=======================================================================
+  function partitioning(self) result(res)
+    logical res
+    class(datastore_type) :: self
+    integer value
+    character(len=80) :: str
+
+    res = .FALSE.
+    ! Get the value from the options.
+    if (theDatastore%root%has_path("options/partitioning")) then
+      value = theDatastore%root%fetch_path_as_int32("options/partitioning")
+      if (value .ne. 0) then
+        res = .TRUE.
+      endif
+    endif
+    ! Get the value from the environment
+    call getenv("TETON_PARTITION", str)
+    if (str .ne. " ") then
+      value = 0
+      read (str,*) value
+      if (value .ne. 0) then
+        res = .TRUE.
+      endif
+    endif
+  end function
 
 !=======================================================================
 ! Get C pointer to conduit node
