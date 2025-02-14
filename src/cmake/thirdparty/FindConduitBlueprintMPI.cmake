@@ -6,6 +6,16 @@
 
 include(FindPackageHandleStandardArgs)
 
+# NOTE: We have a problem with libraries for CI. The approach below is needed
+#       so we can pick up Conduit and its parmetis dependencies (in a build
+#       that supports them). This relies on using Conduit's targets, or else
+#       we would have to add hints to detect parmetis, etc. We should not have
+#       to know or care how Conduit was built. It's package should tell us.
+#
+#       For some customer codes, they relocate the spack build TPLs after
+#       building them.  This invalidates the target paths, so we cannot
+#       rely on importing them here.
+#set(TETON_BUILDING_WITH_PARMETIS 1)
 if(TETON_BUILDING_WITH_PARMETIS)
    # Find Conduit using the Conduit installed package so we can get any library
    # dependencies for the conduit_blueprint_mpi library.

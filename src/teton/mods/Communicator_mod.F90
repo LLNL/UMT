@@ -67,7 +67,6 @@ contains
                                       nGroupSets) 
 
     use MemoryAllocator_mod, only : Allocator
-    use Size_mod, only : Size
     implicit none
 
 !   Passed variables
@@ -103,7 +102,6 @@ contains
     use mpi_param_mod
     use mpif90_mod
     use MemoryAllocator_mod, only : Allocator
-    use Size_mod, only : Size
 
     implicit none
 

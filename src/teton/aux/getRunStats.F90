@@ -24,10 +24,14 @@
    use constant_mod
    use Material_mod
    use Geometry_mod
+   use Quadrature_mod, only : Quadrature
    use QuadratureList_mod
    use iter_control_list_mod
    use iter_control_mod
    use TimeStepControls_mod
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+   use ComptonControl_mod
+#endif
    use Options_mod
 
    implicit none
@@ -53,10 +57,14 @@
    real(adqt)     :: errorTemp
    real(adqt)     :: errorPsi
    real(adqt)     :: dtrad
+   real(adqt)     :: currentDtRad
    real(adqt)     :: DtControlChange
    real(adqt)     :: ConvState(5+Size% ndim)
    real(adqt)     :: DtState(8+Size% ndim)
    real(adqt)     :: zoneCenter(Size% ndim)
+   real(adqt)     :: numPSIElements
+   real(adqt)     :: throughputCycle
+   real(adqt)     :: sumThroughput
 
    integer        :: ncycle
    integer        :: ConvControlProcess
@@ -77,9 +85,13 @@
    integer        :: numOmpCPUThreads
    integer        :: nZoneSets
    integer        :: nSets
-   integer        :: nHyperDomains
+   integer        :: nGTASets
+   integer        :: nSweepHyperDomains
+   integer        :: nGreySweepHyperDomains
+   integer        :: sweepVersion
 
-   character(len=26), parameter :: Tformat = "(1X,A16,1X,F14.8,5X,F14.8)" 
+   character(len=26), parameter :: Tformat1 = "(1X,A16,1X,F14.6,3X,F14.6)" 
+   character(len=48), parameter :: Tformat2 = "(1X,A16,1X,F14.6,3X,F14.6,5X,F5.1,A1)" 
    character(len=14), parameter :: Sformat = "(A21,1pe18.11)" 
    character(len=13), parameter :: format1D = "(A20,1pe12.4)"
    character(len=21), parameter :: format2D = "(A20,1pe12.4,1pe12.4)"
@@ -113,12 +125,18 @@
 
    type(IterControl) , pointer :: temperatureControl => NULL() 
    type(IterControl) , pointer :: intensityControl   => NULL()
+   type(Quadrature)  , pointer :: snQuadrature   => NULL()
    
+   snQuadrature => getSNQuadrature(Quad)
+
 !  Threading information
-   numOmpCPUThreads = Options%getNumOmpMaxThreads()
-   nZoneSets        = getNumberOfZoneSets(Quad)
-   nSets            = getNumberOfSets(Quad)
-   nHyperDomains    = getNumberOfHyperDomains(Quad,1) 
+   sweepVersion              = Options%getSweepVersion()
+   numOmpCPUThreads          = Options%getNumOmpMaxThreads()
+   nZoneSets                 = getNumberOfZoneSets(Quad)
+   nSets                     = getNumberOfSets(Quad)
+   nGTASets                  = getNumberOfGTASets(Quad)
+   nSweepHyperDomains        = getNumberOfHyperDomains(Quad,1) 
+   nGreySweepHyperDomains    = getNumberOfHyperDomains(Quad,2) 
 
 !  Iteration Controls
 
@@ -190,6 +208,7 @@
    DtControlZone    = getControlZone(DtControls)
    DtConstraint     = getDtConstraint(DtControls)
    dtrad            = getRecTimeStep(DtControls)
+   currentDtRad     = getRadTimeStep(DtControls)
 
    indexCaveat = 0 
 
@@ -248,38 +267,75 @@
 
      ncycle = getRadCycle(DtControls) 
 
-#if defined(TETON_ENABLE_OPENMP)
-     print *,"*****************     Threading     ****************"
-     print '(A,i5)', " # threads per rank, cpu        = ", numOmpCPUThreads
-#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
-     if (Size%useGPU) then
-! Number of thread teams used for kernels iterating over zone sets.
-       print '(A,i5)', " # thread teams over zone sets  = ", nZoneSets
-! Number of thread teams used for kernels iterating over phase-angle
-! sets.  May comment this line out later, as Paul intends to migrate all
-! kernels to be over zone sets.
-       print '(A,i5)', " # thread teams over sweep sets = ", nSets*nHyperDomains
+
+     print *,"************     Configuration Info    *************"
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+     if (Size%useNewGTASolver) then
+       print *, " GTA solver version: 2"
+     else
+       print *, " GTA solver version: 1"
      endif
+
+     if (getUseBoltzmann(Compton)) then
+       print *, " Compton scattering kernel: Boltzmann"
+     endif
+
+     if (getUseFokkerPlanck(Compton)) then
+       print *, " Compton scattering kernel: Fokker Planck"
+     endif
+#endif
+
+     if (sweepVersion == 1) then
+       print *, " Sweep scheduled over zones"
+     elseif (sweepVersion == 2) then
+       print *, " Sweep scheduled over corners"
+     endif
+
+     if (Size%useGPU) then
+       print *," Device : GPU"
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
+       print *, " # GPU thread teams utilized by zone sets = ", nZoneSets
+       print *, " # GPU thread teams utilized by sweep  = ", nSets*nSweepHyperDomains
+       print *, " # GPU thread teams utilized by grey sweep = ", nGTASets*nGreySweepHyperDomains
+#endif
+     else
+       print *," Device : CPU"
+     endif
+
+#if defined(TETON_ENABLE_OPENMP)
+     print '(A30,1X,I3)', "  # CPU threads per mpi rank = ", numOmpCPUThreads
+#endif
      print *," "
-#endif
-#endif
-     print *,"*****************     Run Time     *****************"
-     print *,"                    Cycle (min)     Accumulated (min)"
-     print Tformat, "RADTR          =", Size% RadtrTimeCycle,    RadtrTimeTotal 
+     print *,"******************     Run Time (minutes) ******************"
+     print *,"                          Cycle      Accumulated  % of RADTR"
+     print Tformat2, "RADTR          =", Size% RadtrTimeCycle,    RadtrTimeTotal,    100.0, "%"
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
-     print Tformat, "Mat. Coupling  =", Size% MatCoupTimeCycle,  MatCoupTimeTotal 
+     print Tformat2, "Mat. Coupling  =", Size% MatCoupTimeCycle,  MatCoupTimeTotal,  MatCoupTimeTotal/RadtrTimeTotal*100.0, "%"
 #endif
-     print Tformat, "Sweep(CPU)     =", Size% SweepTimeCycle,    SweepTimeTotal
-     print Tformat, "Sweep(GPU)     =", Size% GPUSweepTimeCycle, GPUSweepTimeTotal
+     print Tformat2, "Sweep(CPU)     =", Size% SweepTimeCycle,    SweepTimeTotal,    SweepTimeTotal/RadtrTimeTotal*100.0, "%"
+     print Tformat2, "Sweep(GPU)     =", Size% GPUSweepTimeCycle, GPUSweepTimeTotal, GPUSweepTimeTotal/RadtrTimeTotal*100.0, "%"
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
-     print Tformat, "Grey Tr. Accel =", Size% GTATimeCycle,      GTATimeTotal
+     print Tformat2, "Grey Tr. Accel =", Size% GTATimeCycle,      GTATimeTotal,      GTATimeTotal/RadtrTimeTotal*100.00, "%"
 #endif
-     print Tformat, "Initialization =", Size% InitTimeCycle,     InitTimeTotal
-     print Tformat, "Finalization   =", Size% FinalTimeCycle,    FinalTimeTotal
+     print Tformat2, "Initialization =", Size% InitTimeCycle,     InitTimeTotal,     InitTimeTotal/RadtrTimeTotal*100.0, "%"
+     print Tformat2, "Finalization   =", Size% FinalTimeCycle,    FinalTimeTotal,    FinalTimeTotal/RadtrTimeTotal*100.0, "%"
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
-     print Tformat, "Non-Rad        =",       timeNonRadCycle,   timeNonRadTotal
+     print Tformat1, "Non-Rad        =",       timeNonRadCycle,   timeNonRadTotal
 #endif
+
      print *," "
+! Print the 'throughput' for use in performance measurements.
+! Throughput is defined as # unknowns solved per second in most performance
+! reports.  In Teton's case for the cycle throughput I'm using:
+! the # elements in PSI * timestep / RADTR walltime.
+! -- black27
+     if ( Options%isRankVerbose() > 1 ) then
+       numPSIElements = dble(Size%ncornr) * dble(snQuadrature%NumAngles) * dble(snQuadrature%Groups)
+       throughputCycle = numPSIElements * currentDtRad / (Size%RadtrTimeCycle * 60.0)
+       Size%throughputTotal =  Size%throughputTotal + throughputCycle
+       print '(1X,A52,1X,ES14.6)', "Cycle throughput (# elements in PSI * dt / radtr ) =", throughputCycle
+       print '(1X,A27,1X,ES14.6)', "Average cycle throughput = ", Size%throughputTotal / dble(ncycle)
+     endif
 
      write(zoneStr, "(i7)") ConvControlZone
      write(procStr, "(i7)") ConvControlProcess

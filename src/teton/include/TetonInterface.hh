@@ -272,8 +272,8 @@ void teton_constructgeometry();
 // set the Teton iteration parameters (initialize only)
 void teton_constructitercontrols();
 
-// allocate material data storage
-void teton_constructmaterial(const bool *nonLTE);
+void teton_constructmaterial_new(const bool *nonLTE,
+                                 const bool *fromRestart); // internal Fortran interface, don't call this
 
 // Construct phase-space (angle, group) decomposition Teton uses for parallelism within this process domain
 void teton_constructphasespacesets(const bool *fromRestart);
@@ -408,35 +408,10 @@ void teton_destructmemoryallocator();
 // destroy mesh data in case it has changed during the simulation
 void teton_destructmeshdata(const bool *nonLTE);
 
-//
-//  teton_dropvariables
-//
-//  Open a silo data file in the "/_Teton/" directory (relative to run directory) and drop Teton variables
-//
-//  Notes: filePtrId is an integer file number for Fortran, chosen by the host, something along the lines:
-//           int fortranFileID = DBFortranAllocPointer(restartFile);
-//
-//         lenTe is the length / number of corner electron temperatures.
-//         cornerTe is an array of all corner electron temperatures given to Teton.
-//
-//         success == -1 , if something goes wrong in this process
-//
-//         intensity is sorted into directories based on phase space sets
-//
-//         descriptors of each phase space set are given as integer codes:
-//           setDesc(1) = number of groups in set
-//           setDesc(2) = number of corners in this set
-//           setDesc(3) = number of angles in the set
-//           setDesc(4) = lowest energy group number (g0) in this set
-//           setDesc(5) = lowest angle number
-//           setDesc(6) = quadrature ID
-//
-//         On 7/28/2017, lenTe was moved to go before cornerTe array for consistency (to self and Fortran standards)
-//
-void teton_dropvariables(const int *filePtrID, // scalar, integer file index for Fortran to open
-                         const int *lenTe, // scalar, total number of electron temperatures = total number of corners
-                         const double *cornerTe, // array[lenTe] of electron temperatures
-                         int *success);          // scalar, flag for completion or not
+// Fortran internal interface, don't call this:
+void teton_dropvariables_new(const int *filePtrID, int *success);
+// Fortran internal interface, don't call this:
+void teton_dropvariables_old(const int *filePtrID, const int *lenTe, const double *cornerTe, int *success);
 
 //
 //  teton_dtnew
@@ -499,8 +474,15 @@ void teton_getemissionsource(double *sourceMatrix); // array[numZonesTotal*numGr
 // Get the number of angle bins
 void teton_getnumanglebins(int *numAngleBins); //returns a scalar integer equal to the number of polar angle bins
 
-// have Teton re-calculate corner volumes and face areas after the mesh moves or changes
+// Equivalent to calling teton_setvolumeold followed by teton_setvolume
 void teton_getvolume();
+
+// - Sets Geom%VolumeOld = Geom%Volume, effectively zeroing dV
+void teton_setvolumeold();
+
+// - have Teton re-calculate corner volumes and face areas after the mesh moves or changes
+// - This does NOT update Geom%VolumeOld
+void teton_setvolume();
 
 // given a group-angle phase space index, return its global group and angle number offsets
 void teton_getgroupangleoffsets(int *setIdx,  // scalar, input
@@ -515,9 +497,6 @@ void teton_getopacity(const int *zone, // scalar, zone index
 // Zero Psi, PhiTotal, and RadEnergyDensity in void zones; tallies energy as escaped.
 void teton_resetpsi(const int *nVoidZones,    // number of void zones
                     const int *voidZoneList); // list of void zone IDs
-
-// Get the number of sets.
-void teton_getnumsnsets(int *numSNSets); // number of SN sets
 
 //
 //  teton_getpsipointer
@@ -562,6 +541,9 @@ void teton_getradiationdeposited(
 //           radEnergyDensity[0] = radE_z0_g0
 //           radEnergyDensity[1] = radE_z1_g0 ....
 void teton_getradiationenergydensity(double *radEnergyDensity); // array[nZones * ngroups]
+// Same as above, but returns a pointer to Teton's internal Fortran array.
+//   No copying is done.
+void teton_getradiationenergydensityptr(double **radEnergyDensityPtr);
 
 //
 //  teton_getradiationflux
@@ -638,8 +620,7 @@ void teton_getdtcontrolinfo(
 //           scalarIntensity[1] =
 void teton_getscalarintensity(double *scalarIntensity); // array[ngroups*ncornersTotal]
 
-// initialize electron temperature to values in tec array.  Zero out cve, rho, tez, nez, trz of every zone
-void teton_initmaterial(const double *tec); //  array[ nCornerTotal ]
+void teton_initmaterial_new(); // internal Fortran interface, don't call this
 
 // begin initializing Teton opacity structures
 void teton_initopacity();
@@ -648,26 +629,25 @@ void teton_initopacity();
 void teton_initnltefields();
 
 //
-//  teton_initteton
+//  teton_getcornertemperatures
 //
-//  Initialize radiation intensity and corner electron temperatures existing material values
+//  tElec must be of length nCornersTotal
+//  This function copies Teton's internal corner temperature array into tElec
 //
-//  Notes:  Unknowns are reset to the zone-wise constant values associated with that zone's material values of trz and tez
-void teton_initteton(double *radEnergyTotal, // scalar, total radiation energy given the input electron temperatures
-                     double *cornerTe); // array[ numCornersTotal ] the assigned electron temperature in each corner
+void teton_getcornertemperatures(double *tElec);
+//
+//  teton_setcornertemperatures
+//
+//  tElec must be of length nCornersTotal
+//  This function sets Teton's internal corner temperature array to tElec
+//
+void teton_setcornertemperatures(const double *tElec);
 
-//
-//  teton_loadvariables
-//
-//  Initialize Teton intensity and electron temperature from an existing restart file
-//
-//  Notes:  filePtrID is the Fortran handle assigned by Silo in the C/C++ calling program
-//          Electron temperatures from restart file are loaded by this function into the cornerTe array
-void teton_loadvariables(const int *filePtrID, // scalar, corresponding to host code's Silo-based restart file
-                         const int *lenTe,     // scalar, numCorners!
-                         double *cornerTe,     // array[ lenTe ],
-                         int *nSetsMaster,     // scalar,
-                         int *success); // scalar, flag to indicate successful opening and reading of restart file
+void teton_initteton_new(double *radEnergyTotal); // Teton internal interface, don't call this
+
+// Internal fortran interface, don't call this:
+void teton_loadvariables_new(const int *filePtrID, int *nSetsMaster, int *success);
+void teton_loadvariables_old(const int *filePtrID, const int *lenTe, double *cornerTe, int *nSetsMaster, int *success);
 
 //
 //  teton_normalizematerial
@@ -728,6 +708,12 @@ void teton_reconstructpsifrompsi(
 //  Reconstruct/scale the corner based scalar intensity (Phi) after Lagrange mesh motion, to match the new, zone-based radiation energy density
 void teton_reconstructpsifromdv();
 
+// This does the following:
+//   1. Apply PdV work to the Rad%PhiTotal, Rad%RadEnergyDensity, and Set%Psi in Teton using the current values of Geom%VolumeOld and Geom%Volume
+//   2. Zero out dV by setting Geom%VolumeOld=Geom%Volume
+// It also will apply a Doppler shift if Size%DopplerShiftOn, and it scales the PdV force by Size%radForceMultiplier
+void teton_applypdv(); // scalar, Toggle between taking an implicit vs explicit step (true = implicit)
+
 // Change SOME iteration scheme parameters of Teton
 // See teton_constructsize for more details
 void teton_resetsize(
@@ -751,28 +737,7 @@ void teton_resettimers(const double *radTrTotal,        // scalar, total wall cl
                        const double *initTotal,         // scalar, total time spent in initialize sets
                        const double *finalTotal);       // scalar, total time spent in finalize sets
 
-//
-//  teton_rtedit
-//
-//  Trigger the calculation of all radiative transfer edits at end of a cycle.
-//
-//  Notes: Write the new value of corner electron temperatures into tElec array.
-//         Other edits must be extracted with different function calls
-//
-//    This isn't where RadPowerIncident, RadPowerEscape, or
-//    PolarSectorPowerEscape are computed.  Those three are computed in
-//    BoundaryEdit.F90, which is called at the end of teton_radtr.  For those
-//    three tallies, they are only summed over the sets here.  teton_rtedit
-//    does compute the remaining tallies (not the aforementioned 3) that can
-//    be obtained in teton_getedits.
-//
-//    In other words, RadPowerIncident, RadPowerEscape, and
-//    PolarSectorPowerEscape would not be affected by calling teton_resetpsi
-//    immediately before teton_rtedit.  The other tallies in
-//    teton_getedits may be affected by calling teton_resetpsi immediately
-//    before teton_rtedit.  None of the tallies in teton_getedits would be
-//    affected if teton_resetpsi is called after teton_rtedit.
-void teton_rtedit(double *tElec); // array[ nCornersTotal ]
+void teton_rtedit_new(); // internal Fortran interface, dont call this
 
 //
 //  teton_scalepsir
@@ -1215,12 +1180,12 @@ inline void teton_addprofile(
 }
 // Overloaded API for setting a constant (in time), isotropic, frequency-dependent source:
 inline void teton_addprofile(
-   const double *Multiplier,      // scalar, multiplier in front of all emission terms
-   std::vector<double> values_in, // vector of length ngroups, source strength value
+   const double Multiplier, // scalar, multiplier in front of all emission terms
+   const double *values_in, // vector of length ngroups, source strength value
+   const int ngroups,
    int *TetonProfileID) // scalar output, integer index corresponding to the profile added (used in teton_resetprofile)
 {
    const int NumTimes = 2;
-   const int ngroups = values_in.size();
    const int NumValues = NumTimes * ngroups;
    const bool BlackBody = false;
    const bool Isotropic = true;
@@ -1236,7 +1201,7 @@ inline void teton_addprofile(
 
    teton_addprofile_internal(&NumTimes,
                              &NumValues,
-                             Multiplier,
+                             &Multiplier,
                              &BlackBody,
                              &Isotropic,
                              Times,
@@ -1312,12 +1277,12 @@ inline void teton_resetprofile(
 }
 // Alternative API for updating a constant-in-time frequency-dependent isotropic source
 inline void teton_resetprofile(
-   const int *TetonProfileID,     // scalar, use the returned value of TetonProfileID from teton_addprofile
-   const double *Multiplier,      // scalar, multiplier in front of all emission terms
-   std::vector<double> values_in) // vector of length ngroups, source strength value
+   const int *TetonProfileID, // scalar, use the returned value of TetonProfileID from teton_addprofile
+   const double Multiplier,   // scalar, multiplier in front of all emission terms
+   const double *values_in,   // array of ngroups length
+   const int ngroups)
 {
    const int NumTimes = 2;
-   const int ngroups = values_in.size();
    const int NumValues = NumTimes * ngroups;
    const double Times[2] = {-1.e50, 1.e50};
    std::vector<double> Values(NumValues);
@@ -1329,7 +1294,7 @@ inline void teton_resetprofile(
       }
    }
 
-   teton_resetprofile_internal(TetonProfileID, &NumTimes, &NumValues, Multiplier, Times, Values.data());
+   teton_resetprofile_internal(TetonProfileID, &NumTimes, &NumValues, &Multiplier, Times, Values.data());
 }
 
 // enums for flags for signaling to/from Teton
@@ -1717,6 +1682,143 @@ inline void teton_getedits(int *noutrt,             // scalar, number of thermal
                   PowerExtSources, // scalar, power of photons from fixed volumetric sources
                   PowerCompton,    // scalar, power of Compton scattering photons
                   EnergyCheck);    // scalar, total energy not accounted for this cycle.
+}
+
+// allocate material data storage
+inline void teton_constructmaterial(const bool *nonLTE, const bool *fromRestart)
+{
+   teton_constructmaterial_new(nonLTE, fromRestart);
+}
+// old version:
+inline void teton_constructmaterial(const bool *nonLTE)
+{
+   const bool fromRestart = false;
+   teton_constructmaterial_new(nonLTE, &fromRestart);
+}
+
+//
+//  teton_dropvariables
+//
+//  Open a silo data file in the "/_Teton/" directory (relative to run directory) and drop Teton variables
+//
+//  Notes: filePtrId is an integer file number for Fortran, chosen by the host, something along the lines:
+//           int fortranFileID = DBFortranAllocPointer(restartFile);
+//
+//         success == -1 , if something goes wrong in this process
+//
+//         intensity is sorted into directories based on phase space sets
+//
+//         descriptors of each phase space set are given as integer codes:
+//           setDesc(1) = number of groups in set
+//           setDesc(2) = number of corners in this set
+//           setDesc(3) = number of angles in the set
+//           setDesc(4) = lowest energy group number (g0) in this set
+//           setDesc(5) = lowest angle number
+//           setDesc(6) = quadrature ID
+//
+//
+inline void teton_dropvariables(const int *filePtrID, // scalar, integer file index for Fortran to open
+                                int *success)         // scalar, flag for completion or not
+{
+   teton_dropvariables_new(filePtrID, success);
+}
+//  old version where host code passes in Tec instead of using Mat%Tec
+//
+//         lenTe is the length / number of corner electron temperatures.
+//         cornerTe is an array of all corner electron temperatures given to Teton.
+//
+//  On 7/28/2017, lenTe was moved to go before cornerTe array for consistency (to self and Fortran standards)
+inline void teton_dropvariables(
+   const int *filePtrID,   // scalar, integer file index for Fortran to open
+   const int *lenTe,       // scalar, total number of electron temperatures = total number of corners
+   const double *cornerTe, // array[lenTe] of electron temperatures
+   int *success)           // scalar, flag for completion or not
+{
+   teton_dropvariables_old(filePtrID, lenTe, cornerTe, success);
+}
+
+// Zero out cve, rho, tez, nez, trz of every zone
+//   This should be called before teton_initteton()
+inline void teton_initmaterial()
+{
+   teton_initmaterial_new();
+}
+// old version, sets Mat%tec = tec
+inline void teton_initmaterial(const double *tec) //  array[ nCornerTotal ]
+{
+   teton_initmaterial_new();
+   teton_setcornertemperatures(tec);
+}
+
+//
+//  teton_initteton
+//
+//  Initialize radiation intensity and corner electron temperatures to existing material values
+//
+//  Notes:  Unknowns are reset to the zone-wise constant values associated with that zone's material values of trz and tez
+inline void teton_initteton(
+   double *radEnergyTotal) // scalar, total radiation energy given the input electron temperatures
+{
+   teton_initteton_new(radEnergyTotal);
+}
+//  old version that returns cornerTe since host code manages it
+inline void teton_initteton(
+   double *radEnergyTotal, // scalar, total radiation energy given the input electron temperatures
+   double *cornerTe)       // returns array[ numCornersTotal ], the assigned electron temperature in each corner
+{
+   teton_initteton_new(radEnergyTotal);
+   teton_getcornertemperatures(cornerTe);
+}
+
+//
+//  teton_loadvariables
+//
+//  Initialize Teton intensity and electron temperature from an existing restart file
+//
+//  Notes:  filePtrID is the Fortran handle assigned by Silo in the C/C++ calling program
+inline void teton_loadvariables(const int *filePtrID, // scalar, corresponding to host code's Silo-based restart file
+                                int *nSetsMaster,     // scalar,
+                                int *success) // scalar, flag to indicate successful opening and reading of restart file
+{
+   teton_loadvariables_new(filePtrID, nSetsMaster, success);
+}
+// Old version, electron temperatures from restart file are loaded by this function into the cornerTe array
+inline void teton_loadvariables(const int *filePtrID, // scalar, corresponding to host code's Silo-based restart file
+                                const int *lenTe,     // scalar, numCorners!
+                                double *cornerTe,     // array[ lenTe ],
+                                int *nSetsMaster,     // scalar,
+                                int *success) // scalar, flag to indicate successful opening and reading of restart file
+{
+   teton_loadvariables_old(filePtrID, lenTe, cornerTe, nSetsMaster, success);
+}
+
+//
+//  teton_rtedit
+//
+//  Trigger the calculation of all radiative transfer edits at end of a cycle.
+//
+//    This isn't where RadPowerIncident, RadPowerEscape, or
+//    PolarSectorPowerEscape are computed.  Those three are computed in
+//    BoundaryEdit.F90, which is called at the end of teton_radtr.  For those
+//    three tallies, they are only summed over the sets here.  teton_rtedit
+//    does compute the remaining tallies (not the aforementioned 3) that can
+//    be obtained in teton_getedits.
+//
+//    In other words, RadPowerIncident, RadPowerEscape, and
+//    PolarSectorPowerEscape would not be affected by calling teton_resetpsi
+//    immediately before teton_rtedit.  The other tallies in
+//    teton_getedits may be affected by calling teton_resetpsi immediately
+//    before teton_rtedit.  None of the tallies in teton_getedits would be
+//    affected if teton_resetpsi is called after teton_rtedit.
+inline void teton_rtedit() // new version, doesn't copy Tec array
+{
+   teton_rtedit_new();
+}
+// old version, copies corner electron temperatures into tElec:
+inline void teton_rtedit(double *tElec) // array[ nCornersTotal ]
+{
+   teton_rtedit_new();
+   teton_getcornertemperatures(tElec);
 }
 
 #endif // __TETON_INTERFACE_HH__

@@ -9,7 +9,7 @@
 !                                                                      *
 !***********************************************************************
  
-   subroutine InitTeton(erad, Tec) BIND(C,NAME="teton_initteton")
+   subroutine InitTeton(erad) BIND(C,NAME="teton_initteton_new")
 
    USE ISO_C_BINDING
    use kind_mod
@@ -32,7 +32,6 @@
 !  Arguments
 
    real(C_DOUBLE), intent(inout) :: erad
-   real(C_DOUBLE), intent(inout) :: Tec(Size%ncornr)
 
 !  Local
 
@@ -87,7 +86,7 @@
 !  Initialize the corner temperature
 
      do c=1,nCorner
-       Tec(c0+c) = Mat% Tez(zone)
+       Mat% Tec(c0+c) = Mat% Tez(zone)
      enddo 
 
 !  T4 has units of energy/area/time 

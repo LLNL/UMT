@@ -6,15 +6,10 @@
 #include <malloc.h>
 #include <sstream>
 #include <stdio.h> // for getCurrentRSS and getPeakRSS
+#include <stdlib.h>
 #include <string>
 #include <sys/stat.h> //for mkdir
 #include <unistd.h>   //for getopt, access
-
-// XLF signal handler function to emit a stack trace.
-#if defined(__ibmxl__)
-#include "signal.h"
-extern "C" void xl__trce(int, siginfo_t *, void *);
-#endif
 
 #include <signal.h>
 #if defined(__linux__)
@@ -53,8 +48,14 @@ extern "C" void xl__trce(int, siginfo_t *, void *);
 #else
 #define CALI_MARK_BEGIN(label)
 #define CALI_MARK_END(label)
-#define CALI_CXX_MARK_SCOPE(label)
+#define CALI_CXX_MARK_FUNCTION ;
 #endif
+
+void abort(std::string message)
+{
+   std::cerr << message << std::endl;
+   MPI_Abort(MPI_COMM_WORLD, -1);
+}
 
 // Utility function, check if string ends with another string.
 bool endsWith(std::string const &fullString, std::string const &ending)
@@ -159,14 +160,12 @@ class TetonDriver
   private:
    void printUsage(const std::string &argv0) const;
    void startCaliper(const std::string &label);
-   void writeStartSummary(unsigned int ndims, unsigned long num_corners, unsigned long &num_unknowns) const;
    void initializeBlueprintFields(int nelem, int numPolar, int numAzimuthal, int numGroups);
    void readConduitInputs();
    void setOptions();
    void verifyMesh();
    void cycleLoop(double &dtrad, double &timerad);
    void buildBlueprintTiledMesh();
-   void writeEndSummary(double end_time, double start_time, unsigned long num_unknowns);
 
    void release();
 
@@ -174,15 +173,19 @@ class TetonDriver
    int return_status{0};
    int myRank{0};
    int mySize{0};
-   int cycles{0};
+   unsigned int cycles{0};
+   double goalTime{0.0};
    int numPhaseAngleSets{0};
    int useUmpire{2};
    int numOmpMaxThreads{1}; // Max number of CPU threads to use.
+   double startTimeRad{0.0};
    double fixedDT{0.0};
    bool dumpViz{false};
+   bool enableRadiographOutputs{true};
    bool partition{false};
    double energy_check_tolerance{1.0e-6};
    int input_sanitizer_level{1};
+   unsigned int total_num_flux_iterations{0};
 
    unsigned int benchmarkProblem{0};
    int numPolarUser{-1};
@@ -195,8 +198,8 @@ class TetonDriver
 
    bool useGPU{false};
    bool useCUDASweep{false};
-   int gta_kernel{1};
-   int sweep_kernel{-1};
+   int gta_kernel{0};
+   int sweep_kernel{0};
    int sweep_numhyperdomains{-1};
    int gta_numhyperdomains{-1};
    std::string scattering_kernel{};
@@ -213,7 +216,6 @@ class TetonDriver
 #endif
    int blueprintMesh{0};
    int dims[3]{10, 10, 10}; //!< Number of cells in blueprint mesh.
-   unsigned int total_num_flux_iterations{0};
 };
 
 //---------------------------------------------------------------------------
@@ -293,20 +295,6 @@ void TetonDriver::initialize()
    {
       std::cout << "Teton driver: number of MPI ranks: " << mySize << std::endl;
    }
-
-//==========================================================
-// Set up signal handler
-// If compiling with IBM XL, use XLF's trce function to emit a code stack trace if a TRAP signal is caught.  This can be used to
-// catch errors in any OpenMP kernels by setting'XLSMPOPTS=MSG_TRAP' in your environment.
-//==========================================================
-#if defined(__ibmxl__)
-   struct sigaction sa;
-   sa.sa_flags = SA_SIGINFO | SA_RESTART;
-   sa.sa_sigaction = xl__trce;
-   sigemptyset(&sa.sa_mask);
-   sigaction(SIGTRAP, &sa, NULL);
-   sigaction(SIGFPE, &sa, NULL);
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -328,6 +316,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
                                              {"help", no_argument, 0, 'h'},
                                              {"input_path", required_argument, 0, 'i'},
                                              {"num_cycles", required_argument, 0, 'c'},
+                                             {"goal_time", required_argument, 0, 'T'},
                                              {"dt", required_argument, 0, 'D'},
                                              {"num_phase_space_sets", required_argument, 0, 's'},
                                              {"num_threads", required_argument, 0, 't'},
@@ -348,12 +337,13 @@ int TetonDriver::processArguments(int argc, char *argv[])
                                              {"num_Polar", required_argument, 0, 'P'},
                                              {"num_Azimuthal", required_argument, 0, 'A'},
                                              {"num_Groups", required_argument, 0, 'G'},
+                                             {"enable_radiograph_outputs", no_argument, 0, 'O'},
                                              {0, 0, 0, 0}};
 
       /* getopt_long stores the option index here. */
       int option_index = 0;
 
-      auto optString = "A:B:b:c:D:d:eG:gHhi:k:l:M:mn:o:P:p:s:S:t:u:Vv:xy:";
+      auto optString = "A:B:b:c:D:d:eG:gHhi:k:l:M:mn:Oo:P:p:s:S:T:t:u:Vv:xy:z:Z:";
 
       int opt = getopt_long(argc, argv, optString, long_options, &option_index);
 
@@ -406,7 +396,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
             }
             else
             {
-               throw std::runtime_error("Invalid dimensions " + std::string(optarg));
+               abort("Invalid dimensions " + std::string(optarg));
             }
          }
          break;
@@ -428,8 +418,8 @@ int TetonDriver::processArguments(int argc, char *argv[])
             if (myRank == 0)
             {
                printUsage(argv[0]);
+               return 0;
             }
-            throw std::runtime_error("");
          case 'i':
             inputPath = std::string(optarg);
             break;
@@ -452,7 +442,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
             meshOrdering = std::string(optarg);
             if (meshOrdering != "normal" && meshOrdering != "kdtree" && meshOrdering != "hilbert")
             {
-               throw std::runtime_error("Unsupported mesh ordering " + meshOrdering);
+               abort("Unsupported mesh ordering " + meshOrdering);
             }
             break;
          case 'n':
@@ -470,6 +460,13 @@ int TetonDriver::processArguments(int argc, char *argv[])
                          << ". (0=zone sweep, 1=corner sweep)" << std::endl;
             }
             break;
+         case 'T':
+            goalTime = atof(optarg);
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: running to goal time " << goalTime << std::endl;
+            }
+
          case 'Z':
             sweep_numhyperdomains = atoi(optarg);
             if (myRank == 0)
@@ -484,6 +481,13 @@ int TetonDriver::processArguments(int argc, char *argv[])
             {
                std::cout << "Teton driver: setting new GTA number of hyper-domains " << gta_numhyperdomains
                          << ". (0=automatic setting, >=1 number of new GTA hyper-domains)" << std::endl;
+            }
+            break;
+         case 'O':
+            enableRadiographOutputs = true;
+            if (myRank == 0)
+            {
+               std::cout << "Turning on radiograph output fields." << std::endl;
             }
             break;
          case 'o':
@@ -509,7 +513,7 @@ int TetonDriver::processArguments(int argc, char *argv[])
                   std::cout << std::endl;
                   std::cout << std::endl << "----------------------------------" << std::endl;
                }
-               throw std::runtime_error(""); // Early return
+               return 0;
             }
             break;
 #endif
@@ -632,7 +636,7 @@ void TetonDriver::printUsage(const std::string &argv0) const
    std::cout << " -m, --use_device_aware_mpi     Use device-aware MPI for GPU runs." << std::endl;
    std::cout << " -n, --gta_kernel <0,1,2>       Select GTA solver kernel version. 0=use default" << std::endl;
    std::cout
-      << " -S, --sweep_kernel <0,1>       Select sweep kernel version. 0=zone, 1=corner.  Note: corner sweep only available as a GPU kernel, on 3D meshes."
+      << " -S, --sweep_kernel <0,1,2>     Select sweep kernel version. 0=default, 1=zone, 2=corner.  Note: corner sweep only available on GPUs."
       << std::endl;
    std::cout
       << " -Z, --sweep_numhyperdomains <0+>       Set number of sweep hyper-domains. 0=automatic, or >=1 number of sweep hyper-domains."
@@ -651,6 +655,8 @@ void TetonDriver::printUsage(const std::string &argv0) const
    std::cout << " -u, --umpire_mode <0,1,2>      0 - Disable umpire.  1 - Use Umpire for CPU allocations."
              << "  2 - Use Umpire for CPU and GPU allocations." << std::endl;
    std::cout << " -V, --write_viz_file           Output blueprint mesh vizualization file each cycle" << std::endl;
+   std::cout << " -O, --enable_radiograph_outputs  Output multigroup removal_opacity and emissivity fields"
+             << std::endl;
    std::cout << " -v, --verbose [0,1,2]    0 - quite  1 - informational(default)  2 - really chatty and dump files"
              << std::endl;
    std::cout
@@ -667,6 +673,9 @@ void TetonDriver::printUsage(const std::string &argv0) const
       << " -d, --dims i,j,k               The size of the Blueprint mesh in tiles in i,j,k. k=0 builds a 2D mesh."
       << std::endl;
    std::cout << " -M, --mesh_ordering order      The name of the mesh ordering to use (normal or kdtree)." << std::endl;
+   std::cout
+      << " -T, --goal_time     Goal time to advance the problem to.  If set this takes priority over # cycles to execute."
+      << std::endl;
 }
 
 //---------------------------------------------------------------------------
@@ -700,32 +709,31 @@ int TetonDriver::execute()
                << std::endl;
          }
          options["iteration/incidentFluxMaxIt"] = 99;
+         options["iteration/outerMaxIt"] = 1;
          if (!options.has_path("iteration/relativeTolerance"))
          {
             options["iteration/relativeTolerance"] = energy_check_tolerance / 10.0;
          }
          energy_check_tolerance = 1e-9;
 #endif
-         if (fixedDT <= 0.0)
+         if (cycles == 0 && goalTime <= 0.0)
          {
-            fixedDT = 1e-3;
-         }
-         if (cycles == 0)
-         {
-            cycles = 5;
+            goalTime = 1e-2;
          }
 
          if (benchmarkProblem == 1)
          {
             numPolarUser = 3;
             numAzimuthalUser = 3;
-            numGroupsUser = 128;
+            if (numGroupsUser <= 0)
+               numGroupsUser = 128;
          }
          else if (benchmarkProblem == 2)
          {
             numPolarUser = 2;
             numAzimuthalUser = 2;
-            numGroupsUser = 16;
+            if (numGroupsUser <= 0)
+               numGroupsUser = 16;
          }
          else
          {
@@ -759,6 +767,38 @@ int TetonDriver::execute()
          readConduitInputs();
       }
 
+      // Request outputs: TODO make this an input option?
+      std::string topo_name = "main";
+      if (!meshBlueprint.has_path("topologies/main"))
+      {
+         conduit::NodeConstIterator topologies = meshBlueprint.fetch_existing("topologies").children();
+         if (!topologies.has_next())
+         {
+            std::cout << "There must be at least one topology in your mesh!" << std::endl;
+            exit(1);
+         }
+         topo_name = topologies.next().name();
+      }
+
+      std::vector<double> removal_opacity;
+      std::vector<double> emission_source;
+      if (topo_name != "main_corner" && enableRadiographOutputs)
+      {
+         const conduit::Node &main_topo = meshBlueprint.fetch_existing("topologies/" + topo_name);
+         auto nelem = conduit::blueprint::mesh::topology::length(main_topo);
+         unsigned int num_groups = options.fetch_existing("quadrature/num_groups").to_unsigned_int();
+         removal_opacity.resize(nelem * num_groups);
+         meshBlueprint["fields/removal_opacity/association"] = "element";
+         meshBlueprint["fields/removal_opacity/topology"] = topo_name;
+         meshBlueprint["fields/removal_opacity/values"].set_external(removal_opacity.data(), removal_opacity.size());
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+         emission_source.resize(nelem * num_groups);
+         meshBlueprint["fields/emission_source/association"] = "element";
+         meshBlueprint["fields/emission_source/topology"] = topo_name;
+         meshBlueprint["fields/emission_source/values"].set_external(emission_source.data(), emission_source.size());
+#endif
+      }
+
       //==========================================================
       // Set problem options passed in via command line
       //==========================================================
@@ -770,54 +810,22 @@ int TetonDriver::execute()
       // Initialize Teton
       myTetonObject.initialize(comm);
 
-      // Calculate size of PSI to provide the number of unknowns solved for benchmarking, throughput calculations, etc.
-      // This is # corners * # angles * # energy group bins
-
-      // Put code here that calculates the # unknowns being solved.
-      // TODO:
-      // Some of this code ( especially the code that calculates the # angles ) can go in a helper function later, as
-      // opposed to bloating up the test driver code.
-      // -- black27
-
-      // Get total number of corners in problem. Use part mesh in case partitioning has occurred.
-      unsigned long local_num_corners = 0;
-      unsigned long num_corners = 0;
-      unsigned int ndims = 1;
-      const conduit::Node &part = myTetonObject.getMeshBlueprintPart();
-      if (part.has_path("topologies/main_corner"))
+      // TODO - no longer needed to print out the metrics from test driver.  Add these to the per-cycle output from
+      // within teton.
+      if (myRank == 0)
       {
-         const conduit::Node &corner_topology = part.fetch_existing("topologies/main_corner");
-         local_num_corners = conduit::blueprint::mesh::utils::topology::length(corner_topology);
-         ndims = conduit::blueprint::mesh::utils::topology::dims(corner_topology);
-      }
-      else
-      {
-         int nelem = 1;
-         if (part.has_path("topologies/main"))
+         std::cout << "=================================================================" << std::endl;
+         std::cout << "Test driver starting time steps\n";
+         std::cout << "=================================================================" << std::endl;
+         // TODO put the relative tolerance in the per-cycle output instead from the Fortran output.
+         if (options.has_path("iteration/relativeTolerance"))
          {
-            nelem = part.fetch_existing("topologies/main/elements/dims/i").value();
+            double relative_tol = options.fetch_existing("iteration/relativeTolerance").value();
+            std::cout << "Iteration control: relative tolerance set to " << relative_tol << "." << std::endl;
          }
-         else // Take the first topology
-         {
-            conduit::NodeConstIterator topologies = part.fetch_existing("topologies").children();
-            if (!topologies.has_next())
-            {
-               std::cout << "There must be at least one topology in your mesh!" << std::endl;
-               exit(1);
-            }
-            nelem = topologies.next().fetch_existing("elements/dims/i").value();
-         }
-         local_num_corners = 2 * nelem;
+         std::cout << "=================================================================" << std::endl;
+         std::cout << std::endl;
       }
-
-      int error_code = MPI_Reduce(&local_num_corners, &num_corners, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, comm);
-      if (error_code != MPI_SUCCESS)
-      {
-         //TODO - error out
-      }
-
-      unsigned long num_unknowns = 0;
-      writeStartSummary(ndims, num_corners, num_unknowns);
 
       // If a dtrad wasn't provided in the input file, the Teton initialize()
       // call will populate it with a default value.
@@ -827,6 +835,7 @@ int TetonDriver::execute()
       {
          timerad = options.fetch_existing("iteration/timerad").value();
       }
+      startTimeRad = timerad;
       meshBlueprint["state/cycle"] = 0;
 
       double start_time = MPI_Wtime();
@@ -835,7 +844,77 @@ int TetonDriver::execute()
 
       myTetonObject.dumpTallyToJson();
 
-      writeEndSummary(end_time, start_time, num_unknowns);
+      if (myRank == 0)
+      {
+         double elapsedWallTime = end_time - start_time;
+         double elapsedSimTime = timerad - startTimeRad;
+         std::cout << std::endl;
+         std::cout << "=================================================================" << std::endl;
+         std::cout << "Test driver finished time steps\n";
+         std::cout << std::scientific << "Simulation time progressed: " << elapsedSimTime << std::endl;
+         std::cout << "Number of cycles: " << cycles << std::endl;
+         std::cout << "Total wall time for run: " << std::scientific << elapsedWallTime << " seconds." << std::endl;
+         std::cout << "=================================================================" << std::endl;
+         std::cout << std::endl;
+
+         // If running a benchmark, add the throughput per flux iteration in addition to the cycle throughput
+         // for the converged answer.
+         // Individual flux iteration throughput is defined as:
+         // " (# elements in PSI * simulation time progressed ) / (wall time taken * # flux iterations )"
+         if (benchmarkProblem > 0)
+         {
+            std::cout << "=================================================================" << std::endl;
+            std::cout << "Test driver throughput statistics\n\n";
+            std::cout << "Definition of flux solver throughput:\n";
+            std::cout << "  # unknowns calculated * simulation time progressed / wall time\n";
+            std::cout << "Definition of single flux iteration throughput:\n";
+            std::cout << "  # flux solver throughput / number of flux iterations taken\n\n";
+            std::cout << "=================================================================" << std::endl;
+            long int num_unknowns = myTetonObject.getMetrics()["global/sweep/number_of_unknowns"].to_long();
+            // Use doubles as the number of unknowns can get very large on GPU problems and overflow an integer.
+            double throughput = (double) num_unknowns * elapsedSimTime / elapsedWallTime;
+            double throughput_over_iterations = throughput / (double) total_num_flux_iterations;
+
+            std::cout << "Total number of flux solver iterations: " << total_num_flux_iterations << std::endl;
+            std::cout << "Problem throughput: " << std::scientific << throughput << std::endl;
+            std::cout << "Average flux iteration throughput: " << std::scientific << throughput_over_iterations
+                      << std::endl;
+            std::cout << "=================================================================" << std::endl;
+
+            const conduit::Node &datastore = myTetonObject.getDatastore();
+            double energy_radiation = datastore.fetch_existing("rtedits/EnergyRadiation").value();
+
+            double power_incident = datastore.fetch_existing("rtedits/PowerIncident").value();
+            double power_escape = datastore.fetch_existing("rtedits/PowerEscape").value();
+
+            double power_absorbed = datastore.fetch_existing("rtedits/PowerAbsorbed").value();
+            double power_emitted = datastore.fetch_existing("rtedits/PowerEmitted").value();
+
+            double energy_check = datastore.fetch_existing("rtedits/EnergyCheck").value();
+
+            double rel_energy_check_result = std::abs(energy_check / (energy_radiation + 1.0e-50));
+            if (rel_energy_check_result <= energy_check_tolerance)
+            {
+               std::cout << "RESULT CHECK PASSED: Energy check (this is relative to total energy) "
+                         << rel_energy_check_result << " within tolerance of +/- " << energy_check_tolerance
+                         << std::endl;
+            }
+            else
+            {
+               std::cerr << "RESULT CHECK FAILED: Energy check (this is relative to total energy) "
+                         << rel_energy_check_result << " exceeded tolerance of +/- " << energy_check_tolerance
+                         << std::endl;
+
+               std::cerr << "Energy radiation: " << energy_radiation << std::endl;
+               std::cerr << "Power incident: " << power_incident << std::endl;
+               std::cerr << "Power escaped: " << power_escape << std::endl;
+               std::cerr << "Power absorbed: " << power_absorbed << std::endl;
+               std::cerr << "Power emitted: " << power_emitted << std::endl << std::endl;
+
+               return_status = 1;
+            }
+         }
+      }
    }
 
    return return_status;
@@ -876,7 +955,7 @@ void TetonDriver::initializeBlueprintFields(int nelem, int numPolar, int numAzim
 
    if (numGroups < 1)
    {
-      throw std::runtime_error(
+      abort(
          "Teton driver: Must specify number of energy groups angles via '-G#' or by specifying a benchmark problem via '-b#'.");
    }
    std::vector<double> gr_bounds(numGroups + 1);
@@ -894,12 +973,12 @@ void TetonDriver::initializeBlueprintFields(int nelem, int numPolar, int numAzim
    //Energy groups and SN quadrature info
    if (numPolar < 1)
    {
-      throw std::runtime_error(
+      abort(
          "Teton driver: Must specify number of polar angles via '-P#' or by specifying a benchmark problem via '-b#'.");
    }
    if (numAzimuthal < 1)
    {
-      throw std::runtime_error(
+      abort(
          "Teton driver: Must specify number of azimuthal angles via '-A#' or by specifying a benchmark problem via '-b#'.");
    }
    int qtype = 2;
@@ -998,7 +1077,7 @@ void TetonDriver::initializeBlueprintFields(int nelem, int numPolar, int numAzim
 //---------------------------------------------------------------------------
 void TetonDriver::readConduitInputs()
 {
-   CALI_CXX_MARK_SCOPE("Teton_Read_Conduit_Input");
+   CALI_CXX_MARK_FUNCTION;
 
    conduit::Node &options = myTetonObject.getOptions();
    conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
@@ -1037,11 +1116,11 @@ void TetonDriver::readConduitInputs()
    if (ranks_with_data != mySize)
    {
       if (has_data)
-         throw std::runtime_error("Other ranks couldn't find a parameters node.");
+         abort("Other ranks couldn't find a parameters node.");
       else if (!conduitErr.empty())
-         throw std::runtime_error("Couldn't find mesh parameters at " + input_file_path_full + ":" + conduitErr);
+         abort("Couldn't find mesh parameters at " + input_file_path_full + ":" + conduitErr);
       else
-         throw std::runtime_error("Couldn't find mesh parameters at " + input_file_path_full);
+         abort("Couldn't find mesh parameters at " + input_file_path_full);
    }
 
    // Check for mesh node file ending in .hdf5.
@@ -1076,11 +1155,11 @@ void TetonDriver::readConduitInputs()
    if (ranks_with_data != mySize)
    {
       if (has_data)
-         throw std::runtime_error("Other ranks couldn't find a mesh node.");
+         abort("Other ranks couldn't find a mesh node.");
       else if (!conduitErr.empty())
-         throw std::runtime_error("Couldn't find mesh node at " + input_file_path_full + ":" + conduitErr);
+         abort("Couldn't find mesh node at " + input_file_path_full + ":" + conduitErr);
       else
-         throw std::runtime_error("Couldn't find mesh node at " + input_file_path_full);
+         abort("Couldn't find mesh node at " + input_file_path_full);
    }
 
    // Create Teton's expected mesh format
@@ -1157,7 +1236,7 @@ void TetonDriver::setOptions()
       }
    }
 
-   if (sweep_kernel > -1)
+   if (sweep_kernel > 0)
    {
       options["sweep/kernel/version"] = sweep_kernel;
    }
@@ -1192,25 +1271,40 @@ void TetonDriver::setOptions()
 
       options["size/useGPU"] = useGPU;
 
+#if defined(TETON_ENABLE_UMPIRE)
       // If using the GPU, enable several sub-options.
       if (useUmpire > 0)
       {
-#if defined(TETON_ENABLE_UMPIRE)
-         if (myRank == 0)
+         if (useUmpire == 1)
          {
-            if (useUmpire == 1)
+            if (myRank == 0)
             {
                std::cout
                   << "Teton driver: Enabling use of Umpire for single memory pool backed by CPU native allocator."
                   << std::endl;
             }
-            else if (useUmpire == 2)
+         }
+         else if (useUmpire == 2)
+         {
+            if (myRank == 0)
             {
                std::cout
                   << "Teton driver: Enabling use of Umpire for separate memory pools for host and accelerator (cuda or hip)."
                   << std::endl;
             }
-            else if (useUmpire == 3)
+         }
+         else if (useUmpire == 3)
+         {
+#if !defined(TETON_OPENMP_HAS_UNIFIED_MEMORY)
+            if (myRank == 0)
+            {
+               std::cerr
+                  << "Teton driver: Detected user selection of single Umpire device memory pool.  This is only supported on single memory architecture platforms."
+                  << std::endl;
+            }
+            exit(1);
+#endif
+            if (myRank == 0)
             {
                std::cout
                   << "Teton driver: Enabling use of Umpire for single memory pool backed by accelerator (cuda or hip) allocator."
@@ -1248,18 +1342,8 @@ void TetonDriver::setOptions()
             }
          }
          print_umpire_usage();
-
-#else
-         if (myRank == 0)
-         {
-            std::cerr
-               << "Teton driver: Unable to enable Umpire CPU and GPU memory pools, code was not built with TETON_ENABLE_UMPIRE."
-               << std::endl;
-         }
-         exit(1);
-#endif
       }
-
+#endif
       // Enable the GPU CUDA Boltzmann Compton solver ( only has an effect if using BC solver).
       options["size/useCUDASolver"] = true;
    }
@@ -1300,11 +1384,18 @@ void TetonDriver::verifyMesh()
 //---------------------------------------------------------------------------
 void TetonDriver::cycleLoop(double &dtrad, double &timerad)
 {
-   CALI_CXX_MARK_SCOPE("Teton_Cycle_Loop");
+   CALI_CXX_MARK_FUNCTION;
 
    conduit::Node &options = myTetonObject.getOptions();
-   const conduit::Node &datastore = myTetonObject.getDatastore();
-   for (int cycle = 1; cycle <= cycles; cycle++)
+   conduit::Node &datastore = myTetonObject.getDatastore();
+
+   // If goal time is set, it takes priority over cycles for determing how long to run problem.
+   if (goalTime > 0.0)
+   {
+      cycles = 1;
+   }
+
+   for (unsigned int cycle = 1; cycle <= cycles; cycle++)
    {
       if (dumpViz)
       {
@@ -1317,10 +1408,7 @@ void TetonDriver::cycleLoop(double &dtrad, double &timerad)
       timerad = timerad + dtrad;
       options["iteration/timerad"] = timerad;
 
-      double inner_start_time = MPI_Wtime();
       dtrad = myTetonObject.step(cycle);
-      double inner_end_time = MPI_Wtime();
-      double inner_elapsed_time = inner_end_time - inner_start_time;
       if (myRank == 0)
       {
          std::cout << "Teton driver: CPU MEM USE (rank 0): " << getCurrentRSS() / 1024.0 / 1024.0 << "MB" << std::endl;
@@ -1333,8 +1421,23 @@ void TetonDriver::cycleLoop(double &dtrad, double &timerad)
          dtrad = fixedDT;
       }
       options["iteration/dtrad"] = dtrad;
-
       total_num_flux_iterations += datastore.fetch_existing("rtedits/ninrt").as_int();
+
+      // If goal time not yet reached then run another cycle.
+      if (goalTime > 0.0 && timerad < goalTime)
+      {
+         cycles++;
+         // Reduce dtrad for next cycle to meet goalTime exactly, if necessary.
+         if ((goalTime - timerad) < dtrad)
+         {
+            dtrad = goalTime - timerad;
+            if (myRank == 0)
+            {
+               std::cout << "Teton driver: Goal time almost reached, reducing dt to " << dtrad
+                         << " to reach goal time exactly." << std::endl;
+            }
+         }
+      }
    }
 }
 
@@ -1401,7 +1504,7 @@ void decompose(int rank, int size, int ndims, int domainid[3], int domains[3])
 //---------------------------------------------------------------------------
 void TetonDriver::buildBlueprintTiledMesh()
 {
-   CALI_CXX_MARK_SCOPE("Teton_Build_Tiled_Mesh");
+   CALI_CXX_MARK_FUNCTION;
    conduit::Node &options = myTetonObject.getOptions();
    conduit::Node &meshBlueprint = myTetonObject.getMeshBlueprint();
 
@@ -1486,191 +1589,6 @@ void TetonDriver::buildBlueprintTiledMesh()
 }
 
 //---------------------------------------------------------------------------
-void TetonDriver::writeStartSummary(unsigned int ndims, unsigned long num_corners, unsigned long &num_unknowns) const
-{
-   if (myRank == 0)
-   {
-      const conduit::Node &options = myTetonObject.getOptions();
-      unsigned int num_angles = 0;
-      unsigned int num_groups = options.fetch_existing("quadrature/num_groups").to_unsigned_int();
-      if (ndims > 1)
-      {
-         unsigned int num_polar_angles = options.fetch_existing("quadrature/npolar").to_unsigned_int();
-         unsigned int num_azimuthal_angles = options.fetch_existing("quadrature/nazimu").to_unsigned_int();
-         int quadrature_type = options.fetch_existing("quadrature/qtype").value();
-         if (quadrature_type == 1) //level-symmetric quadrature
-         {
-            int quadrature_order = options.fetch_existing("quadrature/qorder").value();
-            // Assume RZ, as we don't support XY
-            if (ndims == 2)
-            {
-               num_angles = quadrature_order * (quadrature_order + 6) / 2;
-            }
-            else if (ndims == 3)
-            {
-               num_angles = quadrature_order * (quadrature_order + 2);
-            }
-            else
-            {
-               //TODO - Error out.
-            }
-         }
-         else if (quadrature_type == 2)
-         {
-            // Assume RZ, as we don't support XY
-            if (ndims == 2)
-            {
-               // 2D has four quadrants, and RZ has additional starting/finishing angles, so add one to azimuthal angles.
-               num_angles = num_polar_angles * (num_azimuthal_angles + 1) * 4;
-            }
-            else if (ndims == 3)
-            {
-               // 3D has eight quadrants.
-               num_angles = num_polar_angles * num_azimuthal_angles * 8;
-            }
-            else
-            {
-               //TODO - Error out.
-            }
-         }
-      }
-      else //ndim == 1
-      {
-         int quadrature_order = options.fetch_existing("quadrature/qorder").value();
-         num_angles = quadrature_order + 2; // assuming spherical
-      }
-
-      num_unknowns = num_corners * num_angles * num_groups;
-
-      std::cout << "=================================================================" << std::endl;
-      std::cout << "=================================================================" << std::endl;
-      std::cout << "Test driver starting time steps\n";
-      std::cout << "=================================================================" << std::endl;
-      std::cout << "Solving for " << num_unknowns << " global unknowns." << std::endl;
-      std::cout << "(" << num_corners << " spatial elements * " << num_angles << " directions (angles) * " << num_groups
-                << " energy groups)" << std::endl;
-      // TODO - could beef this up to be a global memory estimate and global memory used, if we are testing problems with unbalanced mesh partition sizes, but this is meant as a rough memory estimate.
-      std::cout << "CPU memory needed per rank (average) for radiation intensity (PSI): "
-                << num_unknowns / mySize * sizeof(double) / 1024.0 / 1024.0 << "MB" << std::endl;
-      std::cout << "Current CPU memory use (rank 0): " << getCurrentRSS() / 1024.0 / 1024.0 << "MB" << std::endl;
-      if (options.has_path("iteration/relativeTolerance"))
-      {
-         double relative_tol = options.fetch_existing("iteration/relativeTolerance").value();
-         std::cout << "Iteration control: relative tolerance set to " << relative_tol << "." << std::endl;
-      }
-      std::cout << "=================================================================" << std::endl;
-      std::cout << std::endl;
-   }
-}
-
-//---------------------------------------------------------------------------
-void TetonDriver::writeEndSummary(double end_time, double start_time, unsigned long num_unknowns)
-{
-   if (myRank == 0)
-   {
-      const conduit::Node &datastore = myTetonObject.getDatastore();
-      double avg_unknowns_per_second = num_unknowns * cycles / (end_time - start_time);
-      double avg_unknowns_per_second_per_iteration = num_unknowns * total_num_flux_iterations / (end_time - start_time);
-
-      std::cout << std::endl;
-      std::cout << "=================================================================" << std::endl;
-      std::cout << "=================================================================" << std::endl;
-      std::cout << "Test driver finished time steps\n";
-      std::cout << "=================================================================" << std::endl;
-      std::cout << "Average throughput of single iteration of iterative solver was "
-                << avg_unknowns_per_second_per_iteration << " unknowns calculated per second." << std::endl;
-      std::cout << "Throughput of iterative solver was " << avg_unknowns_per_second
-                << " unknowns calculated per second." << std::endl;
-      std::cout << "(average throughput of single iteration * # iterations for solver to produce answer" << std::endl;
-      std::cout << std::endl;
-      std::cout << "Total number of flux solver iterations for run: " << total_num_flux_iterations << std::endl;
-      std::cout << "Total wall time for run: " << end_time - start_time << " seconds." << std::endl;
-      std::cout << "=================================================================" << std::endl;
-      std::cout << std::endl;
-
-      // Appends # ranks and # unknowns solved per second to a .csv file.  Useful for scaling runs.
-      // Also appends some problem state.
-      if (benchmarkProblem > 0)
-      {
-         double energy_radiation = datastore.fetch_existing("rtedits/EnergyRadiation").value();
-         double max_electron_temp = datastore.fetch_existing("rtedits/TeMax").value();
-         double max_radiation_temp = datastore.fetch_existing("rtedits/TrMax").value();
-
-         double power_incident = datastore.fetch_existing("rtedits/PowerIncident").value();
-         double power_escape = datastore.fetch_existing("rtedits/PowerEscape").value();
-
-         double power_absorbed = datastore.fetch_existing("rtedits/PowerAbsorbed").value();
-         double power_emitted = datastore.fetch_existing("rtedits/PowerEmitted").value();
-
-         double energy_check = datastore.fetch_existing("rtedits/EnergyCheck").value();
-
-         double memForPSI = num_unknowns / mySize * sizeof(double);
-
-         std::ofstream outfile;
-         outfile.precision(16);
-         std::string filePath = outputPath + "/" + label + ".csv";
-
-         // Check if file exists.  If not, need to add header line for .csv, otherwise just append new rows.
-         bool isNewFile = (access(filePath.c_str(), F_OK) == -1);
-
-         const std::string header = "# mpi ranks, "
-                                    "Mem for PSI (kb), "
-                                    "process rss mem (kb), "
-                                    "# solver unknowns (extents of PSI), "
-                                    "total # flux iterations, "
-                                    "# time steps, "
-                                    "walltime(seconds),"
-                                    "energy check, "
-                                    "energy in radiation field, "
-                                    "maximum electron temperature, "
-                                    "maximum radiation temperature, "
-                                    "incident power, "
-                                    "escaping power, "
-                                    "power absorbed, "
-                                    "power emitted"
-                                    "\n";
-
-         outfile.open(filePath, std::ios_base::app);
-         if (isNewFile)
-         {
-            outfile << header;
-         }
-         outfile << mySize << ", " << memForPSI / 1024.0 << ", " << getCurrentRSS() / 1024.0 << ", " << num_unknowns
-                 << ", " << total_num_flux_iterations << ", " << cycles << ", " << end_time - start_time << ", "
-                 << energy_check << ", " << energy_radiation << ", " << max_electron_temp << ", " << max_radiation_temp
-                 << ", " << power_incident << ", " << power_escape << ", " << power_absorbed << ", " << power_emitted
-                 << "\n";
-
-         outfile.close();
-
-         double rel_energy_check_result = std::abs(energy_check / (energy_radiation + 1.0e-50));
-         if (rel_energy_check_result <= energy_check_tolerance)
-         {
-            std::cout << "RESULT CHECK PASSED: Energy check (this is relative to total energy) "
-                      << rel_energy_check_result << " within tolerance of +/- " << energy_check_tolerance << "; check '"
-                      << filePath << "' for tally details\n"
-                      << std::endl;
-         }
-         else
-         {
-            std::cerr << "RESULT CHECK FAILED: Energy check (this is relative to total energy) "
-                      << rel_energy_check_result << " exceeded tolerance of +/- " << energy_check_tolerance
-                      << "; check '" << filePath << "' for tally details\n"
-                      << std::endl;
-
-            std::cerr << "Energy radiation: " << energy_radiation << std::endl;
-            std::cerr << "Power incident: " << power_incident << std::endl;
-            std::cerr << "Power escaped: " << power_escape << std::endl;
-            std::cerr << "Power absorbed: " << power_absorbed << std::endl;
-            std::cerr << "Power emitted: " << power_emitted << std::endl << std::endl;
-
-            return_status = 1;
-         }
-      }
-   }
-}
-
-//---------------------------------------------------------------------------
 void TetonDriver::print_umpire_usage()
 {
 #if defined(TETON_ENABLE_UMPIRE)
@@ -1732,7 +1650,9 @@ void TetonDriver::finalize()
 
 #if defined(TETON_ENABLE_CALIPER)
    adiak::fini();
+   std::cout << "=================================================================" << std::endl;
    mgr.flush();
+   std::cout << "=================================================================" << std::endl;
 #endif
 }
 
@@ -1750,6 +1670,7 @@ void TetonDriver::release()
 
 int main(int argc, char *argv[])
 {
+   CALI_CXX_MARK_FUNCTION;
    int retval = 0;
 
    //==========================================================
@@ -1785,7 +1706,6 @@ int main(int argc, char *argv[])
 
    try
    {
-      CALI_CXX_MARK_SCOPE("Teton_Test_Driver");
       TetonDriver driver;
       driver.initialize();
       driver.processArguments(argc, argv);

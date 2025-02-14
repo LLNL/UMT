@@ -42,6 +42,7 @@
    integer    :: zID
    integer    :: ndoneZ
    integer    :: nHyperPlanes
+   integer    :: nZoneSets
 
    real(adqt) :: omega(Size%ndim)
 
@@ -60,11 +61,12 @@
 
 !  Constants
 
-   ASet     => getAngleSetData(Quad, aSetID) 
+   ASet      => getAngleSetData(Quad, aSetID) 
 
-   ncornr   =  Size% ncornr
-   nzones   =  Size% nzones
-   omega(:) =  ASet% Omega(:,angle)
+   nZoneSets = getNumberOfZoneSets(Quad)
+   ncornr    =  Size% ncornr
+   nzones    =  Size% nzones
+   omega(:)  =  ASet% Omega(:,angle)
 
 !  Allocate arrays
 
@@ -209,8 +211,9 @@
 
    ASet% numCycles(angle) = meshCycles
 
-   call constructHyperPlane( ASet, angle, nHyperPlanes, meshCycles,   &
-                             nHyperDomains, zonesInPlane(1:nHyperPlanes),  &
+   call constructHyperPlane( ASet, angle, nHyperPlanes, meshCycles, &
+                             nHyperDomains, nZoneSets,              &
+                             zonesInPlane(1:nHyperPlanes),          &
                              CToHypPlane, cycleList(1:meshCycles) )
 
 !  Set the number of hyperplanes in the set module for this angle

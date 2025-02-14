@@ -48,8 +48,6 @@
 
 !  Local
 
-   type(CommSet),  pointer  :: CSet
-
    integer                  :: setID
    integer                  :: aSetID
    integer                  :: gSetID
@@ -97,14 +95,19 @@
      ! Find reflected angles on all symmetry boundaries
      call findReflectedAngles(aSetID)
 
-     ! Obtain a directed graph of zones or corners depending on the transport sweep selected;
-     ! create a list of exiting boundary elements by angle (findexit)
+     ! Create a list of exiting boundary elements by angle (findexit)
      if (Size% ndim >= 2) then
-       call getDirectedGraph(aSetID)
        call findexit(aSetID)
      endif
    enddo AngleSetLoop
    !$omp end parallel do
+
+!  Obtain a directed graph of zones or corners depending on the transport
+!  sweep selected
+
+   if (Size% ndim >= 2) then
+     call getDirectedGraph
+   endif
 
 !  Create an exiting list for shared boundary elements in 1D
 
@@ -113,16 +116,6 @@
        call findexit1D(cSetID)
      enddo
    endif
-
-!  Find the maximum number of hyper-elements (high-order and GTA)
-
-   do aSetID=1,nAngleSets
-     Quad% nHyperElements(1) = max( Quad% nHyperElements(1), Quad% AngSetPtr(aSetID)% maxInterface )
-   enddo
-
-   do aSetID=nAngleSets+1,nAngleSets+nGTASets
-     Quad% nHyperElements(2) = max( Quad% nHyperElements(2), Quad% AngSetPtr(aSetID)% maxInterface )
-   enddo
 
 !  If we are using the GPU, we need to map some data before the set loop
    if ( Size% useGPU ) then
@@ -314,19 +307,21 @@
            ! Unable to map these to UMPIRE device pool, causes a segfault or wrong answers.
 
            if (aSetID > nAngleSets) then
-             TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+             TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
            else
-             if ( sweepVersion == 0 ) then
-               TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
-             else
-               TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% cornersInPlane))
+             if ( sweepVersion == 1 ) then
+               TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+             else if (sweepVersion == 2 ) then
+               TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% cornersInPlane))
              endif
            endif
 
-           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1))
-           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2))
-           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone))
-           TOMP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% interfaceList))
+           TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1))
+           TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2))
+           TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone))
+           TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% c1))
+           TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% c2))
+           TOMP_MAP(target enter data map(to:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% interfaceList))
          endif
 
        enddo

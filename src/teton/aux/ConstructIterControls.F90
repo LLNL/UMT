@@ -1,3 +1,5 @@
+#include "macros.h"
+
 !***********************************************************************
 !                        Version 0:  02/02, MKN                        *
 !                                                                      *
@@ -11,7 +13,6 @@
 
 !  Include
    use ISO_C_BINDING
-   use kind_mod
    use iter_control_list_mod
    use iter_control_mod
 
@@ -19,6 +20,7 @@
 
 !  Construct Iteration Controls
 
+   TETON_VERIFY(.not. associated(IterControls), "You're trying to allocate IterControls twice!")
    allocate (IterControls)
    call construct(IterControls)
    call resetNumberOfIterations(IterControls)

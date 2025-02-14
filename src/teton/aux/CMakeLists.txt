@@ -54,6 +54,7 @@ target_sources( teton PRIVATE
   dtnew.F90
   getAngleBins.F90
   getBeamMetric.F90
+  getCornerTemperatures.F90
   getCornerVolumes.F90
   getDtMessage.F90
   getDtControlInfo.F90
@@ -61,11 +62,11 @@ target_sources( teton PRIVATE
   getGroupAngleOffsets.F90
   getMaterialTemperature.F90 
   getNumAngleBins.F90
-  getNumSNSets.F90
   getOpacity.F90
   getPsiPointer.F90
   getRadiationDeposited.F90
   getRadiationEnergyDensity.F90
+  getRadiationEnergyDensityPointer.F90
   getRadiationFlux.F90
   getRadiationForce.F90
   getRadiationTemperature.F90
@@ -84,6 +85,7 @@ target_sources( teton PRIVATE
   resetTimers.F90
   rtedit.F90
   setCommunicationGroup.F90
+  setCornerTemperatures.F90
   setGTAOptions.F90
   setMaterial.F90
   setMaterialSource.F90
@@ -97,5 +99,7 @@ target_sources( teton PRIVATE
   setTetonZone.F90
   setTetonZone1D.F90
   setTimeStep.F90
+  setVolume.F90
+  setVolumeOld.F90
   ResetSize.F90
 )

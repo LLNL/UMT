@@ -4,7 +4,8 @@ module GroupSet_mod
 
   use kind_mod
   use constant_mod
-  USE ISO_C_BINDING
+  use, intrinsic :: iso_c_binding, only : c_double
+  implicit none
 
   private
 
@@ -18,8 +19,8 @@ module GroupSet_mod
      integer                         :: Groups       ! number of energy groups 
      integer                         :: g0           ! group offset
 
-     real(C_DOUBLE), pointer, contiguous :: Sigt(:,:) => null()   ! total opacity
-     real(C_DOUBLE), pointer, contiguous :: STotal(:,:) => null() ! fixed + scat source
+     real(c_double), pointer, contiguous :: Sigt(:,:) => null()   ! total opacity
+     real(c_double), pointer, contiguous :: STotal(:,:) => null() ! fixed + scat source
 
 !    Misc                                                                                                                                                                                                                                 
      character(len=13) :: label ! A string descriptor for this set.

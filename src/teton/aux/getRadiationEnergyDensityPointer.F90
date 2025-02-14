@@ -1,23 +1,22 @@
 !***********************************************************************
-!                        Version 1:  10/2016, PFN                      *
+!                        Version 1:  08/2024, BCY                      *
 !                                                                      *
-!   getRadiationEnergyDensity                                          *
+!   getRadiationEnergyDensityPointer                                   *
 !                                                                      *
 !***********************************************************************
  
-   subroutine getRadiationEnergyDensity(RadEnergyDensity) &
-        BIND(C,NAME="teton_getradiationenergydensity")
+   subroutine getRadiationEnergyDensityPointer(RadEnergyDensityPtr) &
+        BIND(C,NAME="teton_getradiationenergydensityptr")
 
    USE ISO_C_BINDING
    use kind_mod
-   use Size_mod
    use RadIntensity_mod
 
    implicit none 
 
 !  Arguments
 
-   real(C_DOUBLE), intent(inout)  :: RadEnergyDensity(Size% nzones,Size%ngr)
+   type(C_PTR), intent(out)  :: RadEnergyDensityPtr
 
 !  Local
 
@@ -25,7 +24,7 @@
 !  Update Radiation Energy Density                                     * 
 !***********************************************************************
  
-   RadEnergyDensity(:,:) = Rad% RadEnergyDensity(:,:)
+   RadEnergyDensityPtr = C_LOC(Rad% RadEnergyDensity)
 
    return
-   end subroutine getRadiationEnergyDensity 
+   end subroutine getRadiationEnergyDensityPointer

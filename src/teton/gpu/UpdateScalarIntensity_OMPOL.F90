@@ -49,25 +49,15 @@
 
    TOMP_MAP(target enter data map(to: wtiso))
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc  parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
-   !$acc& private(cc,c0,nCorner,diagInv,t,v)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, Geom, GTA, wtiso)&)
    TOMPC(private(cc,c0,nCorner,diagInv,t,v))
-#endif
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc loop vector  &
-     !$acc& private(cc,c0,nCorner,diagInv,t,v)
-#else
      !$omp  parallel do default(none)  &
      !$omp& shared(Geom, GTA, wtiso, zSetID)  &
      !$omp& private(cc,c0,nCorner,diagInv,t,v)
-#endif
 
      ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -118,17 +108,12 @@
        enddo
 
      enddo ZoneLoop
-#ifndef TETON_ENABLE_OPENACC
+
 !$omp end parallel do
-#endif
 
    enddo ZoneSetLoop
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
    TOMP_MAP(target exit data map(release: wtiso))
 
@@ -170,25 +155,15 @@
    nZoneSets = getNumberOfZoneSets(Quad)
 
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
-   !$acc& private(c0,nCorner,t)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, P, Geom, GTA)&)
    TOMPC(private(c0,nCorner,t))
-#endif
 
    ZoneSetLoop: do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc  loop vector  &
-     !$acc& private(c0,nCorner,t)
-#else
      !$omp  parallel do default(none)  &
      !$omp& shared(P, Geom, GTA, zSetID)  &
      !$omp& private(c0,nCorner,t)
-#endif
 
      ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -227,17 +202,11 @@
 
      enddo ZoneLoop
 
-#ifndef TETON_ENABLE_OPENACC
 !$omp end parallel do
-#endif
 
    enddo ZoneSetLoop
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
 
    return

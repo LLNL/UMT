@@ -58,14 +58,15 @@
    UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% PsiInt)
    TOMP_MAP(target exit data map(always,release:Quad% SetDataPtr(setID)% PsiInt))
 
-   if ( sweepVersion == 0 ) then
+! These are only used in the zone sweep.
+   if ( sweepVersion == 1 ) then
 
      do dom=1,nHyperDomains
        UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% SweepPtr(dom)% Q)
-       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% SweepPtr(dom)% Q))
+       TOMP_MAP(target exit data map(always,release:Quad% SetDataPtr(setID)% SweepPtr(dom)% Q))
 
        UMPIRE_DEVICE_POOL_FREE(Quad% SetDataPtr(setID)% SweepPtr(dom)% S)
-       TOMP(target exit data map(always,release:Quad% SetDataPtr(setID)% SweepPtr(dom)% S))
+       TOMP_MAP(target exit data map(always,release:Quad% SetDataPtr(setID)% SweepPtr(dom)% S))
      enddo
 
    endif

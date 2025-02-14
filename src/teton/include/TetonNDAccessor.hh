@@ -163,7 +163,7 @@ class NDAccessor
          const auto _this = this;
          iterate_dimensions(dims,
                             [&](conduit::index_t component, const std::vector<conduit::index_t> &idx)
-                            {
+         {
             conduit::Node &comp = values[_this->index_to_name(idx)];
             if (interleave)
             {
@@ -257,7 +257,7 @@ class NDAccessor
          const auto _this = this;
          iterate_dimensions(dims,
                             [&](conduit::index_t /*c*/, const std::vector<conduit::index_t> &idx)
-                            {
+         {
             const conduit::Node &comp = values.fetch_existing(_this->index_to_name(idx));
             auto acc = comp.as_double_accessor();
             auto n = acc.number_of_elements();

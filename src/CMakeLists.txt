@@ -7,7 +7,7 @@ set(PROJECT_NAME teton)
 # Update version information in this file.
 
 set(TETON_VERSION_MAJOR 5)
-set(TETON_VERSION_MINOR 5)
+set(TETON_VERSION_MINOR 7)
 set(TETON_VERSION_PATCH 0)
 include (cmake/Version.cmake)
 
@@ -67,26 +67,6 @@ option( ENABLE_INTENSITY_SOLVE_PREPOST_HOOKS "Enable additional intensity iterat
 if(ENABLE_INTENSITY_SOLVE_PREPOST_HOOKS)
    message( STATUS "Enable pre/post function hooks around intensity solve" )
    add_compile_definitions( "TETON_ENABLE_INTENSITY_SOLVE_PREPOST_HOOKS" )
-endif()
-
-# Only allows OpenACC on Cray compiler, as this is only meant to be an interim workaround for OpenMP performance issues.
-# TODO - Remove OpenACC support as soon as HPE has performant OpenMP in the CCE compiler.
-option( ENABLE_OPENACC "Enable OpenACC pragmas" NO )
-if(ENABLE_OPENACC)
-   if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Cray")
-      message( STATUS "Enable OpenACC pragmas" )
-      set(OpenACC_Fortran_VERSION 2.0)
-      set(OpenACC_Fortran_SPEC_DATE 201306)
-      set(OpenACC_Fortran_FLAGS -hacc)
-
-      message( STATUS "Compiler supports OpenACC ${OpenACC_Fortran_VERSION}" )
-      message( STATUS "Compiler supports OpenACC spec date ${OpenACC_Fortran_SPEC_DATE}")
-      message( STATUS "Compiler OpenACC Fortran flags: ${OpenACC_Fortran_FLAGS}")
-
-      add_compile_definitions( "TETON_ENABLE_OPENACC" )
-   else()
-      message(ERROR "OpenACC is only supported for Cray compiler.")
-   endif()
 endif()
 
 option( ENABLE_OPENMP "Enable OpenMP pragmas" NO )
@@ -151,7 +131,9 @@ if(ENABLE_OPENMP)
             message( FATAL_ERROR " Must set CMAKE_HIP_ARCHITECTURES when using Cray compiler openmp offload functionality.")
          endif()
 
-         find_package(hip REQUIRED)
+         set(CMAKE_PREFIX_PATH ${HIP_ROOT_DIR};${CMAKE_PREFIX_PATH})
+
+         find_package(HIP REQUIRED)
 
          if(ENABLE_CALIPER)
             find_package(ROCTracer REQUIRED)
@@ -263,8 +245,6 @@ if(ENABLE_CALIPER)
 
    add_compile_definitions( "TETON_ENABLE_CALIPER" )
 endif()
-
-option( ENABLE_BLUEPRINT_INTERFACE "Enable support for configuring teton via conduit blueprint interface." YES )
 
 find_package(Conduit)
 find_package(ConduitRelay)

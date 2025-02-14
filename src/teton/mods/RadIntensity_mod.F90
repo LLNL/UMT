@@ -48,6 +48,7 @@ contains
     use constant_mod
     use MemoryAllocator_mod
     use Datastore_mod, only : theDatastore
+    use conduit_obj, only : node
     use, intrinsic :: iso_c_binding, only : c_size_t
 
     implicit none
@@ -59,6 +60,8 @@ contains
 !   Local
 
     integer(kind=c_size_t) :: num_elements_size_t
+    type(node) :: blueprint_node
+    character(len=60) :: field_path
 
     self%label = "radintensity"
 
@@ -80,11 +83,11 @@ contains
     ! Multi-value fields are not support for visualization, however.
     num_elements_size_t = Size% nzones * Size% ngr
 
-    if (.NOT. theDatastore%partitioning()) then
-      call theDatastore%root%set_path_external_float64_ptr("blueprint/fields/radiation_energy_density/values", self% RadEnergyDensity,num_elements_size_t )
-      call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/association", "element")
-      call theDatastore%root%set_path("blueprint/fields/radiation_energy_density/topology", "main")
-    endif
+    blueprint_node = theDatastore%blueprint_node()
+    field_path = "fields/radiation_energy_density/"
+    call blueprint_node%set_path_external_float64_ptr(trim(field_path)//"values", self% RadEnergyDensity,num_elements_size_t )
+    call blueprint_node%set_path(trim(field_path)//"association", "element")
+    call blueprint_node%set_path(trim(field_path)//"topology", "main")
 
 !   Initialize
 

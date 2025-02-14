@@ -41,7 +41,6 @@
    integer :: c
    integer :: c0
    integer :: cez
-   integer :: nCorner
    integer :: cface
    integer :: nCFaces
    integer :: n

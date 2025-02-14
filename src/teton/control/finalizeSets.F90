@@ -237,19 +237,21 @@
            ! Unable to map these to UMPIRE device pool, causes segfault or wrong answers.
 
            if (aSetID > nAngleSets) then
-             TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+             TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
            else
-             if ( sweepVersion == 0 ) then
-               TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
-             else
-               TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% cornersInPlane))
+             if ( sweepVersion == 1 ) then
+               TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% zonesInPlane))
+             else if (sweepVersion == 2) then
+               TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% cornersInPlane))
              endif
            endif
 
-           TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1))
-           TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2))
-           TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone))
-           TOMP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% interfaceList))
+           TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane1))
+           TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% hplane2))
+           TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% ndone))
+           TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% c1))
+           TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% c2))
+           TOMP_MAP(target exit data map(release:Quad% AngSetPtr(aSetID)% HypPlanePtr(angle)% interfaceList))
          endif
        enddo
 
@@ -586,8 +588,10 @@
      AngleSetLoop: do setID=1,nAngleSets+nGTASets
        ASet => getAngleSetData(Quad, setID)
 
+! If this is a GTA set, we know the zone sweep is being used ( as corner sweep
+! is not yet supported for grey sweep )
        if (setID > nAngleSets) then
-         sweepVersion = 0
+         sweepVersion = 1
        endif
 
        call destructHyperPlane(ASet, sweepVersion)

@@ -48,7 +48,7 @@
 !  These are onlu used in the GPU sweep
    if (Size% useGPU) then
 
-     if ( sweepVersion == 0 ) then
+     if ( sweepVersion == 1 ) then
 
        do dom=1,nHyperDomains
          Swp => Set% SweepPtr(dom)

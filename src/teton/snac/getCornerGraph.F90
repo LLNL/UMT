@@ -39,8 +39,8 @@
 
    integer    :: cID
    integer    :: ndone
-   integer    :: nCorner
    integer    :: nHyperPlanes
+   integer    :: nZoneSets
 
    real(adqt) :: omega(Size%ndim)
 
@@ -59,26 +59,28 @@
 
 !  Constants
 
-   ASet     => getAngleSetData(Quad, aSetID) 
+   ASet      => getAngleSetData(Quad, aSetID) 
 
-   nzones   =  Size% nzones
-   ncornr   =  Size% ncornr
-   omega(:) =  ASet% Omega(:,angle)
+   nZoneSets = getNumberOfZoneSets(Quad)
+   nzones    =  Size% nzones
+   ncornr    =  Size% ncornr
+   omega(:)  =  ASet% Omega(:,angle)
 
 !  Allocate arrays
 
    allocate( need(ncornr) )
    allocate( cornerList(ncornr) )
-   allocate( cornersInPlane(nzones) )
+   allocate( cornersInPlane(ncornr) )
    allocate( cycleList(ncornr) )
    allocate( CToHypPlane(ncornr) )
    allocate( nDSC(ncornr) )
    allocate( DSC(2*Size%maxcf,ncornr) )
-   allocate( done(ncornr) )
+   allocate( done(ncornr+1) )
    allocate( onCycleList(ncornr) )
 
    done(:)        = .FALSE.
    onCycleList(:) = .FALSE.
+   done(ncornr+1) = .TRUE. 
    meshCycles     = 0
 
 !  Build NEED array by computing Outward_Normal dot Omega(m)
@@ -179,8 +181,9 @@
 
    ASet% numCycles(angle) = meshCycles
 
-   call constructHyperPlane( ASet, angle, nHyperPlanes, meshCycles,   &
-                             nHyperDomains, cornersInPlane(1:nHyperPlanes),  &
+   call constructHyperPlane( ASet, angle, nHyperPlanes, meshCycles, &
+                             nHyperDomains, nZoneSets,              &
+                             cornersInPlane(1:nHyperPlanes),        &
                              CToHypPlane, cycleList(1:meshCycles) )
 
 !  Set the number of hyperplanes in the set module for this angle
@@ -208,6 +211,7 @@
    deallocate( nDSC )
    deallocate( DSC )
    deallocate( done )
+   deallocate( onCycleList )
 
  
    return

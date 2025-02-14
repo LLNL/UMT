@@ -55,10 +55,10 @@ module Editor_mod
      real(adqt)              :: EnergyCheck         ! Energy check or error
 
 !    Group and Angle/Group dependent Edits on external boundaries 
-     real(adqt), pointer :: spectrumAngleBinBoundaries(:) => null() ! polar sector bin boundaries 
-     real(adqt), pointer :: RadPowerEscape(:)             => null() ! Power escaping by group 
-     real(adqt), pointer :: RadPowerIncident(:)           => null() ! Power incident by group 
-     real(adqt), pointer :: PolarSectorPowerEscape(:)     => null() ! Power escaping by polar sector and group
+     real(adqt), contiguous, pointer :: spectrumAngleBinBoundaries(:) => null() ! polar sector bin boundaries 
+     real(adqt), contiguous, pointer :: RadPowerEscape(:)             => null() ! Power escaping by group 
+     real(adqt), contiguous, pointer :: RadPowerIncident(:)           => null() ! Power incident by group 
+     real(adqt), contiguous, pointer :: PolarSectorPowerEscape(:)     => null() ! Power escaping by polar sector and group
 
   end type Editor 
 

@@ -60,7 +60,6 @@
    real(adqt) :: B0
    real(adqt) :: B1
    real(adqt) :: B2
-   real(adqt) :: coef
    real(adqt) :: dInv
    real(adqt) :: quadwt
    real(adqt) :: afp
@@ -110,12 +109,8 @@
 
      TOMP_MAP(target enter data map(to: numAngles, angleList, omega, quadwt))
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
-#else
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nZoneSets, numAngles, Geom, GTA, omega, angle))
-#endif
 
      ZoneSetLoop1: do zSetID=1,nZoneSets
 
@@ -125,65 +120,45 @@
 ! loop ( the inner loop bounds can not be predetermined ); it's significantly
 ! faster to split into two loops as below
 
-#ifdef TETON_ENABLE_OPENACC
-         !$acc loop vector collapse(2)
-#else
          !$omp  parallel do collapse(2) default(none)  &
          !$omp& shared(Geom, GTA, angle, omega, zSetID)
-#endif
+
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do cface=1,3
              GTA% AfpNorm(cface,c,angle) = DOT_PRODUCT( omega(:,angle),Geom% A_fp(:,cface,c))
              GTA% AezNorm(cface,c,angle) = DOT_PRODUCT( omega(:,angle),Geom% A_ez(:,cface,c))
            enddo
          enddo
-#ifndef TETON_ENABLE_OPENACC
-         !$omp end parallel do
-#endif
 
-#ifdef TETON_ENABLE_OPENACC
-!$acc loop vector 
-#else
+         !$omp end parallel do
+
          !$omp  parallel do default(none)  &
          !$omp& shared(Geom, GTA, angle, omega, zSetID)
-#endif
+
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            do cface=4,Geom% nCFacesArray(c)
              GTA% AfpNorm(cface,c,angle) = DOT_PRODUCT( omega(:,angle),Geom% A_fp(:,cface,c))
              GTA% AezNorm(cface,c,angle) = DOT_PRODUCT( omega(:,angle),Geom% A_ez(:,cface,c))
            enddo
          enddo
-#ifndef TETON_ENABLE_OPENACC
+
          !$omp end parallel do
-#endif
 
        enddo
 
      enddo ZoneSetLoop1
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc end parallel loop
-#else
      TOMP(end target teams distribute)
-#endif
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
-#else
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
      TOMPC(shared(nZoneSets, numAngles, Geom, GTA, angle))
-#endif
 
      ZoneSetLoop2: do zSetID=1,nZoneSets
 
        do angle=1,numAngles
 
-#ifdef TETON_ENABLE_OPENACC
-         !$acc loop vector
-#else
          !$omp  parallel do default(none)  &
          !$omp& shared(Geom, GTA, angle, zSetID) 
-#endif
 
          do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
            GTA% ANormSum(c,angle) = zero
@@ -193,43 +168,26 @@
              GTA% AezNorm(cface,c,angle) + abs( GTA% AezNorm(cface,c,angle) ) )
            enddo
          enddo
-#ifndef TETON_ENABLE_OPENACC
+
          !$omp end parallel do
-#endif
 
        enddo
 
      enddo ZoneSetLoop2
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc end parallel loop
-#else
      TOMP(end target teams distribute)
-#endif
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
-     !$acc& private(zone,ifp,c0,cez,nCorner,nCFaces,aSetID,angGTA) &
-     !$acc& private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,coef,dInv,Sigt,SigtEZ)
-#else
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
      TOMPC(shared(nZoneSets, Geom, GTA, Quad, numAngles, angleList, quadwt) &)
      TOMPC(private(zone,ifp,c0,cez,nCorner,nCFaces,aSetID,angGTA) &)
-     TOMPC(private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,coef,dInv,Sigt,SigtEZ))
-#endif
+     TOMPC(private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,dInv,Sigt,SigtEZ))
 
      ZoneSetLoop: do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc loop vector &
-     !$acc& private(zone,ifp,c0,cez,nCorner,nCFaces,aSetID,angGTA) &
-     !$acc& private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,coef,dInv,Sigt,SigtEZ)
-#else
      !$omp  parallel do default(none)  &
      !$omp& shared(Geom, GTA, Quad, numAngles, angleList, quadwt, zSetID)  &
      !$omp& private(zone,ifp,c0,cez,nCorner,nCFaces,aSetID,angGTA) &
-     !$omp& private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,coef,dInv,Sigt,SigtEZ, Angle, c1, c, cface, i)
-#endif
+     !$omp& private(aez,afp,sigv,sigv2,gnum,gtau,B0,B1,B2,dInv,Sigt,SigtEZ, Angle, c1, c, cface, i)
 
        ZoneLoop: do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
 
@@ -354,17 +312,11 @@
          enddo AngleLoop
 
        enddo ZoneLoop
-#ifndef TETON_ENABLE_OPENACC
        !$omp end parallel do
-#endif
 
      enddo ZoneSetLoop
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc end parallel loop
-#else
      TOMP(end target teams distribute)
-#endif
 
      TOMP_MAP(target exit data map(release: numAngles, angleList, omega, quadwt))
 

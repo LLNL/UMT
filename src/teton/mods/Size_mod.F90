@@ -62,6 +62,7 @@ module Size_mod
      real(adqt)       :: RadtrTimeTotal
      real(adqt)       :: InitTimeTotal
      real(adqt)       :: FinalTimeTotal
+     real(adqt)       :: ThroughputTotal       ! Sum of cycle throughputs, used to report average at end of run in getRunStats
 
      logical (kind=1) :: DopplerShiftOn        ! Doppler shift control
      logical (kind=1) :: useNewNonLinearSolver ! Non Linear solver control 
@@ -205,6 +206,7 @@ contains
     self% RadtrTimeTotal     = zero
     self% InitTimeTotal      = zero
     self% FinalTimeTotal     = zero
+    self% ThroughputTotal    = zero
 
 !  Check consistency of dopper shift flag
 
@@ -287,6 +289,73 @@ contains
     return
    
   end subroutine Size_ctor
+
+
+!=======================================================================
+! get C pointer to MeshSize, c callable
+!=======================================================================
+  function Teton_Size_getMeshSize() bind(c) result(MeshSize)
+
+     use, intrinsic :: iso_c_binding, only : c_ptr, c_loc
+   
+     type(c_ptr) :: MeshSize
+     MeshSize = c_loc(Size)
+
+     return
+
+  end function Teton_Size_getMeshSize
+
+!=======================================================================
+! Returns the number of zones in the local mesh domain, c callable
+!=======================================================================
+  function Teton_Size_getNumberOfZones(cptr) bind(c) result(nZones)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(MeshSize), pointer  :: fptr
+
+     integer(kind=c_int)            :: nZones
+     call c_f_pointer(cptr, fptr)
+     nZones = fptr%nzones
+
+     return
+
+  end function Teton_Size_getNumberOfZones
+
+!=======================================================================
+! Returns the number of corners in the local mesh domain, c callable
+!=======================================================================
+  function Teton_Size_getNumberOfCorners(cptr) bind(c) result(nCorners)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(MeshSize), pointer  :: fptr
+
+     integer(kind=c_int)            :: nCorners
+     call c_f_pointer(cptr, fptr)
+     nCorners = fptr%ncornr
+
+     return
+
+  end function Teton_Size_getNumberOfCorners
+
+!=======================================================================
+! Returns the number of processors this rank needs to communicate with
+!=======================================================================
+  function Teton_Size_getNumberOfCommNeighbors(cptr) bind(c) result(nCommNeighbors)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(MeshSize), pointer  :: fptr
+
+     integer(kind=c_int)            :: nCommNeighbors
+     call c_f_pointer(cptr, fptr)
+     nCommNeighbors = fptr%ncomm
+
+     return
+
+  end function Teton_Size_getNumberOfCommNeighbors
+
 
 !=======================================================================
 ! getGeometryFactor interface

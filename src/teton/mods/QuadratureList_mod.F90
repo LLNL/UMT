@@ -4,7 +4,6 @@
 ! sets
 
 module QuadratureList_mod
-
   use kind_mod
   use Quadrature_mod
   use SetData_mod
@@ -13,6 +12,7 @@ module QuadratureList_mod
   use CommSet_mod
   use Size_mod
   use CodeChecks_mod
+  implicit none
 
   private
 
@@ -211,13 +211,9 @@ contains
 
   subroutine QuadratureList_ctor(self, nAnglesSn, nSetsMaster, nSets)
 
-
-    use, intrinsic :: iso_c_binding, only : c_int
     use cmake_defines_mod, only : omp_device_num_processors, omp_device_team_thread_limit
     use Options_mod, only : Options
     use constant_mod
-
-    implicit none
 
 !   Passed variables
 
@@ -230,8 +226,10 @@ contains
 
 !   Local
 
+#if defined(TETON_ENABLE_OPENMP)
     integer :: nOmpMaxThreads
     integer :: nOmpMaxTeams
+#endif
 
 
     self% nSets             = 1
@@ -280,8 +278,6 @@ contains
                                             nCommSets,  &
                                             nGTASets)
 
-    implicit none
-
 !   Passed variables
 
     type(QuadratureList), intent(inout) :: self
@@ -315,6 +311,20 @@ contains
   end subroutine QuadratureList_ctorSetPointers
 
 !=======================================================================
+! get C pointer to QuadratureList, c callable
+!=======================================================================
+  function Teton_QuadratureList_getQuadList() bind(c) result(QuadList)
+
+     use, intrinsic :: iso_c_binding, only : c_ptr, c_loc
+   
+     type(c_ptr) :: QuadList
+     QuadList = c_loc(Quad)
+
+     return
+
+  end function Teton_QuadratureList_getQuadList
+
+!=======================================================================
 ! set interface
 !=======================================================================
 
@@ -329,8 +339,6 @@ contains
                                 PolarAxis,     &
                                 QuadType,      &
                                 Gnu)
-
-    implicit none
 
 !   Passed variables
 
@@ -382,8 +390,6 @@ contains
 
   function QuadratureList_getSetIDfromGroupAngle(self, group, angle) result(setID)
 
-    implicit none
-
 !   Passed variables
 
     type(QuadratureList),  intent(inout) :: self
@@ -404,8 +410,6 @@ contains
 !=======================================================================
 
   subroutine QuadratureList_dtor(self)
-
-    implicit none
 
 !   Passed variables
 
@@ -430,14 +434,10 @@ contains
   end subroutine QuadratureList_dtor
 
 !-----------------------------------------------------------------------
+!    Returns the number of phase-space sets (nSets)
+!-----------------------------------------------------------------------
   function QuadratureList_getNumberOfSets(self) result(nSets)
 
-!    Returns the number of phase-space sets (nSets)
-
-!    variable declarations
-     implicit none
-
-!    passed variables
      type(QuadratureList), intent(in) :: self
      integer                          :: nSets
 
@@ -448,13 +448,27 @@ contains
   end function QuadratureList_getNumberOfSets
 
 !-----------------------------------------------------------------------
+!    Returns the number of phase-space sets (nSets), c callable
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfSets(cptr) bind(c) result(nSets)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(QuadratureList), pointer  :: fptr
+
+     integer(kind=c_int)            :: nSets
+     call c_f_pointer(cptr, fptr)
+     nSets = getNumberOfSets( fptr )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfSets
+
+!-----------------------------------------------------------------------
+!    Returns the number of GTA phase-space sets, c callable
+!-----------------------------------------------------------------------
   function QuadratureList_getNumberOfGTASets(self) result(nGTASets)
-
-!    Returns the number of GTA quadrature sets
-!      nGTASets   number of group/anglesets
-
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -467,13 +481,27 @@ contains
   end function QuadratureList_getNumberOfGTASets
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getNumberOfAngleSets(self) result(nAngleSets)
+!    Returns the number of GTA phase-space sets, c callable
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfGTASets(cptr) bind(c) result(nGTASets)
 
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in)   :: cptr
+     type(QuadratureList), pointer    :: fptr
+
+     integer(kind=c_int)              :: nGTASets
+     call c_f_pointer(cptr, fptr)
+     nGTASets = getNumberOfGTASets( fptr )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfGTASets
+
+!-----------------------------------------------------------------------
 !    Returns the number of angle sets
-!      nAngleSets   number of angle sets
-
+!-----------------------------------------------------------------------
+  function QuadratureList_getNumberOfAngleSets(self) result(nAngleSets)
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -486,13 +514,28 @@ contains
   end function QuadratureList_getNumberOfAngleSets
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getNumberOfGroupSets(self) result(nGroupSets)
+!    Returns the number of angle sets, c callable
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfAngleSets(cptr) bind(c) result(nAngleSets)
 
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(QuadratureList), pointer  :: fptr
+
+     integer(kind=c_int)            :: nAngleSets
+     call c_f_pointer(cptr, fptr)
+     nAngleSets = getNumberOfAngleSets( fptr )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfAngleSets
+
+
+!-----------------------------------------------------------------------
 !    Returns the number of energy group sets
-!      nGroupSets   number of group sets
-
+!-----------------------------------------------------------------------
+  function QuadratureList_getNumberOfGroupSets(self) result(nGroupSets)
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -505,13 +548,33 @@ contains
   end function QuadratureList_getNumberOfGroupSets
 
 !-----------------------------------------------------------------------
+!    Returns the number of energy group sets, c callable
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfGroupSets(cptr) bind(c) result(nGroupSets)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(QuadratureList), pointer  :: fptr
+
+     integer(kind=c_int)            :: nGroupSets
+     call c_f_pointer(cptr, fptr)
+     nGroupSets = getNumberOfGroupSets( fptr )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfGroupSets
+
+
+
+!-----------------------------------------------------------------------
+!    Returns the number of communication sets
+!-----------------------------------------------------------------------
   function QuadratureList_getNumberOfCommSets(self) result(nCommSets)
 
 !    Returns the number of communication sets
 !      nCommSets   number of communication sets
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -524,13 +587,31 @@ contains
   end function QuadratureList_getNumberOfCommSets
 
 !-----------------------------------------------------------------------
+!    Returns the number of communication sets, c callable
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfCommSets(cptr) bind(c) result(nCommSets)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(QuadratureList), pointer  :: fptr
+
+     integer(kind=c_int)            :: nCommSets
+     call c_f_pointer(cptr, fptr)
+     nCommSets = getNumberOfCommSets( fptr )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfCommSets
+
+!-----------------------------------------------------------------------
+!    Returns the number of zone sets
+!-----------------------------------------------------------------------
   function QuadratureList_getNumberOfZoneSets(self) result(nZoneSets)
 
 !    Returns the number of zone sets
 !      nZoneSets   number of zone sets
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -543,15 +624,29 @@ contains
   end function QuadratureList_getNumberOfZoneSets
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getNumberOfHyperDomains(self, ID) result(nHyperDomains)
+!    Returns the number of zone sets, c callable
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfZoneSets(cptr) bind(c) result(nZoneSets)
 
-!    Returns the number of hyper domains used for sweeps 
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(QuadratureList), pointer  :: fptr
+
+     integer(kind=c_int)            :: nZoneSets
+     call c_f_pointer(cptr, fptr)
+     nZoneSets = getNumberOfZoneSets( fptr )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfZoneSets
+
+!-----------------------------------------------------------------------
+!    Returns the number of hyper domains used for sweeps, c callable
 !      nHyperDomains   number of hyper domains 
 !      ID = 1   High-order angle set
-!      ID = 2   GTA angle set
-
+!-----------------------------------------------------------------------
+  function QuadratureList_getNumberOfHyperDomains(self, ID) result(nHyperDomains)
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -566,6 +661,27 @@ contains
   end function QuadratureList_getNumberOfHyperDomains
 
 !-----------------------------------------------------------------------
+!    Returns the number of hyper domains used for sweeps, c callable
+!      nHyperDomains   number of hyper domains 
+!      ID = 1   High-order angle set
+!      ID = 2   GTA angle set
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getNumberOfHyperDomains(cptr, ID) bind(c) result(nHyperDomains)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     integer(kind=c_int), value     :: ID
+     type(QuadratureList), pointer  :: fptr
+
+     integer(kind=c_int)            :: nHyperDomains
+     call c_f_pointer(cptr, fptr)
+     nHyperDomains = getNumberOfHyperDomains( fptr, ID )
+
+     return
+
+  end function Teton_QuadratureList_getNumberOfHyperDomains
+
+!-----------------------------------------------------------------------
   function QuadratureList_getNumberOfHyperElements(self, ID) result(nHyperElements)
 
 !    Returns the number of interface elements at hyper-domain
@@ -575,7 +691,6 @@ contains
 !      ID = 2   GTA angle set
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -597,7 +712,6 @@ contains
 !      QuadPtr  pointer to the quadrature set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -613,13 +727,29 @@ contains
   end function QuadratureList_getQuad 
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getGTAQuad(self) result(QuadPtr)
-                                                                                           
+!    Return a C pointer to a quadrature set, C callable.
+!-----------------------------------------------------------------------
+  function Teton_QuadratureList_getQuad(quadlist_cptr, quadID) bind(c) result(quad_cptr)
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_loc, c_int
+     type(c_ptr), value, intent(in)         :: quadlist_cptr
+     integer(kind=c_int), value, intent(in) :: quadID
+     type(c_ptr)                            :: quad_cptr
+
+     type(QuadratureList), pointer          :: quadlist_fptr
+     type(Quadrature), pointer              :: quad_fptr
+
+     call c_f_pointer(quadlist_cptr, quadlist_fptr)
+     quad_fptr => getQuadrature(quadlist_fptr, quadID)
+     quad_cptr = c_loc(quad_fptr)
+     
+     return
+  end function Teton_QuadratureList_getQuad
+
+!-----------------------------------------------------------------------
 !    Return a pointer to the GTA quadrature set
-!      QuadPtr  pointer to the quadrature set
-                                                                                           
+!-----------------------------------------------------------------------
+  function QuadratureList_getGTAQuad(self) result(QuadPtr)
 !    variable declarations
-     implicit none
                                                                                            
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -633,13 +763,13 @@ contains
   end function QuadratureList_getGTAQuad
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getSNQuad(self) result(QuadPtr)
-                                                                                           
 !    Return a pointer to the SN quadrature set
+!-----------------------------------------------------------------------
+function QuadratureList_getSNQuad(self) result(QuadPtr)
+                                                                                           
 !      QuadPtr  pointer to the quadrature set
                                                                                            
 !    variable declarations
-     implicit none
                                                                                            
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -651,6 +781,7 @@ contains
      return
                                                                                            
   end function QuadratureList_getSNQuad
+
 !-----------------------------------------------------------------------
   function QuadratureList_getSetData(self,setID) result(SetDataPtr)
 
@@ -659,7 +790,6 @@ contains
 !      SetDataPtr  pointer to the set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -675,14 +805,12 @@ contains
   end function QuadratureList_getSetData
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getAngleSetData(self,angleSetID) result(AngSetPtr)
-
 !    Return a pointer to an angle set
 !      angleSetID  angle set ID number
-!      AngSetPtr   pointer to the angle set
+!-----------------------------------------------------------------------
+  function QuadratureList_getAngleSetData(self,angleSetID) result(AngSetPtr)
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -698,19 +826,18 @@ contains
   end function QuadratureList_getAngleSetData
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getGroupSetData(self,groupSetID) result(GrpSetPtr)
-
 !    Return a pointer to an energy group set 
 !      groupSetID  group set ID number    
 !      GrpSetPtr   pointer to the group set 
+!-----------------------------------------------------------------------
+  function QuadratureList_getGroupSetData(self,groupSetID) result(GrpSetPtr)
 
 !    variable declarations
-     implicit none
 
 !    passed variables
-     type(QuadratureList), intent(in) :: self
-     integer,              intent(in) :: groupSetID
-     type(GroupSet),       pointer    :: GrpSetPtr
+     type(QuadratureList), intent(in)       :: self
+     integer(kind=c_int), value, intent(in) :: groupSetID
+     type(GroupSet), pointer                :: GrpSetPtr
 
 
      TETON_CHECK_BOUNDS1(self%GrpSetPtr, groupSetID)
@@ -728,7 +855,6 @@ contains
 !      CommSetPtr   pointer to the communication set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -751,7 +877,6 @@ contains
 !      AngSetPtr   pointer to the angle set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -779,7 +904,6 @@ contains
 !      GrpSetPtr   pointer to the group set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -807,7 +931,6 @@ contains
 !      CommSetPtr   pointer to the communication set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -835,7 +958,6 @@ contains
 !      SetDataPtr  pointer to the set 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -851,30 +973,31 @@ contains
   end function QuadratureList_getGTASetData
 
 !-----------------------------------------------------------------------
-  function QuadratureList_getNumberOfGroups(self,setID) result(Groups)
+  function QuadratureList_getNumberOfGroups(self,setID) result(nGroups)
 
 !    Return the number of groups in this group/angle set 
 !      setID       set ID number 
 !      Groups      number of energy groups 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
      integer,              intent(in) :: setID
-     integer                          :: Groups
+     integer                          :: nGroups
      type(SetData),        pointer    :: SetDataPtr
 
 
      TETON_CHECK_BOUNDS1(self%SetDataPtr, setID)
      SetDataPtr => self% SetDataPtr(setID)
-     Groups     =  SetDataPtr% Groups
+     nGroups     =  SetDataPtr% Groups
 
      return
 
   end function QuadratureList_getNumberOfGroups
 
+!-----------------------------------------------------------------------
+!    Returns the number of angles in a phase space set's angle set.
 !-----------------------------------------------------------------------
   function QuadratureList_getNumberOfAngles(self,setID) result(NumAngles)
 
@@ -883,7 +1006,6 @@ contains
 !      NumAngles   number of angles 
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -907,7 +1029,6 @@ contains
 !      GrpBnds    array of energy group bounds 
                                                                                             
 !    variable declarations
-     implicit none
                                                                                             
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -937,7 +1058,6 @@ contains
      use constant_mod
 
 !    variable declarations
-     implicit none
 
 !    passed variables
      type(QuadratureList), intent(in) :: self
@@ -967,7 +1087,6 @@ contains
 
   subroutine QuadratureList_setCounters(self)
 
-    implicit none
 
 !   Passed variables
 
@@ -995,7 +1114,6 @@ contains
 
      use Size_mod
 
-     implicit none
   
 !    passed variables
      type(QuadratureList), intent(in) :: self

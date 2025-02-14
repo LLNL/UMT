@@ -77,17 +77,23 @@ contains
 
       if (umpire_host_allocator_id >= 0) then
          self%umpire_host_allocator = umpire_resource_manager%get_allocator_by_id(umpire_host_allocator_id)
-!#if defined(TETON_ENABLE_OPENMP)
-! Need a way to verify this is a thread safe umpire allocator...
-!#endif
          self%umpire_host_allocator_id = umpire_host_allocator_id
          self%host_allocator_present = .TRUE.
       endif
 
       if (umpire_device_allocator_id >= 0) then
+#if defined(TETON_OPENMP_HAS_UNIFIED_MEMORY)
+         if (Options%isRankVerbose() > 0 ) then
+            print *, "Teton: An umpire host allocator and device allocator were both provided.  Teton only requires one allocator on single memory architecture platforms.  The device allocator will be used."
+         endif
+         self%umpire_host_allocator = umpire_resource_manager%get_allocator_by_id(umpire_device_allocator_id)
+         self%umpire_host_allocator_id = umpire_device_allocator_id
+         self%host_allocator_present = .TRUE.
+#else
          self%umpire_device_allocator = umpire_resource_manager%get_allocator_by_id(umpire_device_allocator_id)
          self%umpire_device_allocator_id = umpire_device_allocator_id
          self%device_allocator_present = .TRUE.
+#endif
       endif
 
       self%use_for_comm_data = self%isGPUAwareMPIEnabled()

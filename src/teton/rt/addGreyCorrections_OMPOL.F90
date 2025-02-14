@@ -61,18 +61,20 @@
    integer    :: reflID
    integer    :: nReflecting
    integer    :: nBdyElem
+   integer    :: nHyperDomains
 
    real(adqt) :: wtiso
 
 !  Constants
 
-   nzones      = Size% nzones 
-   wtiso       = Size% wtiso
-   ngr         = Size% ngr
-   nShared     = getNumberOfShared(RadBoundary)
-   nReflecting = getNumberOfReflecting(RadBoundary)
-   nSets       = getNumberOfSets(Quad)
-   nZoneSets   = getNumberOfZoneSets(Quad)
+   nzones        = Size% nzones 
+   wtiso         = Size% wtiso
+   ngr           = Size% ngr
+   nShared       = getNumberOfShared(RadBoundary)
+   nReflecting   = getNumberOfReflecting(RadBoundary)
+   nSets         = getNumberOfSets(Quad)
+   nZoneSets     = getNumberOfZoneSets(Quad)
+   nHyperDomains = getNumberOfHyperDomains(Quad,1)
 
 !  Compute the group-dependent corrections
 
@@ -80,83 +82,45 @@
 
    TOMP_MAP(target enter data map(to: ngr, wtiso))
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, GTA, Geom, Rad, ngr))
-#endif
    do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc loop vector collapse(2)
-#else
      !$omp parallel do collapse(2) default(none) schedule(dynamic)  &
      !$omp& shared(zSetID, GTA, Geom, Rad, ngr)
-#endif
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        do g=1,ngr
          Rad% PhiTotal(g,c) = Rad% PhiTotal(g,c) + GTA%GreyCorrection(c)*GTA% Chi(g,c)
        enddo
      enddo
-#ifndef TETON_ENABLE_OPENACC
      !$omp end parallel do
-#endif
 
    enddo
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, ZSet, Geom, Rad))
-#endif
    do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc loop vector
-#else
      !$omp parallel do default(none) schedule(dynamic)  &
      !$omp& shared(zSetID, ZSet, Geom, Rad)
-#endif
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        ZSet% sumT(c) = sum( Rad% PhiTotal(:,c) )
      enddo
-#ifndef TETON_ENABLE_OPENACC
      !$omp end parallel do
-#endif
 
    enddo
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc  parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
-   !$acc& private(c0, nCorner)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, Geom, Rad, ZSet)&)
    TOMPC(private(c0, nCorner))
-#endif
    do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc loop vector &
-     !$acc& private(c0, nCorner)
-#else
      !$omp parallel do default(none) schedule(dynamic)  &
      !$omp& shared(zSetID, Geom, Rad, ZSet) private(c0, nCorner) 
-#endif
      do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
        nCorner              = Geom% numCorner(zone)
        c0                   = Geom% cOffSet(zone)
@@ -167,64 +131,57 @@
                                 Geom% Volume(c0+c)*ZSet% sumT(c0+c)
        enddo
      enddo
-#ifndef TETON_ENABLE_OPENACC
      !$omp end parallel do
-#endif
 
    enddo
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc  parallel loop gang num_gangs(nSets) vector_length(omp_device_team_thread_limit) &
-   !$acc& private(Set, ASet, HypPlanePtr, Groups, NumAngles, c, g0)
-#else
-   TOMP(target teams distribute num_teams(nSets) thread_limit(omp_device_team_thread_limit) default(none) &)
-   TOMPC(shared(nSets, Quad, GTA, wtiso)&)
-   TOMPC(private(Set, ASet, HypPlanePtr, Groups, NumAngles, c, g0))
-#endif
-   do setID=1,nSets
-     Set        => Quad% SetDataPtr(setID)
-     ASet       => Quad% AngSetPtr(Set% angleSetID)
-     Groups     =  Set% Groups
-     g0         =  Set% g0
-     NumAngles  =  Set% NumAngles
 
-     do angle=1,NumAngles
-       HypPlanePtr => ASet% HypPlanePtr(angle)
+   if ( nHyperDomains > 1 ) then
 
-#ifdef TETON_ENABLE_OPENACC
-       !$acc  loop vector collapse(2) &
-       !$acc& private(c)
-#else
-       !$omp  parallel do collapse(2) default(none) &
-       !$omp& shared(Set, HypPlanePtr, GTA, angle, g0, Groups, wtiso) &
-       !$omp& private(c)
-#endif
-       do i=1,HypPlanePtr% interfaceLen
-         do g=1,Groups
-           c = HypPlanePtr% interfaceList(i)
-           Set% PsiInt(g,i,angle) = Set% PsiInt(g,i,angle) + wtiso*  &
-                                    GTA%GreyCorrection(c)*GTA% Chi(g0+g,c) 
+     TOMP(target teams distribute collapse(2) num_teams(nZoneSets*nSets) &)
+     TOMPC(thread_limit(omp_device_team_thread_limit) default(none) &)
+     TOMPC(shared(nZoneSets, nSets, Quad, GTA, wtiso)&)
+     TOMPC(private(Set, ASet, HypPlanePtr, Groups, NumAngles, c, g0))
+
+     ZoneSetLoop1: do zSetID=1,nZoneSets
+       SetLoop1: do setID=1,nSets
+         Set        => Quad% SetDataPtr(setID)
+         ASet       => Quad% AngSetPtr(Set% angleSetID)
+         Groups     =  Set% Groups
+         g0         =  Set% g0
+         NumAngles  =  Set% NumAngles
+
+         do angle=1,NumAngles
+
+           if ( .not. ASet% FinishingDirection(Angle) ) then
+
+             HypPlanePtr => ASet% HypPlanePtr(angle)
+
+             !$omp  parallel do collapse(2) default(none) &
+             !$omp& shared(Set, HypPlanePtr, GTA, zSetID, angle, g0, Groups, wtiso) &
+             !$omp& private(c)
+
+             do i=HypPlanePtr% c1(zSetID),HypPlanePtr% c2(zSetID)
+               do g=1,Groups
+                 c = HypPlanePtr% interfaceList(i)
+                 Set% PsiInt(g,i,angle) = Set% PsiInt(g,i,angle) + wtiso*  &
+                                          GTA%GreyCorrection(c)*GTA% Chi(g0+g,c) 
+               enddo
+             enddo
+
+             !$omp end parallel do
+
+           endif
+
          enddo
-       enddo
-#ifndef TETON_ENABLE_OPENACC
-       !$omp end parallel do
-#endif
 
-     enddo
+       enddo SetLoop1
+     enddo ZoneSetLoop1
 
-   enddo
+     TOMP(end target teams distribute)
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
-   TOMP(end target teams distribute)
-#endif
- 
+   endif
 
 TOMP_MAP(target exit data map(release: ngr, wtiso))
 

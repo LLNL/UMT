@@ -22,9 +22,11 @@
 !  Passed Variables
    integer(C_INT), intent(in)    :: comm
 
+#if defined (TETON_ENABLE_OPENMP)
 !  Local Variables
    integer                       :: provided ! level of thread support
    integer                       :: errorcode,  ierr     ! error code from MPI
+#endif
 
    MY_COMM_GROUP = comm
 
