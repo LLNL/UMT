@@ -7,7 +7,7 @@
 !***********************************************************************
 
 
-   subroutine ConstructMaterial(nonLTE) BIND(C,NAME="teton_constructmaterial")
+   subroutine ConstructMaterial(nonLTE, fromRestart) BIND(C,NAME="teton_constructmaterial_new")
 
 !  Include
 
@@ -19,10 +19,14 @@
 
 !  Arguments
    logical(C_BOOL), intent(in) :: nonLTE
+   logical(C_BOOL), intent(in) :: fromRestart
 
 !  Construct Material Module 
-   allocate(Mat)
-   call Mat%construct(nonLTE)
+   if (.not. fromRestart) then
+      allocate(Mat)
+   endif
+
+   call Mat%construct(nonLTE, fromRestart)
 
    return
    end subroutine ConstructMaterial

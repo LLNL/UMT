@@ -60,14 +60,15 @@
 !     UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% SweepPtr)
      TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% SweepPtr))
 
-     if ( sweepVersion == 0 ) then
+! These are only used in the zone sweep
+     if ( sweepVersion == 1 ) then
 
        do dom=1,nHyperDomains
          UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% SweepPtr(dom)% Q)
-         TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% SweepPtr(dom)% Q))
+         TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% SweepPtr(dom)% Q))
 
          UMPIRE_DEVICE_POOL_ALLOC(Quad% SetDataPtr(setID)% SweepPtr(dom)% S)
-         TOMP(target enter data map(always,to:Quad% SetDataPtr(setID)% SweepPtr(dom)% S))
+         TOMP_MAP(target enter data map(always,to:Quad% SetDataPtr(setID)% SweepPtr(dom)% S))
        enddo
 
      endif

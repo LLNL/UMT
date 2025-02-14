@@ -122,6 +122,7 @@ void dumpTallyToJson(const conduit::Node &blueprint, const conduit::Node &option
             angle_dim_info["units"] = "cos(theta)";
             angle_dim_info["type"] = "angle bin";
 
+            // Check that we have the same idea of how many bins there are:
             TETON_VERIFY_C(mpi_rank,
                            nanglebin == nanglebin_teton,
                            "nanglebin must match nanglebin_teton for surface tallies");
@@ -247,7 +248,7 @@ void dumpTallyToJson(const conduit::Node &blueprint, const conduit::Node &option
                   index1d = itimebin * stride + istride;
                   integratedTally[itimebin] += tally_values_esc[index1d];
                } // end loop over group and angle indices
-            }    // end loop over time bin index
+            } // end loop over time bin index
 
             std::vector<double> normalizedErrEstShift(ntimebin, 0.);
             std::vector<double> normalizedErrEstSrcSize(ntimebin, 0.);

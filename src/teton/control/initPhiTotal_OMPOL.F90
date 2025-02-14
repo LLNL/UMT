@@ -54,32 +54,22 @@
 
      TOMP_MAP(target enter data map(to: nSets, ngr))
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc parallel loop gang num_gangs(nZoneSets) &
-     !$acc& vector_length(omp_device_team_thread_limit) &
-     !$acc& private(Set, ASet, g0, Groups, NumAngles, quadwt, volRatio, Angle, setID)
-#else
      TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
      TOMPC(shared(nZoneSets, Geom, Rad, ngr, Quad, nSets )&)
      TOMPC(private(Set, ASet, g0, Groups, NumAngles, quadwt, volRatio, Angle, setID))
-#endif
 
      ZoneSetLoop1: do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-       !$acc loop vector collapse(2)
-#else
        !$omp  parallel do collapse(2) default(none)  &
        !$omp& shared(Geom, Rad, ngr, zSetID)
-#endif
+
        do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
          do g=1,ngr
            Rad% PhiTotal(g,c) = zero 
          enddo
        enddo
-#ifndef TETON_ENABLE_OPENACC
+
        !$omp end parallel do
-#endif
 
 !      Sum over phase-space sets
 
@@ -95,14 +85,10 @@
          AngleLoop: do Angle=1,NumAngles
            quadwt =  ASet% weight(Angle)
 
-#ifdef TETON_ENABLE_OPENACC
-           !$acc loop vector collapse(2) &
-           !$acc& private(volRatio)
-#else
            !$omp  parallel do collapse(2) default(none)  &
            !$omp& shared(Geom, Rad, Set, g0, Groups, Angle, quadwt, zSetID) &
            !$omp& private(volRatio)
-#endif
+           
            do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
              do g=1,Groups
                volRatio              = Geom% VolumeOld(c)/Geom% Volume(c)
@@ -113,9 +99,7 @@
              enddo
            enddo
 
-#ifndef TETON_ENABLE_OPENACC
           !$omp end parallel do
-#endif
 
          enddo AngleLoop
 
@@ -123,11 +107,7 @@
 
      enddo ZoneSetLoop1
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc end parallel loop
-#else
      TOMP(end target teams distribute)
-#endif
 
      TOMP_MAP(target exit data map(release: nSets, ngr))
 

@@ -17,8 +17,11 @@
 #include "conduit/conduit.hpp"
 #include <map>
 #include <mpi.h>
+#include <set>
 #include <string>
-
+#if defined(TETON_ENABLE_CALIPER)
+#include <caliper/RegionProfile.h>
+#endif
 namespace Teton
 {
 class Teton
@@ -57,6 +60,15 @@ class Teton
       return getDatastore()["options"];
    }
 
+   conduit::Node &getMetrics()
+   {
+      return getDatastore()["metrics"];
+   }
+   const conduit::Node &getMetrics() const
+   {
+      return getDatastore()["metrics"];
+   }
+
    /*!
     * \brief Returns a node that contains the partitioned mesh. If partitioning
     *        is not being done then the blueprint node is returned.
@@ -68,16 +80,13 @@ class Teton
    const conduit::Node &getMeshBlueprintPart() const;
 
    /*!
-    * \brief Get whether verbose output is selected.
+    * \brief Process any environment variables specifying how the code should run.
+    *  These will override any options set in the conduit node.
     *
-    * \return An integer that indicates the verbosity level.
-    *
-    * \note The value is retrieved from the options, if the value exists or from
-    *       the environment. The environment can override the options.
     */
-   int getVerbose() const;
+   void processEnvVars();
 
-   void initialize(MPI_Comm communicator, bool fromRestart = false);
+   void initialize(MPI_Comm communicator, bool fromSiloRestart = false);
 
    // Advance a radiation step, returns dt recommended by Teton for the next time step
    double step(int cycle);
@@ -303,6 +312,43 @@ class Teton
       return &mZoneToCorners[0];
    }
 
+   /*!
+    \brief Reads values from Teton into the supplied array. The values are obtained
+           from teton_getcornertemperatures, after a potential un-repartitioning.
+
+    \param[out] MatTemp The destination array that holds nCornersTOtal values.
+    */
+   void getCornerMaterialTemperature(double *CornerMatTemp) const;
+
+   /*!
+    \brief Sets corner temperature values in Teton to the supplied array. The values are sent
+           to teton_setcornertemperatures, after a potential repartitioning.
+
+    \param[in] MatTemp The input array that holds nCornersTotal values.
+    */
+   void setCornerMaterialTemperature(const double *CornerMatTemp);
+
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+   /*!
+     \brief Calls teton_applypdv which applies the PdV work to the radiation field
+            (Set%Psi, Rad%RadEnergyDensity, and Rad%PhiTotal) in an operator-split
+            manner.  It's similar to what's in DopplerShift.F90, but applied
+            separately rather than during the implicit radtr step
+
+            A DopplerShift will also be applied if DopplerShiftOn was set to true in the input params node
+   */
+   void applyPdVWork()
+   {
+      teton_applypdv();
+   }
+#endif
+
+   // Set Geom%VolumeOld = Geom%Volume
+   void setVolumeOld()
+   {
+      teton_setvolumeold();
+   }
+
    // ---------------------------------------------------------------------------
    // Functions pertaining to checkpoints/restarts
    // ---------------------------------------------------------------------------
@@ -329,6 +375,9 @@ class Teton
    static const std::string FIELD_RADIATION_FLUX_Z;
    static const std::string FIELD_RADIATION_FLUX_R;
    static const std::string FIELD_MATERIAL_TEMPERATURE;
+   static const std::string FIELD_REMOVAL_OPACITY;
+   static const std::string FIELD_EMISSION_SOURCE;
+   static const std::vector<std::string> NONINTERLEAVED_FIELDS;
    static const std::string TOPO_MAIN;
    static const std::string TOPO_BOUNDARY;
 
@@ -346,6 +395,16 @@ class Teton
     */
    conduit::Node &getMainTopology(conduit::Node &root);
    const conduit::Node &getMainTopology(const conduit::Node &root) const;
+
+   /*!
+    * \brief Get the corner topology.
+
+    * \param root The node through which we'll get the corner topology.
+
+    * \return A reference to the corner topology.
+    */
+   conduit::Node &getCornerTopology(conduit::Node &root);
+   const conduit::Node &getCornerTopology(const conduit::Node &root) const;
 
    /*!
     \brief Creates a new zonal field it does not exist.
@@ -495,6 +554,18 @@ class Teton
                            const std::string &secondTopoName);
 
    /*!
+    * \brief Returns true for fields in the Conduit node that should
+    *        point to Teton internal Fortran arrays on the partitioned node
+    *
+    * \param fieldName The name of the field we're checking.
+    *
+    * \return true or false (see the brief)
+    *
+    * \note  As of 2024/08/21, the only such field is radiation_energy_density
+    */
+   bool TetonInternallyOwned(const std::string &fieldName) const;
+
+   /*!
     * \brief Returns whether the field (assumed to be size ngroup*nzones) needs
     *        interleaving or not to be represented as a Blueprint mcarray. An interleaved
     *        field would be sized array[nzones][ngroup] whereas an array sized
@@ -515,7 +586,7 @@ class Teton
     * \param root The root, which is usually the blueprint mesh. When mapping back,
     *             we can pass the part mesh.
     */
-   void add_mcarray_fields(conduit::Node &root);
+   void add_mcarray_fields(conduit::Node &root, bool skipTetonInternallyOwned = false);
 
    /*!
     * \brief Remove any mcarray fields from the root node.
@@ -589,6 +660,11 @@ class Teton
    /*!
     * \brief Optionally repartition the coordinates and then update the mesh
     *        positions for Teton from the part mesh.
+    *
+    *        This will update the volumes in Teton by calling teton_setvolume
+    *        As of Jan. 2025, it no longer updates Geom%VolumeOld
+    *        Before this point, it called teton_getvolume, which is equivalent to
+    *        calling teton_setvolumeold() followed by teton_setvolume()
     *
     * \param doPartition True if we want to do partitioning (if enabled)
     */
@@ -700,6 +776,23 @@ class Teton
                             conduit::Node &options,
                             int flags);
 
+   /*!
+    * \brief Add problem size metrics to conduit node
+    * Calculates the min/avg/max # communication neighbors, # zones, etc.
+    * Can be dumped at end of run by setting 'TETON_DUMP_METRICS'.
+    */
+   void collectProblemSizeMetrics();
+
+   /*!
+    * \brief Prints problem size metrics to stdout.
+    * For use in printing out detailed metrics on the mesh, # angles, # groups, etc
+    */
+   void printProblemMetrics();
+   /*!
+    * \brief Prints problem size metrics to stdout.
+    * For use in printing out detailed metrics on the mesh, # angles, # groups, etc
+    */
+
   private:
    double mDTrad;
 
@@ -726,6 +819,9 @@ class Teton
    std::vector<int> mZoneToNCorners;
    std::vector<int> mZoneToCorners;
    std::vector<int> mCornerToZone;
+
+   // Set of local boundary IDs, used to check if a boundary exists on this rank
+   std::set<int> mLocalBoundaryIDs;
 
    std::vector<std::string> mMapBackFields;               //!< Vector of field names to map back during partitioning.
    std::map<std::string, std::string> mMCArrays;          //!< Map of field names to mcarray names

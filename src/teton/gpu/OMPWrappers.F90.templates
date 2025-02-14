@@ -106,10 +106,6 @@
 
         TETON_VERIFY( c_associated(d_ptr), "Failed to retrieve device pointer for " // label )
 
-      ! Disassociate the pointer: adding this back so I can use CCE15  PFN 02/07/2024
-
-        TOMP(target exit data map(release:h_ptr))
-
         err_code = omp_target_disassociate_ptr( C_LOC(h_ptr), omp_get_default_device() )
 
         TETON_VERIFY( err_code == 0, "Failed to disassociate host variable " // label )

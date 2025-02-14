@@ -1,3 +1,5 @@
+#include "macros.h"
+#include "omp_wrappers.h"
 !***********************************************************************
 !                        Version 1:  09/2017, PFN                      *
 !                                                                      *
@@ -21,6 +23,10 @@
    use mpif90_mod
    use iter_control_list_mod
    use iter_control_mod
+
+#if defined(TETON_ENABLE_CALIPER)
+   use caliper_mod
+#endif
 
    implicit none
 
@@ -65,6 +71,7 @@
 !  If this is the first flux iteration, initialize the communication
 !  order and incident flux on shared boundaries
 
+   START_RANGE("Teton_Comm_Init_Order")
    do cSetID=1,nCommSets
 
      CSet => getCommSetData(Quad, cSetID)
@@ -72,6 +79,7 @@
      call restoreCommOrder(CSet)
      call setIncidentFlux(cSetID)
    enddo
+   END_RANGE("Teton_Comm_Init_Order")
 
 !  Begin Flux Iteration
 
@@ -83,6 +91,7 @@
      fluxIter = fluxIter + 1
 
 !  Initialize
+
 
 !$omp parallel do default(none) schedule(dynamic) &
 !$omp& private(CSet,Set)  &
@@ -104,9 +113,11 @@
 
 !  Post receives for all data
 
+   START_RANGE("Teton_Comm_Post_Receives")
      do cSetID=1,nCommSets
        call InitExchange(cSetID)
      enddo
+   END_RANGE("Teton_Comm_Post_Receives")
 
 !  Loop over angles, solving for each in turn:
 
@@ -119,19 +130,35 @@
        ASet         => CSet% AngleSetPtr
        NumAnglesDyn =  CSet% NumAnglesDyn
 
+
        AngleLoop: do sendIndex=1,NumAnglesDyn
 
          Angle =  CSet% AngleOrder(sendIndex)
 
 !        Send the boundary information needed by my neighbors
+#if !defined (TETON_ENABLE_OPENMP)
+         START_RANGE("Teton_Comm_Send_Fluxes")
+#endif
          call SendFlux(SnSweep, cSetID, sendIndex)
-
+#if !defined (TETON_ENABLE_OPENMP)
+         END_RANGE("Teton_Comm_Send_Fluxes")
+#endif
 !        Test for completion of the sends needed by my neighbors
+#if !defined (TETON_ENABLE_OPENMP)
+         START_RANGE("Teton_Comm_Test_Send_Complete")
+#endif
          call TestSend(cSetID, sendIndex)
-
+#if !defined (TETON_ENABLE_OPENMP)
+         END_RANGE("Teton_Comm_Test_Send_Complete")
+#endif
 !        Receive the boundary information needed to compute this angle
+#if !defined (TETON_ENABLE_OPENMP)
+         START_RANGE("Teton_Comm_Recv_Fluxes")
+#endif
          call RecvFlux(SnSweep, cSetID, Angle)
-
+#if !defined (TETON_ENABLE_OPENMP)
+         END_RANGE("Teton_Comm_Recv_Fluxes")
+#endif
 
 !        Sweep the mesh, calculating PSI for each corner; the 
 !        boundary flux array PSIB is also updated here. 
@@ -144,20 +171,27 @@
 
            AngleType: if ( .not. ASet% FinishingDirection(Angle) ) then
 
+#if !defined (TETON_ENABLE_OPENMP)
+             START_RANGE("Teton_Update_Reflecting_Fluxes")
+#endif
              call snreflect(SnSweep, setID, Angle)
 
+#if !defined (TETON_ENABLE_OPENMP)
+             END_RANGE("Teton_Update_Reflecting_Fluxes")
+#endif
              call initFromCycleList(setID, Angle, Groups, Set% Psi1)
 
+#if !defined (TETON_ENABLE_OPENMP)
+             START_RANGE("Teton_Calc_Rad_Energy_Density")
+#endif
              if (ndim == 3) then
                call SweepUCBxyz(Set, setID, Groups, Angle, savePsi)
              elseif (ndim == 2) then
-!              if ( Size% usePWLD ) then
-!                call SweepPWLDrz(Set, setID, Groups, Angle, savePsi)
-!              else
                call SweepUCBrz(Set, setID, Groups, Angle, savePsi)
-!              endif
              endif
-
+#if !defined (TETON_ENABLE_OPENMP)
+             END_RANGE("Teton_Calc_Rad_Energy_Density")
+#endif
              call updateCycleList(setID, Angle, Groups, Set% Psi1)
 
            endif AngleType

@@ -14,7 +14,7 @@ namespace Teton
 namespace utilities
 {
 
-void convert_int32(int rank, conduit::Node &root, const std::vector<std::string> &keys)
+void convert_int32(int /*rank*/, conduit::Node &root, const std::vector<std::string> &keys)
 {
    for (const auto &path : keys)
    {
@@ -39,11 +39,11 @@ void find_dtype(const conduit::Node &n,
                 const std::string &path,
                 std::vector<std::string> &paths)
 {
-   auto concat = [](const std::string &path, const std::string &name)
+   auto concat = [](const std::string &base, const std::string &name)
    {
-      if (path.empty())
+      if (base.empty())
          return name;
-      return path + "/" + name;
+      return base + "/" + name;
    };
 
    if (n.number_of_children() > 0)

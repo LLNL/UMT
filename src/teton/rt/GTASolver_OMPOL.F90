@@ -65,20 +65,16 @@
 !  Local
 
    type(IterControl), pointer  :: greyControl => NULL()
-   type(AngleSet),    pointer  :: ASet        => NULL()
-   type(HypPlane),    pointer  :: HypPlanePtr => NULL()
 
    integer    :: c
    integer    :: c0
    integer    :: zone
    integer    :: nCorner
-   integer    :: angle
    integer    :: alloc_stat
    integer    :: nGreyIter
    integer    :: izRelErrPoint
    integer    :: ngdart
    integer    :: nzones
-   integer    :: setID
    integer    :: zSetID
    integer    :: nZoneSets
    integer    :: nAngleSets
@@ -161,57 +157,33 @@
 !  Sum current solution over groups for convergence test
 !  Compute grey source
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none)&)
    TOMPC(shared(nZoneSets, ZSet, Geom, Rad))
-#endif
 
    do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc  loop vector
-#else
      !$omp parallel do default(none) schedule(dynamic)  &
      !$omp& shared(zSetID, ZSet, Geom, Rad)
-#endif
 
      do c=Geom% corner1(zSetID),Geom% corner2(zSetID)
        ZSet% sumT(c) = Geom% Volume(c)*sum( Rad% PhiTotal(:,c) )
      enddo
-#ifndef TETON_ENABLE_OPENACC
      !$omp end parallel do
-#endif
 
    enddo
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc parallel loop gang num_gangs(nZoneSets) vector_length(omp_device_team_thread_limit) &
-   !$acc& private(c0, nCorner)
-#else
    TOMP(target teams distribute num_teams(nZoneSets) thread_limit(omp_device_team_thread_limit) default(none) &)
    TOMPC(shared(nZoneSets, Geom, Rad, ZSet)&)
    TOMPC(private(c0, nCorner))
-#endif
 
    do zSetID=1,nZoneSets
 
-#ifdef TETON_ENABLE_OPENACC
-     !$acc  loop vector &
-     !$acc& private(c0, nCorner)
-#else
      !$omp parallel do default(none) schedule(dynamic)  &
      !$omp& shared(zSetID, Geom, Rad, ZSet) &
      !$omp& private(c0, nCorner)
-#endif
 
      do zone=Geom% zone1(zSetID),Geom% zone2(zSetID)
        nCorner              = Geom% numCorner(zone)
@@ -224,17 +196,11 @@
 
        Rad% radEnergy(zone) = Rad% radEnergy(zone)/Geom% VolumeZone(zone)
      enddo
-#ifndef TETON_ENABLE_OPENACC
      !$omp end parallel do
-#endif
 
    enddo
 
-#ifdef TETON_ENABLE_OPENACC
-   !$acc end parallel loop
-#else
    TOMP(end target teams distribute)
-#endif
 
    TOMP(target update from(Rad% radEnergy))
 

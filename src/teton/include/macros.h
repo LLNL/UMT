@@ -27,8 +27,10 @@
 ! - AB
 #ifdef TETON_COMPILE_ASSERTS
 #   define TETON_ASSERT(bool,s) call f90assert(bool,__FILE__,__LINE__,s)
+#   define TETON_ASSERT_C_BOOL(bool,s) call f90assert(logical(bool),__FILE__,__LINE__,s)
 #else
 #   define TETON_ASSERT(bool,s)
+#   define TETON_ASSERT_C_BOOL(bool,s)
 #endif
 
 #define TETON_VERIFY(bool,s) call f90verify(bool,__FILE__,__LINE__,s)
@@ -83,15 +85,16 @@
 # define TETON_OPENMP_HAS_USE_DEVICE_ADDR
 #endif
 
-#ifdef TETON_ENABLE_OPENACC
-# define ATOMIC_UPDATE !$acc atomic update
-# define ATOMIC_END !$acc end atomic
-#elif defined(TETON_ENABLE_OPENMP_OFFLOAD)
+#if defined(TETON_ENABLE_OPENMP_OFFLOAD)
 # define ATOMIC_UPDATE !$omp atomic update
 # define ATOMIC_END !$omp end atomic
 #else
 # define ATOMIC_UPDATE
 # define ATOMIC_END
+#endif
+
+#if defined(TETON_ENABLE_OPENACC)
+# error OpenACC support has been deprecated.  Please use OpenMP.
 #endif
 
 #endif

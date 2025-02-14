@@ -177,7 +177,6 @@ contains
    subroutine setVerbose(self, level)
       class(options_type) :: self
       integer(kind=C_INT), intent(in) :: level
-      integer :: rank, ierr
 
       ! TODO - Remove this when we have a proper teton initialize() function
       call theDatastore%initialize()
@@ -213,10 +212,10 @@ contains
   subroutine setSweepVersion(sweepversion) BIND(C,NAME="teton_setsweepversion")
     integer(kind=C_INT), intent(in) :: sweepversion
 
-    ! 0 = zone sweep
-    ! 1 = corner sweep
+    ! 1 = zone sweep
+    ! 2 = corner sweep
     ! Do not set this to anything else, getSweepVersion will handle the zone sweep case.
-    if ( sweepversion == 1 ) then
+    if ( sweepversion == 2 ) then
        call theDatastore%initialize()
 
        call theDatastore%root%set_path("options/sweep/kernel/version", sweepversion)
@@ -237,7 +236,7 @@ contains
 
     temp = theDatastore%root%has_path("options/sweep/kernel/version")
     if (.NOT. temp) then
-      sweepVersion = 0
+      sweepVersion = 1
     else
       sweepVersion = theDataStore%root%fetch_path_as_int32("options/sweep/kernel/version")
     endif

@@ -5,7 +5,7 @@
 !             of the radiation cycle as an edit.                       *
 !                                                                      *
 !***********************************************************************
-   subroutine rtedit(Tec) BIND(C,NAME="teton_rtedit")
+   subroutine rtedit() BIND(C,NAME="teton_rtedit_new")
 
    USE ISO_C_BINDING
    use kind_mod
@@ -25,10 +25,6 @@
    use SetData_mod
 
    implicit none
-
-!  Arguments
-
-   real(C_DOUBLE), intent(out)     :: Tec(Size%ncornr)
 
 !  Local
 
@@ -151,10 +147,6 @@
          PowerAbsorbed = PowerAbsorbed + Geom% Volume(c0+c)*Rad% PhiTotal(g,c0+c)* &
                                          Mat%Siga(g,zone)
        enddo
-
-!  Electron temperature
-
-       Tec(c0+c) = Mat%tec(c0+c)
 
 !  These are computed in UpdateMaterialCoupling
        PowerEmitted     = PowerEmitted     + Mat% PowerEmitted(c0+c)

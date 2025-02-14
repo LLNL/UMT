@@ -34,6 +34,9 @@ module Datastore_mod
       procedure :: save_hdf5
       procedure :: initialize
       procedure :: partitioning
+      ! This will return root["blueprint_partitioned"] if partitioning,
+      !   root["blueprint"] otherwise
+      procedure :: blueprint_node
 
   end type datastore_type
 
@@ -105,6 +108,21 @@ contains
       if (value .ne. 0) then
         res = .TRUE.
       endif
+    endif
+  end function
+
+!=======================================================================
+! Get whether partitioning is enabled.
+!=======================================================================
+  function blueprint_node(self) result(res)
+    type(node) :: res
+    class(datastore_type) :: self
+    character(len=80) :: str
+
+    if (self%partitioning()) then
+       res = theDatastore%root%fetch("blueprint_partitioned")
+    else
+       res = theDatastore%root%fetch("blueprint")
     endif
   end function
 

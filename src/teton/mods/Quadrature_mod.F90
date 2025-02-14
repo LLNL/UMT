@@ -13,6 +13,8 @@ module Quadrature_mod
 
   public construct
   public destruct
+  public getNumberOfEnergyGroups
+  public getNumberOfAngles
                                                                                  
   type, public :: Quadrature 
 
@@ -68,6 +70,14 @@ module Quadrature_mod
 
   interface destruct
     module procedure Quadrature_dtor
+  end interface
+
+  interface getNumberOfEnergyGroups
+    module procedure Quadrature_getNumberOfEnergyGroups
+  end interface
+
+  interface getNumberOfAngles
+    module procedure Quadrature_getNumberOfAngles
   end interface
 
 contains
@@ -416,6 +426,65 @@ contains
 
   end subroutine Quadrature_dtor
 
+!-----------------------------------------------------------------------
+!    Returns the number of groups
+!-----------------------------------------------------------------------
+  function Quadrature_getNumberOfEnergyGroups(self) result(nGroups)
+     type(Quadrature), intent(in) :: self
+     integer                      :: nGroups
+
+     nGroups = self% Groups
+
+     return
+
+  end function Quadrature_getNumberOfEnergyGroups
+
+!-----------------------------------------------------------------------
+!    Returns the number of energy groups, c callable
+!-----------------------------------------------------------------------
+  function Teton_Quadrature_getNumberOfEnergyGroups(cptr) bind(c) result(nGroups)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(Quadrature), pointer      :: fptr
+
+     integer(kind=c_int)            :: nGroups
+     call c_f_pointer(cptr, fptr)
+     nGroups = getNumberOfEnergyGroups( fptr )
+
+     return
+
+  end function Teton_Quadrature_getNumberOfEnergyGroups
+
+!-----------------------------------------------------------------------
+!    Returns the number of compute angles
+!-----------------------------------------------------------------------
+  function Quadrature_getNumberOfAngles(self) result(nAngles)
+     type(Quadrature), intent(in) :: self
+     integer                      :: nAngles
+
+     nAngles = self% NumAngles
+
+     return
+
+  end function Quadrature_getNumberOfAngles
+
+!-----------------------------------------------------------------------
+!    Returns the number of compute angles, c callable
+!-----------------------------------------------------------------------
+  function Teton_Quadrature_getNumberOfAngles(cptr) bind(c) result(nAngles)
+
+     use, intrinsic :: iso_c_binding, only : c_f_pointer, c_ptr, c_int
+     type(c_ptr), value, intent(in) :: cptr
+     type(Quadrature), pointer      :: fptr
+
+     integer(kind=c_int)            :: nAngles
+     call c_f_pointer(cptr, fptr)
+     nAngles = getNumberOfAngles( fptr )
+
+     return
+
+  end function Teton_Quadrature_getNumberOfAngles
 
 end module Quadrature_mod
 

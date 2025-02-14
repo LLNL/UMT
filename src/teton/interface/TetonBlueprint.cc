@@ -81,7 +81,7 @@ template <typename T> class unique
       std::sort(index_to_id.begin(),
                 index_to_id.end(),
                 [](const std::pair<IndexType, IdType> &lhs, const std::pair<IndexType, IdType> &rhs)
-                { return lhs.first < rhs.first; });
+      { return lhs.first < rhs.first; });
    }
 
    bool find(IndexType index, IdType &id) const
@@ -1240,7 +1240,7 @@ void TetonBlueprint::CreateConnectivityArrays(conduit::Node &meshNode, MPI_Comm 
  @param meshNode The Conduit node that contaisn the meshes.
  @param rank The MPI rank.
  */
-void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int rank)
+void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int /*rank*/)
 {
    CALI_CXX_MARK_FUNCTION;
    // Create face boundary condition field.
@@ -1268,7 +1268,7 @@ void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int ra
    iterate_topology(bndry_topo,
                     bndry_topo_length,
                     [&facemap](int f, const int *face_points, int nface_points)
-                    {
+   {
       // Make an id for this face.
       auto index = facemap.makeIndex(face_points, nface_points);
 
@@ -1285,7 +1285,7 @@ void TetonBlueprint::CreateConduitFaceAttributes(conduit::Node &meshNode, int ra
    iterate_topology(face_topology,
                     face_topo_length,
                     [&facemap, &src_dest](int f, const int *face_points, int nface_points)
-                    {
+   {
       // Make an id for this face.
       auto index = facemap.makeIndex(face_points, nface_points);
 
@@ -1528,8 +1528,8 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
 
    const conduit::Node &face_topology = mMeshNode["topologies/main_face"];
    const int nfaces = conduit::blueprint::mesh::utils::topology::length(face_topology);
-   const conduit::Node &base_topology = mMeshNode["topologies/main"];
-   const int ndim = conduit::blueprint::mesh::utils::topology::dims(base_topology);
+   //const conduit::Node &base_topology = mMeshNode["topologies/main"];
+   //const int ndim = conduit::blueprint::mesh::utils::topology::dims(base_topology);
 
    // First tag each face with the original boundary condition ID from the mesh.
    // This will later be changed to the re-enumerated boundary condition ID (so
@@ -1714,6 +1714,7 @@ void TetonBlueprint::ComputeFaceIDs(std::map<int, std::vector<int>> &boundaries,
 
    // CONDUIT OUTPUT
    // Add to conduit parameters input file
+   // TODO this is local information, not global.  should this really be in the parameters node?
    mParametersNode["boundary_conditions/num_reflecting"] = boundaries_types[0];
    mParametersNode["boundary_conditions/num_vacuum"] = boundaries_types[1];
    mParametersNode["boundary_conditions/num_source"] = boundaries_types[2];

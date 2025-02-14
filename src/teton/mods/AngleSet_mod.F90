@@ -104,6 +104,8 @@ module AngleSet_mod
      integer,         pointer, contiguous :: hplane1(:) => null()
      integer,         pointer, contiguous :: hplane2(:) => null()
      integer,         pointer, contiguous :: ndone(:) => null()
+     integer,         pointer, contiguous :: c1(:) => null()
+     integer,         pointer, contiguous :: c2(:) => null()
   end type HypPlane
 
   type, public :: BdyExit
@@ -463,8 +465,8 @@ contains
 ! construct HyperPlane
 !=======================================================================
   subroutine AngleSet_ctorHypPlane(self, angle, nHyperPlanes, meshCycles, &
-                                   nHyperDomains, elementsInPlane,        &
-                                   CToHypPlane, cycleList)
+                                   nHyperDomains, nZoneSets,              &
+                                   elementsInPlane, CToHypPlane, cycleList)
 
     use Size_mod
     use Geometry_mod
@@ -479,6 +481,7 @@ contains
     integer,         intent(in)    :: nHyperPlanes
     integer,         intent(in)    :: meshCycles
     integer,         intent(in)    :: nHyperDomains
+    integer,         intent(in)    :: nZoneSets
 
     integer,         intent(in)    :: elementsInPlane(nHyperPlanes)
     integer,         intent(in)    :: CToHypPlane(Size% ncornr) 
@@ -507,11 +510,15 @@ contains
     integer                        :: nCFacesEZ
     integer                        :: i
     integer                        :: ii
-    integer                        :: ifp
     integer                        :: zone
     integer                        :: nzones
     integer                        :: ndone
     integer                        :: hp
+    integer                        :: setID
+    integer                        :: cornersPerSet
+    integer                        :: cornersTotal
+    integer                        :: nSetsP
+
     real(adqt)                     :: afp
     real(adqt)                     :: aez
 
@@ -522,21 +529,22 @@ contains
 
 !   Allocate Memory 
 
+! Corner sweep is not yet implemented for grey sweep.
     if ( self% GTASet ) then
-      sweepVersion = 0
+      sweepVersion = 1
     else
-      sweepVersion =  Options% getSweepVersion()
+      sweepVersion = Options% getSweepVersion()
     endif
 
     HypPlanePtr  => self% HypPlanePtr(angle)
 
-    if ( sweepVersion == 0 ) then
+    if ( sweepVersion == 1 ) then
       call Allocator%allocate(Size%usePinnedMemory, self%label, "zonesInPlane", HypPlanePtr% zonesInPlane, nHyperPlanes)
 
       elementsPerDomain            = Size% nzones/nHyperDomains
       HypPlanePtr% zonesInPlane(:) = elementsInPlane(:)
       HypPlanePtr% maxZones        = maxval( elementsInPlane(1:nHyperPlanes) )
-    else
+    else if (sweepVersion == 2 ) then
       call Allocator%allocate(Size%usePinnedMemory, self%label, "cornersInPlane", HypPlanePtr% cornersInPlane, nHyperPlanes)
 
       elementsPerDomain              = Size% ncornr/nHyperDomains
@@ -547,6 +555,8 @@ contains
     call Allocator%allocate(Size%usePinnedMemory, self%label, "hplane1", HypPlanePtr% hplane1, nHyperDomains+1)
     call Allocator%allocate(Size%usePinnedMemory, self%label, "hplane2", HypPlanePtr% hplane2, nHyperDomains)
     call Allocator%allocate(Size%usePinnedMemory, self%label, "ndone",   HypPlanePtr% ndone,   nHyperDomains+1)
+    call Allocator%allocate(Size%usePinnedMemory, self%label, "c1",      HypPlanePtr% c1,      nZoneSets)
+    call Allocator%allocate(Size%usePinnedMemory, self%label, "c2",      HypPlanePtr% c2,      nZoneSets)
 
     allocate( HypPlanePtr% badCornerList(meshCycles+1) )
     allocate( cornerList(Size% ncornr) )
@@ -599,7 +609,7 @@ contains
 
       HyperPlaneLoop: do hPlane=hPlane1,hPlane2
 
-        if ( sweepVersion == 0 ) then
+        if ( sweepVersion == 1 ) then
 
           nzones = elementsInPlane(hPlane)
 
@@ -639,7 +649,7 @@ contains
 
           ndone = ndone + nzones
 
-        else
+        else if ( sweepVersion == 2 ) then
 
           nCorner = elementsInPlane(hPlane)
 
@@ -736,6 +746,36 @@ contains
       HypPlanePtr% badCornerList(mCycle) = cycleList(mCycle)
     enddo
 
+!   The interface list can be very large so divide up the list
+!   Assign a range to each zone set; sets 1->nSetsP get an extra
+!   element if there is a remainder
+
+    if ( nHyperDomains > 1 ) then
+
+      cornersPerSet = HypPlanePtr% interfaceLen/nZoneSets
+      nSetsP        = HypPlanePtr% interfaceLen - (nZoneSets*cornersPerSet)
+      cornersTotal  = 0
+
+      do setID=1,nSetsP
+        HypPlanePtr% c1(setID) = cornersTotal + 1
+        HypPlanePtr% c2(setID) = cornersTotal + cornersPerSet + 1
+        cornersTotal           = cornersTotal + cornersPerSet + 1
+      enddo
+
+      do setID=nSetsP+1,nZoneSets
+        HypPlanePtr% c1(setID) = cornersTotal + 1
+        HypPlanePtr% c2(setID) = cornersTotal + cornersPerSet
+        cornersTotal           = cornersTotal + cornersPerSet
+      enddo
+
+    else
+
+!     If there are no interface elements (nHyperDomains = 1) these are not used
+      HypPlanePtr% c1(:) = 0
+      HypPlanePtr% c2(:) = 0
+
+    endif
+
 
     deallocate( cornerList )
     deallocate( done )
@@ -814,9 +854,9 @@ contains
 
         HypPlanePtr => self% HypPlanePtr(angle)
 
-        if ( sweepVersion == 0 ) then
+        if ( sweepVersion == 1 ) then
           call Allocator%deallocate(Size%usePinnedMemory, self%label, "zonesInPlane",   HypPlanePtr% zonesInPlane)
-        else
+        else if ( sweepVersion == 2 ) then
           call Allocator%deallocate(Size%usePinnedMemory, self%label, "cornersInPlane", HypPlanePtr% cornersInPlane)
         endif
 
@@ -824,6 +864,8 @@ contains
         call Allocator%deallocate(Size%usePinnedMemory, self%label, "hplane2",       HypPlanePtr% hplane2)
         call Allocator%deallocate(Size%usePinnedMemory, self%label, "ndone",         HypPlanePtr% ndone)
         call Allocator%deallocate(Size%usePinnedMemory, self%label, "interfaceList", HypPlanePtr% interfaceList)
+        call Allocator%deallocate(Size%usePinnedMemory, self%label, "c1",            HypPlanePtr% c1)
+        call Allocator%deallocate(Size%usePinnedMemory, self%label, "c2",            HypPlanePtr% c2)
 
         deallocate( HypPlanePtr% badCornerList )
       endif

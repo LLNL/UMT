@@ -351,7 +351,8 @@ contains
 
     if (Size% useGPU) then
 
-      if ( sweepVersion == 0 ) then
+! These are only used in the zone sweep.
+      if ( sweepVersion == 1 ) then
 
         do dom=1,nHyperDomains
           Swp => self% SweepPtr(dom)

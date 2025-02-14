@@ -61,7 +61,7 @@ contains
 ! construct interface
 !=======================================================================
 
-  subroutine Material_ctor(self, nonLTE)
+  subroutine Material_ctor(self, nonLTE, fromRestart)
     use Size_mod, only : Size
     use constant_mod, only : zero
     use, intrinsic :: iso_c_binding, only : c_size_t
@@ -72,13 +72,12 @@ contains
  
     class(Material),   intent(inout) :: self
     logical(kind=1),   intent(in)    :: nonLTE
+    logical(kind=1),   intent(in)    :: fromRestart
 
 !   Some of these data structures are not mapped to the GPU.  Do not use pinned memory.
 !   We still use the MemoryAllocator here, as it adds entries in the conduit
 !   datastore for each allocation.  Adding these to the conduit datastore makes
 !   them easily accessible from C++, or dumping to files for troubleshooting.
-   
-    integer(kind=c_size_t) :: num_corners_size_t
 
     self%label = "material"
 
@@ -93,7 +92,9 @@ contains
     call Allocator%allocate(Size%usePinnedMemory, self%label, "PowerCompton", self%PowerCompton, Size%ncornr)
 
     call Allocator%allocate(Size%usePinnedMemory, self%label, "denec", self%denec, Size%ncornr)
-    call Allocator%allocate(Size%usePinnedMemory, self%label, "Tec", self%Tec, Size%ncornr)
+    if (.not. fromRestart) then
+       call Allocator%allocate(Size%usePinnedMemory, self%label, "Tec", self%Tec, Size%ncornr)
+    endif
     call Allocator%allocate(Size%usePinnedMemory, self%label, "Tecn", self%Tecn, Size%ncornr)
 
     call Allocator%allocate(Size%usePinnedMemory, self%label, "sigA", self%sigA, Size%ngr, Size%nzones)
@@ -113,10 +114,6 @@ contains
     self% isVoid(:)              = .FALSE.
     allocate( self% nonLTE(Size% nzones) )
     self% nonLTE(:)              = .FALSE.
-
-    num_corners_size_t = Size%ncornr
-    ! Remove this when we refactor out the behavior of passing Tec arond in rtedit call.
-    call theDatastore%root%set_path_external_float64_ptr( self%label//"/Tec", self% Tec, num_corners_size_t )
 
     if ( nonLTE ) then
       self% nonLTE(:) = .TRUE.
@@ -155,8 +152,6 @@ contains
 
     call Allocator%deallocate(Size%usePinnedMemory, self%label, "denec", self%denec)
 
-    ! Remove this when we refactor out the behavior of passing Tec arond in rtedit call.
-    call theDatastore%root%remove_path(self%label//"/Tec")
     call Allocator%deallocate(Size%usePinnedMemory, self%label, "Tec", self%Tec)
 
     call Allocator%deallocate(Size%usePinnedMemory, self%label, "Tecn", self%Tecn)

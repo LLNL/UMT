@@ -93,12 +93,16 @@
 !  If the CUDA solver is used the source needs to be mapped to the GPU
 
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
+#if !defined(TETON_OPENMP_HAS_UNIFIED_MEMORY)
    if ( useBoltzmannCompton .and. Size% useCUDASolver .and. Size% ngr >= 16) then
+   START_RANGE("Teton_OpenMP_data_movement")
      do setID=1,nGroupSets
        GSet   => getGroupSetData(Quad, setID)
        TOMP_UPDATE(target update to (GSet% STotal))
      enddo
+   END_RANGE("Teton_OpenMP_data_movement")
    endif
+#endif
 #endif
 
 !  At this point, all sets must have the same number of angles
@@ -108,19 +112,21 @@
 
 !  If this is the first flux iteration, initialize the communication
 !  order and incident flux on shared boundaries
-
-   START_RANGE("Teton_Init_Comm_Order")
    do cSetID=1,nCommSets
 
      CSet => getCommSetData(Quad, cSetID)
 
+     START_RANGE("Teton_Comm_Init_Order")
      call restoreCommOrder(CSet)
+     END_RANGE("Teton_Comm_Init_Order")
+     START_RANGE("Teton_SetIncidentFlux")
      call setIncidentFlux(cSetID)
+     END_RANGE("Teton_SetIncidentFlux")
    enddo
-   END_RANGE("Teton_Init_Comm_Order")
 
 !  Begin Flux Iteration 
 
+   START_RANGE("Teton_Flux_Iter_Loop")
    fluxIter         = 0
    FluxConverged(:) = .FALSE.
 
@@ -130,18 +136,18 @@
 
 !    Post receives for all data
 
-     START_RANGE("Teton_Comm_Boundary_Fluxes")
+     START_RANGE("Teton_Comm_Post_Receives")
      do cSetID=1,nCommSets
        call InitExchange(cSetID)
      enddo
-     END_RANGE("Teton_Comm_Boundary_Fluxes")
+     END_RANGE("Teton_Comm_Post_Receives")
 
 !    Loop over angles, solving for each in turn:
 
      AngleLoop: do sendIndex=1,NumAnglesDyn
-
-       START_RANGE("Teton_Comm_Boundary_Fluxes")
-
+       START_RANGE("Teton_Comm_Send_Recv_Fluxes")
+! GPU-Aware MPI on RZADAMs crashes if MPI calls are made from CPU threads.
+! See issue #583 on gitlab for more info. -- black27
 !!$omp parallel do default(none) schedule(dynamic) &
 !!$omp& shared(nCommSets,Quad,SnSweep, sendIndex) &
 !!$omp& private(CSet,Angle)
@@ -161,7 +167,7 @@
 
        enddo
 !!$omp end parallel do
-       END_RANGE("Teton_Comm_Boundary_Fluxes")
+       END_RANGE("Teton_Comm_Send_Recv_Fluxes")
 
        do setID=1,nSets
 
@@ -170,16 +176,17 @@
 
 !        Update incident fluxes on reflecting boundaries
 
-         START_RANGE("Teton_Update_Reflecting_Fluxes")
+         START_RANGE("Teton_Update_Fluxes_On_Refl_Boundaries")
          call snreflect(SnSweep, setID, Angle)
-         END_RANGE("Teton_Update_Reflecting_Fluxes")
+         END_RANGE("Teton_Update_Fluxes_On_Refl_Boundaries")
 
 !  Map the latest boundary values
 
-         START_RANGE("Teton_OpenMP_Updates")
+#if !defined(TETON_OPENMP_HAS_UNIFIED_MEMORY)
+         START_RANGE("Teton_OpenMP_data_movement")
          TOMP_UPDATE(target update to( Set%PsiB(:,:,Angle) ) )
-         END_RANGE("Teton_OpenMP_Updates")
-
+         END_RANGE("Teton_OpenMP_data_movement")
+#endif
        enddo
 
 !      Sweep the mesh, calculating PSI for each corner; the 
@@ -190,9 +197,9 @@
        AngleType: if ( .not. ASet% FinishingDirection(Angle) ) then
 
          time1 = MPIWtime()
-         START_RANGE("Teton_Calc_Rad_Energy_Density")
+         START_RANGE("Teton_Sweep_Kernel")
 
-         if (sweepVersion == 0) then
+         if (sweepVersion == 1) then
 
            if (ndim == 3) then
              call SweepUCBxyz_GPU(nSets, sendIndex, savePsi)
@@ -200,7 +207,7 @@
              call SweepUCBrz_GPU(nSets, sendIndex, savePsi)
            endif
 
-         elseif (sweepVersion == 1) then
+         elseif (sweepVersion == 2) then
 
            if (ndim == 3) then
              call CornerSweepUCBxyz_GPU(nSets, sendIndex, savePsi)
@@ -211,13 +218,13 @@
          else
            TETON_FATAL("Invalid value set for Sweep kernel version to use.")
          endif
-         END_RANGE("Teton_Calc_Rad_Energy_Density")
+         END_RANGE("Teton_Sweep_Kernel")
 
 !    Update the total scalar intensity on the GPU
 
-         START_RANGE("Teton_Update_Total_Scalar_Intensity")
+         START_RANGE("Teton_Total_Scalar_Intensity")
          call getPhiTotal(sendIndex)
-         END_RANGE("Teton_Update_Total_Scalar_Intensity")
+         END_RANGE("Teton_Total_Scalar_Intensity")
 
          time2 = MPIWtime()
          dtime = (time2 - time1)/sixty
@@ -230,17 +237,18 @@
          Set   => getSetData(Quad, setID)
          Angle =  Set% AngleOrder(sendIndex)
 
+#if !defined(TETON_OPENMP_HAS_UNIFIED_MEMORY)
          START_RANGE("Teton_OpenMP_Updates")
          TOMP_UPDATE(target update from( Set%PsiB(:,:,Angle) ))
          END_RANGE("Teton_OpenMP_Updates")
-
+#endif
        enddo
 
      enddo AngleLoop
 
 !    Test convergence of incident fluxes
 
-     START_RANGE("Teton_Sweep_Test_Conv")
+     START_RANGE("Teton_Test_For_Conv")
 !$omp parallel do default(none) schedule(static) &
 !$omp& shared(nCommSets, FluxConverged)
      do cSetID=1,nCommSets
@@ -255,14 +263,15 @@
 
      enddo
 !$omp end parallel do
-     END_RANGE("Teton_Sweep_Test_Conv")
 
 !    If this is the end of the radiation step and we are saving Psi do
 !    not perform additional sweeps
 
+     END_RANGE("Teton_Test_For_Conv")
      if (savePsi) then
        exit FluxIteration
      endif
+     START_RANGE("Teton_Test_For_Conv")
 
      nConv = 0
      do cSetID=1,nCommSets
@@ -274,7 +283,11 @@
      nNotConv = nCommSets - nConv
 
 !    Make sure all processes are in sync
+     START_RANGE("Teton_Comm_All_Reduce_On_Conv")
      call MPIAllReduce(nNotConv, "max", MY_COMM_GROUP)
+     END_RANGE("Teton_Comm_All_Reduce_On_Conv")
+
+     END_RANGE("Teton_Test_For_Conv")
 
      if ( nNotConv == 0 .or. fluxIter >= maxIters ) then
        exit FluxIteration
@@ -283,10 +296,10 @@
      endif
 
    enddo FluxIteration
+   END_RANGE("Teton_Flux_Iter_Loop")
 
 
    deallocate( FluxConverged )
-
 
    return
    end subroutine SetSweep_GPU 

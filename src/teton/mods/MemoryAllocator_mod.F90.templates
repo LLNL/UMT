@@ -73,6 +73,7 @@
       call self%umpire_host_allocator%deallocate(varPtr)
 #endif
       else
+         TETON_VERIFY(associated(varPtr), "MemoryAllocator: Deallocation failed for "//parentName//"/"//varName//", was not associated.")
          deallocate( varPtr )
       endif
 
@@ -135,6 +136,7 @@
       call self%umpire_host_allocator%deallocate(varPtr)
 #endif
       else
+         TETON_VERIFY(associated(varPtr), "MemoryAllocator: Deallocation failed for "//parentName//"/"//varName//", was not associated.")
          deallocate( varPtr )
       endif
 

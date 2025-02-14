@@ -36,9 +36,7 @@
 
    integer    :: tempIter, nTotalSweeps, izero
    integer    :: ndim
-   integer    :: nThreadsInitial
    integer    :: maxIterCheck
-   integer    :: sweepVersion
 
    real(adqt) :: maxEnergyDensityError, maxTempError 
    real(adqt) :: time1, time2, dtime, epsilonCheck
@@ -52,7 +50,10 @@
    type(IterControl) , pointer :: incidentFluxControl => NULL()
    type(IterControl) , pointer :: nonlinearControl => NULL()
 
+#if defined(TETON_ENABLE_OPENMP)
+   integer    :: nThreadsInitial
    integer(kind=c_int) :: numOMPThreads
+#endif
 
    character(len=512)   :: descriptor
 
@@ -68,8 +69,6 @@
    Size%SweepTimeCycle    = zero
    Size%GPUSweepTimeCycle = zero
    Size%GTATimeCycle      = zero
-
-   sweepVersion           = Options%getSweepVersion()
 
    savePsi = .FALSE.
 

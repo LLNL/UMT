@@ -132,8 +132,7 @@
 !  careful for very small zone counts so we estimate a
 !  maximum number based on the number of zones. We also limit
 !  the maximum # based on performance observations. This value is set
-!  in cmake/GetGPUInfo to 12 currently.  This number 
-!  could change in the future.   PFN 03/29/2024
+!  in cmake/GetGPUInfo to 40 currently.  PFN 08/28/2024 
 
    nHypDomMax = int( sqrt( real(Size%nzones) )/2 )
    nHypDomMax = min( nHypDomMax, max_num_hyperdomains )

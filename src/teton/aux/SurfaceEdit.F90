@@ -364,7 +364,7 @@
 
              ! Note that we only ever reach this part of the code if
              !  computeIncident = true
-             TETON_ASSERT(computeIncident, "Should not try to compute incident power in SurfaceEdit if computeIncident is .false.")
+             TETON_ASSERT_C_BOOL(computeIncident, "Should not try to compute incident power in SurfaceEdit if computeIncident is .false.")
              TETON_ASSERT(cOpp > 0, "cOpp must be a positive index")
 
              timeBinPlusNBins = timeBin + numTimeBins

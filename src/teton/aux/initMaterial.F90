@@ -7,24 +7,18 @@
 !                                                                      *
 !***********************************************************************
 
-   subroutine initMaterial(Tec) BIND(C,NAME="teton_initmaterial")
+   subroutine initMaterial() BIND(C,NAME="teton_initmaterial_new")
 
    USE ISO_C_BINDING
-   use kind_mod
    use constant_mod
    use Size_mod 
    use Material_mod
 
    implicit none
 
-!  Arguments
-
-   real(C_DOUBLE), intent(in)   :: Tec(Size%ncornr)
-
 !  Local
 
    integer  :: zone
-   integer  :: c
 
    do zone=1,Size%nzones
 
@@ -35,11 +29,6 @@
      Mat% trz(zone) = zero 
 
    enddo
-
-   do c=1,Size% ncornr
-     Mat%tec(c) = Tec(c)
-   enddo 
-
 
    return
    end subroutine initMaterial 

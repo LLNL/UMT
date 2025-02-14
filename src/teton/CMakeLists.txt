@@ -11,6 +11,64 @@ cmake_policy(SET CMP0076 NEW)
 # add teton library target
 add_library ( teton STATIC )
 
+# For AMD C++ and HPE CC Fortran builds that have OpenMP target kernels, the vendor recommendation is to link with the CCE Fortran compiler,
+# but linking with CCE Fortran can be difficult to implement on large code bases across multiple libraries.
+#
+# If the AMD C++ compiler is used to link, some extra steps are needed to manually inject OpenMP runtime symbols before and after the
+# library.
+#
+# Experimental support is provided in the CMake below to perform these steps as a post_build step.
+#
+# This functionally depends on:
+# - the location of the cce_omp_offload_linker being in a known location relative to the Fortran compiler.
+# - the linker tool requiring only these three env vars to be set:
+# -- CRAY_OMP_TOOL_PATH
+# -- CRAY_BINUTILS_BIN
+# -- ROCM_PATH
+#
+# A ticket has been created for AMD and HPE requesting that the above items be added as command line args to
+# the linker to reduce dependencies on env vars and the fragility of this functionality.
+
+if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
+
+   if (INJECT_OPENMP_OFFLOAD_SYMBOLS_EXPERIMENTAL AND ENABLE_OPENMP_OFFLOAD)
+      message(STATUS Detected Fortran compiler id  ${CMAKE_Fortran_COMPILER_ID})
+      message(STATUS Detected Fortran compiler name  ${CMAKE_Fortran_COMPILER_VERSION})
+      message(STATUS Detected Fortran compiler path  ${CMAKE_Fortran_COMPILER})
+
+      if (NOT DEFINED HIP_ROOT_DIR)
+         message( FATAL_ERROR " Must set HIP_ROOT_DIR when using Cray compiler openmp offload functionality.")
+      endif()
+
+      set(CRAY_OMP_TOOL_PATH /opt/cray/pe/cce/${CMAKE_Fortran_COMPILER_VERSION}/cce/x86_64/bin/cce_omp_offload_linker)
+      if (NOT EXISTS ${CRAY_OMP_TOOL_PATH})
+         message (FATAL_ERROR " Cray OMP offload tool not found at: ${CRAY_OMP_TOOL_PATH}.  You may need to set the CMake var CRAY_OMP_TOOL_PATH manually.")
+      endif()
+
+      set(CRAY_BINUTILS_BIN /opt/cray/pe/cce/${CMAKE_Fortran_COMPILER_VERSION}/binutils/x86_64/bin)
+      if (NOT EXISTS ${CRAY_BINUTILS_BIN})
+         message (FATAL_ERROR " Cray bintuils bin path not found at: ${CRAY_BINUTILS_BIN}.  You may need to set the CMake var CRAY_BINUTILS_BIN manually.")
+      endif()
+
+      set(CRAY_PE_USE_CLANG /opt/cray/pe/cce/${CMAKE_Fortran_COMPILER_VERSION}/cce-clang/x86_64/bin/clang)
+      if (NOT EXISTS ${CRAY_PE_USE_CLANG})
+         message (FATAL_ERROR " Cray clang not found at: ${CRAY_PE_USE_CLANG}.  You may need to set the CMake var CRAY_PE_USE_CLANG manually.")
+      endif()
+
+      add_custom_command( TARGET teton POST_BUILD
+         COMMAND ROCM_PATH=${HIP_ROOT_DIR} CRAY_BINUTILS_BIN=${CRAY_BINUTILS_BIN} CRAY_PE_USE_CLANG=${CRAY_PE_USE_CLANG} ${CRAY_OMP_TOOL_PATH} --arch ${CMAKE_HIP_ARCHITECTURES} --device-link-only --output-begin=begin.o --output-end=end.o -- libteton.a
+         COMMAND ${CMAKE_COMMAND} -E make_directory tmp_obj_files
+         COMMAND ${CMAKE_COMMAND} -E rename libteton.a tmp_obj_files/libteton.original.a
+         COMMAND ${CMAKE_COMMAND} -E chdir tmp_obj_files ${CMAKE_AR} x libteton.original.a
+         COMMAND ${CMAKE_AR} rc libteton.a begin.o tmp_obj_files/*.o end.o
+         COMMAND ${CMAKE_COMMAND} -E remove_directory tmp_obj_files
+         COMMAND ${CMAKE_COMMAND} -E remove begin.o
+         COMMAND ${CMAKE_COMMAND} -E remove end.o
+         COMMENT "Executed post-build script"
+      )
+   endif()
+endif()
+
 if (ENABLE_FIND_MPI)
   target_link_libraries( teton PUBLIC MPI::MPI_Fortran MPI::MPI_CXX )
 endif()
@@ -29,12 +87,6 @@ endif()
 
 if( ENABLE_OPENMP )
   target_link_libraries( teton PUBLIC OpenMP::OpenMP_Fortran)
-endif()
-
-# Use CMake generator to only apply this flag on Fortran files. - black27
-# TODO - Remove OpenACC support as soon as HPE has performant OpenMP in the CCE compiler.
-if( ENABLE_OPENACC )
-  target_compile_options(teton PUBLIC "$<$<COMPILE_LANGUAGE:Fortran>:${OpenACC_Fortran_FLAGS}>")
 endif()
 
 target_sources( teton INTERFACE include/TetonInterface.hh )
@@ -60,15 +112,14 @@ if (ENABLE_CALIPER)
    endif()
 endif()
 
-if (ENABLE_BLUEPRINT_INTERFACE)
-  target_sources( teton INTERFACE include/TetonSources.hh )
-  target_sources( teton INTERFACE include/TetonBlueprint.hh )
-  target_sources( teton INTERFACE include/TetonSurfaceTallies.hh )
-  target_sources( teton INTERFACE include/TetonConduitInterface.hh )
-  target_sources( teton INTERFACE include/TetonNDAccessor.hh )
-  target_sources( teton INTERFACE include/TetonTesting.hh )
-  target_sources( teton INTERFACE include/TetonUtilities.hh )
-endif()
+target_sources( teton INTERFACE include/TetonSources.hh )
+target_sources( teton INTERFACE include/TetonBlueprint.hh )
+target_sources( teton INTERFACE include/TetonSurfaceTallies.hh )
+target_sources( teton INTERFACE include/TetonConduitInterface.hh )
+target_sources( teton INTERFACE include/TetonNDAccessor.hh )
+target_sources( teton INTERFACE include/TetonTesting.hh )
+target_sources( teton INTERFACE include/TetonUtilities.hh )
+target_sources( teton INTERFACE include/TetonModulesCInterfaces.hh )
 
 target_include_directories( teton PRIVATE include
                             ${CONDUIT_INCLUDE_DIR}
@@ -100,12 +151,10 @@ target_include_directories( teton PUBLIC include ${PROJECT_BINARY_DIR}/teton/inc
 
 install( FILES "include/TetonInterface.hh" DESTINATION include )
 
-if (ENABLE_BLUEPRINT_INTERFACE)
-   install( FILES "include/TetonConduitInterface.hh" DESTINATION include )
-   install( FILES "include/TetonBlueprint.hh" DESTINATION include )
-   install( FILES "include/TetonSurfaceTallies.hh" DESTINATION include )
-   install( FILES "include/TetonSources.hh" DESTINATION include )
-endif()
+install( FILES "include/TetonConduitInterface.hh" DESTINATION include )
+install( FILES "include/TetonBlueprint.hh" DESTINATION include )
+install( FILES "include/TetonSurfaceTallies.hh" DESTINATION include )
+install( FILES "include/TetonSources.hh" DESTINATION include )
 
 install( FILES "${PROJECT_BINARY_DIR}/teton/include/TetonVersion.hh" DESTINATION include )
 
@@ -124,10 +173,6 @@ endforeach()
 ################################################
 
 if(ENABLE_TESTS)
-
-  if (NOT ENABLE_BLUEPRINT_INTERFACE)
-    message( ERROR "Blueprint interface support must be enabled for the test driver build.")
-  endif()
 
   add_executable( test_driver
                   driver/test_driver.cc )
@@ -168,11 +213,6 @@ if(ENABLE_TESTS)
                          ${CONDUITRELAYMPI_LIBRARIES}
                          ${CONDUITRELAYMPIIO_LIBRARIES}
                        )
-
-# TODO - Remove OpenACC support as soon as HPE has performant OpenMP in the CCE compiler.
-  if( ENABLE_OPENACC )
-    set_target_properties(test_driver PROPERTIES LINK_FLAGS ${OpenACC_Fortran_FLAGS})
-  endif()
 
   if( ENABLE_OPENMP )
     target_link_libraries( test_driver PUBLIC OpenMP::OpenMP_Fortran)
