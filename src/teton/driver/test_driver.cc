@@ -41,7 +41,6 @@
 #include "conduit/conduit_relay_mpi_io_blueprint.hpp"
 
 #if defined(TETON_ENABLE_CALIPER)
-#include "adiak.hpp"
 #include "caliper/cali-manager.h"
 #include "caliper/cali-mpi.h"
 #include "caliper/cali.h"
@@ -49,6 +48,10 @@
 #define CALI_MARK_BEGIN(label)
 #define CALI_MARK_END(label)
 #define CALI_CXX_MARK_FUNCTION ;
+#endif
+
+#if defined(TETON_ENABLE_ADIAK)
+#include "adiak.hpp"
 #endif
 
 void abort(std::string message)
@@ -270,7 +273,7 @@ void TetonDriver::initialize()
    feenableexcept(FE_OVERFLOW);
 #endif
 
-#if defined(TETON_ENABLE_CALIPER)
+#if defined(TETON_ENABLE_ADIAK)
    adiak::init((void *) &comm);
    adiak::user();
    adiak::launchdate();
@@ -940,6 +943,8 @@ void TetonDriver::startCaliper(const std::string &label2)
       }
       mgr.start();
    }
+#endif
+#if defined(TETON_ENABLE_ADIAK)
    if (!label2.empty())
    {
       adiak::value("ProblemName", label2, adiak_general);
@@ -1648,8 +1653,11 @@ void TetonDriver::finalize()
 
    release();
 
-#if defined(TETON_ENABLE_CALIPER)
+#if defined(TETON_ENABLE_ADIAK)
    adiak::fini();
+#endif
+
+#if defined(TETON_ENABLE_CALIPER)
    std::cout << "=================================================================" << std::endl;
    mgr.flush();
    std::cout << "=================================================================" << std::endl;
