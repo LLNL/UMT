@@ -1,0 +1,82 @@
+spack:
+
+  specs:
+  - umt @develop +openmp +openmp_offload +umpire +rocm +tests +caliper                                                                                                                                
+  - caliper ~papi ~libunwind +mpi ~libdw ~adiak
+  - conduit +fortran +mpi ~python ~parmetis ~hdf5 ~test
+
+  concretizer:
+    unify: true
+  view: true
+
+  compilers:
+  - compiler:
+      spec: cce@18.0.0f-magic-rocm-6.2.1
+      paths:
+        cc: /usr/tce/packages/cce/cce-18.0.0f-magic/bin/craycc
+        cxx: /usr/tce/packages/cce/cce-18.0.0f-magic/bin/crayCC
+        f77: /usr/tce/packages/cce/cce-18.0.0f-magic/bin/crayftn
+        fc: /usr/tce/packages/cce/cce-18.0.0f-magic/bin/crayftn
+      flags:
+        cppflags: -D__HIP_PLATFORM_AMD__
+        fflags: -fPIC
+        cxxflags: -fPIC
+        cflags: -fPIC
+      operating_system: rhel8
+      target: any
+      modules:
+      - StdEnv
+      - cce/18.0.0f-magic
+      - rocm/6.2.1
+      - craype-accel-amd-gfx942
+      - cray-mpich/8.1.30
+      environment: {}
+
+  packages:
+    all:
+      require: '%cce@=18.0.0f-magic-rocm-6.2.1'
+      providers:
+        mpi: [cray-mpich]
+      variants:
+      - build_type=RelWithDebInfo
+      - ~shared
+      - +rocm amdgpu_target=gfx942
+
+    cmake:
+      externals:
+      - spec: cmake@3.24.2
+        prefix: /usr/tce/packages/cmake/cmake-3.24.2
+      buildable: false
+    gmake:
+      externals:
+      - spec: gmake@4.2.1
+        prefix: /usr
+      buildable: false
+    cray-mpich:
+      externals:
+      - spec: cray-mpich@8.1.30%cce
+        prefix: /opt/cray/pe/mpich/8.1.30/ofi/crayclang/18.0
+      buildable: false
+    hip:
+      version: [6.2.1]
+      buildable: false
+      externals:
+      - spec: hip@6.2.1
+        prefix: /opt/rocm-6.2.1/
+    hsa-rocr-dev:
+      version: [6.2.1]
+      buildable: false
+      externals:
+      - spec: hsa-rocr-dev@6.2.1
+        prefix: /opt/rocm-6.2.1/
+    llvm-amdgpu:
+      version: [6.2.1]
+      buildable: false
+      externals:
+      - spec: llvm-amdgpu@6.2.1
+        prefix: /opt/rocm-6.2.1/llvm
+    python:
+      externals:
+      - spec: python@3.8.8+bz2+ctypes+dbm+lzma+nis+pyexpat+readline+sqlite3+ssl+tix+tkinter+uuid+zlib
+        prefix: /usr
+      buildable: false
