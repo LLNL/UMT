@@ -221,13 +221,15 @@ if(ENABLE_CALIPER)
    if(ENABLE_FIND_PACKAGE_CONFIG_MODE)
      # Use package config files for ADIAK and CALIPER. (experimental)
 
-     # Must be lowercase
-     message(STATUS "Looking for adiak in ${ADIAK_ROOT}")
-     find_package(adiak
-                  REQUIRED
-                  CONFIG
-                  PATHS ${ADIAK_ROOT}/lib/cmake/adiak
-                  )
+     if(ADIAK_ROOT)
+	     # Must be lowercase
+	     message(STATUS "Looking for adiak in ${ADIAK_ROOT}")
+	     find_package(adiak
+	                  REQUIRED
+	                  CONFIG
+	                  PATHS ${ADIAK_ROOT}/lib/cmake/adiak
+	                  )
+     endif()
 
      message(STATUS "Looking for caliper in ${CALIPER_ROOT}")
      find_package(Caliper
@@ -240,7 +242,9 @@ if(ENABLE_CALIPER)
      target_include_directories( caliper INTERFACE ${CALIPER_ROOT}/include/caliper/fortran)
    else()
      find_package(Caliper)
-     find_package(Adiak)
+     if(ADIAK_ROOT)
+	     find_package(Adiak)
+     endif()
    endif()
 
    add_compile_definitions( "TETON_ENABLE_CALIPER" )
