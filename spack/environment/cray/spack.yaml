@@ -3,7 +3,7 @@ spack:
   specs:
   - umt @develop +openmp +openmp_offload +umpire +rocm +tests +caliper                                                                                                                                
   - caliper ~papi ~libunwind +mpi ~libdw ~adiak
-  - conduit +fortran +mpi ~python ~parmetis ~hdf5 ~test
+  - conduit@develop +fortran +mpi ~python ~parmetis ~hdf5 ~test
 
   concretizer:
     unify: true
@@ -22,6 +22,8 @@ spack:
         fflags: -fPIC
         cxxflags: -fPIC
         cflags: -fPIC
+        ldflags: -L/opt/cray/pe/mpich/8.1.30/gtl/lib
+        ldlibs: -lmpi_gtl_hsa
       operating_system: rhel8
       target: any
       modules:
