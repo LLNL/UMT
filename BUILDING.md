@@ -56,4 +56,4 @@ UMT will now be installed in your spack installation directory under "spack/opt/
 
 If you are testing code changes to UMT, you can make needed changes and recompile the code using Spack by using its 'developer' mode.  See the Spack tutorial on this feature at https://spack-tutorial.readthedocs.io/en/latest/tutorial_developer_workflows.html.
 
-An example environment file has been provided for a Cray system with AMD MI300 GPUs in the "umt/spack/environment/cray" directory.  To build with this file, 
+An example environment file has been provided for a Cray system with AMD MI300 GPUs in the "umt/spack/environment/cray" directory.
