@@ -21,7 +21,6 @@
    use constant_mod
    use mpi_param_mod
    use mpif90_mod
-   use default_iter_controls_mod, only : outer_slow_conv_threshold
 
 #if defined(TETON_ENABLE_CALIPER)
    use caliper_mod
@@ -267,6 +266,11 @@
 
    call setNumberOfIterations(temperatureControl,tempIter)
    call setNumberOfIterations(intensityControl,nTotalSweeps)
+! The GTA accumulates the number of iterations in this cycle using several calls
+! within the solver.  These prior calls do not accumulate these into the
+! iteration control TotalNumberOfIterations.  Make one final call to set
+! the # iterations and also accumulate it into the total. -- black27
+   call setNumberOfIterations(greyControl, getNumberOfIterations(greyControl), .TRUE.)
  
 !  Restore openmp max threads to what it was before teton rtmain called
 !  so teton doesn't impact thread behavior of any other libraries that 

@@ -34,7 +34,6 @@ class Umt(CachedCMakePackage, CudaPackage, ROCmPackage):
     variant("umpire", default=False, description="Enable use of Umpire memory library")
     variant("find_mpi", default=True, description="Use CMake find_package(mpi) logic.  Disable to rely on mpicxx, mpif90 compiler wrappers")
     variant("tests", default=True, description="Enable test driver.")
-    variant("host_config_only", default=False, description="Installs only the cmake cache file, for use in debugging.")
 
     conflicts('cuda_arch=none', when='+cuda', msg='CUDA architecture is required')
     conflicts('amdgpu_target=none', when='+rocm', msg='AMD GPU architecture is required')
@@ -53,18 +52,6 @@ class Umt(CachedCMakePackage, CudaPackage, ROCmPackage):
     depends_on("conduit+fortran")
     depends_on("caliper+fortran", when="+caliper")
     depends_on("umpire+fortran", when="+umpire")
-
-    ####################################################################
-    # Note: cmake, build, and install stages are handled by CMakePackage
-    ####################################################################
-
-    def cmake(self, pkg, spec):
-        if "+host_config_only" not in self.spec:
-            super().cmake(pkg, spec)
-
-    def build(self, pkg, spec):
-        if "+host_config_only" not in self.spec:
-            super().build(pkg, spec)
 
     def _get_sys_type(self, spec):
         sys_type = spec.architecture

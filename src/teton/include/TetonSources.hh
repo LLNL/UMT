@@ -10,10 +10,7 @@ class TetonSource
    TetonSource(int nangles, int nsrczones, int ngroups)
       : m_num_angles(nangles),
         m_num_srczones(nsrczones),
-        m_num_groups(ngroups),
-        m_src_values(),
-        m_zone_list(),
-        m_time(-1.)
+        m_num_groups(ngroups)
    {
       if (m_num_srczones > 0)
       {
@@ -49,9 +46,9 @@ class TetonSource
    }
 
   protected:
-   const int m_num_angles;
-   const int m_num_srczones;
-   const int m_num_groups;
+   const int m_num_angles{1};
+   const int m_num_srczones{0};
+   const int m_num_groups{1};
 
    // nangles x nsrczones x ngroups array with the source values with this time step
    //    groups varies fastest, angles varies slowest
@@ -63,7 +60,7 @@ class TetonSource
    std::vector<int> m_zone_list;
 
    // Current value of the time
-   double m_time;
+   double m_time{-1.};
 };
 
 class TetonSourceManager
@@ -124,7 +121,7 @@ class TetonSourceManager
    }
 
   protected:
-   int mRank;
+   int mRank{0};
    std::vector<TetonSource *> m_source_list;
 };
 
@@ -149,7 +146,7 @@ class PointSource : public TetonSource
    // TODO, do we want to make copies of these, or just let these be const pointers?
    std::vector<double> m_profile;         // size m_num_times x m_num_groups x m_num_angles
    std::vector<double> m_time_bin_bounds; // length m_num_time_bins+1
-   int m_num_time_bins;                   //  Number of time bins
+   int m_num_time_bins{0};                //  Number of time bins
 };
 
 #endif // TETON_SOURCES_HH__

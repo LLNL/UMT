@@ -20,7 +20,6 @@ module Quadrature_mod
 
      integer              :: QuadID            ! quadrature ID
      integer              :: Groups            ! number of energy groups 
-     integer              :: maxGroupSets
      integer              :: NumAngles         ! number of angles 
      integer              :: nComputeAngles
      integer              :: maxAngleSets
@@ -143,18 +142,6 @@ contains
     self% NumAngles     = NumAngles 
     self% NumAnglesDyn  = NumAngles
     self% maxAngleSets  = 1
-
-    ! The easiest way to distribute groups across sets is to double the
-    ! number of groups and distribute half the groups to each.  The
-    ! maximium number possible depends on how many halving operations we can
-    ! perform.
-    g = Groups
-    i = 1
-    do while( g > 1 .AND. mod(g,2)==0 )
-      g = g / 2
-      i = i * 2
-    enddo
-    self% maxGroupSets  = i
 
     self% NumMoments    = NumMoments
     self% Order         = Order 

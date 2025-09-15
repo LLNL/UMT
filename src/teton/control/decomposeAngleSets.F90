@@ -1,8 +1,15 @@
 !***********************************************************************
 !                        Last Update:  09/2017, PFN                    *
 !                                                                      *
-!  decomposeAngleSets -   Decomposes an angle set into subsets that    *
+!  decomposeAngleSets -   Decompose all angles into subsets that       *
 !                         may be solved concurrently.                  *I
+!                                                                      *
+!  20250409 BCY - Each angle set created in ConstructPhaseSpaceSets    *
+!     will consist of one of more of these angle subsets.              *
+!   In the extreme ends, we could have 1 angle set with all of the     *
+!   angle subsets (no rank-local parallelism over angle), or           *
+!   numAngleSets = maxAngleSets where each angle subset created here   *
+!   ends up in its own angle set.                                      *
 !                                                                      *
 !***********************************************************************
 

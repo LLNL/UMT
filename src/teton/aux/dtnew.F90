@@ -1,3 +1,4 @@
+#include "macros.h"
 !***********************************************************************
 !                        Last Update:  01/2012, PFN                    *
 !                                                                      *
@@ -21,7 +22,8 @@
    use Size_mod
    use Geometry_mod
    use Material_mod
-   use default_iter_controls_mod, only : outer_slow_conv_threshold
+
+   use Datastore_mod, only: theDatastore
 
    implicit none
 
@@ -36,18 +38,17 @@
 
    integer                :: zone
    integer                :: zoneMaxChangeTe
-   integer                :: zoneMaxChangeTr4
+   integer                :: zoneMaxChangeEr
    integer                :: zoneOSCompton
    integer                :: zoneConvControl
    integer                :: numTempIterations 
-   integer                :: maxTempIterations
    integer                :: ZoneConst(2) 
    integer                :: Rank
    integer                :: myRankInGroup 
    integer                :: nsend 
 
    ! time step votes are stored accoridng to these indices
-   integer, parameter     :: indexTr4=1
+   integer, parameter     :: indexEr=1
    integer, parameter     :: indexTe=2
    integer, parameter     :: indexCompton=3
    integer, parameter     :: indexSlowConv=4
@@ -62,11 +63,23 @@
            dtControl_slowConv, &
            dtControl_noConv /)
 
-   real(adqt)       :: delta_te, delta_tr4, deltaTeMax, deltaTr4Max
-   real(adqt)       :: facTe, facTr4
-   real(adqt)       :: tmin, tez, tezn, tr, trn, tr4, tr4n, TrMax, Tr4Max
-   real(adqt)       :: maxChangeTe, maxChangeTr4
-   real(adqt)       :: threshold
+   real(adqt)       :: delta_te, delta_Er, deltaTeMax, deltaErMax
+   real(adqt)       :: Er_offset
+   real(adqt)       :: facTe, facEr
+   real(adqt)       :: tez, tezn, tr, trn, Er, Ern
+
+   ! User-settable controls with default values:
+   real(adqt)       :: maxChangeTe, maxChangeEr      ! maximum allowed change in Te and Er ("delte" and "deltr" in inputs)
+   real(adqt)       :: Te_cutoff                     ! T_e values below this temperautre do not participate in the dt voting
+   real(adqt)       :: Er_offset_frac                ! The denominator offset for the radiation energy dt vote is Er_offset_frac*(maximum zonal radiation energy)
+   real(adqt)       :: dtReductionLimit              ! Votes for T_r and T_e cannot be smaller than this fraction of the old time step
+   real(adqt)       :: dtIncreaseLimit_t             ! Maximum growth for T_r and T_e based votes
+   real(adqt)       :: dtIncreaseLimit_i             ! Maximum growth for iteration count based votes
+   integer          :: outerSlowConvergenceThreshold ! Above this value, dtSlowConv = dtold
+   integer          :: outerNoConvergenceThreshold   ! Above this value, dtNoConv = dtold*dtNoConvReductionFactor
+   real(adqt)       :: dtNoConvReductionFactor
+
+   character(len=20) :: temp_str ! for printouts in VERIFY
 
    real(adqt)       :: dtMin, dtMax, dtRec, dtRad, my_dtRad 
 
@@ -77,71 +90,98 @@
    ! votes for dt flags
    integer :: constraint = dtControl_invalid  ! default  (overwritten or this routine is broken)
 
-!  Constants
-! TODO: is this tmin an undocumented floor?
    myRankInGroup = Size% myRankInGroup 
-   tmin        = 0.008d0
-
    !  Iteration Control
-   !  Time step is only controlled by temperature iteration
+   !  Time step is only controlled by temperature (outer) iteration count
    temperatureControl => getIterationControl(IterControls,"temperature")
+
+   ! Defaults from before the refactor:
+   maxChangeTe                   = getMaxChangeTe(DtControls) ! currently defined by iteration/delte
+   maxChangeEr                   = getMaxChangeEr(DtControls) ! currently defined by iteration/deltr
+   ! ^ You can change these in the middle of the run by changing iteration/dtcontrols/delte or iteration/dtcontrols/deltr
+   Te_cutoff                     = 0.008d0
+   Er_offset_frac                = 0.01
+   dtReductionLimit              = half
+   dtIncreaseLimit_t             = one+ninth ! i.e., 1.11111...
+   dtIncreaseLimit_i             = two
+   outerSlowConvergenceThreshold = 16_C_INT
+   outerNoConvergenceThreshold   = MIN(20_C_INT, getMaxNumberOfIterations(temperatureControl))
+   dtNoConvReductionFactor       = 0.8_adqt
+
+   ! Optional inputs from datastore:
+   Te_cutoff                     = theDatastore%fetchIfExists("options/iteration/dtcontrols/delte_cutoff", Te_cutoff)
+   Er_offset_frac                = theDatastore%fetchIfExists("options/iteration/dtcontrols/deltr_offset_frac", Er_offset_frac)
+   maxChangeTe                   = theDatastore%fetchIfExists("options/iteration/dtcontrols/delte", maxChangeTe)
+   maxChangeEr                   = theDatastore%fetchIfExists("options/iteration/dtcontrols/deltr", maxChangeEr)
+   dtReductionLimit              = theDatastore%fetchIfExists("options/iteration/dtcontrols/dt_reduction_limit", dtReductionLimit)
+   dtIncreaseLimit_t             = theDatastore%fetchIfExists("options/iteration/dtcontrols/dt_increase_limit_t", dtIncreaseLimit_t)
+   dtIncreaseLimit_i             = theDatastore%fetchIfExists("options/iteration/dtcontrols/dt_increase_limit_i", dtIncreaseLimit_i)
+   outerSlowConvergenceThreshold = theDatastore%fetchIfExists("options/iteration/dtcontrols/outer_slow_convergence_threshold", outerSlowConvergenceThreshold)
+   outerNoConvergenceThreshold   = theDatastore%fetchIfExists("options/iteration/dtcontrols/outer_no_convergence_threshold", outerNoConvergenceThreshold)
+   dtNoConvReductionFactor       = theDatastore%fetchIfExists("options/iteration/dtcontrols/dt_noconv_reduction_factor", dtNoConvReductionFactor)
+
+   WRITE(temp_str, '(F8.4)') Te_cutoff
+   TETON_VERIFY(Te_cutoff > zero, "Electron temperature cutoff for time step vote must be positive. Bad options/iteration/dtcontrols/delte_cutoff value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') Er_offset_frac
+   TETON_VERIFY(Er_offset_frac > zero .and. Er_offset_frac < 1.000001_adqt, "options/iteration/dtcontrols/deltr_offset_frac must be > 0 and <= 1, current value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') maxChangeTe
+   TETON_VERIFY(maxChangeTe > zero, "options/iteration/dtcontrols/delte must be positive, current value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') maxChangeEr
+   TETON_VERIFY(maxChangeEr > zero, "options/iteration/dtcontrols/deltr must be positive, current value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') dtReductionLimit
+   TETON_VERIFY(dtReductionLimit > zero .and. dtReductionLimit < 1.000001_adqt, "options/iteration/dtcontrols/dt_reduction_limit must be > 0 and <= 1, current value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') dtIncreaseLimit_t
+   TETON_VERIFY(dtIncreaseLimit_t > 0.999999_adqt, "options/iteration/dtcontrols/dt_increase_limit_t must be >= 1, current value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') dtIncreaseLimit_i
+   TETON_VERIFY(dtIncreaseLimit_i > 0.999999_adqt, "options/iteration/dtcontrols/dt_increase_limit_i must be >= 1, current value:"//trim(adjustl(temp_str)))
+   WRITE(temp_str, '(F8.4)') dtNoConvReductionFactor
+   TETON_VERIFY(dtNoConvReductionFactor > zero .and. dtNoConvReductionFactor < 1.000001_adqt, "options/iteration/dtcontrols/dt_noconv_reduction_factor must be > 0 and <= 1, current value:"//trim(adjustl(temp_str)))
+
+!  offset for time step control for E_r is 1% of maximum zonal radiation energy
+   tr = Size%tfloor
+   Er_offset = tr*tr*tr*tr*minval(Geom%VolumeZone)
+   do zone=1,Size%nzones
+     tr        = Mat%Trz(zone)
+     Er        = tr*tr*tr*tr*Geom%VolumeZone(zone)
+     Er_offset = max(Er_offset, Er)
+   enddo
+   Er_offset = Er_offset_frac*Er_offset
+
+   call MPIAllReduce(Er_offset, "max", MY_COMM_GROUP)
 
 !  We test on the radiation energy density and electron temperature
 
    zoneMaxChangeTe  = 1 
-   zoneMaxChangeTr4 = 1 
+   zoneMaxChangeEr  = 1
    deltaTeMax       = zero
-   deltaTr4Max      = zero
-   TrMax            = zero
-   Tr4Max           = zero
-
-   do zone=1,Size%nzones
-     Tr = Mat%Trz(zone)
-     if (Tr > tmin) then
-       Tr4    = Tr*Tr*Tr*Tr*Geom% VolumeZone(zone)
-       Tr4Max = max(Tr4, Tr4Max)
-     endif
-   enddo
-
-   threshold = cutoff*Tr4Max
-
-   call MPIAllReduce(THRESHOLD, "max", MY_COMM_GROUP)
+   deltaErMax       = zero
 
    ZoneLoop: do zone=1,Size%nzones
 
-     tr   = Mat%trz(zone)
-     trn  = Mat%trzn(zone)
-     tr4  = tr*tr*tr*tr
-     tr4n = trn*trn*trn*trn 
+     if (.not. Mat% isVoid(zone)) then
 
-     tez  = Mat%tez(zone)
-     tezn = Mat%tezn(zone)
+       tr   = Mat%trz(zone)
+       trn  = Mat%trzn(zone)
+       Er   = tr*tr*tr*tr*Geom%VolumeZone(zone)
+       Ern  = trn*trn*trn*trn*Geom%VolumeZone(zone)
 
-     if (Mat% isVoid(zone)) then
+       delta_Er = abs(Er - Ern)/(Ern + Er_offset)
 
-       delta_tr4 = zero
-       delta_te  = zero
-
-     else
-
-       delta_tr4 = abs(tr4 - tr4n)/tr4n
-
-       if (tr4*Geom% VolumeZone(zone) > threshold) then
-         delta_tr4 = abs(tr4 - tr4n)/tr4n
-
-         if (delta_tr4 > deltaTr4Max) then
-           zoneMaxChangeTr4 = zone 
-           deltaTr4Max = delta_tr4
-         endif
+       if (delta_Er > deltaErMax) then
+         zoneMaxChangeEr = zone
+         deltaErMax = delta_Er
        endif
 
-       if (tez > tmin .and. tezn > tmin) then
-         delta_te  = abs(tez - tezn)/tezn
+       tez  = Mat%tez(zone)
+       tezn = Mat%tezn(zone)
 
-         if (delta_te > deltaTeMax) then
-           zoneMaxChangeTe = zone 
-           deltaTeMax = delta_te
-         endif
+       if (tez > Te_cutoff .and. tezn > Te_cutoff) then
+          delta_te  = abs(tez - tezn)/tezn
+
+          if (delta_te > deltaTeMax) then
+            zoneMaxChangeTe = zone
+            deltaTeMax = delta_te
+          endif
        endif
 
      endif
@@ -152,19 +192,17 @@
 
    constraint = dtControl_none
 
-!  Time step can decrease by only a factor 2 per cycle
+!  Temperature-based time step vote can decrease by only a factor 2 per cycle
 
-   maxChangeTe   = getMaxChangeTe(DtControls)
-   maxChangeTr4  = getMaxChangeTr4(DtControls)
-   dtRad         = getRadTimeStep(DtControls)
+   dtRad  = getRadTimeStep(DtControls)
 
-   facTe  = min(two,deltaTeMax/maxChangeTe)
-   facTr4 = min(two,deltaTr4Max/maxChangeTr4)
+   facTe  = min(one/dtReductionLimit,deltaTeMax/maxChangeTe)
+   facEr = min(one/dtReductionLimit,deltaErMax/maxChangeEr)
 
-!  Time step can increase by only a factor 1/TempFraction per cycle
+!  Temperature-based time step vote can increase by only a factor dtIncreaseLimit_t per cycle
 
-   dtRecList(indexTr4) = dtRad/max(TempFraction,facTr4)
-   dtRecList(indexTe)  = dtRad/max(TempFraction,facTe)
+   dtRecList(indexEr)  = dtRad/max(one/dtIncreaseLimit_t, facEr)
+   dtRecList(indexTe)  = dtRad/max(one/dtIncreaseLimit_t, facTe )
 
 !  Operator-split Compton
 
@@ -173,25 +211,20 @@
 
 !  If the iteration count is approaching the maximum allowed,
 !  do not increase the time step further. 
+   
+   numTempIterations           = getNumberOfIterations(temperatureControl)
+   zoneConvControl             = getZoneOfMax(temperatureControl)
 
-!  20+ iterations is considered slow even if you're allowing for many more outers
-   maxTempIterations = MIN(outer_slow_conv_threshold,getMaxNumberOfIterations(temperatureControl))
-   numTempIterations = getNumberOfIterations(temperatureControl)
-   zoneConvControl   = getZoneOfMax(temperatureControl)
-
-   if (numTempIterations >= IterFraction*maxTempIterations) then
+   if (numTempIterations >= outerSlowConvergenceThreshold) then
      dtRecList(indexSlowConv) = dtRad
    else
-     dtRecList(indexSlowConv) = two*dtRad
+     dtRecList(indexSlowConv) = dtIncreaseLimit_i*dtRad
    endif
 
-!  If the iteration did not converge cut the timestep by IterFraction
-!    We may want to consider cutting it in half instead!
-
-   if (numTempIterations >= maxTempIterations) then
-     dtRecList(indexNoConv) = IterFraction*dtRad
+   if (numTempIterations >= outerNoConvergenceThreshold) then
+     dtRecList(indexNoConv) = dtNoConvReductionFactor*dtRad
    else
-     dtRecList(indexNoConv) = two*dtRad
+     dtRecList(indexNoConv) = dtIncreaseLimit_i*dtRad
    endif
 
    dtMax = getMaxTimeStep(DtControls)
@@ -230,7 +263,7 @@
      if (constraint == dtControl_elecTemp) then
        ZoneConst(1) = zoneMaxChangeTe
      elseif (constraint == dtControl_radTemp) then
-       ZoneConst(1) = zoneMaxChangeTr4
+       ZoneConst(1) = zoneMaxChangeEr
      elseif (constraint == dtControl_slowConv .or. &
              constraint == dtControl_noConv) then
        ZoneConst(1) = zoneConvControl
@@ -259,12 +292,11 @@
    call setDtControls(DtControls,                        &
                       ControlProcess=Rank,               &
                       ControlZone=ZoneConst(1),          &
-                      ZoneMaxChangeTr4=zoneMaxChangeTr4, &
+                      ZoneMaxChangeEr=zoneMaxChangeEr,   &
                       ZoneMaxChangeTe=zoneMaxChangeTe,   &
                       RecTimeStep=dtRad,                 &
-                      MaxFracChangeTr4=deltaTr4Max,      &
+                      MaxFracChangeEr=deltaErMax,        &
                       MaxFracChangeTe=deltaTeMax,        &
-                      Tr4Threshold=threshold,            &
                       dtConstraint=ZoneConst(2) )
 
 

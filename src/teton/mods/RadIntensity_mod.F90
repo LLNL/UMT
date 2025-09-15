@@ -83,9 +83,16 @@ contains
     ! Multi-value fields are not support for visualization, however.
     num_elements_size_t = Size% nzones * Size% ngr
 
-    blueprint_node = theDatastore%blueprint_node()
+    blueprint_node = theDatastore%get_blueprint_node()
     field_path = "fields/radiation_energy_density/"
     call blueprint_node%set_path_external_float64_ptr(trim(field_path)//"values", self% RadEnergyDensity,num_elements_size_t )
+    call blueprint_node%set_path(trim(field_path)//"association", "element")
+    call blueprint_node%set_path(trim(field_path)//"topology", "main")
+
+    num_elements_size_t = Size% nzones
+
+    field_path = "fields/rad_energy/"
+    call blueprint_node%set_path_external_float64_ptr(trim(field_path)//"values", self% radEnergy,num_elements_size_t )
     call blueprint_node%set_path(trim(field_path)//"association", "element")
     call blueprint_node%set_path(trim(field_path)//"topology", "main")
 

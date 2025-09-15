@@ -11,9 +11,9 @@ implicit none
    character (len = *), parameter :: system_type="@CMAKE_SYSTEM@"
    character (len = *), parameter :: cxx_compiler="@CMAKE_CXX_COMPILER@"
    character (len = *), parameter :: fortran_compiler="@CMAKE_Fortran_COMPILER@"
-   integer, parameter :: omp_device_num_processors = @OMP_DEVICE_NUM_PROCESSORS@
    integer, parameter :: omp_device_team_thread_limit = @OMP_DEVICE_TEAM_THREAD_LIMIT@
    integer, parameter :: min_groupset_size = @GSET_MIN_SIZE@
-   integer, parameter :: max_num_hyperdomains = @MAX_NUM_HYPER_DOMAINS@
+   integer, parameter :: max_num_sweep_hyperdomains = @MAX_NUM_SWEEP_HYPER_DOMAINS@
+   integer, parameter :: max_num_gta_hyperdomains = @MAX_NUM_GTA_HYPER_DOMAINS@
 
 end module cmake_defines_mod

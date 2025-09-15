@@ -4,9 +4,39 @@
 #include "conduit/conduit_blueprint_mesh.hpp"
 #include "conduit/conduit_relay_mpi.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdlib> // For std::getenv and std::system
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <vector>
+
+#include <sched.h> // For sched_getcpu()
+#include <set>
+
+#if defined(TETON_ENABLE_OPENMP)
+#include <omp.h>
+#endif
+
+#if defined(TETON_ENABLE_CUDA)
+#include <cuda_runtime.h>
+#elif defined(TETON_ENABLE_HIP)
+#include <hip/hip_runtime.h>
+#endif
+
+extern "C"
+{
+void teton_print_thread_bindings_c()
+{
+   Teton::utilities::printThreadBindings();
+}
+int teton_get_gpu_processor_count_c()
+{
+   return Teton::utilities::getGPUProcessorCount();
+}
+}
 
 namespace Teton
 {
@@ -203,6 +233,173 @@ void Banner::emit(char c, int n) const
 {
    for (int i = 0; i < n; i++)
       std::cout << c;
+}
+
+// Utility function to scan a vector of integers and return
+// the ranges in []'s as a string, for printing to output.
+std::string getConsecutiveRanges(const std::vector<int> &cores)
+{
+   if (cores.empty())
+      return "";
+
+   std::string result;
+   int start = cores[0];
+   int end = cores[0];
+
+   for (size_t i = 1; i < cores.size(); ++i)
+   {
+      if (cores[i] == end + 1)
+      {
+         // Extend the range
+         end = cores[i];
+      }
+      else
+      {
+         // Append the current range to the result and start a new range
+         if (start == end)
+         {
+            result += std::to_string(start) + ",";
+         }
+         else
+         {
+            result += std::to_string(start) + "-" + std::to_string(end) + ",";
+         }
+         start = cores[i];
+         end = cores[i];
+      }
+   }
+
+   // Append the final range
+   if (start == end)
+   {
+      result += std::to_string(start);
+   }
+   else
+   {
+      result += std::to_string(start) + "-" + std::to_string(end);
+   }
+
+   return result;
+}
+
+// Function to check and print the thread bindings, as well as any visible GPUs
+void printThreadBindings()
+{
+#if (TETON_ENABLE_OPENMP)
+   // Retrieve environment variables
+   const char *rocrVisibleDevices = std::getenv("ROCR_VISIBLE_DEVICES");
+   const char *cudaVisibleDevices = std::getenv("CUDA_VISIBLE_DEVICES");
+
+   std::string gpuVisibleDevices;
+
+   if (rocrVisibleDevices)
+   {
+      gpuVisibleDevices = rocrVisibleDevices;
+   }
+
+   else if (cudaVisibleDevices)
+   {
+      gpuVisibleDevices = cudaVisibleDevices;
+   }
+
+   int num_threads = omp_get_max_threads();
+
+   // Vector to store the CPU core each thread ran on
+   std::vector<int> cpu_cores(num_threads, -1);
+
+// Parallel region
+#pragma omp parallel
+   {
+      // Get the thread ID
+      int thread_id = omp_get_thread_num();
+
+      // Get the CPU core the thread is running on
+      int cpu_core = sched_getcpu();
+
+      // Store the core information in the vector
+      cpu_cores[thread_id] = cpu_core;
+   }
+
+   // Use a set to find all unique CPU cores
+   std::set<int> unique_cpu_cores(cpu_cores.begin(), cpu_cores.end());
+
+   // Convert the set to a sorted vector
+   std::vector<int> sorted_cores(unique_cpu_cores.begin(), unique_cpu_cores.end());
+
+   std::string core_ranges = getConsecutiveRanges(sorted_cores);
+
+   // Print list of visible GPUs
+   std::cout << "Threads bound to cores: " << core_ranges << ", visible GPU ids: " << gpuVisibleDevices << std::endl;
+#endif
+}
+
+// Retrieves the number of processors on the GPU.  Currently checks the first GPU visible to a process.
+int getGPUProcessorCount()
+{
+   int nProcs = 0;
+
+#if defined(TETON_ENABLE_CUDA)
+   cudaDeviceProp prop;
+   cudaError_t err = cudaGetDeviceProperties(&prop, 0);
+   if (err != cudaSuccess)
+   {
+      std::cerr << "Teton failed to query device # processors: CUDA error: " << cudaGetErrorString(err) << std::endl;
+      abort();
+   }
+   nProcs = prop.multiProcessorCount;
+
+#elif (TETON_ENABLE_HIP)
+   hipDeviceProp_t prop;
+   hipError_t err = hipGetDeviceProperties(&prop, 0);
+   if (err != hipSuccess)
+   {
+      std::cerr << "Teton failed to query device # processors: HIP error: " << hipGetErrorString(err) << std::endl;
+      abort();
+   }
+   nProcs = prop.multiProcessorCount;
+#endif
+
+   return nProcs;
+}
+
+// This performs the same operation as the energy check in the Fortran written by Ben Yee.
+bool checkEnergyConservation(int rank, const conduit::Node &datastore)
+{
+   bool result = false;
+
+   double energy_check_tolerance = datastore.fetch_existing("options/iteration/relativeTolerance").value();
+   energy_check_tolerance *= 10.0;
+   double energy_radiation = datastore.fetch_existing("rtedits/EnergyRadiation").value();
+   double energy_check = datastore.fetch_existing("rtedits/EnergyCheck").value();
+   double rel_energy_check_result = std::abs(energy_check / (energy_radiation + 1.0e-50));
+
+   if (rel_energy_check_result <= energy_check_tolerance)
+   {
+      result = true;
+   }
+   else
+   {
+      result = false;
+
+      std::cerr << "Teton: Failed energy conservation check on rank " << rank << ". Relative difference of "
+                << std::scientific << rel_energy_check_result << " exceeds tolerance of " << std::scientific
+                << energy_check_tolerance << std::endl;
+
+      double power_incident = datastore.fetch_existing("rtedits/PowerIncident").value();
+      double power_escape = datastore.fetch_existing("rtedits/PowerEscape").value();
+      double power_absorbed = datastore.fetch_existing("rtedits/PowerAbsorbed").value();
+      double power_emitted = datastore.fetch_existing("rtedits/PowerEmitted").value();
+
+      // Energy deposited in material =   -2.4290858270E+07 ERad total =    7.5347327996E+08 Energy check =  -1.8626451492E-07
+      // TODO - Check with Ben if I should make these prints better match the Fortran (example above in above comment ).
+      std::cerr << "Teton:: Energy radiation: " << std::scientific << energy_radiation << std::endl;
+      std::cerr << "Teton:: Power incident: " << std::scientific << power_incident << std::endl;
+      std::cerr << "Teton:: Power escaped: " << std::scientific << power_escape << std::endl;
+      std::cerr << "Teton:: Power absorbed: " << std::scientific << power_absorbed << std::endl;
+      std::cerr << "Teton:: Power emitted: " << std::scientific << power_emitted << std::endl;
+   }
+
+   return result;
 }
 
 } // namespace utilities

@@ -18,6 +18,12 @@
 
 #include <mpi.h>
 
+extern "C"
+{
+void teton_print_thread_bindings_c();
+int teton_get_gpu_processor_count_c();
+}
+
 namespace Teton
 {
 
@@ -170,11 +176,25 @@ class Banner
    void printLine(const std::string s) const;
    void emit(char c, int n) const;
 
-   MPI_Comm comm;
-   int rank;
+   MPI_Comm comm{MPI_COMM_WORLD};
+   int rank{0};
    std::string name;
    static int level;
 };
+
+// Function to execute a shell command and capture its output
+// Used by print_thread_bindings below.
+std::string exec_command(const char *cmd);
+
+// Utility to print the omp thread bindings and any visible amd gpus.
+void printThreadBindings();
+
+// Utility to retrieve the number of processors on a GPU. Used to
+// help Teton determine the number of phase angle set structures to create to populate the GPU.
+int getGPUProcessorCount();
+
+// Checks for unaccounted energy in problem
+bool checkEnergyConservation(int rank, const conduit::Node &datastore);
 
 } // namespace utilities
 

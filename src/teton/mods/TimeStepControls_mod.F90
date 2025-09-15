@@ -10,10 +10,6 @@ module TimeStepControls_mod
 
 ! public interfaces
 
-  real(adqt), parameter, public :: TempFraction=0.9_adqt, &
-                                   IterFraction=0.8_adqt, &
-                                   cutoff=0.01_adqt
-
   public construct 
   public destruct 
   public setDtControls
@@ -22,12 +18,12 @@ module TimeStepControls_mod
   public getRadTimeStep 
   public getRecTimeStep
   public getMaxChangeTe 
-  public getMaxChangeTr4
+  public getMaxChangeEr
   public getMinTimeStep 
   public getMaxTimeStep
-  public getMaxFracChangeTr4 
+  public getMaxFracChangeEr
   public getMaxFracChangeTe
-  public getZoneMaxChangeTr4 
+  public getZoneMaxChangeEr
   public getZoneMaxChangeTe
   public getControlProcess 
   public getControlZone
@@ -36,20 +32,19 @@ module TimeStepControls_mod
   type, public :: TimeStepControls 
 
      integer            :: RadCycle
-     integer            :: ZoneMaxChangeTr4  ! Zone with max change in Tr**4
+     integer            :: ZoneMaxChangeEr   ! Zone with max change in Tr**4
      integer            :: ZoneMaxChangeTe   ! Zone with max change in Te
      integer            :: ControlProcess    ! Process controlling time step
      integer            :: ControlZone       ! Zone controlling time step
                                                                                  
      real(adqt)         :: RadTimeStep       ! Current radiation time step
      real(adqt)         :: RecTimeStep       ! Recommended time step for next cycle
-     real(adqt)         :: MaxFracChangeTr4  ! Max fractional change in Tr**4
+     real(adqt)         :: MaxFracChangeEr   ! Max fractional change in Tr**4
      real(adqt)         :: MaxFracChangeTe   ! Max fractional change in Te
-     real(adqt)         :: Tr4Threshold      ! Tr4 Threshold for time step control
 
      real(adqt)         :: RadTime           ! Current radiation time
      real(adqt)         :: MaxChangeTe       ! Max allowed change in Te per cycle 
-     real(adqt)         :: MaxChangeTr4      ! Max allowed change in Tr**4 per cycle
+     real(adqt)         :: MaxChangeEr       ! Max allowed change in Tr**4 per cycle
      real(adqt)         :: MinTimeStep       ! Minimum allowed time step
      real(adqt)         :: MaxTimeStep       ! Maximum allowed time step
 
@@ -92,8 +87,8 @@ module TimeStepControls_mod
     module procedure TimeStepControls_get_MaxChangeTe
   end interface
 
-  interface getMaxChangeTr4
-    module procedure TimeStepControls_get_MaxChangeTr4
+  interface getMaxChangeEr
+    module procedure TimeStepControls_get_MaxChangeEr
   end interface
 
   interface getMinTimeStep
@@ -104,16 +99,16 @@ module TimeStepControls_mod
     module procedure TimeStepControls_get_MaxTimeStep
   end interface
 
-  interface getMaxFracChangeTr4
-    module procedure TimeStepControls_get_MaxFracChangeTr4
+  interface getMaxFracChangeEr
+    module procedure TimeStepControls_get_MaxFracChangeEr
   end interface
 
   interface getMaxFracChangeTe
     module procedure TimeStepControls_get_MaxFracChangeTe
   end interface
 
-  interface getZoneMaxChangeTr4
-    module procedure TimeStepControls_get_ZoneMaxChangeTr4
+  interface getZoneMaxChangeEr
+    module procedure TimeStepControls_get_ZoneMaxChangeEr
   end interface
 
   interface getZoneMaxChangeTe
@@ -139,7 +134,7 @@ contains
 !=======================================================================
                                                                                    
   subroutine TimeStepControls_ctor(self,RadTimeStep,MaxChangeTe,  &
-                                   MaxChangeTr4,      &
+                                   MaxChangeEr,      &
                                    MinTimeStep,MaxTimeStep)
 
     implicit none
@@ -149,7 +144,7 @@ contains
     type(TimeStepControls),    intent(inout) :: self
     real(adqt), optional, intent(in)         :: RadTimeStep 
     real(adqt), optional, intent(in)         :: MaxChangeTe
-    real(adqt), optional, intent(in)         :: MaxChangeTr4
+    real(adqt), optional, intent(in)         :: MaxChangeEr
     real(adqt), optional, intent(in)         :: MinTimeStep
     real(adqt), optional, intent(in)         :: MaxTimeStep 
 
@@ -169,10 +164,10 @@ contains
       self % MaxChangeTe = 4.0e-1_adqt
     endif
 
-    if (present(MaxChangeTr4)) then
-      self % MaxChangeTr4 = MaxChangeTr4 
+    if (present(MaxChangeEr)) then
+      self % MaxChangeEr = MaxChangeEr
     else
-      self % MaxChangeTr4 = 4.0e-1_adqt 
+      self % MaxChangeEr = 4.0e-1_adqt
     endif
 
     if (present(MinTimeStep)) then
@@ -187,14 +182,13 @@ contains
       self % MaxTimeStep = 1.0e-1_adqt
     endif
 
-    self % ZoneMaxChangeTr4 = -1
+    self % ZoneMaxChangeEr  = -1
     self % ZoneMaxChangeTe  = -1
     self % ControlProcess   = -1
 
-    self % MaxFracChangeTr4 = zero
+    self % MaxFracChangeEr  = zero
     self % MaxFracChangeTe  = zero
     self % RadTime          = zero
-    self % Tr4Threshold     = zero
 
     self % DtConstraint     = dtControl_none
 
@@ -215,19 +209,18 @@ contains
 
     type(TimeStepControls),    intent(inout) :: self
                                                                 
-    self % ZoneMaxChangeTr4 = -1 
+    self % ZoneMaxChangeEr  = -1
     self % ZoneMaxChangeTe  = -1
     self % ControlProcess   = -1
                                                                                          
     self % RadTimeStep      = zero
     self % RecTimeStep      = zero
-    self % MaxFracChangeTr4 = zero
+    self % MaxFracChangeEr  = zero
     self % MaxFracChangeTe  = zero
-    self % Tr4Threshold     = zero
                                                                                          
     self % RadTime          = zero
     self % MaxChangeTe      = zero
-    self % MaxChangeTr4     = zero
+    self % MaxChangeEr      = zero
     self % MinTimeStep      = zero
     self % MaxTimeStep      = zero
                                                                                          
@@ -247,14 +240,13 @@ contains
   subroutine TimeStepControls_set(self,             &
                                   ControlProcess,   &
                                   ControlZone,      &
-                                  ZoneMaxChangeTr4, &
+                                  ZoneMaxChangeEr,  &
                                   ZoneMaxChangeTe,  &
                                   RadCycle,         &
                                   RadTimeStep,      &
                                   RecTimeStep,      &
-                                  MaxFracChangeTr4, &
+                                  MaxFracChangeEr,  &
                                   MaxFracChangeTe,  &
-                                  Tr4Threshold,     &
                                   RadTime,          &
                                   DtConstraint      )
                                                                                          
@@ -265,15 +257,14 @@ contains
     type(TimeStepControls),    intent(inout) :: self
     integer,    optional, intent(in)         :: ControlProcess
     integer,    optional, intent(in)         :: ControlZone
-    integer,    optional, intent(in)         :: ZoneMaxChangeTr4
+    integer,    optional, intent(in)         :: ZoneMaxChangeEr
     integer,    optional, intent(in)         :: ZoneMaxChangeTe
     integer,    optional, intent(in)         :: RadCycle
 
     real(adqt), optional, intent(in)         :: RadTimeStep
     real(adqt), optional, intent(in)         :: RecTimeStep 
-    real(adqt), optional, intent(in)         :: MaxFracChangeTr4
+    real(adqt), optional, intent(in)         :: MaxFracChangeEr
     real(adqt), optional, intent(in)         :: MaxFracChangeTe
-    real(adqt), optional, intent(in)         :: Tr4Threshold
     real(adqt), optional, intent(in)         :: RadTime
 
     integer, optional, intent(in)            :: DtConstraint
@@ -288,8 +279,8 @@ contains
       self % ControlZone = ControlZone
     endif
 
-    if (present(ZoneMaxChangeTr4)) then
-      self % ZoneMaxChangeTr4 = ZoneMaxChangeTr4 
+    if (present(ZoneMaxChangeEr)) then
+      self % ZoneMaxChangeEr = ZoneMaxChangeEr
     endif
 
     if (present(ZoneMaxChangeTe)) then
@@ -308,16 +299,12 @@ contains
       self % RecTimeStep = RecTimeStep
     endif
 
-    if (present(MaxFracChangeTr4)) then
-      self % MaxFracChangeTr4 = MaxFracChangeTr4 
+    if (present(MaxFracChangeEr)) then
+      self % MaxFracChangeEr = MaxFracChangeEr
     endif
 
     if (present(MaxFracChangeTe)) then
       self % MaxFracChangeTe = MaxFracChangeTe
-    endif
-
-    if (present(Tr4Threshold)) then
-      self % Tr4Threshold = Tr4Threshold 
     endif
 
     if (present(RadTime)) then
@@ -354,7 +341,7 @@ contains
   end function TimeStepControls_get_RadTime
 
 !=======================================================================
-! getRadTime interface
+! getRadCycle interface
 !=======================================================================
   function TimeStepControls_get_RadCycle(self) result(RadCycle)
 
@@ -430,23 +417,23 @@ contains
   end function TimeStepControls_get_MaxChangeTe
 
 !=======================================================================
-! getMaxChangeTr4 interface
+! getMaxChangeEr interface
 !=======================================================================
-  function TimeStepControls_get_MaxChangeTr4(self) result(MaxChangeTr4)
+  function TimeStepControls_get_MaxChangeEr(self) result(MaxChangeEr)
 
-!    Return the Maximum allowed change in Tr4 per cycle (MaxChangeTr4)
+!    Return the Maximum allowed change in Er per cycle (MaxChangeEr)
 
 !    variable declarations
      implicit none
 
 !    passed variables
      type(TimeStepControls), intent(in) :: self
-     real(adqt)                         :: MaxChangeTr4
+     real(adqt)                         :: MaxChangeEr
 
-     MaxChangeTr4 = self % MaxChangeTr4
+     MaxChangeEr = self % MaxChangeEr
 
      return
-  end function TimeStepControls_get_MaxChangeTr4
+  end function TimeStepControls_get_MaxChangeEr
 
 !=======================================================================
 ! getMinTimeStep interface
@@ -487,23 +474,23 @@ contains
   end function TimeStepControls_get_MaxTimeStep
 
 !=======================================================================
-! getMaxFracChangeTr4 interface
+! getMaxFracChangeEr interface
 !=======================================================================
-  function TimeStepControls_get_MaxFracChangeTr4(self) result(MaxFracChangeTr4)
+  function TimeStepControls_get_MaxFracChangeEr(self) result(MaxFracChangeEr)
                                                                                        
-!    Return the maximum observed fractional change in Tr4 (MaxFracChangeTr4)
+!    Return the maximum observed fractional change in Er (MaxFracChangeEr)
                                                                                        
 !    variable declarations
      implicit none
                                                                                        
 !    passed variables
      type(TimeStepControls), intent(in) :: self
-     real(adqt)                         :: MaxFracChangeTr4
+     real(adqt)                         :: MaxFracChangeEr
                                                                                        
-     MaxFracChangeTr4 = self % MaxFracChangeTr4 
+     MaxFracChangeEr = self % MaxFracChangeEr
                                                                                        
      return
-  end function TimeStepControls_get_MaxFracChangeTr4
+  end function TimeStepControls_get_MaxFracChangeEr
 
 !=======================================================================
 ! getMaxFracChangeTe interface
@@ -525,24 +512,24 @@ contains
   end function TimeStepControls_get_MaxFracChangeTe
 
 !=======================================================================
-! getZoneMaxChangeTr4 interface
+! getZoneMaxChangeEr interface
 !=======================================================================
-  function TimeStepControls_get_ZoneMaxChangeTr4(self) result(ZoneMaxChangeTr4)
+  function TimeStepControls_get_ZoneMaxChangeEr(self) result(ZoneMaxChangeEr)
                                                                                        
 !    Return the zone with the maximum observed fractional 
-!    change in Tr4 (ZoneMaxChangeTr4)
+!    change in Er (ZoneMaxChangeEr)
                                                                                        
 !    variable declarations
      implicit none
                                                                                        
 !    passed variables
      type(TimeStepControls), intent(in) :: self
-     integer                            :: ZoneMaxChangeTr4 
+     integer                            :: ZoneMaxChangeEr
                                                                                        
-     ZoneMaxChangeTr4 = self % ZoneMaxChangeTr4 
+     ZoneMaxChangeEr = self % ZoneMaxChangeEr
                                                                                        
      return
-  end function TimeStepControls_get_ZoneMaxChangeTr4
+  end function TimeStepControls_get_ZoneMaxChangeEr
 
 !=======================================================================
 ! getZoneMaxChangeTe interface

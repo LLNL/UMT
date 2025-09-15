@@ -11,6 +11,7 @@ target_sources( teton PRIVATE
   SweepUCBrz_OMPOL.F90
   SweepUCBxyz_OMPOL.F90
   OMPWrappers_mod.F90
+  OMPUtilities_mod.F90
   UpdateScalarIntensity_OMPOL.F90
   cuda_utils_mod.F90
   finalizeGPUMemory.F90

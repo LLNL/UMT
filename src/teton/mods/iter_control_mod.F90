@@ -315,7 +315,7 @@ contains
 ! setNumberOfIterations interface
 !=======================================================================
 
-  subroutine iter_control_set_nIter(self, nIter)
+  subroutine iter_control_set_nIter(self, nIter, accumulate)
 
 !    Set the number of iterations in the iteration control object
 
@@ -325,13 +325,20 @@ contains
 !    passed variables
      type(IterControl), intent(inout) :: self
      integer,           intent(in)    :: nIter
+     logical, optional, intent(in)    :: accumulate
 
 !    assertions
      TETON_ASSERT(nIter>=0,"Invalid number of iterations")
 
-!    reset the number of iterations
      self % nIter = nIter
-     self % nTotIter = self % nTotIter + nIter
+!    reset the number of iterations
+     if (present(accumulate)) then
+        if (accumulate) then
+           self % nTotIter = self % nTotIter + nIter
+        endif
+     else
+        self % nTotIter = self % nTotIter + nIter
+     endif
 
 !    assertions
      TETON_ASSERT(self%nIter>=0,"Invalid number of iterations")

@@ -20,6 +20,7 @@
 !=======================================================================
  
 module Datastore_mod 
+  use kind_mod
   use conduit_obj, only : node
   use iso_c_binding, only : c_ptr
   implicit none
@@ -34,9 +35,11 @@ module Datastore_mod
       procedure :: save_hdf5
       procedure :: initialize
       procedure :: partitioning
-      ! This will return root["blueprint_partitioned"] if partitioning,
-      !   root["blueprint"] otherwise
-      procedure :: blueprint_node
+      procedure :: get_blueprint_node
+      procedure :: fetchIfExists_float64
+      procedure :: fetchIfExists_int32
+
+      generic :: fetchIfExists => fetchIfExists_float64, fetchIfExists_int32
 
   end type datastore_type
 
@@ -51,9 +54,9 @@ contains
     use conduit_obj, only : conduit_node_obj_create
     class(datastore_type) :: self
 
-    if (.not. theDatastore%is_initialized) then
-        theDatastore%root = conduit_node_obj_create()
-        theDatastore%is_initialized = .TRUE.
+    if (.not. self%is_initialized) then
+        self%root = conduit_node_obj_create()
+        self%is_initialized = .TRUE.
     endif
 
   end subroutine
@@ -79,13 +82,55 @@ contains
       end subroutine c_conduit_relay_io_save
     end interface
     
-    call c_conduit_relay_io_save(theDatastore%root%cnode, path, "hdf5", c_null_ptr)
+    call c_conduit_relay_io_save(self%root%cnode, path, "hdf5", c_null_ptr)
 
   end subroutine
 
 !=======================================================================
-! Get whether partitioning is enabled.
+! Get something if it exists, otherwise return default value
 !=======================================================================
+  function fetchIfExists_float64(self, ds_path, default_value) result(res)
+
+    use iso_c_binding, only : c_char
+    implicit none
+
+    class(datastore_type), intent(in)  :: self
+    character(*), intent(in) :: ds_path
+    real(adqt),            intent(in)  :: default_value
+
+    real(adqt) :: res
+
+    res = default_value
+    if (self%root%has_path(ds_path)) then
+       res = self%root%fetch_path_as_float64(ds_path)
+    endif
+
+  end function
+
+!=======================================================================
+! Get something if it exists, otherwise return default value
+!=======================================================================
+  function fetchIfExists_int32(self, ds_path, default_value) result(res)
+
+    use iso_c_binding, only : c_char
+    implicit none
+
+    class(datastore_type), intent(in)  :: self
+    character(*), intent(in) :: ds_path
+    integer,                intent(in) :: default_value
+
+    integer  :: res
+
+    res = default_value
+    if (self%root%has_path(ds_path)) then
+       res = self%root%fetch_path_as_int32(ds_path)
+    endif
+
+  end function
+
+!=======================================================================
+! Get whether partitioning is enabled.
+!======================================================================
   function partitioning(self) result(res)
     logical res
     class(datastore_type) :: self
@@ -94,8 +139,8 @@ contains
 
     res = .FALSE.
     ! Get the value from the options.
-    if (theDatastore%root%has_path("options/partitioning")) then
-      value = theDatastore%root%fetch_path_as_int32("options/partitioning")
+    if (self%root%has_path("options/partitioning")) then
+      value = self%root%fetch_path_as_int32("options/partitioning")
       if (value .ne. 0) then
         res = .TRUE.
       endif
@@ -112,17 +157,17 @@ contains
   end function
 
 !=======================================================================
-! Get whether partitioning is enabled.
+! Retrieve the correct blueprint node, depending on if partitioning
+! is enabled or not.
 !=======================================================================
-  function blueprint_node(self) result(res)
+  function get_blueprint_node(self) result(res)
     type(node) :: res
     class(datastore_type) :: self
-    character(len=80) :: str
 
     if (self%partitioning()) then
-       res = theDatastore%root%fetch("blueprint_partitioned")
+       res = self%root%fetch("blueprint_partitioned")
     else
-       res = theDatastore%root%fetch("blueprint")
+       res = self%root%fetch("blueprint")
     endif
   end function
 

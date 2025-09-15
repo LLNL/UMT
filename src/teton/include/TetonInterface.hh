@@ -383,16 +383,28 @@ void teton_setgtaoptions(
 //     verbose=1x - all ranks at verbose level x
 void teton_setverbose(const int *verbose);
 
+// Initialize some runtime defaults in the Options module.
+void teton_initialize_defaults();
+
 // Set sweep version.
 // 0 - zone sweep (original)
 // 1 - corner sweep (improved parallelism)
-void teton_setsweepversion(const int *sweepversion);
+[[deprecated]]
+inline void teton_setsweepversion([[maybe_unused]] const int *sweepversion)
+{
+}
 
 // Set number of hyper-domains, for sweep and/or new GTA.
 // 0 - Let Teton automatically decide. (default)
 // >= 1 - User sets numer of hyper-domains to this number.
-void teton_setsweepnumhyperdomains(const int *hyperdomains);
-void teton_setgtanumhyperdomains(const int *hyperdomains);
+[[deprecated]]
+inline void teton_setsweepnumhyperdomains([[maybe_unused]] const int *hyperdomains)
+{
+}
+[[deprecated]]
+inline void teton_setgtanumhyperdomains([[maybe_unused]] const int *hyperdomains)
+{
+}
 
 // construct Teton memory allocator.
 void teton_constructmemoryallocator(

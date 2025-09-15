@@ -173,9 +173,14 @@ contains
     character(len=255) :: env_var_value
     integer :: env_status
 
+    ! See gitlab issue 608 for more info on the IPC max cache size being insufficient.
     call get_environment_variable("MPICH_GPU_SUPPORT_ENABLED", env_var_value, status=env_status)
     if (env_status == 0 .AND. trim(env_var_value) == "1") then
-       useUmpire = .TRUE.
+       call get_environment_variable("MPICH_GPU_IPC_CACHE_MAX_SIZE", env_var_value, status=env_status)
+       if (env_status /= 0) then
+          TETON_FATAL("Detected the presence of MPICH_GPU_SUPPORT_ENABLED in environment.  To use gpu-aware MPI the IPC max cache size must be increased by setting MPICH_GPU_IPC_CACHE_MAX_SIZE or the code may crash.  Recommended max cache size >= 1000.")
+       endif
+
     else
        useUmpire = .FALSE.
     endif

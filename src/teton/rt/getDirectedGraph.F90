@@ -82,11 +82,9 @@
 
 !  Determine the sweep order for each angle (i.e. the order in which the 
 !  zones or corners are solved: "next") 
-
    !$omp parallel do default(none) schedule(static) &
    !$omp& shared(totalAngles,sweepVersion,angleList,elementsPerPlane,Quad) &
    !$omp& private(ASet,HypPlanePtr,aSetID,angle,nHyperDomains)
-
    AngleListLoop: do n=1,totalAngles
 
      aSetID = angleList(1,n)

@@ -56,7 +56,7 @@ if (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
       endif()
 
       add_custom_command( TARGET teton POST_BUILD
-         COMMAND ROCM_PATH=${HIP_ROOT_DIR} CRAY_BINUTILS_BIN=${CRAY_BINUTILS_BIN} CRAY_PE_USE_CLANG=${CRAY_PE_USE_CLANG} ${CRAY_OMP_TOOL_PATH} --arch ${CMAKE_HIP_ARCHITECTURES} --device-link-only --output-begin=begin.o --output-end=end.o -- libteton.a
+         COMMAND ROCM_PATH=${ROCM_PATH} CRAY_BINUTILS_BIN=${CRAY_BINUTILS_BIN} CRAY_PE_USE_CLANG=${CRAY_PE_USE_CLANG} ${CRAY_OMP_TOOL_PATH} --arch ${CMAKE_HIP_ARCHITECTURES} --device-link-only --output-begin=begin.o --output-end=end.o -- libteton.a
          COMMAND ${CMAKE_COMMAND} -E make_directory tmp_obj_files
          COMMAND ${CMAKE_COMMAND} -E rename libteton.a tmp_obj_files/libteton.original.a
          COMMAND ${CMAKE_COMMAND} -E chdir tmp_obj_files ${CMAKE_AR} x libteton.original.a
@@ -87,6 +87,12 @@ endif()
 
 if( ENABLE_OPENMP )
   target_link_libraries( teton PUBLIC OpenMP::OpenMP_Fortran)
+
+# For mixed vendor builds ( example: Amd clang and Cray crayftn ) the openmp libraries
+# can conflict.  Do not add the omp runtimes from both C++ and Fortran.
+# We'll add the needed Fortran omp runtime but for the C++ only add the compiler flags.
+  get_target_property(imported_cpp_compile_options OpenMP::OpenMP_CXX INTERFACE_COMPILE_OPTIONS)
+  target_compile_options(teton PRIVATE ${imported_cpp_compile_options})
 endif()
 
 target_sources( teton INTERFACE include/TetonInterface.hh )
@@ -96,6 +102,13 @@ if (ENABLE_UMPIRE)
                                ${UMPIRE_INCLUDE_DIR}
                                ${UMPIRE_FORTRAN_MODULES_DIR}
                              )
+   if (FMT_ROOT)
+     target_include_directories( teton PUBLIC ${FMT_INCLUDE_DIR})
+   endif()
+
+   if (CAMP_ROOT)
+     target_include_directories( teton PUBLIC ${CAMP_INCLUDE_DIR})
+   endif()
 endif()
 
 # Note:
@@ -110,7 +123,18 @@ if (ENABLE_CALIPER)
                                  ${CALIPER_INCLUDE_DIR}/caliper/fortran
                                )
    endif()
+
+   if (ADIAK_ROOT)
+      if (ENABLE_FIND_PACKAGE_CONFIG_MODE)
+        target_link_libraries( teton PUBLIC adiak::adiak )
+      else()
+        target_include_directories( teton PRIVATE include
+                                    ${ADIAK_INCLUDE_DIR}
+                                  )
+      endif()
+   endif()
 endif()
+
 
 target_sources( teton INTERFACE include/TetonSources.hh )
 target_sources( teton INTERFACE include/TetonBlueprint.hh )
@@ -120,6 +144,7 @@ target_sources( teton INTERFACE include/TetonNDAccessor.hh )
 target_sources( teton INTERFACE include/TetonTesting.hh )
 target_sources( teton INTERFACE include/TetonUtilities.hh )
 target_sources( teton INTERFACE include/TetonModulesCInterfaces.hh )
+target_sources( teton INTERFACE include/processEnvVars.hh )
 
 target_include_directories( teton PRIVATE include
                             ${CONDUIT_INCLUDE_DIR}
@@ -142,6 +167,11 @@ if (NOT ENABLE_MINIAPP_BUILD)
                                 )
    endif()
 
+   if (RAJA_ROOT)
+      target_include_directories( teton PRIVATE include
+                                    ${RAJA_INCLUDE_DIR}
+                                  )
+   endif()
 endif()
 
 configure_file (include/TetonVersion.hh.in include/TetonVersion.hh )
@@ -242,6 +272,9 @@ if(ENABLE_TESTS)
 
   if (NOT ENABLE_MINIAPP_BUILD)
     target_link_libraries( test_driver PUBLIC ${PHYSICSUTILS_LIBRARIES} )
+    if (RAJA_ROOT)
+      target_link_libraries( test_driver PUBLIC ${RAJA_LIBRARIES})
+    endif()
   endif()
 
   if (ENABLE_UMPIRE)
@@ -282,6 +315,7 @@ if(ENABLE_TESTS)
     endif()
 
   endif()
+
 
   if (CONDUIT_REQUIRES_PARMETIS)
     target_link_libraries( test_driver PUBLIC ${PARMETIS_LIBRARIES} ${METIS_LIBRARIES})

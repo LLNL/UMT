@@ -23,7 +23,7 @@ namespace utilities
 struct NDDimension
 {
    std::string name;
-   conduit::index_t size;
+   conduit::index_t size{0};
 };
 
 /**
@@ -310,7 +310,7 @@ class NDAccessor
   private:
    conduit::Node &values;
    std::vector<NDDimension> dims;
-   bool interleave;
+   bool interleave{false};
 };
 
 } // namespace utilities
