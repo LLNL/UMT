@@ -34,7 +34,7 @@ It is recommended that developers are familiar with Spack before trying to build
 ``` spack external find cmake ```
 
 8. Add umt to your environment.
-``` spack add umt+mfem %gcc@8.1.0 ^mvapich2```
+``` spack add umt %gcc@8.1.0 ^mvapich2```
 
 9. Concretize your environment
 ``` spack concretize ```
