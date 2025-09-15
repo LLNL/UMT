@@ -63,28 +63,6 @@
 #   define END_RANGE(name)
 #endif
 
-! In implementations that support a preprocessor, the _OPENMP macro name is
-! defined to have the decimal value yyyymm where yyyy and mm are the year and
-! month designations of the version of the OpenMP API that the implementation supports.
-
-! For quick reference, its:
-! 200505 2.5
-! 200805 3.0
-! 201107 3.1
-! 201307 4.0
-! 201511 4.5
-! 201811 5.0
-! 202011 5.1
-!
-! This can be used to control what code is compiled across our compilers, but if
-! we have a compiler that supports a newer feature, but is reporting an older
-! implementation we have to rely on using a separate preprocessor define.
-
-#if (_OPENMP > 201511)
-# define TETON_OPENMP_HAS_FORTRAN_INTERFACE
-# define TETON_OPENMP_HAS_USE_DEVICE_ADDR
-#endif
-
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
 # define ATOMIC_UPDATE !$omp atomic update
 # define ATOMIC_END !$omp end atomic

@@ -33,6 +33,7 @@
 #include "TetonTesting.hh"
 #include "TetonUtilities.hh"
 #include "dbc_macros.h"
+#include "processEnvVars.hh"
 
 #if defined(TETON_USE_CUDA)
 #include "cuda.h"
@@ -40,7 +41,6 @@
 #endif
 
 #if defined(TETON_ENABLE_CALIPER)
-#pragma message "Teton built with Caliper support."
 #include "caliper/cali.h"
 #else
 #define CALI_MARK_BEGIN(label)
@@ -48,6 +48,18 @@
 #define CALI_CXX_MARK_SCOPE(name)
 #define CALI_CXX_MARK_FUNCTION
 #endif
+
+#if defined(TETON_ENABLE_ADIAK)
+#include "adiak.hpp"
+#endif
+
+#if defined(TETON_ENABLE_UMPIRE)
+#include "umpire/Umpire.hpp"
+#include "umpire/strategy/QuickPool.hpp"
+#include "umpire/strategy/ThreadSafeAllocator.hpp"
+#endif
+
+#define TETON_UNUSED_VAR(VAR) ((void) (VAR))
 
 // Uncomment to enable partition debugging console output.
 // #define PARTITION_DEBUG
@@ -104,25 +116,6 @@ const std::vector<std::string> Teton::NONINTERLEAVED_FIELDS = {Teton::FIELD_RADI
 const std::string Teton::TOPO_MAIN("main");
 const std::string Teton::TOPO_BOUNDARY("boundary");
 
-Teton::Teton()
-   : mDTrad(0.),
-     areSourceProfilesSet(false),
-     mIsInitialized(false),
-     mGTAorder(2),
-     mInternalComptonFlag((int) tetonComptonFlag::none),
-     mCommunicator(MPI_COMM_WORLD),
-     mRank(0),
-     mCornerToVertex(),
-     mZoneToNCorners(),
-     mZoneToCorners(),
-     mCornerToZone(),
-     mMapBackFields(),
-     mMCArrays(),
-     mRadiationForceDensityFields(),
-     mRadiationFluxFields()
-{
-}
-
 Teton::~Teton()
 {
    if (mIsInitialized)
@@ -165,118 +158,42 @@ Teton::~Teton()
    }
 }
 
-// These are for developer use only.
-void Teton::processEnvVars()
-{
-   CALI_CXX_MARK_FUNCTION;
-   conduit::Node &options = getOptions();
-
-   // Enable use of env variables to override Teton behavior.
-   if (getenv("TETON_ENABLE_ENV_VARS") != nullptr)
-   {
-      if (atoi(getenv("TETON_ENABLE_ENV_VARS")) > 0)
-      {
-         if (mRank == 0)
-         {
-            std::cerr << "Teton: Enabling use of environment variables to override behavior." << std::endl;
-         }
-
-         // Override teton verbosity level.
-         if (getenv("TETON_VERBOSE") != nullptr)
-         {
-            options["verbose"] = atoi(getenv("TETON_VERBOSE"));
-            if (mRank == 0)
-            {
-               std::cerr << "Teton: Overriding teton verbose level to " << getenv("TETON_VERBOSE") << std::endl;
-            }
-         }
-         // Dump copy of input to teton to file.
-         if (getenv("TETON_DUMP_INPUT") != nullptr)
-         {
-            options["dump_input"] = atoi(getenv("TETON_DUMP_INPUT"));
-            if (mRank == 0)
-            {
-               std::cerr << "Teton: Overriding teton dump input to " << getenv("TETON_DUMP_INPUT") << std::endl;
-            }
-         }
-
-         // Dump teton metrics to yaml file at end of run.
-         if (getenv("TETON_DUMP_METRICS") != nullptr)
-         {
-            options["dump_metrics"] = atoi(getenv("TETON_DUMP_METRICS"));
-            if (mRank == 0)
-            {
-               std::cerr << "Teton: Overriding teton dump metrics to " << getenv("TETON_DUMP_METRICS") << std::endl;
-            }
-         }
-         // Override number of OpenMP threads to use on CPU.
-         if (getenv("TETON_NUM_THREADS") != nullptr)
-         {
-            options["concurrency/omp_cpu_max_threads"] = atoi(getenv("TETON_NUM_THREADS"));
-            if (mRank == 0)
-            {
-               std::cerr << "Teton: Overriding teton number of cpu threads to use to " << getenv("TETON_NUM_THREADS")
-                         << std::endl;
-            }
-         }
-
-         // Override number of hyperdomains to create for full sweep.
-         if (getenv("TETON_NUM_SWEEP_HYPERDOMAINS") != nullptr)
-         {
-            options["sweep/sn/numhyperdomains"] = atoi(getenv("TETON_NUM_SWEEP_HYPERDOMAINS"));
-            if (mRank == 0)
-            {
-               std::cerr << "Teton: Overriding number of sweep hyperdomains to use to "
-                         << getenv("TETON_NUM_SWEEP_HYPERDOMAINS") << std::endl;
-            }
-         }
-
-         // Override number of hyperdomains to create for grey sweep.
-         if (getenv("TETON_NUM_GREY_SWEEP_HYPERDOMAINS") != nullptr)
-         {
-            options["sweep/gta/numhyperdomains"] = atoi(getenv("TETON_NUM_GREY_SWEEP_HYPERDOMAINS"));
-            if (mRank == 0)
-            {
-               std::cerr << "Teton: Overriding teton number of grey sweep hyperdomains to use to "
-                         << getenv("TETON_NUM_GREY_SWEEP_HYPERDOMAINS") << std::endl;
-            }
-         }
-#if !defined(TETON_ENABLE_MINIAPP_BUILD)
-         if (getenv("TETON_OPERATOR_SPLIT_PDV") != nullptr)
-         {
-            options["operator_split_pdv"] = atoi(getenv("TETON_OPERATOR_SPLIT_PDV"));
-            if (mRank == 0)
-            {
-               std::cerr
-                  << "Teton: Overriding in-solve application of PdV work. "
-                  << "Teton will now call teton_applypdv to apply the PdV work in an operator-split explicit step before each time step. "
-                  << std::endl;
-            }
-         }
-#endif
-      }
-   }
-}
-
 void Teton::initialize(MPI_Comm communicator, bool fromSiloRestart)
 {
    CALI_CXX_MARK_FUNCTION;
+
+#if defined(TETON_ENABLE_UMPIRE)
+   size_t rss_mem_used_kb = umpire::get_process_memory_usage() / 1024;
+#endif
 
    mCommunicator = communicator;
    MPI_Fint fcomm = MPI_Comm_c2f(communicator);
 
    MPI_Comm_rank(communicator, &mRank);
+   MPI_Comm_size(communicator, &mSize);
    mSourceManager.SetRank(mRank);
+
+   // Initialize some of the code runtime options with default values.
+   // Many defaults are set up in the C++ later in the initialize function but a few
+   // still occur in the Fortran and have not yet been moved to the C++.
+   // A. Black 4/15/2025
+   teton_initialize_defaults();
 
    conduit::Node &datastore = getDatastore();
    conduit::Node &options = getOptions();
    conduit::Node &blueprint = getMeshBlueprint();
    conduit::Node &part = getMeshBlueprintPart();
 
-   processEnvVars();
+   // Process any env vars to update runtime behavior and add entries to input node.
+   ::Teton::processEnvVars(options, mRank == 0);
+   if (options.has_path("dump_input_at_cycle"))
+   {
+      mDumpInputAtCycle = options.fetch_existing("dump_input_at_cycle").value();
+      options.remove("dump_input_at_cycle");
+   }
 
    int verbose = 0;
-   int dump_input = 0;
+   int dump_viz = 0;
 
    if (options.has_path("verbose"))
    {
@@ -286,49 +203,19 @@ void Teton::initialize(MPI_Comm communicator, bool fromSiloRestart)
    if (verbose && mRank == 0)
    {
       std::cout << "Teton: setting verbosity to " << verbose << std::endl;
+#if defined(TETON_ENABLE_UMPIRE)
+      std::cout << "Teton: Pre code initialization:: CPU RSS process memory used: " << rss_mem_used_kb / 1024.0 << " MB"
+                << std::endl;
+      printUmpireUsage();
+#endif
    }
 
-   if (options.has_path("dump_input"))
+   // If a particular cycle is not specified then dump the input provided at the start of initialize().
+   // This sufficies for most host codes, but some codes may not populate all the needed fields until
+   // after initialize().
+   if (mDumpInputAtCycle == -1)
    {
-      dump_input = options.fetch_existing("dump_input").value();
-   }
-   if (dump_input > 0)
-   {
-      CALI_MARK_BEGIN("Teton_IO_Dump_Input");
-      // Save parameters.
-      if (mRank == 0)
-      {
-         std::cerr << "Teton: Dump copy of input..." << std::endl;
-         // Save rank 0 as a global version of input file.  We want to migrate to putting all the global data in one file.
-         conduit::relay::io::save(options, std::string("parameters_input") + ".conduit_json", "conduit_json");
-      }
-
-      // Save per-rank parameters file until we can migrate off having per-rank information in this file, if possible.
-      conduit::relay::io::save(options,
-                               std::string("parameters_input_") + std::to_string(mRank) + ".conduit_json",
-                               "conduit_json");
-
-      // Save per-rank blueprint mesh file.
-      // These files can be large, use the HDF5 file format.
-#if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
-      conduit::relay::io::save(blueprint, std::string("mesh_input_") + std::to_string(mRank) + ".hdf5", "hdf5");
-#else
-      conduit::relay::io::save(blueprint,
-                               std::string("mesh_input_") + std::to_string(mRank) + ".conduit_json",
-                               "conduit_json");
-#endif
-      if (mRank == 0)
-      {
-         std::cerr << "Teton: Save mesh..." << std::endl;
-      }
-      MPI_Barrier(communicator);
-
-      // Save to a plottable file.  Include field showing adjacency sets for debugging.
-      conduit::blueprint::mesh::paint_adjset("main_adjset", "main_adjset", blueprint);
-#if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
-      conduit::relay::mpi::io::blueprint::save_mesh(blueprint, "blueprint_cycle0", "hdf5", communicator);
-#endif
-      CALI_MARK_END("Teton_IO_Dump_Input");
+      dumpInput();
    }
 
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
@@ -349,19 +236,6 @@ void Teton::initialize(MPI_Comm communicator, bool fromSiloRestart)
    TetonBlueprint blueprintHelper(part, options);
    blueprintHelper.OutputTetonMesh(mRank, mCommunicator);
    CALI_MARK_END("constructCornerMesh");
-
-   if (verbose >= 2)
-   {
-      if (verbose >= 3)
-      {
-         conduit::blueprint::mesh::paint_adjset("main_corner", "corner_adjset", part);
-      }
-      if (mRank == 0)
-      {
-         std::cerr << "Teton: Dump blueprint with generated topologies..." << std::endl;
-      }
-      dump(communicator, ".");
-   }
 
    // Set the Dt controls early, as tfloor is set here and needed by constructSize in the line below.
    constructDtControls();
@@ -438,54 +312,6 @@ void Teton::initialize(MPI_Comm communicator, bool fromSiloRestart)
       constructIterationControls();
    }
 
-   // Initialize default sweep kernel selection, if not provided.
-   // Valid values are:
-   // 0 - pick the default sweep implementation ( which is 1 )
-   // 1 - a sweep implementation that loops over the zones in each hyperplane, and the corners within those zones.
-   // 2 - a sweep implementation that loops directly over the corners of each hyperplane.
-   if (options.has_path("sweep/kernel/version"))
-   {
-      int sweep_version = options.fetch_existing("sweep/kernel/version").value();
-      if (sweep_version == 0)
-      {
-         options["sweep/kernel/version"] = 1;
-      }
-   }
-   else
-   {
-      options["sweep/kernel/version"] = 1;
-   }
-
-   // Initialize default numbers of hyper domains, if not provided.
-   // Valid values are:
-   // 0 - Indicates user did not set number of hyper-domains. Teton will automatically determine a number. (default)
-   // >= 1 - Overrides Teton's automatic setting with this number.
-   // Number of sweep hyper-domains:
-   if (!options.has_path("sweep/sn/numhyperdomains"))
-   {
-      // Default to 0 to allow Teton's automatic algorithm to determine a number.
-      options["sweep/sn/numhyperdomains"] = 0;
-   }
-   else if (options["sweep/sn/numhyperdomains"].as_int() < 0)
-   {
-      std::cerr
-         << "Teton: Invalid number of sweep hyper-domains, please set options/sweep/sn/numhyperdomains to 0 for automatic setting, or a value >= 1 ..."
-         << std::endl;
-   }
-
-   // Number of new GTA hyper-domains:
-   if (!options.has_path("sweep/gta/numhyperdomains"))
-   {
-      // Default to 0 to allow Teton's automatic algorithm to determine a number.
-      options["sweep/gta/numhyperdomains"] = 0;
-   }
-   else if (options["sweep/gta/numhyperdomains"].as_int() < 0)
-   {
-      std::cerr
-         << "Teton: Invalid number of new GTA hyper-domains, please set options/sweep/gta/numhyperdomains to 0 for automatic setting, or a value >= 1 ..."
-         << std::endl;
-   }
-
    if (blueprint.has_path("fields/absorption_opacity/values"))
    {
       updateOpacity();
@@ -500,12 +326,48 @@ void Teton::initialize(MPI_Comm communicator, bool fromSiloRestart)
    // the min/max # zones in the mesh per rank, the # unknowns being solved, etc.
    collectProblemSizeMetrics();
 
+   blueprint["state/cycle"] = 0;
+   part["state/cycle"] = 0;
+
    if (verbose > 1)
    {
       printProblemMetrics();
    }
 
+   if (options.has_path("dump_viz"))
+   {
+      dump_viz = options.fetch_existing("dump_viz").value();
+      if (dump_viz)
+      {
+         MPI_Barrier(communicator);
+
+         CALI_MARK_BEGIN("Teton_IO_Dump_Input");
+         // Include field showing adjacency sets for debugging.
+         conduit::blueprint::mesh::paint_adjset("main_adjset", "main_adjset", blueprint);
+         conduit::blueprint::mesh::paint_adjset("main_corner", "corner_adjset", part);
+         dump(communicator, ".");
+         CALI_MARK_END("Teton_IO_Dump_Input");
+      }
+   }
+
+   // Add useful version information to Adiak.
+#if defined(TETON_ENABLE_ADIAK)
+   adiak::value("TetonVersion", teton_get_version(), adiak_general, "TetonBuildInfo");
+   adiak::value("TetonSHA1", teton_get_git_sha1(), adiak_general, "TetonBuildInfo");
+#endif
+
    mIsInitialized = true;
+
+#if defined(TETON_ENABLE_UMPIRE)
+   if (verbose && mRank == 0)
+   {
+      size_t new_mem_used_kb = umpire::get_process_memory_usage() / 1024;
+      size_t growth = new_mem_used_kb - rss_mem_used_kb;
+      std::cout << "Teton: Post code initialization: CPU RSS process memory used: " << new_mem_used_kb / 1024.0
+                << " MB, growth: " << growth / 1024 << " MB" << std::endl;
+      printUmpireUsage();
+   }
+#endif
 }
 
 void Teton::storeMeshData()
@@ -565,6 +427,7 @@ int Teton::checkInputSanity(const conduit::Node &sanitizer_node) const
    // level = 0 --> Don't run it
    // level = 1 --> print one complaint per problematic category
    // level = 2 --> print one complaint per problematic zone/corner
+   // level = 3 --> print as much information as possible per problematic zone/corner
    const int sanitizer_level = sanitizer_node.fetch_existing("level").to_int();
    if (sanitizer_level < 1)
       return 0;
@@ -815,17 +678,60 @@ void Teton::constructMemoryAllocator()
    teton_constructmemoryallocator(&umpire_host_pinned_pool_allocator_id, &umpire_device_pool_allocator_id);
 }
 
+void Teton::dumpInput()
+{
+   conduit::Node &options = getOptions();
+   conduit::Node &blueprint = getMeshBlueprint();
+
+   CALI_MARK_BEGIN("Teton_IO_Dump_Input");
+   // Save parameters.
+   if (mRank == 0)
+   {
+      std::cerr << "Teton: Dump copy of input..." << std::endl;
+      // Save rank 0 as a global version of input file.  We want to migrate to putting all the global data in one file.
+      conduit::relay::io::save(options, std::string("parameters_input") + ".conduit_json", "conduit_json");
+   }
+
+   // Save per-rank parameters file until we can migrate off having per-rank information in this file, if possible.
+   conduit::relay::io::save(options,
+                            std::string("parameters_input_") + std::to_string(mRank) + ".conduit_json",
+                            "conduit_json");
+
+   // Save per-rank blueprint mesh file.
+   // These files can be large, use the HDF5 file format.
+#if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
+   conduit::relay::io::save(blueprint, std::string("mesh_input_") + std::to_string(mRank) + ".hdf5", "hdf5");
+#else
+   conduit::relay::io::save(blueprint,
+                            std::string("mesh_input_") + std::to_string(mRank) + ".conduit_json",
+                            "conduit_json");
+#endif
+}
+
 void Teton::dump(MPI_Comm communicator, std::string path)
 {
    CALI_CXX_MARK_FUNCTION;
+   conduit::Node &part = getMeshBlueprintPart();
+   conduit::Node &blueprint = getMeshBlueprint();
+
+   if (mRank == 0)
+   {
+      std::cerr << "Teton: Saving viz file..." << std::endl;
+   }
+
 // This is defined in conduit_relay_config.h
 #if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
    // NOTE: this routine saves the partitioned mesh given to Teton.
-   conduit::Node &part = getMeshBlueprintPart();
-   conduit::relay::mpi::io::blueprint::save_mesh(part, path + "/blueprint_mesh", "hdf5", communicator);
+   conduit::relay::mpi::io::blueprint::save_mesh(part, path + "/internal_blueprint_mesh", "hdf5", communicator);
+
+   // NOTE: this routine saves the original mesh given to Teton.
+   conduit::relay::mpi::io::blueprint::save_mesh(blueprint, path + "/host_blueprint_mesh", "hdf5", communicator);
 #else
-   std::cerr << " Teton: Unable to dump mesh blueprint viz file.  Conduit was not built with HDF5 support."
-             << std::endl;
+   if (mRank == 0)
+   {
+      std::cerr << "Teton: Unable to dump mesh blueprint viz file.  Conduit was not built with HDF5 support."
+                << std::endl;
+   }
 #endif
 }
 // ------------------------------------------------------------
@@ -835,23 +741,28 @@ void Teton::dump(MPI_Comm communicator, std::string path)
 double Teton::step(int cycle)
 {
    CALI_CXX_MARK_FUNCTION;
-   int verbose = 0;
+
+   if (mDumpInputAtCycle == cycle)
+   {
+      dumpInput();
+   }
+
+   //conduit::Node &datastore = getDatastore();
+   conduit::Node &options = getOptions();
+   conduit::Node &blueprint = getMeshBlueprint();
+   conduit::Node &part = getMeshBlueprintPart();
 
 #if defined(PARTITION_DEBUG)
    MPI_Barrier(mCommunicator);
    std::stringstream cs;
    cs << "Teton::step " << cycle;
    utilities::Banner b(mCommunicator, cs.str());
-#endif
-   //conduit::Node &datastore = getDatastore();
-   conduit::Node &options = getOptions();
-   conduit::Node &blueprint = getMeshBlueprint();
-   conduit::Node &part = getMeshBlueprintPart();
-
+   int verbose = 0;
    if (options.has_path("verbose"))
    {
       verbose = options.fetch_existing("verbose").value();
    }
+#endif
 
    // TODO - These should be moved and made defaults in conduit node.
    int maxOSComptonChangeCorner = 1;
@@ -1063,7 +974,9 @@ double Teton::step(int cycle)
          // We don't want to proceed with this time step because it'll most likely crash or hang, so we'll do nothing and return.
          // Host code should check the value of options["iteration/sanitizer/num_bad_cats"] after each step call.
          if (mRank == 0)
+         {
             std::cout << "Teton: Bad inputs found! Skipping time step." << std::endl;
+         }
          return mDTrad;
       }
    }
@@ -1289,6 +1202,17 @@ double Teton::step(int cycle)
    // TODO is this the best place for this?
    teton_setvolumeold();
 
+   if (options.has_path("dump_viz"))
+   {
+      const int dump_viz = options.fetch_existing("dump_viz").value();
+      MPI_Barrier(mCommunicator);
+      if (dump_viz)
+      {
+         CALI_MARK_BEGIN("Teton_IO_Dump_Input");
+         dump(mCommunicator, ".");
+         CALI_MARK_END("Teton_IO_Dump_Input");
+      }
+   }
    return mDTrad;
 }
 
@@ -3176,6 +3100,9 @@ std::vector<std::string> Teton::createPartitionFields(conduit::Node &mesh, const
          }
       }
    }
+#else
+   TETON_UNUSED_VAR(mesh);
+   TETON_UNUSED_VAR(topoNames);
 #endif
    return fieldNames;
 }
@@ -3283,6 +3210,11 @@ void Teton::assimilateTopology(conduit::Node &partmesh,
          }
       }
    }
+#else
+   TETON_UNUSED_VAR(partmesh);
+   TETON_UNUSED_VAR(topoName);
+   TETON_UNUSED_VAR(secondPartmesh);
+   TETON_UNUSED_VAR(secondTopoName);
 #endif
 }
 
@@ -3384,6 +3316,9 @@ void Teton::add_mcarray_fields(conduit::Node &root, bool skipTetonInternallyOwne
       // Record that we made a new mcarray.
       mMCArrays[fieldName] = newFieldName;
    });
+#else
+   TETON_UNUSED_VAR(root);
+   TETON_UNUSED_VAR(skipTetonInternallyOwned);
 #endif
 }
 
@@ -3401,6 +3336,8 @@ void Teton::remove_mcarray_fields(conduit::Node &root)
          }
       }
    }
+#else
+   TETON_UNUSED_VAR(root);
 #endif
 }
 
@@ -3455,10 +3392,6 @@ void Teton::partition(bool fromRestart)
    {
       CALI_CXX_MARK_SCOPE("Teton_Partition_Mesh");
 
-      int rank = 0, size = 1;
-      MPI_Comm_rank(mCommunicator, &rank);
-      MPI_Comm_size(mCommunicator, &size);
-
       std::string mainTopoName(getMainTopology(blueprint).name());
 
       // Create a new field on the blueprint mesh that we're partitioning.
@@ -3467,7 +3400,7 @@ void Teton::partition(bool fromRestart)
       opts["field_prefix"] = PREFIX;
       if (blueprint.has_path("adjsets/main_adjset"))
          opts["adjset"] = "main_adjset"; // plays a role in global node id generation
-      if (rank == 0)
+      if (mRank == 0)
          std::cout << "Teton: partition - make partition field." << std::endl;
       conduit::blueprint::mpi::mesh::generate_partition_field(blueprint, opts, mCommunicator);
 
@@ -3477,12 +3410,12 @@ void Teton::partition(bool fromRestart)
       const std::vector<std::string> replacements{"fields/" + PARTITION_FIELD + "/values",
                                                   "fields/" + PREFIX + "global_element_ids/values",
                                                   "fields/" + PREFIX + "global_vertex_ids/values"};
-      utilities::convert_int32(rank, blueprint, replacements);
+      utilities::convert_int32(mRank, blueprint, replacements);
 
       // There are no int64/index_t in blueprint mesh now.
 #if defined(PARTITION_DEBUG)
       auto dtype = conduit::blueprint::mesh::utils::find_widest_dtype(blueprint, conduit::DataType::int32());
-      if (rank == 0)
+      if (mRank == 0)
          std::cout << "  Widest blueprint int type: " << dtype.name() << std::endl;
       MPI_Barrier(mCommunicator);
 #endif
@@ -3497,14 +3430,14 @@ void Teton::partition(bool fromRestart)
       sel1["domain_id"] = "any";
       sel1["field"] = PARTITION_FIELD;
       sel1["topology"] = mainTopoName;
-      sel1["destination_ranks"].set(conduit::DataType::int32(size));
+      sel1["destination_ranks"].set(conduit::DataType::int32(mSize));
       auto ranks = sel1["destination_ranks"].as_int32_ptr();
-      for (int i = 0; i < size; i++)
+      for (int i = 0; i < mSize; i++)
          ranks[i] = i;
 
 #if defined(PARTITION_DEBUG)
       // Print the partitioning options.
-      if (rank == 0)
+      if (mRank == 0)
       {
          std::cout << "Teton: partition enabled." << std::endl;
          std::cout << "Teton: part.path=" << part.path() << std::endl;
@@ -3515,9 +3448,9 @@ void Teton::partition(bool fromRestart)
       // Save out the partition mesh and parameters to YAML
       const std::string protocol("yaml");
       std::stringstream ss, ss2;
-      ss << "partition_mesh." << rank << "." << protocol;
+      ss << "partition_mesh." << mRank << "." << protocol;
       std::string meshFilename(ss.str());
-      ss2 << "partition_options_main." << rank << "." << protocol;
+      ss2 << "partition_options_main." << mRank << "." << protocol;
       std::string optsFilename(ss2.str());
 #pragma message "Partition mesh input will be saved."
       conduit::relay::io::save(blueprint, meshFilename, protocol);
@@ -3525,7 +3458,7 @@ void Teton::partition(bool fromRestart)
 #endif
 
       // Partition the blueprint mesh and store the results in part.
-      if (rank == 0)
+      if (mRank == 0)
          std::cout << "Teton: partition - partition main" << std::endl;
       add_mcarray_fields(blueprint, true);
       conduit::blueprint::mpi::mesh::partition(blueprint, partopts, part, mCommunicator);
@@ -3549,24 +3482,24 @@ void Teton::partition(bool fromRestart)
       // causes problems for Teton down the line since it requires int32.
       auto repkeys = utilities::find_int64(part);
 #if defined(PARTITION_DEBUG)
-      if (rank == 0)
-         check_widest_dtype(part, rank, "part");
+      if (mRank == 0)
+         check_widest_dtype(part, mRank, "part");
       MPI_Barrier(mCommunicator);
 #endif
 
       // Do the conversion
-      utilities::convert_int32(rank, part, repkeys);
+      utilities::convert_int32(mRank, part, repkeys);
 
 #if defined(PARTITION_DEBUG)
       // Double-check that the dtype is int32.
-      if (rank == 0)
-         check_widest_dtype(part, rank, "part");
+      if (mRank == 0)
+         check_widest_dtype(part, mRank, "part");
       MPI_Barrier(mCommunicator);
 #endif
 #if defined(PARTITION_DEBUG) && defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
       // Save the partitioned mesh to a file that can be visualized.
       const std::string file_protocol = "hdf5";
-      if (rank == 0)
+      if (mRank == 0)
          std::cout << "Teton: partition - save part node to " << file_protocol << std::endl;
       conduit::relay::mpi::io::blueprint::save_mesh(part, "part", file_protocol, mCommunicator);
 #endif
@@ -3575,7 +3508,7 @@ void Teton::partition(bool fromRestart)
       auto partitionTopos = getPartitionTopologies(blueprint);
 
       // Create partition field for secondary topologies.
-      if (rank == 0)
+      if (mRank == 0)
          std::cout << "Teton: partition - create partition fields" << std::endl;
       auto partitionFields = createPartitionFields(blueprint, partitionTopos);
 
@@ -3603,7 +3536,7 @@ void Teton::partition(bool fromRestart)
             fields[PREFIX + "_impossible_to_find_123456789"] = 1;
          }
 
-         if (rank == 0)
+         if (mRank == 0)
          {
             std::cout << "Teton: partition - partition " << partitionTopos[ti] << std::endl;
 #if defined(PARTITION_DEBUG)
@@ -3622,26 +3555,26 @@ void Teton::partition(bool fromRestart)
 
       // Do the conversion
       repkeys = utilities::find_int64(part);
-      utilities::convert_int32(rank, part, repkeys);
+      utilities::convert_int32(mRank, part, repkeys);
 
       // Save partitioning options for later. We have to do this after calls
       // to mesh::partition() because that method resets the input node.
       part["partition_options_main"].move(partopts);
 
 #if defined(PARTITION_DEBUG)
-      check_widest_dtype(part, rank, "combined part");
+      check_widest_dtype(part, mRank, "combined part");
       MPI_Barrier(mCommunicator);
 
 #if defined(CONDUIT_RELAY_IO_HDF5_ENABLED)
       // Save the partitioned mesh, plus boundary to a file that can be visualized.
-      if (rank == 0)
+      if (mRank == 0)
          std::cout << "Teton: partition - save part_with_boundary to " << file_protocol << std::endl;
       conduit::relay::mpi::io::blueprint::save_mesh(part, "part_with_boundary", file_protocol, mCommunicator);
 #endif
 
       // Check whether there are duplicated local points. We hope not.
       conduit::Node info;
-      bool dups = utilities::find_local_duplicate_points(rank, part, part["coordsets/coords"], info);
+      bool dups = utilities::find_local_duplicate_points(mRank, part, part["coordsets/coords"], info);
       if (dups)
       {
          info.print();
@@ -3649,6 +3582,8 @@ void Teton::partition(bool fromRestart)
       MPI_Barrier(mCommunicator);
 #endif
    }
+#else
+   TETON_UNUSED_VAR(fromRestart);
 #endif
 }
 
@@ -3793,6 +3728,10 @@ void Teton::sendFieldsOrig2Part(const std::string &topoName,
       // Remove mcarray fields
       remove_mcarray_fields(blueprint);
    }
+#else
+   TETON_UNUSED_VAR(topoName);
+   TETON_UNUSED_VAR(fieldNames);
+   TETON_UNUSED_VAR(updateCoords);
 #endif
 }
 
@@ -3901,6 +3840,9 @@ void Teton::sendFieldsPart2Orig(const std::string &topoName, const std::vector<s
          }
       }
    }
+#else
+   TETON_UNUSED_VAR(topoName);
+   TETON_UNUSED_VAR(fieldNames);
 #endif
 }
 
@@ -4456,15 +4398,12 @@ void Teton::collectProblemSizeMetrics()
       metrics["global/sweep/number_of_angle_sets"] = teton_quadraturelist_getnumberofanglesets(quadrature_list);
       metrics["global/sweep/number_of_group_sets"] = teton_quadraturelist_getnumberofgroupsets(quadrature_list);
       metrics["global/sweep/number_of_hyperdomains"] = teton_quadraturelist_getnumberofhyperdomains(quadrature_list, 1);
-      metrics["global/grey_sweep/number_of_hyperdomains"] = teton_quadraturelist_getnumberofhyperdomains(
-         quadrature_list,
-         2);
-      metrics["global/grey_sweep/number_of_phase_space_sets"] = teton_quadraturelist_getnumberofgtasets(
-         quadrature_list);
+      metrics["global/gta/number_of_hyperdomains"] = teton_quadraturelist_getnumberofhyperdomains(quadrature_list, 2);
+      metrics["global/gta/number_of_phase_space_sets"] = teton_quadraturelist_getnumberofgtasets(quadrature_list);
 
       void *quadrature_gta = teton_quadraturelist_getquad(quadrature_list, 2);
-      metrics["global/grey_sweep/number_of_angles"] = teton_quadrature_getnumberofangles(quadrature_gta);
-      metrics["global/grey_sweep/number_of_groups"] = teton_quadrature_getnumberofenergygroups(quadrature_gta);
+      metrics["global/gta/number_of_angles"] = teton_quadrature_getnumberofangles(quadrature_gta);
+      metrics["global/gta/number_of_groups"] = teton_quadrature_getnumberofenergygroups(quadrature_gta);
    }
 }
 
@@ -4479,6 +4418,48 @@ void Teton::printProblemMetrics()
       conduit::Node &metrics = getMetrics().fetch_existing("global");
       std::cout << "Teton problem global metrics:" << metrics.to_summary_string(opts) << std::endl;
    }
+}
+
+//---------------------------------------------------------------------------
+void Teton::printUmpireUsage()
+{
+#if defined(TETON_ENABLE_UMPIRE)
+   conduit::Node &options = getOptions();
+
+   auto &rm = umpire::ResourceManager::getInstance();
+
+   int host_allocator_id = -1;
+   int device_allocator_id = -1;
+
+   if (options.has_path("memory_allocator/umpire_host_allocator_id"))
+   {
+      host_allocator_id = options.fetch_existing("memory_allocator/umpire_host_allocator_id").value();
+   }
+
+   if (host_allocator_id != -1)
+   {
+      auto pool = rm.getAllocator(host_allocator_id);
+      if (mRank == 0)
+      {
+         std::cout << "Teton: Umpire pool size: " << (pool.getActualSize() / 1024.0 / 1024.0) << " MB" << std::endl;
+      }
+   }
+
+   if (options.has_path("memory_allocator/umpire_device_allocator_id"))
+   {
+      device_allocator_id = options.fetch_existing("memory_allocator/umpire_device_allocator_id").value();
+   }
+
+   if (device_allocator_id != -1)
+   {
+      auto pool = rm.getAllocator(device_allocator_id);
+      if (mRank == 0)
+      {
+         std::cout << "Teton: Umpire device pool size: " << (pool.getActualSize() / 1024.0 / 1024.0) << " MB"
+                   << std::endl;
+      }
+   }
+#endif
 }
 
 } // namespace Teton

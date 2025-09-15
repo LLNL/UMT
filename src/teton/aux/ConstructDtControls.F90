@@ -34,7 +34,7 @@
    call construct(DtControls,         & 
                   RadTimeStep=dtrad,  &
                   MaxChangeTe=delte,  &
-                  MaxChangeTr4=deltr, &
+                  MaxChangeEr=deltr,  &
                   MinTimeStep=dtrmn,  &
                   MaxTimeStep=dtrmx)
 

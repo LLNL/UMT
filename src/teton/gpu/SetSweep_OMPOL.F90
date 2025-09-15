@@ -27,6 +27,8 @@
    use iter_control_mod
    use OMPWrappers_mod
    use Options_mod
+   use MemoryAllocator_mod, only : Allocator
+
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
    use ComptonControl_mod
 #endif
@@ -72,6 +74,8 @@
 
    logical (kind=1), allocatable :: FluxConverged(:)
    logical(kind=1)               :: useBoltzmannCompton
+
+   logical                       :: commDataOnCPU
 
 !  Constants
 
@@ -146,11 +150,9 @@
 
      AngleLoop: do sendIndex=1,NumAnglesDyn
        START_RANGE("Teton_Comm_Send_Recv_Fluxes")
-! GPU-Aware MPI on RZADAMs crashes if MPI calls are made from CPU threads.
-! See issue #583 on gitlab for more info. -- black27
-!!$omp parallel do default(none) schedule(dynamic) &
-!!$omp& shared(nCommSets,Quad,SnSweep, sendIndex) &
-!!$omp& private(CSet,Angle)
+!$omp parallel do default(none) schedule(dynamic) &
+!$omp& shared(nCommSets,Quad,SnSweep, sendIndex) &
+!$omp& private(CSet,Angle)
        do cSetID=1,nCommSets
 
          CSet  => getCommSetData(Quad, cSetID)
@@ -166,7 +168,7 @@
          call RecvFlux(SnSweep, cSetID, Angle)
 
        enddo
-!!$omp end parallel do
+!$omp end parallel do
        END_RANGE("Teton_Comm_Send_Recv_Fluxes")
 
        do setID=1,nSets

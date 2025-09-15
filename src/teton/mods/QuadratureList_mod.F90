@@ -211,7 +211,7 @@ contains
 
   subroutine QuadratureList_ctor(self, nAnglesSn, nSetsMaster, nSets)
 
-    use cmake_defines_mod, only : omp_device_num_processors, omp_device_team_thread_limit
+    use cmake_defines_mod, only : omp_device_team_thread_limit
     use Options_mod, only : Options
     use constant_mod
 
@@ -240,7 +240,7 @@ contains
 #if defined(TETON_ENABLE_OPENMP)
     if (Size%useGPU) then
        ! If running on gpu, set these to use all available gpu processors.
-       nOmpMaxTeams    = omp_device_num_processors
+       nOmpMaxTeams    = Options%getNumDeviceProcessors()
        self% nSets     = max(1, nOmpMaxTeams)
        self% nZoneSets = min(Size%nzones, nOmpMaxTeams)
     else

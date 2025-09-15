@@ -120,10 +120,8 @@
 !  If we are using the GPU, we need to map some data before the set loop
    if ( Size% useGPU ) then
 
-     ! Use UMPIRE pinned memory allocation size as an estimator for amount of device memory needed.
-     ! TODO - The NLsolver is not currently using UMPIRE, this won't be taken
-     ! into account on this estimate until that is done.
-#if defined(TETON_ENABLE_UMPIRE)
+! Output a memory requirement estimate if we need to map data to the GPU
+#if defined(TETON_ENABLE_UMPIRE) && !defined(TETON_OPENMP_HAS_UNIFIED_MEMORY)
      if ( Allocator%umpire_host_allocator_id >= 0 .AND. Options%isRankVerbose() > 0 ) then
         call printGPUMemRequired(Size%myRankInGroup)
      endif
@@ -648,12 +646,6 @@
                              Size% zoneBatchSize, Size%maxCorner)
    endif
 #  endif
-#endif
-
-#if defined(TETON_ENABLE_UMPIRE)
-   if ( Allocator%umpire_host_allocator_id >= 0 .AND. Options%isRankVerbose() > 0 ) then
-      call printGPUMemInfo(Size%myRankInGroup)
-   endif
 #endif
 
    return

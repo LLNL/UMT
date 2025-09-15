@@ -161,6 +161,13 @@
       print *, "FluxIters = ", ninrt
 #endif
       if( Options%isRankVerbose() > 1 ) then
+         ncycle = max(ncycle, 1)  ! TODO Some host codes like to start with ncycle = 0 for the first cycle.  Do something to account for both.
+         print *, ""
+         print *, "  *** average temp (outer) iterations over problem: ", getTotalNumberOfIterations(temperatureControl) / ncycle
+         print *, "  *** average flux iterations over problem: ", getTotalNumberOfIterations(intensityControl) / ncycle
+         print *, "  *** average grey iterations over problem: ", getTotalNumberOfIterations(greyControl) / ncycle
+         print *, "  *** average nonlinear iterations over problem: ", getTotalNumberOfIterations(nonLinearControl) / ncycle
+         print *, ""
          print *, "  *** max outer iterations = ", outerMaxIts
          print *, "  *** max outer temperature rel tol = ", outerTempRelTol
          print *, "  *** max outer energy density rel tol = ", outerEDRelTol

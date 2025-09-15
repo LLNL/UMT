@@ -84,8 +84,8 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
       set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -DNDEBUG -M878")
       # G2 is the only level that doesn't disable OpenMP loop collapsing and still provides debug information.
       # A ticket has been submitted to ask HPE to update the -G# flag to be consistent with the "-g" flag in their C++ compiler.
-      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O2 -G2 -DNDEBUG -h bounds -M878 -Ktrap=fp")
-      set(CMAKE_Fortran_FLAGS_DEBUG "-m2 -O0 -G2 -h bounds -M878 -Ktrap=fp")
+      set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-g -O2 -DNDEBUG -h bounds -M878 -Ktrap=fp")
+      set(CMAKE_Fortran_FLAGS_DEBUG "-m2 -g -O0 -h bounds -M878 -Ktrap=fp")
    endif()
 
    # Add array bounds checking and asserts for non release builds.

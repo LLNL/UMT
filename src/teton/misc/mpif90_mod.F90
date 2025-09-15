@@ -80,9 +80,7 @@ contains
             MPI_SUM, comm, ierror)
        end select
 
-       if (ierror /= MPI_SUCCESS) then
-          call f90fatal("MPI Reduction Failed")
-       endif
+       TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIAllReduce_r
@@ -141,9 +139,7 @@ contains
             MPI_SUM, comm, ierror)
        end select
 
-       if (ierror /= MPI_SUCCESS) then
-          call f90fatal("MPI Reduction Failed")
-       endif
+       TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
 !      free memory
        deallocate(sendBuf, stat=alloc_stat)
@@ -202,9 +198,7 @@ contains
             MPI_SUM, comm, ierror)
        end select
 
-       if (ierror /= MPI_SUCCESS) then
-          call f90fatal("MPI Reduction Failed")
-       endif
+       TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIAllReduce_i
@@ -263,9 +257,7 @@ contains
             MPI_SUM, comm, ierror)
        end select
 
-       if (ierror /= MPI_SUCCESS) then
-          call f90fatal("MPI Reduction Failed")
-       endif
+       TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
 !      free memory
        deallocate(sendBuf, stat=alloc_stat)
@@ -293,9 +285,7 @@ contains
 
 !    MPI Barrier
      call MPI_Barrier(comm, ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Barrier Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIBarrier
@@ -321,9 +311,7 @@ contains
 
 !    MPI Abort 
      call MPI_Abort(comm, errorcode, ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Abort Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIAbort
@@ -351,9 +339,7 @@ contains
 
 !    MPI Communicator Rank
      call MPI_Comm_rank(comm, rank, ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Barrier Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPICommRank
@@ -381,9 +367,7 @@ contains
 
 !    MPI Communicator Size
      call MPI_Comm_size(comm, commSize, ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Barrier Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPICommSize
@@ -455,9 +439,7 @@ contains
                         gatherNode, comm, ierror)
      endif
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Reduction Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIGather_r_
@@ -528,9 +510,7 @@ contains
                         gatherNode, comm, ierror)
      endif
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Reduction Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIGather_r__
@@ -562,9 +542,7 @@ contains
      call MPI_Bcast(sendBuf, nsend, MPI_REAL8, root, &
                     comm, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Bcast Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIBcast_r
@@ -596,9 +574,7 @@ contains
      call MPI_Bcast(sendBuf, nsend, MPI_INTEGER, root, &
                     comm, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Bcast Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIBcast_i
@@ -633,9 +609,7 @@ contains
      call MPI_Send_Init(sendBuf, nsend, MPI_REAL8, isend, &
                         tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Send_init Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPISendInit
@@ -670,9 +644,7 @@ contains
      call MPI_Send_Init(sendBuf, nsend, MPI_REAL8, isend, &
                         tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Send_init Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPISendInit1
@@ -707,9 +679,7 @@ contains
      call MPI_Send_Init(sendBuf, nsend, MPI_INTEGER, isend, &
                         tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Send_init Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPISendInit1_i
@@ -744,9 +714,7 @@ contains
      call MPI_Recv_Init(recvBuf, nrecv, MPI_REAL8, irecv, &
                         tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Recv_init Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIRecvInit
@@ -781,9 +749,7 @@ contains
      call MPI_Recv_Init(recvBuf, nrecv, MPI_REAL8, irecv, &
                         tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Recv_init Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIRecvInit1
@@ -818,9 +784,7 @@ contains
      call MPI_Recv_Init(recvBuf, nrecv, MPI_INTEGER, irecv, &
                         tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Recv_init Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIRecvInit1_i
@@ -856,9 +820,7 @@ contains
      call MPI_Isend(sendBuf, nsend, MPI_REAL8, isend, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Isend Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIsend_r
@@ -894,9 +856,7 @@ contains
      call MPI_Isend(sendBuf, nsend, MPI_REAL8, isend, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Isend Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIsend_r2
@@ -933,9 +893,7 @@ contains
      call MPI_Isend(sendBuf, nsend, MPI_INTEGER, isend, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Isend Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIsend_i
@@ -972,9 +930,7 @@ contains
      call MPI_Isend(sendBuf, nsend, MPI_INTEGER, isend, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Isend Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIsend_i2
@@ -1010,9 +966,7 @@ contains
      call MPI_Irecv(recvBuf, nrecv, MPI_REAL8, irecv, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Irecv Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIrecv_r
@@ -1048,9 +1002,7 @@ contains
      call MPI_Irecv(recvBuf, nrecv, MPI_REAL8, irecv, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Irecv Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIrecv_r2
@@ -1087,9 +1039,7 @@ contains
      call MPI_Irecv(recvBuf, nrecv, MPI_INTEGER, irecv, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Irecv Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIrecv_i
@@ -1126,9 +1076,7 @@ contains
      call MPI_Irecv(recvBuf, nrecv, MPI_INTEGER, irecv, &
                     tag, comm, request, ierror)
 
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Irecv Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIIrecv_i2
@@ -1152,9 +1100,7 @@ contains
 
 !    MPI Start
      call MPI_Start(comm,ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Start Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIStart
@@ -1179,9 +1125,7 @@ contains
 
 !    MPI Wait
      call MPI_Wait(request,status,ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Wait Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIWait
@@ -1207,9 +1151,7 @@ contains
 
 !    MPI Waitall
      call MPI_Waitall(count,request,status,ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Waitall Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end subroutine mpi_MPIWaitall
@@ -1255,9 +1197,7 @@ contains
 
 !    MPI Communicator Rank
      call MPI_Comm_rank(comm, MPIrank, ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Barrier Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end function mpi_getMPIRank
@@ -1285,9 +1225,7 @@ contains
 
 !    MPI Communicator Size
      call MPI_Comm_size(comm, MPISize, ierror)
-     if (ierror /= MPI_SUCCESS) then
-        call f90fatal("MPI Barrier Failed")
-     endif
+     TETON_VERIFY( ierror == MPI_SUCCESS, "MPI call failed")
 
      return
   end function mpi_getMPISize

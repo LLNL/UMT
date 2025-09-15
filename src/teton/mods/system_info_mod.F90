@@ -32,9 +32,8 @@ subroutine getGPUMemInfo(free_bytes, total_bytes)
 #endif
 
    integer(kind=c_size_t), intent(inout) :: free_bytes, total_bytes
-   integer(kind=c_int) :: status_code
-
 #if defined (TETON_ENABLE_CUDA) || defined(TETON_ENABLE_HIP)
+   integer(kind=c_int) :: status_code
    status_code = gpuMemGetInfo(free_bytes, total_bytes)
 #else
    free_bytes = 0
@@ -50,22 +49,21 @@ subroutine printGPUMemInfo(rank)
 
    integer, intent(in) :: rank
    integer(kind=C_SIZE_T) :: gpu_total_bytes, gpu_free_bytes
-   character(len=80) :: cuda_visible_devices
    character(len=80) :: host_name
    integer :: ierr, resultlen
 
    call getGPUMemInfo(gpu_free_bytes, gpu_total_bytes)
    call mpi_get_processor_name(host_name, resultlen, ierr) 
 
-   print *, "TETON GPU used mem: rank ", rank, "host ", trim(host_name), ", currently free: ", gpu_free_bytes/(2**20), &
+   print *, " GPU used mem: rank ", rank, "host ", trim(host_name), ", currently free: ", gpu_free_bytes/(2**20), &
       "MB, currently used: ",  (gpu_total_bytes-gpu_free_bytes)/(2**20), "MB"
 
 #if defined(TETON_ENABLE_UMPIRE)
    if (Allocator%umpire_host_allocator_id > -1) then
-      print *, "TETON UMPIRE allocator size: ", Allocator%umpire_host_allocator%get_current_size() / (2**20), "MB"
+      print *, " Umpire allocator size: ", Allocator%umpire_host_allocator%get_current_size() / (2**20), "MB"
    endif
    if (Allocator%umpire_device_allocator_id > -1) then
-      print *, "TETON UMPIRE device allocator size: ", Allocator%umpire_device_allocator%get_current_size() / (2**20), "MB"
+      print *, " Umpire device allocator size: ", Allocator%umpire_device_allocator%get_current_size() / (2**20), "MB"
    endif
 #endif
 
@@ -83,7 +81,14 @@ subroutine printGPUMemRequired(rank)
    integer, intent(in) :: rank
 
    integer(kind=C_SIZE_T) :: gpu_total_bytes, gpu_free_bytes, &
-                             mem_estimate_bytes, cuda_bc_solver_bytes
+                             mem_estimate_bytes
+
+#if !defined(TETON_ENABLE_MINIAPP_BUILD)
+#   if defined(TETON_ENABLE_CUDA)
+   integer(kind=C_SIZE_T) :: cuda_bc_solver_bytes
+#   endif
+#endif
+
    character(len=80) :: host_name
    integer :: ierr, resultlen
 

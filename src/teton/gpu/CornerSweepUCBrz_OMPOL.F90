@@ -60,7 +60,6 @@
    integer    :: nZoneSets
    integer    :: nHyperDomains
 
-   integer    :: nzones
    integer    :: ii
    integer    :: ndone
    integer    :: hyperPlane
@@ -314,7 +313,7 @@
    TOMPC(thread_limit(omp_device_team_thread_limit) &)
    TOMPC(shared(nSets, nHyperDomains, Quad, Geom, sendIndex, tau)&)
    TOMPC(private(Set, ASet, GSet, HypPlanePtr, Angle, Groups, hplane1, hplane2, ndone) &)
-   TOMPC(private(b, g, hyperPlane, nzones, fac, c, c0, c1, c2, cfp, cez, zone, nCorner)&)
+   TOMPC(private(b, g, hyperPlane, fac, c, c0, c1, c2, cfp, cez, zone, nCorner)&)
    TOMPC(private(sigA, sigA2, source, area, sig, sez, SS, QQ, Qez)&)
    TOMPC(private(gnum, gden, aez, afp, R, R_afp, ifp, mult))
 

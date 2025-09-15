@@ -12,10 +12,11 @@
                           FinalTimeTotal, timeNonRad, timeOther) &
                           BIND(C,NAME="teton_getrunstats")
    
-   use ISO_C_BINDING
    use, intrinsic :: iso_fortran_env, only : stdin=>input_unit, &
                                              stdout=>output_unit, &
                                              stderr=>error_unit
+   use, intrinsic :: iso_c_binding, only : c_long, c_double, c_int
+
    use flags_mod
    use kind_mod
    use mpi_param_mod
@@ -33,6 +34,12 @@
    use ComptonControl_mod
 #endif
    use Options_mod
+   use Datastore_mod, only : theDatastore
+   use OMPUtilities_mod
+   use system_info_mod
+#if defined(TETON_ENABLE_UMPIRE)
+   use umpire_mod, only : get_process_memory_usage, get_process_memory_usage_hwm
+#endif
 
    implicit none
 
@@ -62,9 +69,7 @@
    real(adqt)     :: ConvState(5+Size% ndim)
    real(adqt)     :: DtState(8+Size% ndim)
    real(adqt)     :: zoneCenter(Size% ndim)
-   real(adqt)     :: numPSIElements
    real(adqt)     :: throughputCycle
-   real(adqt)     :: sumThroughput
 
    integer        :: ncycle
    integer        :: ConvControlProcess
@@ -81,6 +86,8 @@
    integer        :: nsendDt
    integer        :: ndim
 
+   integer (kind=c_long) :: globalNumUnknowns
+
    ! Variables affecting threading
    integer        :: numOmpCPUThreads
    integer        :: nZoneSets
@@ -89,6 +96,7 @@
    integer        :: nSweepHyperDomains
    integer        :: nGreySweepHyperDomains
    integer        :: sweepVersion
+   integer(c_int) :: nGPUProcessors
 
    character(len=26), parameter :: Tformat1 = "(1X,A16,1X,F14.6,3X,F14.6)" 
    character(len=48), parameter :: Tformat2 = "(1X,A16,1X,F14.6,3X,F14.6,5X,F5.1,A1)" 
@@ -125,10 +133,7 @@
 
    type(IterControl) , pointer :: temperatureControl => NULL() 
    type(IterControl) , pointer :: intensityControl   => NULL()
-   type(Quadrature)  , pointer :: snQuadrature   => NULL()
    
-   snQuadrature => getSNQuadrature(Quad)
-
 !  Threading information
    sweepVersion              = Options%getSweepVersion()
    numOmpCPUThreads          = Options%getNumOmpMaxThreads()
@@ -221,7 +226,7 @@
    if (myRankInGroup == DtControlProcess) then
 
      if (DtConstraint == dtControl_radTemp) then
-       DtControlChange  = getMaxFracChangeTr4(DtControls)
+       DtControlChange  = getMaxFracChangeEr(DtControls)
      elseif (DtConstraint == dtControl_elecTemp) then
        DtControlChange  = getMaxFracChangeTe(DtControls)
      else
@@ -256,7 +261,7 @@
    SweepTimeTotal    = Size% SweepTimeTotal
    GPUSweepTimeTotal = Size% GPUSweepTimeTotal
    GTATimeTotal      = Size% GTATimeTotal
-   RadtrTimeTotal    = Size% RadtrTimeTotal
+   RadtrTimeTotal    = max(Size% RadtrTimeTotal,adqtSmall)
    InitTimeTotal     = Size% InitTimeTotal
    FinalTimeTotal    = Size% FinalTimeTotal
 
@@ -266,7 +271,6 @@
    if ( Options%isRankVerbose() > 0 ) then
 
      ncycle = getRadCycle(DtControls) 
-
 
      print *,"************     Configuration Info    *************"
 #if !defined(TETON_ENABLE_MINIAPP_BUILD)
@@ -294,17 +298,35 @@
      if (Size%useGPU) then
        print *," Device : GPU"
 #if defined(TETON_ENABLE_OPENMP_OFFLOAD)
+       print *, " # GPU processor units = ", Options%getNumDeviceProcessors()
        print *, " # GPU thread teams utilized by zone sets = ", nZoneSets
        print *, " # GPU thread teams utilized by sweep  = ", nSets*nSweepHyperDomains
        print *, " # GPU thread teams utilized by grey sweep = ", nGTASets*nGreySweepHyperDomains
+       ! Note: Umpire does not yet support querying the device memory usage for ROCM, only CUDA.
+       ! I created an issue requesting this on the Umpire github site and provided code for ROCM
+       ! support. (This went in April 29 2025 in Umpire)
+       ! https://github.com/LLNL/Umpire/issues/959
+       ! In general I like seeing both the used and free memory so am using our own
+       ! internal implementation.  -- A. Black
+       call printGPUMemInfo(Size%myRankInGroup)
 #endif
      else
        print *," Device : CPU"
      endif
 
+#if defined(TETON_ENABLE_UMPIRE)
+     print *, " Process memory usage (CPU) = ", get_process_memory_usage() / 1024 / 1024, " MB"
+     print *, " Process memory usage high water mark (CPU) = ", get_process_memory_usage_hwm() / 1024 / 1024, " MB"
+#endif
+
 #if defined(TETON_ENABLE_OPENMP)
      print '(A30,1X,I3)', "  # CPU threads per mpi rank = ", numOmpCPUThreads
+! Indent the next print a couple spaces to match this block of text
+     write(*, fmt="(a)", advance="no") "  "
+     call print_thread_bindings()
 #endif
+     flush(stdout)
+
      print *," "
      print *,"******************     Run Time (minutes) ******************"
      print *,"                          Cycle      Accumulated  % of RADTR"
@@ -330,11 +352,16 @@
 ! the # elements in PSI * timestep / RADTR walltime.
 ! -- black27
      if ( Options%isRankVerbose() > 1 ) then
-       numPSIElements = dble(Size%ncornr) * dble(snQuadrature%NumAngles) * dble(snQuadrature%Groups)
-       throughputCycle = numPSIElements * currentDtRad / (Size%RadtrTimeCycle * 60.0)
-       Size%throughputTotal =  Size%throughputTotal + throughputCycle
-       print '(1X,A52,1X,ES14.6)', "Cycle throughput (# elements in PSI * dt / radtr ) =", throughputCycle
-       print '(1X,A27,1X,ES14.6)', "Average cycle throughput = ", Size%throughputTotal / dble(ncycle)
+       if (theDatastore%root%has_path("metrics/global/sweep/number_of_unknowns")) then
+          globalNumUnknowns = theDatastore%root%fetch_path_as_int64("metrics/global/sweep/number_of_unknowns")
+          ! These can be very large values.  Size up everything to doubles to avoid overflows.
+          throughputCycle = dble(globalNumUnknowns) * currentDtRad / (Size%RadtrTimeCycle * 60.0 + adqtEpsilon)
+          Size%throughputTotal =  Size%throughputTotal + throughputCycle
+          print '(1X,A52,1X,ES14.6)', "Cycle throughput (# elements in PSI * dt / radtr ) =", throughputCycle
+          print '(1X,A27,1X,ES14.6)', "Average cycle throughput = ", Size%throughputTotal / dble(max(1,ncycle))
+       else
+          print *, "Cycle throughput: Unavailable, requires teton to be initialized with the C++ Teton::initialize() call."
+       endif
      endif
 
      write(zoneStr, "(i7)") ConvControlZone

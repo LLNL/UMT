@@ -35,7 +35,7 @@ class Teton
    static const std::string PARTITION_FIELD_BOUNDARY;
 
   public:
-   Teton();
+   Teton() = default;
 
    ~Teton();
 
@@ -85,6 +85,11 @@ class Teton
     *
     */
    void processEnvVars();
+
+   /*!
+    * \brief Print the memory used by any host or device allocators provided to teton.
+    */
+   void printUmpireUsage();
 
    void initialize(MPI_Comm communicator, bool fromSiloRestart = false);
 
@@ -447,6 +452,9 @@ class Teton
    // forces on the vertices
    void storeMeshData();
 
+   // Dump conduit input.
+   void dumpInput();
+
    // sanitizer_node must have `level`:
    //   0 - no sanitizer (does nothing and returns
    //   1 - quieter sanitizer
@@ -794,17 +802,19 @@ class Teton
     */
 
   private:
-   double mDTrad;
+   double mDTrad{0.};
+   int mDumpInputAtCycle{-2};
 
-   bool areSourceProfilesSet; // Whether or not setSourceProfiles has been called
-   bool mIsInitialized;       // Whether or not Teton::initialize has been called
+   bool areSourceProfilesSet{false}; // Whether or not setSourceProfiles has been called
+   bool mIsInitialized{false};       // Whether or not Teton::initialize has been called
 
-   int mGTAorder; // quadrature order used for grey transport acceleration (def=2 for s2 acc)
-   int mInternalComptonFlag;
+   int mGTAorder{2}; // quadrature order used for grey transport acceleration (def=2 for s2 acc)
+   int mInternalComptonFlag{static_cast<int>(tetonComptonFlag::none)};
 
    // Cached MPI communicator details:
-   MPI_Comm mCommunicator;
-   int mRank;
+   MPI_Comm mCommunicator{MPI_COMM_WORLD};
+   int mRank{0};
+   int mSize{1};
 
    // list of sources to be appended to right hand side before each time step
    // these could be point sources, MMS, etc.

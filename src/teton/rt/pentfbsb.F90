@@ -185,7 +185,7 @@
 
 
    nGDAiters = nGDAiters + 1
-   call setNumberOfIterations(greyControl, nGDAiters)
+   call setNumberOfIterations(greyControl, nGDAiters, .FALSE.)
  
 
    return

@@ -159,8 +159,9 @@ contains
 !   add a one-time initialization of classes to.  Adding it here in the 'Size'
 !   module for now, as we've been parking things at least related to runtime
 !   options here. --Aaron
-    call Options%initialize()
-    call Options%check()
+    if ( .NOT. Options%is_initialized ) then
+       call Options%initialize()
+    endif
    
 !   Problem Size Parameters
     self% myRankInGroup      = myRankInGroup 
@@ -224,6 +225,9 @@ contains
     ! For 1D, teton uses the GDA Solver, not GTA Solver.  Set this to False.
        self% useNewGTASolver = .FALSE.
     ! GPU kernels do not support 1d meshes.
+       if (useGPU .AND. (myRankInGroup == 0) ) then
+          print*, "Teton: Detected that a 1d mesh is being used on a GPU machine.  CPU solvers will be used for this problem, as GPU kernels are not currently implemented for 1D."
+       endif
        self% useGPU = .FALSE.
     else
        self% useNewGTASolver       = useNewGTASolver
@@ -231,7 +235,7 @@ contains
     endif
 
 ! Pinned memory improves CPU<->GPU memory transfer performance, so default to
-! preferring to use Umpire for pinned memory allocations on CPU.
+! preferring to use Umpire for pinned memory allocations on GPU.
 #if defined(TETON_ENABLE_UMPIRE)
     self% usePinnedMemory       = self%useGPU
 #else
@@ -239,7 +243,7 @@ contains
 #endif
 
     if (self% useGPU .AND. .NOT. self% usePinnedMemory .AND. myRankInGroup == 0) then
-       print *, "TETON WARNING: Detected that GPU kernels are enabled, but UMPIRE support is not enabled.  This may impact CPU<->GPU memory transfer performance."
+       print *, "Teton: Detected that GPU kernels are enabled, but UMPIRE support is not enabled.  This may impact CPU<->GPU memory transfer performance."
     endif
 
     self% useCUDASolver         = useCUDASolver

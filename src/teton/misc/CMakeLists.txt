@@ -4,6 +4,7 @@ target_sources( teton PRIVATE
   mpi_param_mod.F90
   mpif90_mod.F90
   PrintEnergies.F90
+  processEnvVars.cc
 )
 
 # These provide a small replacement for PhysicsUtils and computing the Planck Function.

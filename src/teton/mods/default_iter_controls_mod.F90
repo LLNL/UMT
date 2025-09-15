@@ -18,7 +18,6 @@ private
      outer_max_it = 50_C_INT, &
      grey_max_sweeps = 21_C_INT, &
      incident_flux_max_it = 2_C_INT, &
-     inner_nl_max_it = 100_C_INT, &
-     outer_slow_conv_threshold = 20_C_INT
+     inner_nl_max_it = 100_C_INT
 
 end module default_iter_controls_mod

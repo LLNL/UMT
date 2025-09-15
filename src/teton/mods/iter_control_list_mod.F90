@@ -235,7 +235,7 @@ contains
 !    assertions
      TETON_ASSERT(allocated(self%names),"Invalid iter control list")
      TETON_ASSERT(associated(self%iControls),"Invalid iter control list")
-     TETON_ASSERT(any(iteration==self%names(:)),"Invalid iteration name")
+     TETON_ASSERT(any(iteration==self%names(1:self%nIterCon)),"Invalid iteration name")
 
      iControl => self% iControls(self% maxIterCon)
 

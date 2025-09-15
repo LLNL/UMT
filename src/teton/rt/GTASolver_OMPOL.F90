@@ -56,8 +56,7 @@
    use AngleSet_mod
    use ZoneSet_mod
    use ieee_arithmetic
-   use, intrinsic :: iso_fortran_env, only : stdin=>input_unit, &
-                                             stdout=>output_unit, &
+   use, intrinsic :: iso_fortran_env, only : stdout=>output_unit, &
                                              stderr=>error_unit
 
    implicit none
@@ -398,10 +397,9 @@
        phiNew  = Rad% radEnergy(zone) + pz
        phiL2   = phiL2 + Geom% VolumeZone(zone)*(phiNew*phiNew)
 
-       ! Is this too cumbersome? a NaN check on every zone on every GTA iteration?
-       if (ieee_is_nan(phiNew) .or. ieee_is_nan(errZone)) then
+       if (.not. ieee_is_finite(phiNew)) then
          izRelErrPoint  = zone  ! The zone where we first see a nan
-         print *, "Teton's GTASolver encountered a NaN on iteration", nGreyIter, " on rank ", Size% myRankInGroup, " in zone ", izRelErrPoint
+         print *, "Teton's GTASolver encountered a bad value of ", phiNew, " on iteration", nGreyIter, " on rank ", Size% myRankInGroup, " in zone ", izRelErrPoint
          flush(stdout)
          TETON_FATAL("Grey solver encountered a NaN!")
        else if (abs(phiNew) > zero) then
@@ -464,7 +462,7 @@
    ngdart = getNumberOfIterations(greyControl)
    ngdart = ngdart + nGreyIter
 
-   call setNumberOfIterations(greyControl,ngdart)
+   call setNumberOfIterations(greyControl,ngdart, .FALSE.)
 
 !  Free memory
 
